@@ -1,11 +1,12 @@
 import numpy as np
-from scipy.spatial.distance import euclidean
-import birdnet_analyzer.audio as audio
-import birdnet_analyzer.model as model
-import birdnet_analyzer.config as cfg
-from perch_hoplite.db import sqlite_usearch_impl
-from perch_hoplite.db import brutalism
+from perch_hoplite.db import brutalism, sqlite_usearch_impl
 from perch_hoplite.db.search_results import SearchResult
+from scipy.spatial.distance import euclidean
+
+import birdnet_analyzer.audio as audio
+import birdnet_analyzer.config as cfg
+import birdnet_analyzer.model as model
+
 
 def cosine_sim(a, b):
     if a.ndim == 2:
@@ -102,6 +103,8 @@ def get_search_results(queryfile_path, db, n_results, audio_speed, fmin, fmax, s
     for embedding_id, scores in scores_by_embedding_id.items():
         results.append(SearchResult(embedding_id, np.sum(scores) / len(query_embeddings)))
 
-    results.sort(key=lambda x: x.sort_score, reverse=True)
+    reverse = score_function != "euclidean"
+
+    results.sort(key=lambda x: x.sort_score, reverse=reverse)
 
     return results[0:n_results]

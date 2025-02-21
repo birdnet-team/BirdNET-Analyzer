@@ -43,7 +43,15 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
 
     offset = 0
     duration = cfg.FILE_SPLITTING_DURATION
-    fileLengthSeconds = int(audio.get_audio_file_length(fpath))
+
+    try:
+        fileLengthSeconds = int(audio.get_audio_file_length(fpath))
+    except Exception as ex:
+        # Write error log
+        print(f"Error: Cannot analyze audio file {fpath}. File corrupt?\n", flush=True)
+        utils.write_error_log(ex)
+
+        return None
 
     # Start time
     start_time = datetime.datetime.now()

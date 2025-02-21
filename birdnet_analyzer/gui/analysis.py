@@ -5,6 +5,7 @@ from pathlib import Path
 import gradio as gr
 
 import birdnet_analyzer.analyze.utils as analyze
+import birdnet_analyzer.segments.utils as segments
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.localization as loc
@@ -28,6 +29,10 @@ def analyze_file_wrapper(entry):
                element is the result of the analyze.analyzeFile function.
     """
     return (entry[0], analyze.analyze_file(entry))
+
+
+def extract_segments_wrapper(entry):
+    return (entry[0][0], segments.extract_segments(entry))
 
 
 def run_analysis(
@@ -164,5 +169,5 @@ def run_analysis(
         analyze.save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
 
     return (
-        [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list] if input_dir else result_list[0][1]["csv"]
+        [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list] if input_dir else result_list[0][1]["csv"] if result_list[0][1] else None
     )

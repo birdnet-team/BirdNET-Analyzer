@@ -1,22 +1,31 @@
 import os
+from functools import partial
+
 import gradio as gr
 
-import birdnet_analyzer.embeddings.utils as embeddings
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.localization as loc
-import birdnet_analyzer.utils as utils
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.search.utils as search
-import birdnet_analyzer.audio as audio
-from functools import partial
-import numpy as np
+import birdnet_analyzer.localization as loc
+
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 PAGE_SIZE = 4
 
+
 def play_audio(audio_infos):
-    arr, sr = audio.open_audio_file(audio_infos[0], offset=audio_infos[1], duration=audio_infos[2], speed=audio_infos[5], fmin=audio_infos[6], fmax=audio_infos[7])
+    import birdnet_analyzer.audio as audio
+
+    arr, sr = audio.open_audio_file(
+        audio_infos[0],
+        offset=audio_infos[1],
+        duration=audio_infos[2],
+        speed=audio_infos[5],
+        fmin=audio_infos[6],
+        fmax=audio_infos[7],
+    )
+
     return sr, arr
+
 
 def update_export_state(audio_infos, checkbox_value, export_state: dict):
     if checkbox_value:
@@ -26,31 +35,59 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
 
     return export_state
 
-def run_embeddings(input_path, db_directory, db_name, overlap, threads, batch_size, audio_speed, fmin, fmax, progress=gr.Progress(track_tqdm=True)):
+
+def run_embeddings(
+    input_path,
+    db_directory,
+    db_name,
+    overlap,
+    threads,
+    batch_size,
+    audio_speed,
+    fmin,
+    fmax,
+    progress=gr.Progress(track_tqdm=True),
+):
+    import birdnet_analyzer.embeddings.utils as embeddings
+
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
     gu.validate(db_name, loc.localize("embeddings-db-name-validation-message"))
     db_path = os.path.join(db_directory, db_name)
 
     db = embeddings.get_database(db_path)
+
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
         db.db.close()
-        embeddings.run(input_path, db_path, overlap, settings["AUDIO_SPEED"], settings["BANDPASS_FMIN"], settings["BANDPASS_FMAX"], threads, batch_size) 
+        embeddings.run(
+            input_path,
+            db_path,
+            overlap,
+            settings["AUDIO_SPEED"],
+            settings["BANDPASS_FMIN"],
+            settings["BANDPASS_FMAX"],
+            threads,
+            batch_size,
+        )
     except:
         db.db.close()
         # Transform audiospeed from slider to float
         audio_speed = max(0.1, 1.0 / (audio_speed * -1)) if audio_speed < 0 else max(1.0, float(audio_speed))
-        
+
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
             raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
         embeddings.run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_path}")
+
     return gr.Plot(), gr.Slider(visible=False), gr.Number(visible=False), gr.Number(visible=False)
 
+
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
+    import birdnet_analyzer.search.utils as search
+
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
     gu.validate(query_path, loc.localize("embeddings-search-query-validation-message"))
     gu.validate(max_samples, loc.localize("embeddings-search-max-samples-validation-message"))
@@ -58,32 +95,65 @@ def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overl
     db = search.get_database(db_path)
     settings = db.get_metadata("birdnet_analyzer_settings")
 
-    results = search.get_search_results(query_path, db, max_samples, settings["AUDIO_SPEED"], settings["BANDPASS_FMIN"], settings["BANDPASS_FMAX"], score_fn, crop_mode, crop_overlap)
-    db.db.close() # Close the database connection to avoid having wal/shm files
+    results = search.get_search_results(
+        query_path,
+        db,
+        max_samples,
+        settings["AUDIO_SPEED"],
+        settings["BANDPASS_FMIN"],
+        settings["BANDPASS_FMAX"],
+        score_fn,
+        crop_mode,
+        crop_overlap,
+    )
+    db.db.close()  # Close the database connection to avoid having wal/shm files
 
-    chunks = [results[i:i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]
+    chunks = [results[i : i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]
 
     return chunks, 0, gr.Button(interactive=True), {}
 
+
 def run_export(export_state):
+    import birdnet_analyzer.audio as audio
+
     if len(export_state.items()) > 0:
         export_folder = gu.select_folder(state_key="embeddings-search-export-folder")
+
         if export_folder:
             for index, file in export_state.items():
-                dest = os.path.join(export_folder, f"result_{index+1}_score_{file[4]:.5f}.wav")
+                dest = os.path.join(export_folder, f"result_{index + 1}_score_{file[4]:.5f}.wav")
                 sig, rate = audio.open_audio_file(file[0], offset=file[1], duration=file[2], sample_rate=None)
                 audio.save_signal(sig, dest, rate)
+
         gr.Info(f"{loc.localize('embeddings-search-export-finish-info')} {export_folder}")
     else:
         gr.Info(loc.localize("embeddings-search-export-no-results-info"))
 
+
+def get_embeddings_db(db_path):
+    import birdnet_analyzer.embeddings.utils as embeddings
+
+    return embeddings.get_database(db_path)
+
+
+def get_search_db(db_path):
+    import birdnet_analyzer.search.utils as search
+
+    return search.get_database(db_path)
+
+
 def build_embeddings_tab():
+    import birdnet_analyzer.utils as utils
+    import birdnet_analyzer.audio as audio
+
     with gr.Tab(loc.localize("embeddings-tab-title")):
         with gr.Tab(loc.localize("embeddings-extract-tab-title")):
             input_directory_state = gr.State()
             db_directory_state = gr.State()
+
             def select_directory_to_state_and_tb(state_key):
                 return (gu.select_directory(collect_files=False, state_key=state_key),) * 2
+
             with gr.Row():
                 select_audio_directory_btn = gr.Button(
                     loc.localize("embeddings-tab-select-input-directory-button-label")
@@ -94,10 +164,10 @@ def build_embeddings_tab():
                     outputs=[selected_audio_directory_tb, input_directory_state],
                     show_progress=False,
                 )
+
             with gr.Row():
-                select_db_directory_btn = gr.Button(
-                    loc.localize("embeddings-tab-select-db-directory-button-label")
-                )
+                select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
+
             with gr.Row():
                 db_name_tb = gr.Textbox(
                     "embeddings_database",
@@ -105,14 +175,14 @@ def build_embeddings_tab():
                     interactive=True,
                     info=loc.localize("embeddings-tab-db-info"),
                 )
-        
+
             with gr.Accordion(loc.localize("embedding-settings-accordion-label"), open=False):
                 with gr.Row():
                     overlap_slider = gr.Slider(
                         minimum=0,
-                        maximum=2.99,
+                        maximum=2.9,
                         value=0,
-                        step=0.01,
+                        step=0.1,
                         label=loc.localize("embedding-settings-overlap-slider-label"),
                         info=loc.localize("embedding-settings-overlap-slider-info"),
                     )
@@ -132,7 +202,7 @@ def build_embeddings_tab():
                         minimum=1,
                         interactive=True,
                     )
-                
+
                 with gr.Row():
                     audio_speed_slider = gr.Slider(
                         minimum=-10,
@@ -160,13 +230,14 @@ def build_embeddings_tab():
 
             def select_directory_and_update_tb():
                 dir_name = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
+
                 if dir_name:
                     db_path = os.path.join(dir_name, db_name_tb.value)
                     loc.set_state("embeddings-db-dir", dir_name)
                     if os.path.exists(db_path):
-                        db = embeddings.get_database(db_path)
+                        db = get_embeddings_db(db_path)
                         try:
-                            settings = db.get_metadata("birdnet_analyzer_settings")
+                            db.get_metadata("birdnet_analyzer_settings")
                             db.db.close()
                             return (
                                 dir_name,
@@ -175,18 +246,26 @@ def build_embeddings_tab():
                                 gr.Number(visible=False),
                                 gr.Number(visible=False),
                             )
-                        except:
+                        except KeyError:
                             db.db.close()
                             return (
-                                dir_name, gr.Textbox(label=dir_name, visible=True), gr.Slider(visible=True), gr.Number(visible=True), gr.Number(visible=True)
+                                dir_name,
+                                gr.Textbox(label=dir_name, visible=True),
+                                gr.Slider(visible=True),
+                                gr.Number(visible=True),
+                                gr.Number(visible=True),
                             )
                     else:
                         return (
-                            dir_name, gr.Textbox(label=dir_name, visible=True), gr.Slider(visible=True), gr.Number(visible=True), gr.Number(visible=True)
+                            dir_name,
+                            gr.Textbox(label=dir_name, visible=True),
+                            gr.Slider(visible=True),
+                            gr.Number(visible=True),
+                            gr.Number(visible=True),
                         )
 
                 return None, None, gr.Slider(visible=True), gr.Number(visible=True), gr.Number(visible=True)
-            
+
             select_db_directory_btn.click(
                 select_directory_and_update_tb,
                 outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number],
@@ -195,18 +274,22 @@ def build_embeddings_tab():
 
             def check_settings(dir_name, db_name):
                 db_path = os.path.join(dir_name, db_name)
+
                 if db_name and os.path.exists(db_path):
-                    db = embeddings.get_database(db_path)
+                    db = get_embeddings_db(db_path)
+
                     try:
-                        settings = db.get_metadata("birdnet_analyzer_settings")
+                        db.get_metadata("birdnet_analyzer_settings")
                         db.db.close()
+
                         return (
                             gr.Slider(visible=False),
                             gr.Number(visible=False),
                             gr.Number(visible=False),
                         )
-                    except:
+                    except KeyError:
                         db.db.close()
+
                         return (
                             gr.Slider(visible=True),
                             gr.Number(visible=True),
@@ -221,10 +304,10 @@ def build_embeddings_tab():
                 outputs=[audio_speed_slider, fmin_number, fmax_number],
                 show_progress=False,
             )
-            
-            progress_plot = gr.Plot()
 
+            progress_plot = gr.Plot()
             start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
+
             start_btn.click(
                 run_embeddings,
                 inputs=[
@@ -236,11 +319,13 @@ def build_embeddings_tab():
                     threads_number,
                     audio_speed_slider,
                     fmin_number,
-                    fmax_number
+                    fmax_number,
                 ],
                 outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
+                show_progress_on=[progress_plot]
             )
-        with gr.Tab(loc.localize("embeddings-search-tab-title")):            
+
+        with gr.Tab(loc.localize("embeddings-search-tab-title")):
             results_state = gr.State([])
             page_state = gr.State(0)
             export_state = gr.State({})
@@ -257,10 +342,10 @@ def build_embeddings_tab():
                         db_embedding_count_number = gr.Number(
                             interactive=False,
                             visible=False,
-                            label=loc.localize("embeddings-search-db-embedding-count-number-label")
+                            label=loc.localize("embeddings-search-db-embedding-count-number-label"),
                         )
-                    
-                    with gr.Row():       
+
+                    with gr.Row():
                         db_bandpass_frequencies_tb = gr.Textbox(
                             label=loc.localize("embeddings-search-db-bandpass-frequencies-label"),
                             interactive=False,
@@ -269,25 +354,34 @@ def build_embeddings_tab():
                         db_audio_speed_number = gr.Number(
                             interactive=False,
                             visible=False,
-                            label=loc.localize("embeddings-search-db-audio-speed-number-label")
+                            label=loc.localize("embeddings-search-db-audio-speed-number-label"),
                         )
 
-                    db_selection_button = gr.Button(
-                        loc.localize("embeddings-search-db-selection-button-label")
-                    )
+                    db_selection_button = gr.Button(loc.localize("embeddings-search-db-selection-button-label"))
+
                     def on_db_selection_click():
                         folder = gu.select_folder(state_key="embeddings_search_db")
-
-                        db = embeddings.get_database(folder)
+                        db = get_embeddings_db(folder)
                         embedding_count = db.count_embeddings()
                         settings = db.get_metadata("birdnet_analyzer_settings")
                         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
-                        speed = settings['AUDIO_SPEED']
+                        speed = settings["AUDIO_SPEED"]
                         db.db.close()
+
                         if folder:
-                            return gr.Textbox(value=folder, visible=True), gr.Number(value=embedding_count, visible=True), gr.Textbox(visible=True, value=frequencies), gr.Number(visible=True, value=speed), [], {}, gr.Button(visible=True), gr.Textbox(value=None, visible=False)
+                            return (
+                                gr.Textbox(value=folder, visible=True),
+                                gr.Number(value=embedding_count, visible=True),
+                                gr.Textbox(visible=True, value=frequencies),
+                                gr.Number(visible=True, value=speed),
+                                [],
+                                {},
+                                gr.Button(visible=True),
+                                gr.Textbox(value=None, visible=False),
+                            )
 
                         return None, None, None, None, [], {}, gr.Button(visible=False), gr.Textbox(visible=False)
+
                 with gr.Column():
                     max_samples_number = gr.Number(
                         label=loc.localize("embeddings-search-max-samples-number-label"),
@@ -305,9 +399,13 @@ def build_embeddings_tab():
 
             with gr.Row():
                 with gr.Column():
-                    query_spectrogram = gr.Plot(label='')
+                    query_spectrogram = gr.Plot(label="")
                     select_query_btn = gr.Button(loc.localize("embeddings-search-select-query-button-label"))
-                    query_sample_tb = gr.Textbox(label=loc.localize("embeddings-search-query-sample-textbox-label"), visible=False, interactive=False)
+                    query_sample_tb = gr.Textbox(
+                        label=loc.localize("embeddings-search-query-sample-textbox-label"),
+                        visible=False,
+                        interactive=False,
+                    )
 
                     def select_query_sample():
                         file = gu.select_file(state_key="query_sample")
@@ -316,21 +414,21 @@ def build_embeddings_tab():
                     select_query_btn.click(select_query_sample, outputs=[query_sample_tb])
 
                     crop_mode = gr.Radio(
-                            [
-                                (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
-                                (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
-                                (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
-                            ],
-                            value="center",
-                            label=loc.localize("training-tab-crop-mode-radio-label"),
-                            info=loc.localize("embeddings-search-crop-mode-radio-info"),
-                        )
+                        [
+                            (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
+                            (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
+                            (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
+                        ],
+                        value="center",
+                        label=loc.localize("training-tab-crop-mode-radio-label"),
+                        info=loc.localize("embeddings-search-crop-mode-radio-info"),
+                    )
 
                     crop_overlap = gr.Slider(
                         minimum=0,
-                        maximum=2.99,
+                        maximum=2.9,
                         value=0,
-                        step=0.01,
+                        step=0.1,
                         label=loc.localize("training-tab-crop-overlap-number-label"),
                         info=loc.localize("embeddings-search-crop-overlap-number-info"),
                         visible=False,
@@ -342,8 +440,10 @@ def build_embeddings_tab():
                     crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
 
                     def update_query_spectrogram(audiofilepath, db_selection, crop_mode, crop_overlap):
+                        import numpy as np
+
                         if audiofilepath and db_selection:
-                            db = embeddings.get_database(db_selection)
+                            db = get_embeddings_db(db_selection)
                             settings = db.get_metadata("birdnet_analyzer_settings")
                             audio_speed = settings["AUDIO_SPEED"]
                             fmin = settings["BANDPASS_FMIN"]
@@ -362,31 +462,55 @@ def build_embeddings_tab():
                             if crop_mode == "center":
                                 sig = [audio.crop_center(sig, rate, cfg.SIG_LENGTH)][0]
                             elif crop_mode == "first":
-                                sig = [audio.split_signal(sig, rate, cfg.SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][0]
+                                sig = [audio.split_signal(sig, rate, cfg.SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][
+                                    0
+                                ]
 
                             sig = np.array(sig, dtype="float32")
+                            spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))
 
-                            spec = utils.spectrogram_from_audio(sig, rate)
                             return spec, [], {}
                         else:
                             return None, [], {}
 
-                    crop_mode.change(update_query_spectrogram, inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap], outputs=[query_spectrogram, results_state, export_state], preprocess=False)
-                    query_sample_tb.change(update_query_spectrogram, inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap], outputs=[query_spectrogram, results_state, export_state], preprocess=False)
-
+                    crop_mode.change(
+                        update_query_spectrogram,
+                        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
+                        outputs=[query_spectrogram, results_state, export_state],
+                        preprocess=False,
+                    )
+                    query_sample_tb.change(
+                        update_query_spectrogram,
+                        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
+                        outputs=[query_spectrogram, results_state, export_state],
+                        preprocess=False,
+                    )
 
                     db_selection_button.click(
                         on_db_selection_click,
-                        outputs=[db_selection_tb, db_embedding_count_number, db_bandpass_frequencies_tb, db_audio_speed_number, results_state, export_state, select_query_btn, query_sample_tb],
+                        outputs=[
+                            db_selection_tb,
+                            db_embedding_count_number,
+                            db_bandpass_frequencies_tb,
+                            db_audio_speed_number,
+                            results_state,
+                            export_state,
+                            select_query_btn,
+                            query_sample_tb,
+                        ],
                         show_progress=False,
                     )
 
                 with gr.Column(elem_id="embeddings-search-results"):
-                    @gr.render(inputs=[results_state, page_state, db_selection_tb, export_state], triggers=[results_state.change, page_state.change, db_selection_tb.change])
+
+                    @gr.render(
+                        inputs=[results_state, page_state, db_selection_tb, export_state],
+                        triggers=[results_state.change, page_state.change, db_selection_tb.change],
+                    )
                     def render_results(results, page, db_path, exports):
                         with gr.Row():
-                            if db_path != None and len(results) > 0:
-                                db = search.get_database(db_path)
+                            if db_path is not None and len(results) > 0:
+                                db = get_search_db(db_path)
                                 settings = db.get_metadata("birdnet_analyzer_settings")
 
                                 for i, r in enumerate(results[page]):
@@ -396,38 +520,69 @@ def build_embeddings_tab():
                                         file = embedding_source.source_id
                                         offset = embedding_source.offsets[0] * settings["AUDIO_SPEED"]
                                         duration = 3 * settings["AUDIO_SPEED"]
-                                        spec = utils.spectrogram_from_file(file, offset=offset, duration=duration, speed=settings["AUDIO_SPEED"], fmin=settings["BANDPASS_FMIN"], fmax=settings["BANDPASS_FMAX"])
-                                        plot_audio_state = gr.State([file, offset, duration, index, r.sort_score, settings["AUDIO_SPEED"], settings["BANDPASS_FMIN"], settings["BANDPASS_FMAX"]])
+                                        spec = utils.spectrogram_from_file(
+                                            file,
+                                            offset=offset,
+                                            duration=duration,
+                                            speed=settings["AUDIO_SPEED"],
+                                            fmin=settings["BANDPASS_FMIN"],
+                                            fmax=settings["BANDPASS_FMAX"],
+                                            fig_size=(6, 3),
+                                        )
+                                        plot_audio_state = gr.State(
+                                            [
+                                                file,
+                                                offset,
+                                                duration,
+                                                index,
+                                                r.sort_score,
+                                                settings["AUDIO_SPEED"],
+                                                settings["BANDPASS_FMIN"],
+                                                settings["BANDPASS_FMAX"],
+                                            ]
+                                        )
                                         with gr.Row():
-                                            gr.Plot(spec, label=f"{index+1}_score: {r.sort_score:.2f}")
+                                            gr.Plot(spec, label=f"{index + 1}_score: {r.sort_score:.2f}")
 
-                                        with gr.Row():    
+                                        with gr.Row():
                                             play_btn = gr.Button("▶")
                                             play_btn.click(play_audio, inputs=plot_audio_state, outputs=hidden_audio)
                                             checkbox = gr.Checkbox(label="Export", value=(index in exports.keys()))
-                                            checkbox.change(update_export_state, inputs=[plot_audio_state, checkbox, export_state], outputs=export_state)
-                                db.db.close() # Close the database connection to avoid having wal/shm files
+                                            checkbox.change(
+                                                update_export_state,
+                                                inputs=[plot_audio_state, checkbox, export_state],
+                                                outputs=export_state,
+                                            )
+                                db.db.close()  # Close the database connection to avoid having wal/shm files
 
                         with gr.Row():
-                            prev_btn = gr.Button("Previous Page", interactive=page>0)
+                            prev_btn = gr.Button("Previous Page", interactive=page > 0)
                             next_btn = gr.Button("Next Page", interactive=page < len(results) - 1)
 
                             def prev_page(page):
-                                return page -1 if page > 0 else 0
+                                return page - 1 if page > 0 else 0
+
                             def next_page(page):
-                                return page +1
-                            
+                                return page + 1
+
                             prev_btn.click(prev_page, inputs=[page_state], outputs=[page_state])
                             next_btn.click(next_page, inputs=[page_state], outputs=[page_state])
-                     
-
 
             with gr.Row():
                 search_btn = gr.Button(loc.localize("embeddings-search-start-button-label"), variant="huggingface")
-                export_btn = gr.Button(loc.localize("embeddings-search-export-button-label"), variant="huggingface", interactive=False)
+                export_btn = gr.Button(
+                    loc.localize("embeddings-search-export-button-label"), variant="huggingface", interactive=False
+                )
                 search_btn.click(
                     run_search,
-                    inputs=[db_selection_tb, query_sample_tb, max_samples_number, score_fn_select, crop_mode, crop_overlap],
+                    inputs=[
+                        db_selection_tb,
+                        query_sample_tb,
+                        max_samples_number,
+                        score_fn_select,
+                        crop_mode,
+                        crop_overlap,
+                    ],
                     outputs=[results_state, page_state, export_btn, export_state],
                 )
 
@@ -435,9 +590,3 @@ def build_embeddings_tab():
                     run_export,
                     inputs=[export_state],
                 )
-
-                    
-
-
-                
-            

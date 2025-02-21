@@ -4,16 +4,11 @@ from functools import partial
 from pathlib import Path
 
 import gradio as gr
-import matplotlib
-import matplotlib.pyplot as plt
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.localization as loc
 import birdnet_analyzer.utils as utils
-
-
-matplotlib.use("agg")
 
 
 def select_subdirectories(state_key=None):
@@ -81,6 +76,9 @@ def start_training(
     Returns:
         Returns a matplotlib.pyplot figure.
     """
+    import matplotlib
+    import matplotlib.pyplot as plt
+
     from birdnet_analyzer.train.utils import train_model
 
     gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
@@ -178,6 +176,8 @@ def start_training(
 
     auprc = history.history["val_AUPRC"]
     auroc = history.history["val_AUROC"]
+
+    matplotlib.use("agg")
 
     fig = plt.figure()
     plt.plot(auprc, label="AUPRC")

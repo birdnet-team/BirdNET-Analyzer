@@ -2,7 +2,6 @@ import os
 
 import gradio as gr
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.localization as loc
@@ -32,6 +31,7 @@ def run_single_file_analysis(
 ):
     import csv
     from datetime import timedelta
+
     from birdnet_analyzer.gui.analysis import run_analysis
 
     if species_list_choice == gu._CUSTOM_SPECIES:
@@ -73,6 +73,9 @@ def run_single_file_analysis(
         progress=None,
     )
 
+    if not result_filepath:
+        raise gr.Error(loc.localize("single-tab-analyze-file-error"))
+
     # read the result file to return the data to be displayed.
     with open(result_filepath, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -99,7 +102,7 @@ def build_single_analysis_tab():
             generate_spectrogram_cb = gr.Checkbox(
                 value=True,
                 label=loc.localize("single-tab-spectrogram-checkbox-label"),
-                info="Potentially slow for long audio files.",
+                info=loc.localize("single-tab-spectrogram-checkbox-info"),
             )
         audio_path_state = gr.State()
 
@@ -124,25 +127,31 @@ def build_single_analysis_tab():
             sf_thresh_number,
             yearlong_checkbox,
             selected_classifier_state,
-            map_plot
+            map_plot,
         ) = gu.species_lists(False)
         locale_radio = gu.locale()
 
         def get_audio_path(i, generate_spectrogram):
             if i:
-                return (
-                    i["path"],
-                    gr.Audio(label=os.path.basename(i["path"])),
-                    gr.Plot(visible=True, value=utils.spectrogram_from_file(i["path"], fig_size=(20,4)))
-                    if generate_spectrogram
-                    else gr.Plot(visible=False),
-                )
+                try:
+                    return (
+                        i["path"],
+                        gr.Audio(label=os.path.basename(i["path"])),
+                        gr.Plot(visible=True, value=utils.spectrogram_from_file(i["path"], fig_size=(20, 4)))
+                        if generate_spectrogram
+                        else gr.Plot(visible=False),
+                    )
+                except:
+                    raise gr.Error(loc.localize("single-tab-generate-spectrogram-error"))
             else:
                 return None, None, gr.Plot(visible=False)
 
         def try_generate_spectrogram(audio_path, generate_spectrogram):
             if audio_path and generate_spectrogram:
-                return gr.Plot(visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20,4)))
+                try:
+                    return gr.Plot(visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20, 4)))
+                except:
+                    raise gr.Error(loc.localize("single-tab-generate-spectrogram-error"))
             else:
                 return gr.Plot()
 
@@ -208,6 +217,8 @@ def build_single_analysis_tab():
                 raise ValueError("Input must be in the format hh:mm:ss or hh:mm:ss.ssssss with numeric values.")
 
         def play_selected_audio(evt: gr.SelectData, audio_path):
+            import birdnet_analyzer.audio as audio
+
             if evt.row_value[1] and evt.row_value[2]:
                 start = time_to_seconds(evt.row_value[1])
                 end = time_to_seconds(evt.row_value[2])
@@ -221,6 +232,7 @@ def build_single_analysis_tab():
         single_file_analyze.click(run_single_file_analysis, inputs=inputs, outputs=output_dataframe)
 
     return lat_number, lon_number, map_plot
+
 
 if __name__ == "__main__":
     gu.open_window(build_single_analysis_tab)
