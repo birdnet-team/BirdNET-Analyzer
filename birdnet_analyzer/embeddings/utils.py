@@ -5,10 +5,8 @@ import os
 
 import numpy as np
 
-import birdnet_analyzer.analyze.utils as analyze
 import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.model as model
 import birdnet_analyzer.utils as utils
 
 from perch_hoplite.db import sqlite_usearch_impl
@@ -37,6 +35,10 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     Args:
         item: (filepath, config)
     """
+
+    import birdnet_analyzer.model as model
+    import birdnet_analyzer.analyze.utils as analyze
+
     # Get file path and restore cfg
     fpath: str = item[0]
     cfg.set_config(item[1])
