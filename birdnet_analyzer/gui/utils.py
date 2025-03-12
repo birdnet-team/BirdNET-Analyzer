@@ -8,11 +8,9 @@ from pathlib import Path
 import gradio as gr
 import webview
 
-FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
-
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.settings as settings
-import birdnet_analyzer.utils as utils
+
+FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 if FROZEN:
     # divert stdout & stderr to logs.txt file since we have no console when deployed
@@ -32,6 +30,8 @@ if FROZEN:
     sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")
     cfg.ERROR_LOG_FILE = str(APPDIR / cfg.ERROR_LOG_FILE)
 
+import birdnet_analyzer.gui.settings as settings  # noqa: E402
+import birdnet_analyzer.utils as utils  # noqa: E402
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
 
 loc.load_local_state()
