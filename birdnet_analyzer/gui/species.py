@@ -4,7 +4,7 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 
 
 def run_species_list(out_path, filename, lat, lon, week, use_yearlong, sf_thresh, sortby):

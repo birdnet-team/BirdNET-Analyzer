@@ -221,6 +221,8 @@
     "settings-tab-title": "Einstellungen",
     "settings-tab-language-dropdown-label": "GUI Sprache",
     "settings-tab-language-dropdown-info": "Wird erst nach Neustart der Anwendung aktiv.",
+    "settings-tab-theme-dropdown-label": "Design",
+    "settings-tab-theme-dropdown-info": "WARNING: Das ändern das Designs führt zum Neuladen des Fensters.",
     "settings-tab-error-log-textbox-label": "Fehlerprotokoll",
     "settings-tab-error-log-textbox-info-path": "Pfad",
     "settings-tab-error-log-textbox-placeholder": "Kein Inhalt",

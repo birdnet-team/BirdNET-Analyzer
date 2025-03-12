@@ -222,6 +222,8 @@
     "settings-tab-title": "Settings",
     "settings-tab-language-dropdown-label": "GUI Language",
     "settings-tab-language-dropdown-info": "Changes will only take effect after restarting the application.",
+    "settings-tab-theme-dropdown-label": "Theme",
+    "settings-tab-theme-dropdown-info": "WARNING: Changing the theme will reload the window.",
     "settings-tab-error-log-textbox-label": "Error log file",
     "settings-tab-error-log-textbox-info-path": "Path",
     "settings-tab-error-log-textbox-placeholder": "No content",
