@@ -6,7 +6,7 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 
 
 def _extract_segments(
