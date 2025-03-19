@@ -6,6 +6,7 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.settings as gui_settings
 
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -233,7 +234,7 @@ def build_embeddings_tab():
 
                 if dir_name:
                     db_path = os.path.join(dir_name, db_name_tb.value)
-                    loc.set_state("embeddings-db-dir", dir_name)
+                    gui_settings.set_state("embeddings-db-dir", dir_name)
                     if os.path.exists(db_path):
                         db = get_embeddings_db(db_path)
                         try:

@@ -5,6 +5,7 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.settings as settings
 
 
 def run_species_list(out_path, filename, lat, lon, week, use_yearlong, sf_thresh, sortby):
@@ -38,7 +39,7 @@ def build_species_tab():
             dir_name = gu.select_folder(state_key="species-output-dir")
 
             if dir_name:
-                loc.set_state("species-output-dir", dir_name)
+                settings.set_state("species-output-dir", dir_name)
                 return (
                     dir_name,
                     gr.Textbox(label=dir_name, visible=True, value=name_tb),

@@ -65,17 +65,17 @@ def select_folder(state_key=None):
         tk = Tk()
         tk.withdraw()
 
-        initial_dir = loc.get_state(state_key, None) if state_key else None
+        initial_dir = settings.get_state(state_key, None) if state_key else None
         folder_selected = filedialog.askdirectory(initialdir=initial_dir)
 
         tk.destroy()
     else:
-        initial_dir = loc.get_state(state_key, "") if state_key else ""
+        initial_dir = settings.get_state(state_key, "") if state_key else ""
         dirname = _WINDOW.create_file_dialog(webview.FOLDER_DIALOG, directory=initial_dir)
         folder_selected = dirname[0] if dirname else None
 
     if folder_selected and state_key:
-        loc.set_state(state_key, folder_selected)
+        settings.set_state(state_key, folder_selected)
 
     return folder_selected
 
@@ -470,12 +470,12 @@ def select_file(filetypes=(), state_key=None):
     Returns:
         The selected file or None of the dialog was canceled.
     """
-    initial_selection = loc.get_state(state_key, "") if state_key else ""
+    initial_selection = settings.get_state(state_key, "") if state_key else ""
     files = _WINDOW.create_file_dialog(webview.OPEN_DIALOG, file_types=filetypes, directory=initial_selection)
 
     if files:
         if state_key:
-            loc.set_state(state_key, files[0])
+            settings.set_state(state_key, files[0])
 
         return files[0]
 
