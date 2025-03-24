@@ -262,7 +262,7 @@ def build_settings():
             return ""
 
         languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress=False)
-        theme_radio.change(on_theme_change, inputs=theme_radio, show_progress=False)
+        theme_radio.input(on_theme_change, inputs=theme_radio, show_progress=False)
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress=False)
 
 
