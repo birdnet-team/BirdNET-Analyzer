@@ -219,7 +219,7 @@ def build_settings():
 
             with gr.Row():
                 theme_radio = gr.Radio(
-                    ["dark", "light"],
+                    [(loc.localize("settings-tab-theme-dropdown-dark-option"),"dark"), (loc.localize("settings-tab-theme-dropdown-light-option"), "light")],
                     value=lambda: settings.theme(),
                     label=loc.localize("settings-tab-theme-dropdown-label"),
                     info="⚠️" + loc.localize("settings-tab-theme-dropdown-info"),
