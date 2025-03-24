@@ -5,7 +5,6 @@ import sys
 import warnings
 
 import numpy as np
-import keras_tuner.errors
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.utils as utils
@@ -35,19 +34,24 @@ PBMODEL = None
 C_PBMODEL = None
 
 
-class EmptyClassException(keras_tuner.errors.FatalError):
-    """
-    Exception raised when a class is found to be empty.
+def empty_class_exception(index):
+    import keras_tuner.errors
 
-    Attributes:
-        index (int): The index of the empty class.
-        message (str): The error message indicating which class is empty.
-    """
+    class EmptyClassException(keras_tuner.errors.FatalError):
+        """
+        Exception raised when a class is found to be empty.
 
-    def __init__(self, *args, index):
-        super().__init__(*args)
-        self.index = index
-        self.message = f"Class {index} is empty."
+        Attributes:
+            index (int): The index of the empty class.
+            message (str): The error message indicating which class is empty.
+        """
+
+        def __init__(self, *args, index):
+            super().__init__(*args)
+            self.index = index
+            self.message = f"Class {index} is empty."
+
+    return EmptyClassException(index=index)
 
 
 def label_smoothing(y: np.ndarray, alpha=0.1):
@@ -326,7 +330,7 @@ def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply: callabl
                     # Randomly choose a sample from the minority class
                     random_index = np.random.choice(np.where(y[:, i] == 1)[0], size=size)
                 except ValueError as e:
-                    raise EmptyClassException(index=i) from e
+                    raise empty_class_exception(index=i) from e
 
                 # Apply SMOTE
                 x_app, y_app = apply(x, y, random_index)

@@ -364,7 +364,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
         )
         try:
             tuner.search()
-        except model.EmptyClassException as e:
+        except model.empty_class_exception(e.index) as e:
             e.message = f"Class with label {labels[e.index]} is empty. Please remove it from the training data."
             e.args = (e.message,)
             utils.write_error_log(e)
@@ -413,7 +413,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
             train_with_label_smoothing=cfg.TRAIN_WITH_LABEL_SMOOTHING,
             on_epoch_end=on_epoch_end,
         )
-    except utils.EmptyClassException as e:
+    except model.empty_class_exception(e.index) as e:
         e.message = f"Class with label {labels[e.index]} is empty. Please remove it from the training data."
         e.args = (e.message,)
         utils.write_error_log(e)
