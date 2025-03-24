@@ -91,6 +91,9 @@ Install the packages
 
    Use ``pip install .[all]`` to install all packages.
 
+   When building a GUI for systems using GTK with pywebview, you may need to install additional packages: qtpy and PyGObject. 
+   Use the following command: ``pip install qtpy PyGObject``.
+
 Verify the installation
 
 .. code-block:: bash
