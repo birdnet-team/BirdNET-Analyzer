@@ -217,11 +217,6 @@ def build_settings():
                     interactive=True,
                 )
 
-                def on_language_change(value):
-                    gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
-                
-                languages_dropdown.change(on_language_change, inputs=[languages_dropdown], show_progress=False)
-
             with gr.Row():
                 theme_radio = gr.Radio(
                     [(loc.localize("settings-tab-theme-dropdown-dark-option"),"dark"), (loc.localize("settings-tab-theme-dropdown-light-option"), "light")],
@@ -251,6 +246,7 @@ def build_settings():
 
         def on_language_change(value):
             loc.set_language(value)
+            gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
 
         def on_theme_change(value):
             settings.set_setting("theme", value)
@@ -266,7 +262,7 @@ def build_settings():
             return ""
 
         languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress=False)
-        theme_radio.input(on_theme_change, inputs=theme_radio, show_progress=False)
+        theme_radio.change(on_theme_change, inputs=theme_radio, show_progress=False)
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress=False)
 
 
