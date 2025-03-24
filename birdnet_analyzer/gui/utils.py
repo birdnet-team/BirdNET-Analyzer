@@ -217,6 +217,11 @@ def build_settings():
                     interactive=True,
                 )
 
+                def on_language_change(value):
+                    gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
+                
+                languages_dropdown.change(on_language_change, inputs=[languages_dropdown], show_progress=False)
+
             with gr.Row():
                 theme_radio = gr.Radio(
                     [(loc.localize("settings-tab-theme-dropdown-dark-option"),"dark"), (loc.localize("settings-tab-theme-dropdown-light-option"), "light")],
