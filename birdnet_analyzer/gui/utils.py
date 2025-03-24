@@ -249,8 +249,10 @@ def build_settings():
             gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
 
         def on_theme_change(value):
-            settings.set_setting("theme", value)
-            _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")
+            prev_theme = settings.theme()
+            if prev_theme != value:
+                settings.set_setting("theme", value)
+                _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")
 
         def on_tab_select(value: gr.SelectData):
             if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
