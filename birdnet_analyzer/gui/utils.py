@@ -28,7 +28,7 @@ if FROZEN:
     APPDIR.mkdir(parents=True, exist_ok=True)
 
     sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")
-    cfg.ERROR_LOG_FILE = str(APPDIR / cfg.ERROR_LOG_FILE)
+    cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
 
 import birdnet_analyzer.gui.settings as settings  # noqa: E402
 import birdnet_analyzer.utils as utils  # noqa: E402
