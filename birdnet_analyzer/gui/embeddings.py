@@ -37,6 +37,7 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
     return export_state
 
 
+@gu.gui_runtime_error_handler
 def run_embeddings(
     input_path,
     db_directory,
@@ -85,7 +86,7 @@ def run_embeddings(
 
     return gr.Plot(), gr.Slider(visible=False), gr.Number(visible=False), gr.Number(visible=False)
 
-
+@gu.gui_runtime_error_handler
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
     import birdnet_analyzer.search.utils as search
 

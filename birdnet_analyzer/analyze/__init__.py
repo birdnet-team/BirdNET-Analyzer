@@ -1,6 +1,8 @@
-import birdnet_analyzer.config as cfg
-from birdnet_analyzer.utils import read_lines, collect_audio_files
 import os
+
+import birdnet_analyzer.config as cfg
+import birdnet_analyzer.utils as utils
+from birdnet_analyzer.utils import collect_audio_files, read_lines
 
 
 def set_params(
@@ -28,8 +30,8 @@ def set_params(
     threads,
     labels_file=None,
 ):
-    from birdnet_analyzer.analyze.utils import load_codes  # noqa: E402
     import birdnet_analyzer.species.utils as species
+    from birdnet_analyzer.analyze.utils import load_codes  # noqa: E402
 
     cfg.CODES = load_codes()
     cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
@@ -120,6 +122,7 @@ def set_params(
     return [(f, cfg.get_config()) for f in cfg.FILE_LIST]
 
 
+@utils.runtime_error_handler
 def main():
     import os
     from multiprocessing import Pool, freeze_support

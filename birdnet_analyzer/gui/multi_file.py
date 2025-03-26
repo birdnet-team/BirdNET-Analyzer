@@ -12,6 +12,7 @@ OUTPUT_TYPE_MAP = {
 }
 
 
+@gu.gui_runtime_error_handler
 def run_batch_analysis(
     output_path,
     use_top_n,
@@ -155,7 +156,7 @@ def build_multi_analysis_tab():
             sf_thresh_number,
             yearlong_checkbox,
             selected_classifier_state,
-            map_plot
+            map_plot,
         ) = gu.species_lists()
 
         with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True):
@@ -239,7 +240,7 @@ def build_multi_analysis_tab():
         ]
 
         start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
-    
+
     return lat_number, lon_number, map_plot
 
 

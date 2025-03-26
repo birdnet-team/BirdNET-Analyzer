@@ -21,15 +21,6 @@ from multiprocessing import Pool
 
 DATASET_NAME: str = "birdnet_analyzer_dataset"
 
-def write_error_log(msg):
-    """
-    Appends an error message to the error log file.
-
-    Args:
-        msg (str): The error message to be logged.
-    """
-    with open(cfg.ERROR_LOG_FILE, "a") as elog:
-        elog.write(msg + "\n")
 
 def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     """Extracts the embeddings for a file.
@@ -69,7 +60,6 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
             samples = []
             timestamps = []
 
-
             for c in range(len(chunks)):
                 # Add to batch
                 samples.append(chunks[c])
@@ -93,8 +83,10 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
                     s_start, s_end = timestamps[i]
 
                     # Check if embedding already exists
-                    existing_embedding = db.get_embeddings_by_source(DATASET_NAME, source_id, np.array([s_start, s_end]))
-                    
+                    existing_embedding = db.get_embeddings_by_source(
+                        DATASET_NAME, source_id, np.array([s_start, s_end])
+                    )
+
                     if existing_embedding.size == 0:
                         # Get prediction
                         embeddings = e[i]
@@ -122,6 +114,7 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     delta_time = (datetime.datetime.now() - start_time).total_seconds()
     print("Finished {} in {:.2f} seconds".format(fpath, delta_time), flush=True)
 
+
 def get_database(db_path: str):
     """Get the database object. Creates or opens the databse.
     Args:
@@ -134,29 +127,35 @@ def get_database(db_path: str):
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         db = sqlite_usearch_impl.SQLiteUsearchDB.create(
             db_path=db_path,
-            usearch_cfg=sqlite_usearch_impl.get_default_usearch_config(embedding_dim=1024) #TODO dont hardcode this
+            usearch_cfg=sqlite_usearch_impl.get_default_usearch_config(embedding_dim=1024),  # TODO dont hardcode this
         )
         return db
     return sqlite_usearch_impl.SQLiteUsearchDB.create(db_path=db_path)
 
+
 def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
     try:
-        settings = db.get_metadata('birdnet_analyzer_settings')
-        if (settings["BANDPASS_FMIN"] != cfg.BANDPASS_FMIN or
-            settings["BANDPASS_FMAX"] != cfg.BANDPASS_FMAX or
-            settings["AUDIO_SPEED"] != cfg.AUDIO_SPEED):
-            raise ValueError("Database settings do not match current configuration. DB Settings are: fmin: {}, fmax: {}, audio_speed: {}".format(settings["BANDPASS_FMIN"], settings["BANDPASS_FMAX"], settings["AUDIO_SPEED"]))
+        settings = db.get_metadata("birdnet_analyzer_settings")
+        if (
+            settings["BANDPASS_FMIN"] != cfg.BANDPASS_FMIN
+            or settings["BANDPASS_FMAX"] != cfg.BANDPASS_FMAX
+            or settings["AUDIO_SPEED"] != cfg.AUDIO_SPEED
+        ):
+            raise ValueError(
+                "Database settings do not match current configuration. DB Settings are: fmin: {}, fmax: {}, audio_speed: {}".format(
+                    settings["BANDPASS_FMIN"], settings["BANDPASS_FMAX"], settings["AUDIO_SPEED"]
+                )
+            )
     except KeyError:
-        settings = ConfigDict({
-            "BANDPASS_FMIN": cfg.BANDPASS_FMIN,
-            "BANDPASS_FMAX": cfg.BANDPASS_FMAX,
-            "AUDIO_SPEED": cfg.AUDIO_SPEED
-        }) 
+        settings = ConfigDict(
+            {"BANDPASS_FMIN": cfg.BANDPASS_FMIN, "BANDPASS_FMAX": cfg.BANDPASS_FMAX, "AUDIO_SPEED": cfg.AUDIO_SPEED}
+        )
         db.insert_metadata("birdnet_analyzer_settings", settings)
         db.commit()
 
+
 def run(input, database, overlap, audio_speed, fmin, fmax, threads, batchsize):
-       ### Make sure to comment out appropriately if you are not using args. ###
+    ### Make sure to comment out appropriately if you are not using args. ###
 
     # Set input and output path
     cfg.INPUT_PATH = input
@@ -185,7 +184,7 @@ def run(input, database, overlap, audio_speed, fmin, fmax, threads, batchsize):
         cfg.CPU_THREADS = 1
         cfg.TFLITE_THREADS = max(1, int(threads))
 
-    cfg.CPU_THREADS = 1 # TODO: with the current implementation, we can't use more than 1 thread
+    cfg.CPU_THREADS = 1  # TODO: with the current implementation, we can't use more than 1 thread
 
     # Set batch size
     cfg.BATCH_SIZE = max(1, int(batchsize))

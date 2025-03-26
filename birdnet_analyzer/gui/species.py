@@ -8,6 +8,7 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.settings as settings
 
 
+@gu.gui_runtime_error_handler
 def run_species_list(out_path, filename, lat, lon, week, use_yearlong, sf_thresh, sortby):
     from birdnet_analyzer.species.utils import run
 

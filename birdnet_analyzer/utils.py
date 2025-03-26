@@ -8,6 +8,26 @@ from pathlib import Path
 import birdnet_analyzer.config as cfg
 
 
+def runtime_error_handler(f: callable):
+    """Decorator to catch runtime errors and write them to the error log.
+
+    Args:
+        f: The function to be decorated.
+
+    Returns:
+        The decorated function.
+    """
+
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as ex:
+            write_error_log(ex)
+            raise
+
+    return wrapper
+
+
 def batched(iterable, n, *, strict=False):
     # TODO: Remove this function when Python 3.12 is the minimum version
     # batched('ABCDEFG', 3) → ABC DEF G

@@ -6,8 +6,8 @@ from pathlib import Path
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.utils as utils
 
 
@@ -34,7 +34,7 @@ def select_subdirectories(state_key=None):
 
     return None, None
 
-
+@gu.gui_runtime_error_handler
 def start_training(
     data_dir,
     crop_mode,

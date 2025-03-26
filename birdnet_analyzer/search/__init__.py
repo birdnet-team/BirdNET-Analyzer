@@ -1,6 +1,10 @@
+import birdnet_analyzer.utils as utils
 
+
+@utils.runtime_error_handler
 def main():
     import birdnet_analyzer.cli as cli
+
     parser = cli.search_parser()
     args = parser.parse_args()
 
@@ -17,16 +21,18 @@ def main():
     db = get_database(args.database)
 
     try:
-        settings = db.get_metadata('birdnet_analyzer_settings')
+        settings = db.get_metadata("birdnet_analyzer_settings")
     except:
         raise ValueError("No settings present in database.")
-    
+
     fmin = settings["BANDPASS_FMIN"]
     fmax = settings["BANDPASS_FMAX"]
     audio_speed = settings["AUDIO_SPEED"]
 
     # Execute the search
-    results = get_search_results(args.queryfile, db, args.n_results, audio_speed, fmin, fmax, args.score_function, args.crop_mode, args.overlap)
+    results = get_search_results(
+        args.queryfile, db, args.n_results, audio_speed, fmin, fmax, args.score_function, args.crop_mode, args.overlap
+    )
 
     # Save the results
     for i, r in enumerate(results):
@@ -35,5 +41,5 @@ def main():
         offset = embedding_source.offsets[0] * audio_speed
         duration = cfg.SIG_LENGTH * audio_speed
         sig, rate = audio.open_audio_file(file, offset=offset, duration=duration, sample_rate=None)
-        result_path = os.path.join(args.output, f"search_result_{i+1}_score_{r.sort_score:.5f}.wav")
+        result_path = os.path.join(args.output, f"search_result_{i + 1}_score_{r.sort_score:.5f}.wav")
         audio.save_signal(sig, result_path, rate)

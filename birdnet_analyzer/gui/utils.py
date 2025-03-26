@@ -46,6 +46,32 @@ _WINDOW: webview.Window = None
 _URL = ""
 
 
+def gui_runtime_error_handler(f: callable):
+    """
+    A decorator function to handle errors during the execution of a callable.
+
+    This function attempts to execute the provided callable `f`. If an exception
+    occurs during execution, it logs the error using `utils.write_error_log` and
+    raises a `gr.Error` exception.
+
+    Args:
+        f (callable): The function or callable object to be executed.
+
+    Returns:
+        The result of the callable `f` if no exception occurs.
+
+    Raises:
+        gr.Error: If an exception is raised during the execution of `f`.
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            utils.write_error_log(e)
+            raise gr.Error(message=str(e), duration=None) from e
+    
+    return wrapper
+
 # Nishant - Following two functions (select_folder andget_files_and_durations) are written for Folder selection
 def select_folder(state_key=None):
     """

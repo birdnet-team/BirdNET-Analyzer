@@ -367,7 +367,6 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
         except model.get_empty_class_exception() as e:
             e.message = f"Class with label {labels[e.index]} is empty. Please remove it from the training data."
             e.args = (e.message,)
-            utils.write_error_log(e)
             raise e
 
         best_params = tuner.get_best_hyperparameters()[0]
@@ -416,10 +415,8 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     except model.get_empty_class_exception() as e:
         e.message = f"Class with label {labels[e.index]} is empty. Please remove it from the training data."
         e.args = (e.message,)
-        utils.write_error_log(e)
         raise e
     except Exception as e:
-        utils.write_error_log(e)
         raise Exception("Error training model") from e
 
     print("...Done.", flush=True)
@@ -441,7 +438,6 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
         else:
             raise ValueError(f"Unknown model output format: {cfg.TRAINED_MODEL_OUTPUT_FORMAT}")
     except Exception as e:
-        utils.write_error_log(e)
         raise Exception("Error saving model") from e
 
     save_sample_counts(labels, y_train)
