@@ -63,14 +63,16 @@ def gui_runtime_error_handler(f: callable):
     Raises:
         gr.Error: If an exception is raised during the execution of `f`.
     """
+
     def wrapper(*args, **kwargs):
         try:
             return f(*args, **kwargs)
         except Exception as e:
             utils.write_error_log(e)
             raise gr.Error(message=str(e), duration=None) from e
-    
+
     return wrapper
+
 
 # Nishant - Following two functions (select_folder andget_files_and_durations) are written for Folder selection
 def select_folder(state_key=None):
@@ -245,7 +247,10 @@ def build_settings():
 
             with gr.Row():
                 theme_radio = gr.Radio(
-                    [(loc.localize("settings-tab-theme-dropdown-dark-option"),"dark"), (loc.localize("settings-tab-theme-dropdown-light-option"), "light")],
+                    [
+                        (loc.localize("settings-tab-theme-dropdown-dark-option"), "dark"),
+                        (loc.localize("settings-tab-theme-dropdown-light-option"), "light"),
+                    ],
                     value=lambda: settings.theme(),
                     label=loc.localize("settings-tab-theme-dropdown-label"),
                     info="⚠️" + loc.localize("settings-tab-theme-dropdown-info"),
@@ -631,10 +636,68 @@ def species_lists(opened=True):
             )
 
 
+def _get_network_shortcuts():
+    """
+    Retrieves a list of network shortcut paths from the user's Network Shortcuts folder.
+    This function accesses the Network Shortcuts folder (Nethood) on a Windows system,
+    iterates through its contents, and attempts to resolve `.lnk` files (shortcuts)
+    to their target paths. If successful, the resolved paths are added to the list of shortcuts.
+    Returns:
+        list: A list of resolved network shortcut paths.
+    Notes:
+        - This function uses the `pythoncom` and `win32com.shell` modules, which are part of the
+          `pywin32` package.
+        - Errors encountered while resolving shortcuts are printed to the console.
+    """
+    import pythoncom
+    from win32com.shell import shell, shellcon
+
+    try:
+        # https://learn.microsoft.com/de-de/windows/win32/shell/csidl
+        # CSIDL_NETHOOD: Path to folder containing network shortcuts
+        network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)
+        shortcuts = []
+
+        for item in os.listdir(network_shortcuts):
+            item_path = os.path.join(network_shortcuts, item)
+
+            if os.path.isdir(item_path):
+                # network shortcuts are folders containing a target.lnk file
+                target_lnk = os.path.join(item_path, "target.lnk")
+
+                if os.path.exists(target_lnk):
+                    try:
+                        # https://learn.microsoft.com/de-de/windows/win32/shell/links
+                        # CLSID_ShellLink: Class ID for Shell Link object
+                        shell_link = pythoncom.CoCreateInstance(
+                            shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink
+                        )
+
+                        # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
+                        # Query IPersistFile interface used to
+                        persist_file = shell_link.QueryInterface(pythoncom.IID_IPersistFile)
+
+                        # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nf-objidl-ipersistfile-load
+                        # Load shell link file
+                        persist_file.Load(target_lnk)
+
+                        # https://learn.microsoft.com/de-de/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishelllinka-getpath
+                        path_buffer, _ = shell_link.GetPath(shell.SLGP_RAWPATH)
+
+                        shortcuts.append(path_buffer)
+                    except Exception as e:
+                        print(f"Error reading {target_lnk}: {e}")
+
+        return shortcuts
+    except Exception as e:
+        utils.write_error_log(e)
+        return []
+
+
 def _get_win_drives():
     from string import ascii_uppercase as UPPER_CASE
 
-    return [f"{drive}:\\" for drive in UPPER_CASE]
+    return [f"{drive}:\\" for drive in UPPER_CASE] + _get_network_shortcuts()
 
 
 def open_window(builder: list[Callable] | Callable):
