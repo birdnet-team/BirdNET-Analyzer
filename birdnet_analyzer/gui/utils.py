@@ -409,7 +409,7 @@ def locale():
         The dropdown element.
     """
     label_files = os.listdir(ORIGINAL_TRANSLATED_LABELS_PATH)
-    options = ["EN"] + [label_file.rsplit("_", 1)[-1].split(".")[0].upper() for label_file in label_files]
+    options = ["EN"] + [label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split('.txt')[0].upper() for label_file in label_files]
 
     return gr.Dropdown(
         options,
