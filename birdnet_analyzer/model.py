@@ -5,7 +5,6 @@ import sys
 import warnings
 
 import numpy as np
-import keras_tuner.errors
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.utils as utils
@@ -33,21 +32,32 @@ C_INTERPRETER: tflite.Interpreter = None
 M_INTERPRETER: tflite.Interpreter = None
 PBMODEL = None
 C_PBMODEL = None
+EMPTY_CLASS_EXCEPTION_REF = None
+
+def get_empty_class_exception():
+    import keras_tuner.errors
+    global EMPTY_CLASS_EXCEPTION_REF
 
 
-class EmptyClassException(keras_tuner.errors.FatalError):
-    """
-    Exception raised when a class is found to be empty.
+    if EMPTY_CLASS_EXCEPTION_REF:
+        return EMPTY_CLASS_EXCEPTION_REF
 
-    Attributes:
-        index (int): The index of the empty class.
-        message (str): The error message indicating which class is empty.
-    """
+    class EmptyClassException(keras_tuner.errors.FatalError):
+        """
+        Exception raised when a class is found to be empty.
 
-    def __init__(self, *args, index):
-        super().__init__(*args)
-        self.index = index
-        self.message = f"Class {index} is empty."
+        Attributes:
+            index (int): The index of the empty class.
+            message (str): The error message indicating which class is empty.
+        """
+
+        def __init__(self, *args, index=None):
+            super().__init__(*args)
+            self.index = index
+            self.message = f"Class {index} is empty."
+
+    EMPTY_CLASS_EXCEPTION_REF = EmptyClassException
+    return EMPTY_CLASS_EXCEPTION_REF
 
 
 def label_smoothing(y: np.ndarray, alpha=0.1):
@@ -326,7 +336,7 @@ def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply: callabl
                     # Randomly choose a sample from the minority class
                     random_index = np.random.choice(np.where(y[:, i] == 1)[0], size=size)
                 except ValueError as e:
-                    raise EmptyClassException(index=i) from e
+                    raise get_empty_class_exception()(index=i) from e
 
                 # Apply SMOTE
                 x_app, y_app = apply(x, y, random_index)

@@ -1,3 +1,7 @@
+import birdnet_analyzer.utils as utils
+
+
+@utils.runtime_error_handler
 def main():
     from multiprocessing import Pool
 

@@ -429,7 +429,7 @@ def merge_consecutive_detections(results: dict[str, list], max_consecutive: int 
     Returns:
         The dictionary with merged detections.
     """
-    
+
     # If max_consecutive is 0 or 1, return original results
     if max_consecutive is not None and max_consecutive <= 1:
         return results
@@ -441,7 +441,7 @@ def merge_consecutive_detections(results: dict[str, list], max_consecutive: int 
             if label not in species:
                 species[label] = []
             species[label].append((timestamp, score))
-            
+
     # Sort timestamps by start time for each species
     for label, timestamps in species.items():
         species[label] = sorted(timestamps, key=lambda t: float(t[0].split("-", 1)[0]))
@@ -463,7 +463,7 @@ def merge_consecutive_detections(results: dict[str, list], max_consecutive: int 
                 timestamps.pop(i)
                 
                 while i < len(timestamps) - 1 and float(next_end) >= float(timestamps[i + 1][0].split("-", 1)[0]):
-                    if max_consecutive and len(merged_scores) >= max_consecutive - 1:
+                    if max_consecutive and len(merged_scores) >= max_consecutive:
                         break
                     merged_scores.append(timestamps[i + 1][1])
                     next_end = timestamps[i + 1][0].split("-", 1)[1]

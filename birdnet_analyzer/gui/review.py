@@ -8,7 +8,7 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.utils as utils
 
 POSITIVE_LABEL_DIR = "Positive"
@@ -23,7 +23,11 @@ def build_review_tab():
             [
                 entry.path
                 for entry in os.scandir(directory)
-                if entry.is_file() and entry.name.rsplit(".", 1)[-1] in cfg.ALLOWED_FILETYPES
+                if (
+                    entry.is_file() and 
+                    not entry.name.startswith(".") and
+                    entry.name.rsplit(".", 1)[-1] in cfg.ALLOWED_FILETYPES
+                )
             ]
             if os.path.isdir(directory)
             else []

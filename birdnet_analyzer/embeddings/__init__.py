@@ -1,3 +1,7 @@
+import birdnet_analyzer.utils as utils
+
+
+@utils.runtime_error_handler
 def main():
     import birdnet_analyzer.cli as cli
     import birdnet_analyzer.utils as utils

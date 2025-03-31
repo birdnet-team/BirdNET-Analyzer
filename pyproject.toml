@@ -53,10 +53,10 @@ birdnet-gui = "birdnet_analyzer.gui.__init__:main"
 
 [project.urls]
 Homepage = "https://birdnet.cornell.edu/birdnet"
-Documentation = "https://kahst.github.io/BirdNET-Analyzer/"
-Repository = "https://github.com/kahst/BirdNET-Analyzer"
-Issues = "https://github.com/kahst/BirdNET-Analyzer/issues"
-Download = "https://github.com/kahst/BirdNET-Analyzer/releases/latest"
+Documentation = "https://birdnet-team.github.io/BirdNET-Analyzer/"
+Repository = "https://github.com/birdnet-team/BirdNET-Analyzer"
+Issues = "https://github.com/birdnet-team/BirdNET-Analyzer/issues"
+Download = "https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest"
 
 [tool.setuptools]
 packages = [

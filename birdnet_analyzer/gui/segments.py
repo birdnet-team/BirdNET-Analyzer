@@ -5,15 +5,20 @@ from functools import partial
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
+import birdnet_analyzer.segments.utils as segments
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 
 
+def extract_segments_wrapper(entry):
+    return (entry[0][0], segments.extract_segments(entry))
+
+
+@gu.gui_runtime_error_handler
 def _extract_segments(
     audio_dir, result_dir, output_dir, min_conf, num_seq, audio_speed, seq_length, threads, progress=gr.Progress()
 ):
     from birdnet_analyzer.segments.utils import parse_folders, parse_files
-    import birdnet_analyzer.gui.analysis as analysis
 
     gu.validate(audio_dir, loc.localize("validation-no-audio-directory-selected"))
 
@@ -56,14 +61,14 @@ def _extract_segments(
     # Extract segments
     if cfg.CPU_THREADS < 2:
         for i, entry in enumerate(flist):
-            result = analysis.extract_segments_wrapper(entry)
+            result = extract_segments_wrapper(entry)
             result_list.append(result)
 
             if progress is not None:
                 progress((i, len(flist)), total=len(flist), unit="files")
     else:
         with concurrent.futures.ProcessPoolExecutor(max_workers=cfg.CPU_THREADS) as executor:
-            futures = (executor.submit(analysis.extract_segments_wrapper, arg) for arg in flist)
+            futures = (executor.submit(extract_segments_wrapper, arg) for arg in flist)
             for i, f in enumerate(concurrent.futures.as_completed(futures), start=1):
                 if progress is not None:
                     progress((i, len(flist)), total=len(flist), unit="files")

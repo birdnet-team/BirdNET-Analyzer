@@ -4,10 +4,10 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.utils as utils
 
-
+@gu.gui_runtime_error_handler
 def run_single_file_analysis(
     input_path,
     use_top_n,
@@ -217,8 +217,8 @@ def build_single_analysis_tab():
                 total_seconds = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
                 return total_seconds
 
-            except ValueError:
-                raise ValueError("Input must be in the format hh:mm:ss or hh:mm:ss.ssssss with numeric values.")
+            except ValueError as e:
+                raise ValueError("Input must be in the format hh:mm:ss or hh:mm:ss.ssssss with numeric values.") from e
 
         def play_selected_audio(evt: gr.SelectData, audio_path):
             import birdnet_analyzer.audio as audio

@@ -23,7 +23,7 @@ function init() {
                 });
             }
 
-            const apiUrl = "https://api.github.com/repos/kahst/BirdNET-Analyzer/releases/latest";
+            const apiUrl = "https://api.github.com/repos/birdnet-team/BirdNET-Analyzer/releases/latest";
 
             sendGetRequest(apiUrl)
                 .then(response => {

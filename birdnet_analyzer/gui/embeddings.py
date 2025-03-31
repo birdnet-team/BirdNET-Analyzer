@@ -5,7 +5,8 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.settings as gui_settings
 
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -36,6 +37,7 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
     return export_state
 
 
+@gu.gui_runtime_error_handler
 def run_embeddings(
     input_path,
     db_directory,
@@ -84,7 +86,7 @@ def run_embeddings(
 
     return gr.Plot(), gr.Slider(visible=False), gr.Number(visible=False), gr.Number(visible=False)
 
-
+@gu.gui_runtime_error_handler
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
     import birdnet_analyzer.search.utils as search
 
@@ -233,7 +235,7 @@ def build_embeddings_tab():
 
                 if dir_name:
                     db_path = os.path.join(dir_name, db_name_tb.value)
-                    loc.set_state("embeddings-db-dir", dir_name)
+                    gui_settings.set_state("embeddings-db-dir", dir_name)
                     if os.path.exists(db_path):
                         db = get_embeddings_db(db_path)
                         try:
