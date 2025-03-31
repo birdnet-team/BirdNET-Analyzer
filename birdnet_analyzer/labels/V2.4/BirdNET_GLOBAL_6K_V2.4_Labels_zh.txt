@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_红肩金刚鹦鹉
 Diuca diuca_迪卡雀
 Dives dives_艳拟鹂
 Dives warczewiczi_丛拟鹂
-Dog_Dog
+Dog_狗
 Dolichonyx oryzivorus_刺歌雀
 Donacobius atricapilla_黑顶鹪莺
 Donacospiza albifrons_长尾芦雀

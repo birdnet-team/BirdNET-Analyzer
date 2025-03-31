@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_dvergara
 Diuca diuca_diukaspurv
 Dives dives_sangtrupial
 Dives warczewiczi_krattrupial
-Dog_Dog
+Dog_Hund
 Dolichonyx oryzivorus_bobolink
 Donacobius atricapilla_donacobius
 Donacospiza albifrons_rørspurv

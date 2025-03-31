@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_pikkuara
 Diuca diuca_tuhkasirkku
 Dives dives_lauluturpiaali
 Dives warczewiczi_peltolauluturpiaali
-Dog_Dog
+Dog_Koira
 Dolichonyx oryzivorus_heinäturpiaali
 Donacobius atricapilla_mustapääpeukaloinen
 Donacospiza albifrons_ruokosirkku

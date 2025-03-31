@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_ara modročelá
 Diuca diuca_tangara dijuka
 Dives dives_vlhovec spevavý
 Dives warczewiczi_vlhovec krovinový
-Dog_Dog
+Dog_Pes
 Dolichonyx oryzivorus_bobolink ryžový
 Donacobius atricapilla_angu mokraďový
 Donacospiza albifrons_maričiar škoricový

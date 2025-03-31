@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Малый ара
 Diuca diuca_Патагонская диука
 Dives dives_Певчий трупиал
 Dives warczewiczi_Кустарниковый трупиал
-Dog_Dog
+Dog_Собака
 Dolichonyx oryzivorus_Боболинк
 Donacobius atricapilla_Черноголовый ангу
 Donacospiza albifrons_Белолобый овсяночник

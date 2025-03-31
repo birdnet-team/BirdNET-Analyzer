@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Rödskuldrad ara
 Diuca diuca_Diucatangara
 Dives dives_Sångtrupial
 Dives warczewiczi_Busktrupial
-Dog_Dog
+Dog_Hund
 Dolichonyx oryzivorus_Bobolink
 Donacobius atricapilla_Donakobius
 Donacospiza albifrons_Rörtangara

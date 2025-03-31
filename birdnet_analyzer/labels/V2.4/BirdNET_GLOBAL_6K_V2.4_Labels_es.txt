@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Guacamayo Noble
 Diuca diuca_Diuca Común
 Dives dives_Zanate Cantor
 Dives warczewiczi_Zanate Matorralero
-Dog_Dog
+Dog_Perro
 Dolichonyx oryzivorus_Tordo Charlatán
 Donacobius atricapilla_Angú
 Donacospiza albifrons_Cachilo Canela

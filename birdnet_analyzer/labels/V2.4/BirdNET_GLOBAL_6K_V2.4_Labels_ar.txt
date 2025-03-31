@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Red-shouldered Macaw
 Diuca diuca_Diuca Finch
 Dives dives_Melodious Blackbird
 Dives warczewiczi_Scrub Blackbird
-Dog_Dog
+Dog_كلب
 Dolichonyx oryzivorus_Bobolink
 Donacobius atricapilla_Black-capped Donacobius
 Donacospiza albifrons_Long-tailed Reed Finch
