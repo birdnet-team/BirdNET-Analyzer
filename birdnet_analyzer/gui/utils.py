@@ -31,7 +31,6 @@ if utils.FROZEN:
     cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
 
 import birdnet_analyzer.gui.settings as settings  # noqa: E402
-import birdnet_analyzer.utils as utils  # noqa: E402
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
 
 loc.load_local_state()
