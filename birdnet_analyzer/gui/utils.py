@@ -650,7 +650,7 @@ def _get_network_shortcuts():
         - Errors encountered while resolving shortcuts are printed to the console.
     """
     import pythoncom
-    from win32com.shell import shell, shellcon
+    from win32com.shell import shell, shellcon  # type: ignore[import]
 
     try:
         # https://learn.microsoft.com/de-de/windows/win32/shell/csidl
@@ -687,6 +687,7 @@ def _get_network_shortcuts():
                         shortcuts.append(path_buffer)
                     except Exception as e:
                         print(f"Error reading {target_lnk}: {e}")
+                        raise e
 
         return shortcuts
     except Exception as e:
