@@ -9,6 +9,7 @@ import gradio as gr
 import webview
 
 import birdnet_analyzer.config as cfg
+import birdnet_analyzer.utils as utils
 
 
 if utils.FROZEN:

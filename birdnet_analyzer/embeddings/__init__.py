@@ -7,7 +7,7 @@ def main():
     import birdnet_analyzer.utils as utils
 
     parser = cli.embeddings_parser()
-    args = parser.parse_args()
+    args = parser.parse_args() 
 
     utils.ensure_model_exists()
 
