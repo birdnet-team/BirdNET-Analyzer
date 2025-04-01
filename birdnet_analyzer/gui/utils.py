@@ -709,6 +709,8 @@ def open_window(builder: list[Callable] | Callable):
     global _URL
     multiprocessing.freeze_support()
 
+    utils.ensure_model_exists()
+
     with gr.Blocks(
         css=open(os.path.join(SCRIPT_DIR, "assets/gui.css")).read(),
         js=open(os.path.join(SCRIPT_DIR, "assets/gui.js")).read(),
