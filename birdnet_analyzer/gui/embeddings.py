@@ -86,6 +86,7 @@ def run_embeddings(
 
     return gr.Plot(), gr.Slider(visible=False), gr.Number(visible=False), gr.Number(visible=False)
 
+
 @gu.gui_runtime_error_handler
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
     import birdnet_analyzer.search.utils as search
@@ -123,7 +124,10 @@ def run_export(export_state):
 
         if export_folder:
             for index, file in export_state.items():
-                dest = os.path.join(export_folder, f"result_{index + 1}_score_{file[4]:.5f}.wav")
+                filebasename = os.path.basename(file[0])
+                filebasename = os.path.splitext(filebasename)[0]
+                dest = os.path.join(export_folder, f"{file[4]:.5f}_{filebasename}_{file[1]}_{file[1] + file[2]}.wav")
+                # @mamau: Missing audio speed?
                 sig, rate = audio.open_audio_file(file[0], offset=file[1], duration=file[2], sample_rate=None)
                 audio.save_signal(sig, dest, rate)
 
@@ -324,7 +328,7 @@ def build_embeddings_tab():
                     fmax_number,
                 ],
                 outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
-                show_progress_on=[progress_plot]
+                show_progress_on=[progress_plot],
             )
 
         with gr.Tab(loc.localize("embeddings-search-tab-title")):

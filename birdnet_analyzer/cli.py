@@ -248,7 +248,7 @@ def locale_args():
     return p
 
 
-def bs_args():
+def bs_args(default=cfg.BATCH_SIZE):
     """
     Creates an argument parser for batch size configuration.
     Returns:
@@ -262,7 +262,7 @@ def bs_args():
         "-b",
         "--batchsize",
         type=lambda a: max(1, int(a)),
-        default=cfg.BATCH_SIZE,
+        default=default,
         help="Number of samples to process at the same time.",
     )
 
@@ -451,11 +451,13 @@ def search_parser():
     parser.add_argument(
         "--score_function",
         default="cosine",
+        choices=["cosine", "euclidean", "dot"],
         help="Scoring function to use. Choose 'cosine', 'euclidean' or 'dot'. Defaults to 'cosine'."
     )
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
+        choices=["center", "first", "segments"],
         help="Crop mode for the query sample. Can be 'center', 'first' or 'segments'.",
     )
 
@@ -603,6 +605,7 @@ def train_parser():
             bandpass_args(),
             audio_speed_args(),
             threads_args(),
+            bs_args(32),
             overlap_args(help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."),
         ],
     )
@@ -619,6 +622,7 @@ def train_parser():
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
+        choices=["center", "first", "segments"],
         help="Crop mode for training data. Can be 'center', 'first' or 'segments'.",
     )
     parser.add_argument("-o", "--output", default=c, help="Path to trained classifier model output.")

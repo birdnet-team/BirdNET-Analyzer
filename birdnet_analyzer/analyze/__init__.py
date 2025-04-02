@@ -1,11 +1,133 @@
 import os
+from typing import List, Literal
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.utils as utils
-from birdnet_analyzer.utils import collect_audio_files, read_lines
+from birdnet_analyzer.utils import collect_audio_files, ensure_model_exists, read_lines, runtime_error_handler
 
 
-def set_params(
+def analyze(
+    input: str,
+    output: str | None = None,
+    min_conf: float = 0.25,
+    classifier: str | None = None,
+    lat: float = -1,
+    lon: float = -1,
+    week: int = -1,
+    slist: str | None = None,
+    sensitivity: float = 1.0,
+    overlap: float = 0,
+    fmin: int = 0,
+    fmax: int = 15000,
+    audio_speed: float = 1.0,
+    batchsize: int = 1,
+    combine_results: bool = False,
+    rtype: Literal["table", "audacity", "kaleidoscope", "csv"]
+    | List[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
+    skip_existing_results: bool = False,
+    sf_thresh: float = 0.03,
+    top_n: int | None = None,
+    merge_consecutive: int = 1,
+    threads: int = 8,
+    locale: str = "en",
+):
+    """
+    Analyzes audio files for bird species detection using the BirdNET-Analyzer.
+    Args:
+        input (str): Path to the input directory or file containing audio data.
+        output (str | None, optional): Path to the output directory for results. Defaults to None.
+        min_conf (float, optional): Minimum confidence threshold for detections. Defaults to 0.25.
+        classifier (str | None, optional): Path to a custom classifier file. Defaults to None.
+        lat (float, optional): Latitude for location-based filtering. Defaults to -1.
+        lon (float, optional): Longitude for location-based filtering. Defaults to -1.
+        week (int, optional): Week of the year for seasonal filtering. Defaults to -1.
+        slist (str | None, optional): Path to a species list file for filtering. Defaults to None.
+        sensitivity (float, optional): Sensitivity of the detection algorithm. Defaults to 1.0.
+        overlap (float, optional): Overlap between analysis windows in seconds. Defaults to 0.
+        fmin (int, optional): Minimum frequency for analysis in Hz. Defaults to 0.
+        fmax (int, optional): Maximum frequency for analysis in Hz. Defaults to 15000.
+        audio_speed (float, optional): Speed factor for audio playback during analysis. Defaults to 1.0.
+        batchsize (int, optional): Batch size for processing. Defaults to 1.
+        combine_results (bool, optional): Whether to combine results into a single file. Defaults to False.
+        rtype (Literal["table", "audacity", "kaleidoscope", "csv"] | List[Literal["table", "audacity", "kaleidoscope", "csv"]], optional):
+            Output format(s) for results. Defaults to "table".
+        skip_existing_results (bool, optional): Whether to skip analysis for files with existing results. Defaults to False.
+        sf_thresh (float, optional): Threshold for species filtering. Defaults to 0.03.
+        top_n (int | None, optional): Limit the number of top detections per file. Defaults to None.
+        merge_consecutive (int, optional): Merge consecutive detections within this time window in seconds. Defaults to 1.
+        threads (int, optional): Number of CPU threads to use for analysis. Defaults to 8.
+        locale (str, optional): Locale for species names and output. Defaults to "en".
+    Returns:
+        None
+    Raises:
+        ValueError: If input path is invalid or required parameters are missing.
+    Notes:
+        - The function ensures the BirdNET model is available before analysis.
+        - Results can be combined into a single file if `combine_results` is True.
+        - Analysis parameters are saved to a file in the output directory.
+    """
+    from multiprocessing import Pool
+
+    from birdnet_analyzer.analyze.utils import analyze_file, combine_results, save_analysis_params
+
+    ensure_model_exists()
+
+    flist = _set_params(
+        input=input,
+        output=output,
+        min_conf=min_conf,
+        custom_classifier=classifier,
+        lat=lat,
+        lon=lon,
+        week=week,
+        slist=slist,
+        sensitivity=sensitivity,
+        locale=locale,
+        overlap=overlap,
+        fmin=fmin,
+        fmax=fmax,
+        audio_speed=audio_speed,
+        bs=batchsize,
+        combine_results=combine_results,
+        rtype=rtype,
+        sf_thresh=sf_thresh,
+        top_n=top_n,
+        merge_consecutive=merge_consecutive,
+        skip_existing_results=skip_existing_results,
+        threads=threads,
+        labels_file=cfg.LABELS_FILE,
+    )
+
+    print(f"Found {len(cfg.FILE_LIST)} files to analyze")
+
+    if not cfg.SPECIES_LIST:
+        print(f"Species list contains {len(cfg.LABELS)} species")
+    else:
+        print(f"Species list contains {len(cfg.SPECIES_LIST)} species")
+
+    result_files = []
+
+    # Analyze files
+    if cfg.CPU_THREADS < 2 or len(flist) < 2:
+        for entry in flist:
+            result_files.append(analyze_file(entry))
+    else:
+        with Pool(cfg.CPU_THREADS) as p:
+            # Map analyzeFile function to each entry in flist
+            results = p.map_async(analyze_file, flist)
+            # Wait for all tasks to complete
+            results.wait()
+            result_files = results.get()
+
+    # Combine results?
+    if cfg.COMBINE_RESULTS:
+        print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
+        combine_results(result_files)
+        print("done!", flush=True)
+
+    save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
+
+
+def _set_params(
     input,
     output,
     min_conf,
@@ -122,14 +244,12 @@ def set_params(
     return [(f, cfg.get_config()) for f in cfg.FILE_LIST]
 
 
-@utils.runtime_error_handler
+@runtime_error_handler
 def main():
     import os
-    from multiprocessing import Pool, freeze_support
+    from multiprocessing import freeze_support
 
     import birdnet_analyzer.cli as cli
-    import birdnet_analyzer.config as cfg
-    import birdnet_analyzer.utils as utils
 
     # Freeze support for executable
     freeze_support()
@@ -144,60 +264,9 @@ def main():
     except Exception:
         pass
 
-    utils.ensure_model_exists()
+    analyze(**vars(args))
 
-    from birdnet_analyzer.analyze.utils import analyze_file, combine_results, save_analysis_params  # noqa: E402
 
-    flist = set_params(
-        input=args.input,
-        output=args.output,
-        min_conf=args.min_conf,
-        custom_classifier=args.classifier,
-        lat=args.lat,
-        lon=args.lon,
-        week=args.week,
-        slist=args.slist,
-        sensitivity=args.sensitivity,
-        locale=args.locale,
-        overlap=args.overlap,
-        fmin=args.fmin,
-        fmax=args.fmax,
-        audio_speed=args.audio_speed,
-        bs=args.batchsize,
-        combine_results=args.combine_results,
-        rtype=args.rtype,
-        sf_thresh=args.sf_thresh,
-        top_n=args.top_n,
-        merge_consecutive=args.merge_consecutive,
-        skip_existing_results=args.skip_existing_results,
-        threads=args.threads,
-    )
-
-    print(f"Found {len(cfg.FILE_LIST)} files to analyze")
-
-    if not cfg.SPECIES_LIST:
-        print(f"Species list contains {len(cfg.LABELS)} species")
-    else:
-        print(f"Species list contains {len(cfg.SPECIES_LIST)} species")
-
-    result_files = []
-
-    # Analyze files
-    if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        for entry in flist:
-            result_files.append(analyze_file(entry))
-    else:
-        with Pool(cfg.CPU_THREADS) as p:
-            # Map analyzeFile function to each entry in flist
-            results = p.map_async(analyze_file, flist)
-            # Wait for all tasks to complete
-            results.wait()
-            result_files = results.get()
-
-    # Combine results?
-    if cfg.COMBINE_RESULTS:
-        print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
-        combine_results(result_files)
-        print("done!", flush=True)
-
-    save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
+__all__ = [
+    "analyze",
+]

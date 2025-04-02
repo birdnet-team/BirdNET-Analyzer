@@ -1,50 +1,113 @@
-import birdnet_analyzer.utils as utils
+from typing import Literal
+
+from birdnet_analyzer.utils import runtime_error_handler, ensure_model_exists
 
 
-@utils.runtime_error_handler
+def train(
+    input: str,
+    output: str = "checkpoints/custom/Custom_Classifier",
+    crop_mode: Literal["center", "first", "segments"] = "center",
+    overlap: float = 0.0,
+    epochs: int = 50,
+    batchsize: int = 32,
+    val_split: float = 0.2,
+    learning_rate: float = 0.001,
+    hidden_units: int = 0,
+    dropout: float = 0.0,
+    mixup: bool = False,
+    upsampling_ratio: float = 0.0,
+    upsampling_mode: Literal["repeat", "mean", "smote"] = "repeat",
+    model_format: Literal["tflite", "raven", "both"] = "tflite",
+    model_save_mode: Literal["replace", "append"] = "replace",
+    cache_mode: Literal["load", "save"] | None = None,
+    cache_file: str = "train_cache.npz",
+    threads: int = 1,
+    fmin: float = 0.0,
+    fmax: float = 15000.0,
+    audio_speed: float = 1.0,
+    autotune: bool = False,
+    autotune_trials: int = 50,
+    autotune_executions_per_trial: int = 1,
+):
+    """
+    Trains a custom classifier model using the BirdNET-Analyzer framework.
+    Args:
+        input (str): Path to the training data directory.
+        output (str, optional): Path to save the trained model. Defaults to "checkpoints/custom/Custom_Classifier".
+        crop_mode (Literal["center", "first", "segments"], optional): Mode for cropping audio samples. Defaults to "center".
+        overlap (float, optional): Overlap ratio for audio segments. Defaults to 0.0.
+        epochs (int, optional): Number of training epochs. Defaults to 50.
+        batchsize (int, optional): Batch size for training. Defaults to 32.
+        val_split (float, optional): Fraction of data to use for validation. Defaults to 0.2.
+        learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.001.
+        hidden_units (int, optional): Number of hidden units in the model. Defaults to 0.
+        dropout (float, optional): Dropout rate for regularization. Defaults to 0.0.
+        mixup (bool, optional): Whether to use mixup data augmentation. Defaults to False.
+        upsampling_ratio (float, optional): Ratio for upsampling underrepresented classes. Defaults to 0.0.
+        upsampling_mode (Literal["repeat", "mean", "smote"], optional): Mode for upsampling. Defaults to "repeat".
+        model_format (Literal["tflite", "raven", "both"], optional): Format to save the trained model. Defaults to "tflite".
+        model_save_mode (Literal["replace", "append"], optional): Save mode for the model. Defaults to "replace".
+        cache_mode (Literal["load", "save"] | None, optional): Cache mode for training data. Defaults to None.
+        cache_file (str, optional): Path to the cache file. Defaults to "train_cache.npz".
+        threads (int, optional): Number of CPU threads to use. Defaults to 1.
+        fmin (float, optional): Minimum frequency for bandpass filtering. Defaults to 0.0.
+        fmax (float, optional): Maximum frequency for bandpass filtering. Defaults to 15000.0.
+        audio_speed (float, optional): Speed factor for audio playback. Defaults to 1.0.
+        autotune (bool, optional): Whether to use hyperparameter autotuning. Defaults to False.
+        autotune_trials (int, optional): Number of trials for autotuning. Defaults to 50.
+        autotune_executions_per_trial (int, optional): Number of executions per autotuning trial. Defaults to 1.
+    Returns:
+        None
+    """
+    from birdnet_analyzer.train.utils import train_model
+    import birdnet_analyzer.config as cfg
+
+    ensure_model_exists()
+
+    # Config
+    cfg.TRAIN_DATA_PATH = input
+    cfg.SAMPLE_CROP_MODE = crop_mode
+    cfg.SIG_OVERLAP = overlap
+    cfg.CUSTOM_CLASSIFIER = output
+    cfg.TRAIN_EPOCHS = epochs
+    cfg.TRAIN_BATCH_SIZE = batchsize
+    cfg.TRAIN_VAL_SPLIT = val_split
+    cfg.TRAIN_LEARNING_RATE = learning_rate
+    cfg.TRAIN_HIDDEN_UNITS = hidden_units
+    cfg.TRAIN_DROPOUT = dropout
+    cfg.TRAIN_WITH_MIXUP = mixup if mixup is not None else cfg.TRAIN_WITH_MIXUP
+    cfg.UPSAMPLING_RATIO = upsampling_ratio
+    cfg.UPSAMPLING_MODE = upsampling_mode
+    cfg.TRAINED_MODEL_OUTPUT_FORMAT = model_format
+    cfg.TRAINED_MODEL_SAVE_MODE = model_save_mode
+    cfg.TRAIN_CACHE_MODE = cache_mode
+    cfg.TRAIN_CACHE_FILE = cache_file
+    cfg.TFLITE_THREADS = 1
+    cfg.CPU_THREADS = threads
+
+    cfg.BANDPASS_FMIN = fmin
+    cfg.BANDPASS_FMAX = fmax
+
+    cfg.AUDIO_SPEED = audio_speed
+
+    cfg.AUTOTUNE = autotune
+    cfg.AUTOTUNE_TRIALS = autotune_trials
+    cfg.AUTOTUNE_EXECUTIONS_PER_TRIAL = autotune_executions_per_trial
+
+    # Train model
+    train_model()
+
+
+@runtime_error_handler
 def main():
     import birdnet_analyzer.cli as cli
-    import birdnet_analyzer.config as cfg
-    import birdnet_analyzer.utils as utils
 
     # Parse arguments
     parser = cli.train_parser()
 
     args = parser.parse_args()
 
-    utils.ensure_model_exists()
+    train(**vars(args))
 
-    from birdnet_analyzer.train.utils import train_model  # noqa: E402
 
-    # Config
-    cfg.TRAIN_DATA_PATH = args.input
-    cfg.SAMPLE_CROP_MODE = args.crop_mode
-    cfg.SIG_OVERLAP = args.overlap
-    cfg.CUSTOM_CLASSIFIER = args.output
-    cfg.TRAIN_EPOCHS = args.epochs
-    cfg.TRAIN_BATCH_SIZE = args.batch_size
-    cfg.TRAIN_VAL_SPLIT = args.val_split
-    cfg.TRAIN_LEARNING_RATE = args.learning_rate
-    cfg.TRAIN_HIDDEN_UNITS = args.hidden_units
-    cfg.TRAIN_DROPOUT = args.dropout
-    cfg.TRAIN_WITH_MIXUP = args.mixup if args.mixup is not None else cfg.TRAIN_WITH_MIXUP
-    cfg.UPSAMPLING_RATIO = args.upsampling_ratio
-    cfg.UPSAMPLING_MODE = args.upsampling_mode
-    cfg.TRAINED_MODEL_OUTPUT_FORMAT = args.model_format
-    cfg.TRAINED_MODEL_SAVE_MODE = args.model_save_mode
-    cfg.TRAIN_CACHE_MODE = args.cache_mode
-    cfg.TRAIN_CACHE_FILE = args.cache_file
-    cfg.TFLITE_THREADS = 1
-    cfg.CPU_THREADS = args.threads
-
-    cfg.BANDPASS_FMIN = args.fmin
-    cfg.BANDPASS_FMAX = args.fmax
-
-    cfg.AUDIO_SPEED = args.audio_speed
-
-    cfg.AUTOTUNE = args.autotune
-    cfg.AUTOTUNE_TRIALS = args.autotune_trials
-    cfg.AUTOTUNE_EXECUTIONS_PER_TRIAL = args.autotune_executions_per_trial
-
-    # Train model
-    train_model()
+__all__ = ["train"]
