@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "birdnet_analyzer"
-version = "1.5.4"
+version = "2.0.0"
 license = { text = "MIT" }
 description = "BirdNET analyzer for scientific audio data processing and bird classification."
 authors = [{ name = "Stefan Kahl" }]
@@ -20,25 +20,29 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["librosa", "resampy", "tensorflow==2.15.1", "scikit-learn==1.6.1"]
-
-[project.optional-dependencies]
-train = ["tqdm", "keras-tuner"]
-server = ["bottle", "requests"]
-gui = ["gradio==5.16.1", "pywebview", "matplotlib", "plotly", "seaborn"]
-embeddings = ["perch-hoplite"]
-all = [
+dependencies = [
+    "librosa",
+    "resampy",
+    "tensorflow==2.15.1",
+    "scikit-learn==1.6.1",
     "tqdm",
-    "keras-tuner",
-    "bottle",
-    "requests",
-    "gradio==5.16.1",
-    "pywebview",
-    "matplotlib",
-    "plotly",
-    "perch-hoplite",
 ]
 
+[project.optional-dependencies]
+train = ["keras-tuner"]
+server = ["bottle", "requests"]
+gui = [
+    "birdnet-analyzer[train]",
+    "birdnet-analyzer[embeddings]",
+    "gradio==5.23.3",
+    "pywebview",
+    "matplotlib",
+    "plotly[express]",
+    "seaborn",
+    "pywin32;platform_system=='Windows'",
+]
+embeddings = ["perch-hoplite"]
+all = ["birdnet-analyzer[server]", "birdnet-analyzer[gui]"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.__init__:main"
@@ -68,6 +72,7 @@ packages = [
     "birdnet_analyzer.species",
     "birdnet_analyzer.segments",
     "birdnet_analyzer.train",
+    "birdnet_analyzer.evaluation",
 ]
 
 [tool.setuptools.package-data]

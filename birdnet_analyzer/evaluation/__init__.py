@@ -193,7 +193,3 @@ def main():
             plt.savefig(os.path.join(args.output_dir, "metrics_all_thresholds.png"))
         else:
             plt.show()
-
-
-if __name__ == "__main__":
-    main()
