@@ -20,12 +20,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["librosa", "resampy", "tensorflow==2.15.1"]
+dependencies = ["librosa", "resampy", "tensorflow==2.15.1", "scikit-learn==1.6.1"]
 
 [project.optional-dependencies]
 train = ["tqdm", "keras-tuner"]
 server = ["bottle", "requests"]
-gui = ["gradio==5.16.1", "pywebview", "matplotlib", "plotly"]
+gui = ["gradio==5.16.1", "pywebview", "matplotlib", "plotly", "seaborn"]
 embeddings = ["perch-hoplite"]
 all = [
     "tqdm",

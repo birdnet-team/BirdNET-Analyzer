@@ -205,7 +205,6 @@ def build_single_analysis_tab():
                 loc.localize("single-tab-output-header-common-name"),
                 loc.localize("single-tab-output-header-confidence"),
             ],
-            elem_classes="matrix-mh-200",
             elem_id="single-file-output",
         )
         single_file_analyze = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface")

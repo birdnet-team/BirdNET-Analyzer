@@ -95,7 +95,6 @@ def build_multi_analysis_tab():
                 select_directory_btn = gr.Button(loc.localize("multi-tab-input-selection-button-label"))
                 directory_input = gr.Matrix(
                     interactive=False,
-                    elem_classes="matrix-mh-200",
                     headers=[
                         loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
                         loc.localize("multi-tab-samples-dataframe-column-duration-header"),
@@ -106,7 +105,7 @@ def build_multi_analysis_tab():
                     folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
                     if folder:
-                        files_and_durations = gu.get_files_and_durations(folder)
+                        files_and_durations = gu.get_audio_files_and_durations(folder)
                         if len(files_and_durations) > 100:
                             return [folder, files_and_durations[:100] + [["..."]]]  # hopefully fixes issue#272
                         return [folder, files_and_durations]
@@ -208,7 +207,6 @@ def build_multi_analysis_tab():
                 loc.localize("multi-tab-result-dataframe-column-file-header"),
                 loc.localize("multi-tab-result-dataframe-column-execution-header"),
             ],
-            elem_classes="matrix-mh-200",
         )
 
         inputs = [

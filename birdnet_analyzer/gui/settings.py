@@ -58,9 +58,10 @@ def set_state(key: str, value: str):
         key (str): The key to update in the state dictionary.
         value (str): The value to associate with the key in the state dictionary.
     """
-    state = get_state_dict()
-    state[key] = value
     try:
+        state = get_state_dict()
+        state[key] = value
+
         with open(STATE_SETTINGS_PATH, "w") as f:
             json.dump(state, f, indent=4)
     except Exception as e:
@@ -119,6 +120,7 @@ def set_setting(key, value):
 
     except FileNotFoundError:
         pass
+
 
 def theme():
     options = ("light", "dark")
