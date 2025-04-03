@@ -211,6 +211,7 @@
     "settings-tab-title": "Asetukset",
     "single-audio-label": "Tiedosto",
     "single-tab-analyze-file-error": "Tiedoston analysointi epäonnistui",
+    "single-tab-download-button-label": "Lataa tulokset",
     "single-tab-generate-spectrogram-error": "Spektrogrammin luonti epäonnistui",
     "single-tab-output-header-common-name": "Yleisnimi",
     "single-tab-output-header-confidence": "Luotettavuus",

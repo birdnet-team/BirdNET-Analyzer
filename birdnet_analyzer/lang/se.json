@@ -211,6 +211,7 @@
     "settings-tab-title": "Inställningar",
     "single-audio-label": "Fil",
     "single-tab-analyze-file-error": "Kunde inte analysera filen",
+    "single-tab-download-button-label": "Ladda ner resultat",
     "single-tab-generate-spectrogram-error": "Kunde inte generera spektrogram",
     "single-tab-output-header-common-name": "Svenskt namn",
     "single-tab-output-header-confidence": "Konfidens",

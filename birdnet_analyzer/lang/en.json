@@ -211,6 +211,7 @@
     "settings-tab-title": "Settings",
     "single-audio-label": "file",
     "single-tab-analyze-file-error": "Could not analyze file",
+    "single-tab-download-button-label": "Download result table",
     "single-tab-generate-spectrogram-error": "Could not generate spectrogram",
     "single-tab-output-header-common-name": "Common name",
     "single-tab-output-header-confidence": "Confidence",

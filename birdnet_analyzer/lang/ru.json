@@ -211,6 +211,7 @@
     "settings-tab-title": "Настройки",
     "single-audio-label": "файл",
     "single-tab-analyze-file-error": "Не удалось проанализировать файл",
+    "single-tab-download-button-label": "Результаты загрузки",
     "single-tab-generate-spectrogram-error": "Не удалось сгенерировать спектрограмму",
     "single-tab-output-header-common-name": "Общее название",
     "single-tab-output-header-confidence": "Достоверность",

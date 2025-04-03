@@ -773,6 +773,7 @@ def open_window(builder: list[Callable] | Callable):
         enable_monitoring=False,
         allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
     )[1]
+    webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer", _URL.rstrip("/") + f"?__theme={settings.theme()}", width=1300, height=900
     )
