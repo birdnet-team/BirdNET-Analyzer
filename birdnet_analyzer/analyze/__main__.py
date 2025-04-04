@@ -1,3 +1,4 @@
-from birdnet_analyzer.analyze import main
+from birdnet_analyzer.analyze.cli import main
+
 
 main()

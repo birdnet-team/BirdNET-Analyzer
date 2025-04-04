@@ -32,8 +32,7 @@ dependencies = [
 train = ["keras-tuner"]
 server = ["bottle", "requests"]
 gui = [
-    "birdnet-analyzer[train]",
-    "birdnet-analyzer[embeddings]",
+    "birdnet-analyzer[train,embeddings]",
     "gradio==5.23.3",
     "pywebview",
     "matplotlib",
@@ -42,10 +41,10 @@ gui = [
     "pywin32;platform_system=='Windows'",
 ]
 embeddings = ["perch-hoplite"]
-all = ["birdnet-analyzer[server]", "birdnet-analyzer[gui]"]
+all = ["birdnet-analyzer[server,gui]"]
 
 [project.scripts]
-birdnet-analyze = "birdnet_analyzer.analyze.__init__:main"
+birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
 birdnet-embeddings = "birdnet_analyzer.embeddings.__init__:main"
 birdnet-search = "birdnet_analyzer.search.__init__:main"
 birdnet-train = "birdnet_analyzer.train.__init__:main"

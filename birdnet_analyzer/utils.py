@@ -1,4 +1,5 @@
 """Module containing common function."""
+
 import sys
 import itertools
 import os
@@ -9,6 +10,7 @@ import birdnet_analyzer.config as cfg
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
 
 def runtime_error_handler(f: callable):
     """Decorator to catch runtime errors and write them to the error log.
@@ -339,7 +341,8 @@ def check_model_files():
             print(f"Missing {file}")
 
             return False
-        print(f"Found {file}")
+
+    print("Model found!")
 
     return True
 
@@ -349,7 +352,7 @@ def ensure_model_exists():
 
     import requests
     from tqdm import tqdm
-    
+
     if FROZEN or check_model_files():
         return
 
