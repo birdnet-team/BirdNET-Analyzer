@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training Custom Classifiers &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="FAQ" href="../faq.html" />
+    <link rel="prev" title="Segment Review" href="segment-review.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../best-practices.html">Best practices</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="species-lists.html">Creating Your Own Species List</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segment-review.html">Segment Review</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Training Custom Classifiers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#data-collection-and-preparation">1. Data Collection and Preparation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-the-birdnet-analyzer-gui">2. Using the BirdNET-Analyzer GUI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analyzing-the-data">3. Analyzing the Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interpreting-the-results">4. Interpreting the Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tips-for-improving-model-performance">5. Tips for Improving Model Performance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#additional-considerations">6. Additional Considerations</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../best-practices.html">Best practices</a></li>
+      <li class="breadcrumb-item active">Training Custom Classifiers</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="training-custom-classifiers">
+<h1>Training Custom Classifiers<a class="headerlink" href="#training-custom-classifiers" title="Link to this heading"></a></h1>
+<p>Get started by listening to this AI-generated summary of training custom classifiers with BirdNET embeddings:</p>
+<audio controls>
+  <source src="../_static/BirdNET_Guide-Training-NotebookLM.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio><div class="line-block">
+<div class="line"><br /></div>
+<div class="line"><cite>Source: Google NotebookLM</cite></div>
+</div>
+<section id="data-collection-and-preparation">
+<h2>1. Data Collection and Preparation<a class="headerlink" href="#data-collection-and-preparation" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>High-Quality Audio Data</strong>: Use recordings with minimal background noise, wind, or overlapping sounds from other species. Prefer lossless formats like WAV or FLAC over MP3 to retain important frequency details.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Balanced Signal-to-Noise Ratio (SNR)</strong>: Ensure a good balance between the target signal and background noise. A balanced SNR helps the model perform well in real-world situations.</div>
+</div>
+</li>
+<li><p><strong>Diverse and Representative Samples</strong>:</p>
+<ul class="simple">
+<li><p>Include recordings from various locations to ensure the model performs well across regions.</p></li>
+<li><p>Consider seasonal and temporal variations, as bird calls can change with seasons and times of day.</p></li>
+<li><p>Use data from different microphones and recording devices to make the model robust against different hardware.</p></li>
+</ul>
+</li>
+<li><p><strong>Balanced Species Distribution</strong>:</p>
+<ul class="simple">
+<li><p>Avoid dataset biases by using a relatively balanced number of samples per species.</p></li>
+<li><p>For rare species, use as many high-quality examples as possible without overfitting the model.</p></li>
+</ul>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Noise or Background Class</strong>: Include a “noise” or “background” class. The model needs to learn what is not the target signal. This class helps the model recognize sounds that may resemble target sounds or occur in the background. Use random segments from your recordings without the target vocalizations.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Organize Training Data</strong>: Organize your training data into folders, with each folder representing a class. Folder names are used as labels.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>3-Second Audio Snippets</strong>: BirdNET accepts 3-second audio snippets. If your files are shorter, they will be padded with zeros; if longer, multiple 3-second segments will be used. It may be useful to split longer recordings into shorter segments to remove non-target signal.</div>
+</div>
+</li>
+</ul>
+</section>
+<section id="using-the-birdnet-analyzer-gui">
+<h2>2. Using the BirdNET-Analyzer GUI<a class="headerlink" href="#using-the-birdnet-analyzer-gui" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Download the GUI</strong>: Download the BirdNET-Analyzer GUI from the website. The GUI provides an easy-to-use interface for training and analyzing audio data without needing to write code.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Start the GUI</strong>: Unzip the file and start the executable <cite>birdnet_analyzer_gui</cite>. This will launch the graphical interface where you can configure your training and analysis settings.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Select Training Data</strong>: In the “Training” tab, select your training data by navigating to the folder containing your class subfolders. Each subfolder should contain audio files for a specific class.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Specify Output Location</strong>: Provide a location to save the trained classifier. This is where the model will be saved after training is complete.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Adjust Hyperparameters</strong>: You can adjust hyperparameters, but default values are generally sufficient. Hyperparameters include settings like learning rate, batch size, and number of epochs.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Start Training</strong>: Start the training process. This may take some time depending on your hardware. The GUI will display progress and provide updates on the training status.</div>
+</div>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When adjusting low- and high-pass frequencies or modifiying the audio speed, make sure to match these setting during the analysis process.
+Custom models might underperform in Raven when changing these settings, since Raven uses different bandpass filter settings.</p>
+</div>
+</section>
+<section id="analyzing-the-data">
+<h2>3. Analyzing the Data<a class="headerlink" href="#analyzing-the-data" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Select Test Data</strong>: In the “Multiple Files Processing” tab, select the folder containing your test data. This folder should contain audio files that you want to analyze using the trained classifier.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Specify Output Location</strong>: Choose a location for the output files. If not specified, output files will be saved in the same folder as the input files.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Select Output Format</strong>: Choose the output format (e.g., Raven selection tables, Audacity annotations, CSV). The output format determines how the analysis results will be saved and presented.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Use Custom Classifier</strong>: Select “Custom classifier” and navigate to the folder containing your trained classifier. This will load the custom model you trained for analyzing the test data.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Start Analysis</strong>: Begin the analysis process. The GUI will process the audio files and generate output files based on the selected format.</div>
+</div>
+</li>
+</ul>
+</section>
+<section id="interpreting-the-results">
+<h2>4. Interpreting the Results<a class="headerlink" href="#interpreting-the-results" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Review Output Files</strong>: Check the output files (e.g., selection tables) in Raven or another bioacoustics program. These files contain the analysis results, including detected bird calls and their timestamps.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Check for False Positives</strong>: Look for false positives (detections where the model identified the target signal, but it was not present). If there are many, consider adding a noise class and retraining the model.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Frequency Settings</strong>: Ensure the frequency settings in the selection table match the frequencies of your analyzed audio data. This helps in accurately identifying bird calls within the correct frequency range.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Verify Accuracy</strong>: Listen to the audio recordings to verify the accuracy of detections. This step is crucial for validating the model’s performance and ensuring reliable results.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Evaluate Model Performance</strong>: Assess the model’s performance by analyzing false positives and false negatives. Identify any patterns in the errors. This evaluation helps in understanding the model’s strengths and weaknesses.</div>
+</div>
+</li>
+</ul>
+</section>
+<section id="tips-for-improving-model-performance">
+<h2>5. Tips for Improving Model Performance<a class="headerlink" href="#tips-for-improving-model-performance" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Representative Training Data</strong>: Ensure your training data represents the diversity of your signals. Diverse data helps the model generalize better to different environments and conditions.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Use a Noise Class</strong>: Including a noise class can significantly improve results. This class helps the model distinguish between target signals and background noise.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Experiment with Settings</strong>: Try different settings (e.g., minimum confidence threshold). Adjusting these settings can help optimize the model’s performance for specific use cases.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Adjust Cutoff Threshold</strong>: If recall is low (the model misses many target vocalizations), try lowering the cutoff threshold. This can help the model detect more target signals.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Add Similar Sounds to Noise Class</strong>: If precision is low (the model produces many false positives), add sounds similar to the noise class. This helps the model better differentiate between target and non-target sounds.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Use a Bandpass Filter</strong>: Remove irrelevant frequencies with a bandpass filter. This preprocessing step can improve the model’s focus on relevant frequency ranges.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Use Segments</strong>: If your training clips are longer than 3 seconds, use segments. Segmenting longer clips helps in creating consistent input data for the model.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Check Diagnostic Plots</strong>: Ensure the training process is progressing well by reviewing diagnostic plots. These plots provide insights into the model’s learning curve and performance metrics.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Correct File Formats and Sample Rates</strong>: BirdNET only accepts 48 kHz inputs and rejects frequencies above 15 kHz. Ensure your audio files meet these requirements for optimal performance.</div>
+</div>
+</li>
+</ul>
+</section>
+<section id="additional-considerations">
+<h2>6. Additional Considerations<a class="headerlink" href="#additional-considerations" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Few-Shot Learning</strong>: You can train your own model with very few examples. Few-shot learning allows the model to learn from a small number of training samples.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Feature Embeddings</strong>: BirdNET uses feature embeddings to extract relevant information for the problem. Embeddings capture important features from the audio data, which are used for classification.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Quality of Embeddings</strong>: The quality of embeddings depends on the quality of training data. High-quality training data leads to better embeddings and improved model performance.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Bioacoustic Applications</strong>: Models trained with bird sounds are often better suited for bioacoustic applications than those trained with general audio data. Specialized training data enhances the model’s ability to recognize bird calls.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Export to Raven</strong>: You can export the trained classifier to Raven. This allows you to use the model within the Raven software for further analysis and visualization.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Community and Support</strong>: There is an active community and support team. Use the forum and contact the team if you have questions or feature requests. Engaging with the community can provide valuable insights and assistance.</div>
+</div>
+</li>
+</ul>
+<p>This guide aims to help you train and improve your own models to support your research. Note that training a model is an iterative process, and you may need to try different settings and datasets to achieve the best results.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="segment-review.html" class="btn btn-neutral float-left" title="Segment Review" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../faq.html" class="btn btn-neutral float-right" title="FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
