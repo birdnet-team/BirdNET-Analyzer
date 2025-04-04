@@ -163,7 +163,7 @@ def start_training(
             on_epoch_end=epoch_progression,
             on_trial_result=trial_progression,
             on_data_load_end=data_load_progression,
-            autotune_directory=gu.APPDIR if gu.FROZEN else "autotune",
+            autotune_directory=gu.APPDIR if utils.FROZEN else "autotune",
         )
     except Exception as e:
         if e.args and len(e.args) > 1:

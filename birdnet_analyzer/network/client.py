@@ -8,17 +8,22 @@ from multiprocessing import freeze_support
 import requests
 
 
-def send_request(host: str, port: int, fpath: str, mdata: str):
-    """Sends a classification request to the server.
-
+def send_request(host: str, port: int, fpath: str, mdata: str) -> dict:
+    """
+    Sends a classification request to the server.
+    This function sends an HTTP POST request to a server for analyzing an audio file.
+    It includes the audio file and additional metadata in the request payload.
     Args:
-        host: Host address of the server.
-        port: Port for the request.
-        fpath: File path of the file to be analyzed.
-        mdata: Additional json metadata.
-
+        host (str): The host address of the server.
+        port (int): The port number to connect to on the server.
+        fpath (str): The file path of the audio file to be analyzed.
+        mdata (str): A JSON string containing additional metadata for the analysis.
+        dict: The JSON-decoded response from the server.
     Returns:
-        The json decoded response.
+        dict: The JSON-decoded response from the server.
+    Raises:
+        FileNotFoundError: If the specified file path does not exist.
+        requests.exceptions.RequestException: If the HTTP request fails.
     """
     url = f"http://{host}:{port}/analyze"
 
@@ -40,7 +45,7 @@ def send_request(host: str, port: int, fpath: str, mdata: str):
     return data
 
 
-def save_result(data, fpath):
+def _save_result(data, fpath):
     """Saves the server response.
 
     Args:
@@ -88,4 +93,4 @@ if __name__ == "__main__":
     # Save result
     fpath = args.output if args.output else args.i.rsplit(".", 1)[0] + ".BirdNET.results.json"
 
-    save_result(data, fpath)
+    _save_result(data, fpath)

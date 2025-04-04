@@ -8,9 +8,9 @@ import birdnet_analyzer.utils as utils
 
 FALLBACK_LANGUAGE = "en"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-GUI_SETTINGS_PATH = os.path.join(gu.APPDIR if gu.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json")
+GUI_SETTINGS_PATH = os.path.join(gu.APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
-STATE_SETTINGS_PATH = os.path.join(gu.APPDIR if gu.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json")
+STATE_SETTINGS_PATH = os.path.join(gu.APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json")
 
 
 def get_state_dict() -> dict:
