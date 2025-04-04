@@ -211,6 +211,7 @@
     "settings-tab-title": "Pengaturan",
     "single-audio-label": "file",
     "single-tab-analyze-file-error": "Tidak dapat menganalisis file",
+    "single-tab-download-button-label": "Unduh hasil",
     "single-tab-generate-spectrogram-error": "Tidak dapat menghasilkan spektrogram",
     "single-tab-output-header-common-name": "Nama umum",
     "single-tab-output-header-confidence": "Tingkat kepercayaan",

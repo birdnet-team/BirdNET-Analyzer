@@ -2,10 +2,12 @@ import os
 
 import gradio as gr
 
+import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.utils as utils
+
 
 @gu.gui_runtime_error_handler
 def run_single_file_analysis(
@@ -91,14 +93,15 @@ def run_single_file_analysis(
                     time_str = time_str[: time_str.index(".") + 2]
 
                 row[col_idx] = time_str
-            row.insert(0, "▶")  # add empty column for selection
+            row.insert(0, "▶")
 
-    return data
+    return data, gr.update(visible=True), result_filepath
 
 
 def build_single_analysis_tab():
     with gr.Tab(loc.localize("single-tab-title")):
         audio_input = gr.Audio(type="filepath", label=loc.localize("single-audio-label"), sources=["upload"])
+
         with gr.Group():
             spectogram_output = gr.Plot(
                 label=loc.localize("review-tab-spectrogram-plot-label"), visible=False, show_label=False
@@ -109,6 +112,7 @@ def build_single_analysis_tab():
                 info=loc.localize("single-tab-spectrogram-checkbox-info"),
             )
         audio_path_state = gr.State()
+        table_path_state = gr.State()
 
         (
             use_top_n,
@@ -135,6 +139,32 @@ def build_single_analysis_tab():
         ) = gu.species_lists(False)
         locale_radio = gu.locale()
 
+        single_file_analyze = gr.Button(
+            loc.localize("analyze-start-button-label"), variant="huggingface", interactive=False
+        )
+
+        with gr.Row(visible=False) as action_row:
+            table_download_button = gr.Button(
+                loc.localize("single-tab-download-button-label"),
+            )
+            segment_audio = gr.Audio(
+                autoplay=True, type="numpy", show_download_button=True, show_label=False, editable=False, visible=False
+            )
+
+        output_dataframe = gr.Dataframe(
+            type="pandas",
+            headers=[
+                "",
+                loc.localize("single-tab-output-header-start"),
+                loc.localize("single-tab-output-header-end"),
+                loc.localize("single-tab-output-header-sci-name"),
+                loc.localize("single-tab-output-header-common-name"),
+                loc.localize("single-tab-output-header-confidence"),
+            ],
+            elem_id="single-file-output",
+            interactive=False,
+        )
+
         def get_audio_path(i, generate_spectrogram):
             if i:
                 try:
@@ -144,16 +174,19 @@ def build_single_analysis_tab():
                         gr.Plot(visible=True, value=utils.spectrogram_from_file(i["path"], fig_size=(20, 4)))
                         if generate_spectrogram
                         else gr.Plot(visible=False),
+                        gr.Button(interactive=True),
                     )
                 except:
                     raise gr.Error(loc.localize("single-tab-generate-spectrogram-error"))
             else:
-                return None, None, gr.Plot(visible=False)
+                return None, None, gr.Plot(visible=False), gr.update(interactive=False)
 
         def try_generate_spectrogram(audio_path, generate_spectrogram):
             if audio_path and generate_spectrogram:
                 try:
-                    return gr.Plot(visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20, 4)))
+                    return gr.Plot(
+                        visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20, 4))
+                    )
                 except:
                     raise gr.Error(loc.localize("single-tab-generate-spectrogram-error"))
             else:
@@ -169,7 +202,7 @@ def build_single_analysis_tab():
         audio_input.change(
             get_audio_path,
             inputs=[audio_input, generate_spectrogram_cb],
-            outputs=[audio_path_state, audio_input, spectogram_output],
+            outputs=[audio_path_state, audio_input, spectogram_output, single_file_analyze],
             preprocess=False,
         )
 
@@ -195,21 +228,6 @@ def build_single_analysis_tab():
             locale_radio,
         ]
 
-        output_dataframe = gr.Dataframe(
-            type="pandas",
-            headers=[
-                "",
-                loc.localize("single-tab-output-header-start"),
-                loc.localize("single-tab-output-header-end"),
-                loc.localize("single-tab-output-header-sci-name"),
-                loc.localize("single-tab-output-header-common-name"),
-                loc.localize("single-tab-output-header-confidence"),
-            ],
-            elem_id="single-file-output",
-        )
-        single_file_analyze = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface")
-        hidden_segment_audio = gr.Audio(visible=False, autoplay=True, type="numpy")
-
         def time_to_seconds(time_str):
             try:
                 hours, minutes, seconds = time_str.split(":")
@@ -219,20 +237,30 @@ def build_single_analysis_tab():
             except ValueError as e:
                 raise ValueError("Input must be in the format hh:mm:ss or hh:mm:ss.ssssss with numeric values.") from e
 
-        def play_selected_audio(evt: gr.SelectData, audio_path):
-            import birdnet_analyzer.audio as audio
-
-            if evt.row_value[1] and evt.row_value[2]:
+        def get_selected_audio(evt: gr.SelectData, audio_path):
+            if evt.index[1] == 0 and evt.row_value[1] and evt.row_value[2]:
                 start = time_to_seconds(evt.row_value[1])
                 end = time_to_seconds(evt.row_value[2])
-                arr, sr = audio.open_audio_file(audio_path, offset=start, duration=end - start)
 
-                return sr, arr
+                data, sr = audio.open_audio_file(audio_path, offset=start, duration=end - start)
+                return gr.update(visible=True, value=(sr, data))
 
-            return None
+            return gr.update()
 
-        output_dataframe.select(play_selected_audio, inputs=audio_path_state, outputs=hidden_segment_audio)
-        single_file_analyze.click(run_single_file_analysis, inputs=inputs, outputs=output_dataframe)
+        def download_table(filepath):
+            if filepath:
+                ext = os.path.splitext(filepath)[1]
+                gu.save_file_dialog(
+                    state_key="single-file-table",
+                    default_filename=os.path.basename(filepath),
+                    filetypes=(f"{ext[1:]} (*{ext})",),
+                )
+
+        output_dataframe.select(get_selected_audio, inputs=audio_path_state, outputs=segment_audio)
+        single_file_analyze.click(
+            run_single_file_analysis, inputs=inputs, outputs=[output_dataframe, action_row, table_path_state]
+        )
+        table_download_button.click(download_table, inputs=table_path_state)
 
     return lat_number, lon_number, map_plot
 

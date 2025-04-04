@@ -211,6 +211,7 @@
     "settings-tab-title": "設定",
     "single-audio-label": "檔案",
     "single-tab-analyze-file-error": "無法分析文件",
+    "single-tab-download-button-label": "下載結果",
     "single-tab-generate-spectrogram-error": "無法生成頻譜圖",
     "single-tab-output-header-common-name": "俗名",
     "single-tab-output-header-confidence": "可信度",
