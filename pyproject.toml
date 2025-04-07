@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "birdnet_analyzer"
+version = "2.0.0"
+license = { text = "MIT" }
+description = "BirdNET analyzer for scientific audio data processing and bird classification."
+authors = [{ name = "Stefan Kahl" }]
+maintainers = [{ name = "Josef Haupt" }, { name = "Max Mauermann" }]
+keywords = ["birdnet", "birdnet-analyzer"]
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "librosa",
+    "resampy",
+    "tensorflow==2.15.1",
+    "scikit-learn==1.6.1",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+train = ["keras-tuner"]
+server = ["bottle", "requests"]
+gui = [
+    "birdnet-analyzer[train,embeddings]",
+    "gradio==5.23.3",
+    "pywebview",
+    "matplotlib",
+    "plotly[express]",
+    "seaborn",
+    "pywin32;platform_system=='Windows'",
+]
+embeddings = ["perch-hoplite"]
+all = ["birdnet-analyzer[server,gui]"]
+
+[project.scripts]
+birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
+birdnet-embeddings = "birdnet_analyzer.embeddings.cli:main"
+birdnet-evaluate = "birdnet_analyzer.evaluation.__init__:main"
+birdnet-search = "birdnet_analyzer.search.cli:main"
+birdnet-train = "birdnet_analyzer.train.cli:main"
+birdnet-segments = "birdnet_analyzer.segments.cli:main"
+birdnet-species = "birdnet_analyzer.species.cli:main"
+
+[project.gui-scripts]
+birdnet-gui = "birdnet_analyzer.gui.__init__:main"
+
+[project.urls]
+Homepage = "https://birdnet.cornell.edu/birdnet"
+Documentation = "https://birdnet-team.github.io/BirdNET-Analyzer/"
+Repository = "https://github.com/birdnet-team/BirdNET-Analyzer"
+Issues = "https://github.com/birdnet-team/BirdNET-Analyzer/issues"
+Download = "https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest"
+
+[tool.setuptools]
+packages = [
+    "birdnet_analyzer",
+    "birdnet_analyzer.analyze",
+    "birdnet_analyzer.gui",
+    "birdnet_analyzer.embeddings",
+    "birdnet_analyzer.search",
+    "birdnet_analyzer.species",
+    "birdnet_analyzer.segments",
+    "birdnet_analyzer.train",
+    "birdnet_analyzer.evaluation",
+]
+
+[tool.setuptools.package-data]
+birdnet_analyzer = [
+    "eBird_taxonomy_codes_2021E.json",
+    "lang/*",
+    "labels/**/*",
+    "gui/assets/**/*",
+]

@@ -1,9 +1,15 @@
+# Models
+checkpoints
+
 # Local testing
 playground*
 foo*
 
 # Apple :/
 .DS_Store
+
+# Documentation
+_build
 
 # Installers
 installers/
@@ -16,7 +22,7 @@ desktop.ini
 checkpoints/custom/
 
 # Example output
-example/
+example
 !example/soundscape.wav
 !example/species_list.txt
 
@@ -163,3 +169,4 @@ autotune/
 
 gui-settings.json
 state.json
+entitlements.plist

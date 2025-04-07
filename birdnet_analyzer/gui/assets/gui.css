@@ -1,0 +1,28 @@
+footer {
+    display: none !important;
+}
+
+#single_file_audio,
+#single_file_audio * {
+    max-height: 81.6px;
+    min-height: 0;
+}
+
+#update-available a {
+    text-decoration: none;
+}
+
+:root {
+    --block-title-text-color: var(--neutral-800);
+    --block-info-text-color: var(--neutral-500);
+}
+
+#single-file-output td:first-of-type span {
+    text-align: center;
+}
+
+#embeddings-search-results {
+    overflow-y: scroll;
+    height: 700px;
+}
+

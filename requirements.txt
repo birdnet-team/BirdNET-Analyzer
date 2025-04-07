@@ -1,9 +1,0 @@
-librosa==0.9.2
-resampy
-tensorflow==2.15.0
-gradio
-pywebview
-tqdm
-bottle
-requests
-keras-tuner

@@ -1,0 +1,48 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker-build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build . --file Dockerfile --tag birdnet:local-test
+
+    # Optional: Add basic test to verify the image works
+    - name: Test Docker image
+      run: |
+        docker run -v $PWD/birdnet_analyzer/example:/audio birdnet:local-test -m birdnet_analyzer.analyze --i /audio --o /audio --slist /audio
+        
+        # Verify output file content
+        expected_header="Selection	View	Channel	Begin Time (s)	End Time (s)	Low Freq (Hz)	High Freq (Hz)	Common Name	Species Code	Confidence	Begin Path	File Offset (s)"
+        expected_first_line="1	Spectrogram 1	1	0	3.0	0	15000	Black-capped Chickadee	bkcchi	0.8141	/audio/soundscape.wav	0"
+        
+        actual_header=$(head -n 1 birdnet_analyzer/example/soundscape.BirdNET.selection.table.txt)
+        actual_first_line=$(head -n 2 birdnet_analyzer/example/soundscape.BirdNET.selection.table.txt | tail -n 1)
+        
+        if [ "$actual_header" != "$expected_header" ] || [ "$actual_first_line" != "$expected_first_line" ]
+        then
+            echo "Output file content does not match expected content"
+            echo "Expected header: $expected_header"
+            echo "Actual header: $actual_header"
+            echo "Expected first line: $expected_first_line"
+            echo "Actual first line: $actual_first_line"
+            exit 1
+        else
+            echo "test received expected output file contents"
+        fi
