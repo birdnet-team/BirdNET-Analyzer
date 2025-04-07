@@ -46,10 +46,11 @@ all = ["birdnet-analyzer[server,gui]"]
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
 birdnet-embeddings = "birdnet_analyzer.embeddings.cli:main"
-birdnet-search = "birdnet_analyzer.search.__init__:main"
-birdnet-train = "birdnet_analyzer.train.__init__:main"
-birdnet-segments = "birdnet_analyzer.segments.__init__:main"
-birdnet-species = "birdnet_analyzer.species.__init__:main"
+birdnet-evaluate = "birdnet_analyzer.evaluation.__init__:main"
+birdnet-search = "birdnet_analyzer.search.cli:main"
+birdnet-train = "birdnet_analyzer.train.cli:main"
+birdnet-segments = "birdnet_analyzer.segments.cli:main"
+birdnet-species = "birdnet_analyzer.species.cli:main"
 
 [project.gui-scripts]
 birdnet-gui = "birdnet_analyzer.gui.__init__:main"
