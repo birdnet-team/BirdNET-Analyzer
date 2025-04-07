@@ -7,7 +7,7 @@ def train(
     crop_mode: Literal["center", "first", "segments"] = "center",
     overlap: float = 0.0,
     epochs: int = 50,
-    batchsize: int = 32,
+    batch_size: int = 32,
     val_split: float = 0.2,
     learning_rate: float = 0.001,
     hidden_units: int = 0,
@@ -35,7 +35,7 @@ def train(
         crop_mode (Literal["center", "first", "segments"], optional): Mode for cropping audio samples. Defaults to "center".
         overlap (float, optional): Overlap ratio for audio segments. Defaults to 0.0.
         epochs (int, optional): Number of training epochs. Defaults to 50.
-        batchsize (int, optional): Batch size for training. Defaults to 32.
+        batch_size (int, optional): Batch size for training. Defaults to 32.
         val_split (float, optional): Fraction of data to use for validation. Defaults to 0.2.
         learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.001.
         hidden_units (int, optional): Number of hidden units in the model. Defaults to 0.
@@ -69,7 +69,7 @@ def train(
     cfg.SIG_OVERLAP = overlap
     cfg.CUSTOM_CLASSIFIER = output
     cfg.TRAIN_EPOCHS = epochs
-    cfg.TRAIN_BATCH_SIZE = batchsize
+    cfg.TRAIN_BATCH_SIZE = batch_size
     cfg.TRAIN_VAL_SPLIT = val_split
     cfg.TRAIN_LEARNING_RATE = learning_rate
     cfg.TRAIN_HIDDEN_UNITS = hidden_units

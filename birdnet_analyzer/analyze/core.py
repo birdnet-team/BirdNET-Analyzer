@@ -4,6 +4,7 @@ from typing import List, Literal
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.utils as utils
 
+
 def analyze(
     input: str,
     output: str | None = None,
@@ -18,7 +19,7 @@ def analyze(
     fmin: int = 0,
     fmax: int = 15000,
     audio_speed: float = 1.0,
-    batchsize: int = 1,
+    batch_size: int = 1,
     combine_results: bool = False,
     rtype: Literal["table", "audacity", "kaleidoscope", "csv"]
     | List[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
@@ -45,7 +46,7 @@ def analyze(
         fmin (int, optional): Minimum frequency for analysis in Hz. Defaults to 0.
         fmax (int, optional): Maximum frequency for analysis in Hz. Defaults to 15000.
         audio_speed (float, optional): Speed factor for audio playback during analysis. Defaults to 1.0.
-        batchsize (int, optional): Batch size for processing. Defaults to 1.
+        batch_size (int, optional): Batch size for processing. Defaults to 1.
         combine_results (bool, optional): Whether to combine results into a single file. Defaults to False.
         rtype (Literal["table", "audacity", "kaleidoscope", "csv"] | List[Literal["table", "audacity", "kaleidoscope", "csv"]], optional):
             Output format(s) for results. Defaults to "table".
@@ -66,8 +67,7 @@ def analyze(
     """
     from multiprocessing import Pool
 
-    from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params
-    from birdnet_analyzer.analyze.utils import combine_results as combine
+    from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params, combine_results as combine
 
     utils.ensure_model_exists()
 
@@ -86,7 +86,7 @@ def analyze(
         fmin=fmin,
         fmax=fmax,
         audio_speed=audio_speed,
-        bs=batchsize,
+        bs=batch_size,
         combine_results=combine_results,
         rtype=rtype,
         sf_thresh=sf_thresh,
@@ -152,7 +152,7 @@ def _set_params(
     threads,
     labels_file=None,
 ):
-    import birdnet_analyzer.species.utils as species
+    from birdnet_analyzer.species.utils import get_species_list
     from birdnet_analyzer.analyze.utils import load_codes  # noqa: E402
 
     cfg.CODES = load_codes()
@@ -228,9 +228,7 @@ def _set_params(
             cfg.SPECIES_LIST = utils.read_lines(cfg.SPECIES_LIST_FILE)
         else:
             cfg.SPECIES_LIST_FILE = None
-            cfg.SPECIES_LIST = species.get_species_list(
-                cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD
-            )
+            cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
 
     lfile = os.path.join(
         cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", "_{}.txt".format(locale))

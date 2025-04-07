@@ -6,7 +6,7 @@ def embeddings(
     fmin: int = 0,
     fmax: int = 15000,
     threads: int = 8,
-    batchsize: int = 1,
+    batch_size: int = 1,
 ):
     """
     Generates embeddings for audio files using the BirdNET-Analyzer.
@@ -21,7 +21,7 @@ def embeddings(
         fmin (int, optional): Minimum frequency (in Hz) for audio analysis. Defaults to 0.
         fmax (int, optional): Maximum frequency (in Hz) for audio analysis. Defaults to 15000.
         threads (int, optional): Number of threads to use for processing. Defaults to 8.
-        batchsize (int, optional): Number of audio segments to process in a single batch. Defaults to 1.
+        batch_size (int, optional): Number of audio segments to process in a single batch. Defaults to 1.
     Raises:
         FileNotFoundError: If the input path or database path does not exist.
         ValueError: If any of the parameters are invalid.
@@ -38,11 +38,11 @@ def embeddings(
             fmin=500,
             fmax=10000,
             threads=4,
-            batchsize=2
+            batch_size=2
         )
     """
     from birdnet_analyzer.embeddings.utils import run
     from birdnet_analyzer.utils import ensure_model_exists
 
     ensure_model_exists()
-    run(input, database, overlap, audio_speed, fmin, fmax, threads, batchsize)
+    run(input, database, overlap, audio_speed, fmin, fmax, threads, batch_size)
