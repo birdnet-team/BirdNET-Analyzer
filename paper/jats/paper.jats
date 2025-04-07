@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.2 20190208//EN"
+                  "JATS-publishing1.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" dtd-version="1.2" article-type="other">
+<front>
+<journal-meta>
+<journal-id></journal-id>
+<journal-title-group>
+<journal-title>Journal of Open Source Software</journal-title>
+<abbrev-journal-title>JOSS</abbrev-journal-title>
+</journal-title-group>
+<issn publication-format="electronic">2475-9066</issn>
+<publisher>
+<publisher-name>Open Journals</publisher-name>
+</publisher>
+</journal-meta>
+<article-meta>
+<article-id pub-id-type="publisher-id">0</article-id>
+<article-id pub-id-type="doi">N/A</article-id>
+<title-group>
+<article-title>BirdNET Analyzer: A biocoustics analysis
+software</article-title>
+</title-group>
+<contrib-group>
+<contrib contrib-type="author" equal-contrib="yes">
+<name>
+<surname>Kahl</surname>
+<given-names>Stefan</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+<xref ref-type="aff" rid="aff-2"/>
+</contrib>
+<contrib contrib-type="author" equal-contrib="yes">
+<name>
+<surname>Haupt</surname>
+<given-names>Josef</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<contrib contrib-type="author" equal-contrib="yes">
+<name>
+<surname>Mauermann</surname>
+<given-names>Max</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<aff id="aff-1">
+<institution-wrap>
+<institution>TU Chemnitz, Germany</institution>
+</institution-wrap>
+</aff>
+<aff id="aff-2">
+<institution-wrap>
+<institution>Cornell Lab of Ornithology, USA</institution>
+</institution-wrap>
+</aff>
+</contrib-group>
+<volume>¿VOL?</volume>
+<issue>¿ISSUE?</issue>
+<fpage>¿PAGE?</fpage>
+<permissions>
+<copyright-statement>Authors of papers retain copyright and release the
+work under a Creative Commons Attribution 4.0 International License (CC
+BY 4.0)</copyright-statement>
+<copyright-year>1970</copyright-year>
+<copyright-holder>The article authors</copyright-holder>
+<license license-type="open-access" xlink:href="https://creativecommons.org/licenses/by/4.0/">
+<license-p>Authors of papers retain copyright and release the work under
+a Creative Commons Attribution 4.0 International License (CC BY
+4.0)</license-p>
+</license>
+</permissions>
+<kwd-group kwd-group-type="author">
+<kwd>Bioacoustic</kwd>
+<kwd>Audio analysis</kwd>
+</kwd-group>
+</article-meta>
+</front>
+<body>
+<sec id="summary">
+  <title>Summary</title>
+  <p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+  nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+  sed diam voluptua. At vero eos et accusam et justo duo dolores et ea
+  rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem
+  ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur
+  sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et
+  dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam
+  et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea
+  takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit
+  amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
+  invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.
+  At vero eos et accusam et justo duo dolores et ea rebum. Stet clita
+  kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit
+  amet.</p>
+  <p>Duis autem vel eum iriure dolor in hendrerit in vulputate velit
+  esse molestie consequat, vel illum dolore eu feugiat nulla facilisis
+  at vero eros et accumsan et iusto odio dignissim qui blandit praesent
+  luptatum zzril delenit augue duis dolore te feugait nulla facilisi.
+  Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam
+  nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat
+  volutpat.</p>
+  <p>Ut wisi enim ad minim veniam, quis nostrud exerci tation
+  ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.
+  Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse
+  molestie consequat, vel illum dolore eu feugiat nulla facilisis at
+  vero eros et accumsan et iusto odio dignissim qui blandit praesent
+  luptatum zzril delenit augue duis dolore te feugait nulla
+  facilisi.</p>
+  <p>Nam liber tempor cum soluta nobis eleifend option congue nihil
+  imperdiet doming id quod mazim placerat facer possim assum. Lorem
+  ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy
+  nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+  Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper
+  suscipit lobortis nisl ut aliquip ex ea commodo consequat.</p>
+  <p>Duis autem vel eum iriure dolor in hendrerit in vulputate velit
+  esse molestie consequat, vel illum dolore eu feugiat nulla
+  facilisis.</p>
+  <p>At vero eos et accusam et justo duo dolores et ea rebum. Stet clita
+  kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit
+  amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed
+  diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam
+  erat, sed diam voluptua. At vero eos et accusam et justo duo dolores
+  et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est
+  Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur
+  sadipscing elitr, At accusam aliquyam diam diam dolore dolores duo
+  eirmod eos erat, et nonumy sed tempor et et invidunt justo labore Stet
+  clita ea et gubergren, kasd magna no rebum. sanctus sea sed takimata
+  ut vero voluptua. est Lorem ipsum dolor sit amet. Lorem ipsum dolor
+  sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
+  invidunt ut labore et dolore magna aliquyam erat.</p>
+  <p>Consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt
+  ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero
+  eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
+  gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+  Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+  nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+  sed diam voluptua. At vero eos et accusam et justo duo dolores et ea
+  rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem
+  ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur
+  sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et
+  dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam
+  et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea
+  takimata sanctus.</p>
+  <p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
+  nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat,
+  sed diam voluptua. At vero eos et accusam et justo duo dolores et ea
+  rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem
+  ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur
+  sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et
+  dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam
+  et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea
+  takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit
+  amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
+  invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.
+  At vero eos et accusam et justo duo dolores et ea rebum. Stet clita
+  kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit
+  amet.</p>
+  <p>Duis autem vel eum iriure dolor in hendrerit in vulputate velit
+  esse molestie consequat, vel illum dolore eu feugiat nulla facilisis
+  at vero eros et accumsan et iusto odio dignissim qui blandit praesent
+  luptatum zzril delenit augue duis dolore te feugait nulla facilisi.
+  Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam
+  nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat
+  volutpat.</p>
+  <p>Ut wisi enim ad minim veniam, quis nostrud exerci tation
+  ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.
+  Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse
+  molestie consequat, vel illum dolore eu feugiat nulla facilisis at
+  vero eros et accumsan et iusto odio dignissim qui blandit praesent
+  luptatum zzril delenit augue duis dolore te feugait nulla
+  facilisi.</p>
+  <p>Nam liber tempor cum soluta nobis eleifend option congue nihil
+  imperdiet doming id quod mazim placerat facer possim assum. Lorem
+  ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy
+  nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+  Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper
+  suscipit lobortis nisl ut aliquip ex ea commodo</p>
+</sec>
+</body>
+<back>
+</back>
+</article>
