@@ -50,19 +50,19 @@ def run_embeddings(
     fmax,
     progress=gr.Progress(track_tqdm=True),
 ):
-    import birdnet_analyzer.embeddings.utils as embeddings
+    from birdnet_analyzer.embeddings.utils import get_database, run
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
     gu.validate(db_name, loc.localize("embeddings-db-name-validation-message"))
     db_path = os.path.join(db_directory, db_name)
 
-    db = embeddings.get_database(db_path)
+    db = get_database(db_path)
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
         db.db.close()
-        embeddings.run(
+        run(
             input_path,
             db_path,
             overlap,
@@ -80,7 +80,7 @@ def run_embeddings(
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
             raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
-        embeddings.run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
+        run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_path}")
 
@@ -89,16 +89,16 @@ def run_embeddings(
 
 @gu.gui_runtime_error_handler
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
-    import birdnet_analyzer.search.utils as search
+    from birdnet_analyzer.search.utils import get_database, get_search_results
 
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
     gu.validate(query_path, loc.localize("embeddings-search-query-validation-message"))
     gu.validate(max_samples, loc.localize("embeddings-search-max-samples-validation-message"))
 
-    db = search.get_database(db_path)
+    db = get_database(db_path)
     settings = db.get_metadata("birdnet_analyzer_settings")
 
-    results = search.get_search_results(
+    results = get_search_results(
         query_path,
         db,
         max_samples,
@@ -137,15 +137,15 @@ def run_export(export_state):
 
 
 def get_embeddings_db(db_path):
-    import birdnet_analyzer.embeddings.utils as embeddings
+    from birdnet_analyzer.embeddings.utils import get_database
 
-    return embeddings.get_database(db_path)
+    return get_database(db_path)
 
 
 def get_search_db(db_path):
-    import birdnet_analyzer.search.utils as search
+    from birdnet_analyzer.search.utils import get_database
 
-    return search.get_database(db_path)
+    return get_database(db_path)
 
 
 def build_embeddings_tab():
