@@ -11,7 +11,7 @@ import pandas as pd
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.evaluation.assessment.performance_assessor import PerformanceAssessor
-from birdnet_analyzer.evaluation.core import process_data
+from birdnet_analyzer.evaluation import process_data
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 
 

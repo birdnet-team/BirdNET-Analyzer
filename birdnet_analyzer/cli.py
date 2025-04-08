@@ -248,25 +248,26 @@ def locale_args():
     return p
 
 
-def bs_args():
+def bs_args(default=cfg.BATCH_SIZE):
     """
     Creates an argument parser for batch size configuration.
     Returns:
         argparse.ArgumentParser: An argument parser with a batch size argument.
     The parser includes the following argument:
-        -b, --batchsize: An integer specifying the number of samples to process at the same time.
+        -b, --batch_size: An integer specifying the number of samples to process at the same time.
                          The value must be at least 1. Defaults to the value of cfg.BATCH_SIZE.
     """
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument(
         "-b",
-        "--batchsize",
+        "--batch_size",
         type=lambda a: max(1, int(a)),
-        default=cfg.BATCH_SIZE,
+        default=default,
         help="Number of samples to process at the same time.",
     )
 
     return p
+
 
 def db_args():
     """
@@ -284,6 +285,7 @@ def db_args():
     )
 
     return p
+
 
 def analyzer_parser():
     """
@@ -360,7 +362,7 @@ def analyzer_parser():
         type=lambda a: max(1, int(a)),
         help="Saves only the top N predictions for each segment independent of their score. Threshold will be ignored.",
     )
-    
+
     parser.add_argument(
         "--merge_consecutive",
         type=int,
@@ -387,14 +389,7 @@ def embeddings_parser():
         argparse.ArgumentParser: Configured argument parser for extracting feature embeddings.
     """
 
-    parents = [
-        db_args(),
-        bandpass_args(),
-        audio_speed_args(), 
-        overlap_args(), 
-        threads_args(), 
-        bs_args()
-    ]
+    parents = [db_args(), bandpass_args(), audio_speed_args(), overlap_args(), threads_args(), bs_args()]
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -408,6 +403,7 @@ def embeddings_parser():
     )
 
     return parser
+
 
 def search_parser():
     """
@@ -427,39 +423,27 @@ def search_parser():
 
     parents = [overlap_args(), db_args()]
 
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=parents
-    )
-    parser.add_argument(
-        "-q",
-        "--queryfile",
-        help="Path to the query file."
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        help="Path to the output folder."
-    )
-    parser.add_argument(
-        "--n_results",
-        default=10,
-        help="Number of results to return."
-    )
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents)
+    parser.add_argument("-q", "--queryfile", help="Path to the query file.")
+    parser.add_argument("-o", "--output", help="Path to the output folder.")
+    parser.add_argument("--n_results", default=10, help="Number of results to return.")
 
     # TODO: use choice argument.
     parser.add_argument(
         "--score_function",
         default="cosine",
-        help="Scoring function to use. Choose 'cosine', 'euclidean' or 'dot'. Defaults to 'cosine'."
+        choices=["cosine", "euclidean", "dot"],
+        help="Scoring function to use. Choose 'cosine', 'euclidean' or 'dot'. Defaults to 'cosine'.",
     )
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
+        choices=["center", "first", "segments"],
         help="Crop mode for the query sample. Can be 'center', 'first' or 'segments'.",
     )
 
     return parser
+
 
 def client_parser():
     """
@@ -603,6 +587,7 @@ def train_parser():
             bandpass_args(),
             audio_speed_args(),
             threads_args(),
+            bs_args(cfg.TRAIN_BATCH_SIZE),
             overlap_args(help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."),
         ],
     )
@@ -623,6 +608,7 @@ def train_parser():
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
+        choices=["center", "first", "segments"],
         help="Crop mode for training data. Can be 'center', 'first' or 'segments'.",
     )
     parser.add_argument("-o", "--output", default=c, help="Path to trained classifier model output.")
@@ -632,7 +618,6 @@ def train_parser():
         default=cfg.TRAIN_EPOCHS,
         help="Number of training epochs.",
     )
-    parser.add_argument("--batch_size", type=int, default=cfg.TRAIN_BATCH_SIZE, help="Batch size.")
     parser.add_argument(
         "--val_split",
         type=float,

@@ -91,16 +91,16 @@ def run_analysis(
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-preparing')} ...")
 
-    from birdnet_analyzer.analyze import set_params
+    from birdnet_analyzer.analyze import _set_params
 
     locale = locale.lower()
     custom_classifier = custom_classifier_file if species_list_choice == gu._CUSTOM_CLASSIFIER else None
-    slist = species_list_file.name if species_list_choice == gu._CUSTOM_SPECIES else None
+    slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else -1
     lon = lon if species_list_choice == gu._PREDICT_SPECIES else -1
     week = -1 if use_yearlong else week
 
-    flist = set_params(
+    flist = _set_params(
         input=input_dir if input_dir else input_path,
         min_conf=confidence,
         custom_classifier=custom_classifier,

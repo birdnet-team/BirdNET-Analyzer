@@ -1,11 +1,15 @@
 """Module containing common function."""
 
+import sys
 import itertools
 import os
 import traceback
 from pathlib import Path
 
 import birdnet_analyzer.config as cfg
+
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 
 def runtime_error_handler(f: callable):
@@ -295,3 +299,94 @@ def save_result_file(result_path: str, out_string: str):
     # Write the result to the file
     with open(result_path, "w", encoding="utf-8") as rfile:
         rfile.write(out_string)
+
+
+def check_model_files():
+    checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints", "V2.4")
+    required_files = [
+        "BirdNET_GLOBAL_6K_V2.4_Model/variables/variables.data-00000-of-00001",
+        "BirdNET_GLOBAL_6K_V2.4_Model/variables/variables.index",
+        "BirdNET_GLOBAL_6K_V2.4_Model/saved_model.pb",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard1of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard2of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard3of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard4of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard5of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard6of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard7of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/group1-shard8of8.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/mdata/model.json",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard1of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard2of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard3of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard4of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard5of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard6of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard7of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard8of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard9of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard10of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard11of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard12of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/group1-shard13of13.bin",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/model.json",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/model/labels.json",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/main.js",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/static/sample.wav",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/templates/index.html",
+        "BirdNET_GLOBAL_6K_V2.4_Model_TFJS/app.py",
+        "BirdNET_GLOBAL_6K_V2.4_Labels.txt",
+        "BirdNET_GLOBAL_6K_V2.4_MData_Model_V2_FP16.tflite",
+        "BirdNET_GLOBAL_6K_V2.4_Model_FP16.tflite",
+        "BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite",
+        "BirdNET_GLOBAL_6K_V2.4_Model_INT8.tflite",
+    ]
+
+    for file in required_files:
+        if not os.path.exists(os.path.join(checkpoint_dir, file)):
+            print(f"Missing {file}")
+
+            return False
+
+    print("Model found!")
+
+    return True
+
+
+def ensure_model_exists():
+    import zipfile
+
+    import requests
+    from tqdm import tqdm
+
+    if FROZEN or check_model_files():
+        return
+
+    checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints")
+
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
+    url = "https://tuc.cloud/index.php/s/3BsizWy5M7CtQ5w/download/V2.4.zip"
+    download_path = os.path.join(checkpoint_dir, "V2.4.zip")
+
+    response = requests.get(url, stream=True, timeout=30)
+    total_size = int(response.headers.get("content-length", 0))
+    block_size = 1024
+
+    with tqdm(total=total_size, unit="iB", unit_scale=True, desc="Downloading model") as tqdm_bar:
+        with open(download_path, "wb") as file:
+            for data in response.iter_content(block_size):
+                tqdm_bar.update(len(data))
+                file.write(data)
+
+    if response.status_code != 200 or (total_size not in (0, tqdm_bar.n)):
+        raise ValueError(f"Failed to download the file. Status code: {response.status_code}")
+
+    with zipfile.ZipFile(download_path, "r") as zip_ref:
+        zip_ref.extractall(os.path.dirname(download_path))
+
+    os.remove(download_path)
+
+
+if __name__ == "__main__":
+    ensure_model_exists()

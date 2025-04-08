@@ -9,10 +9,10 @@ import gradio as gr
 import webview
 
 import birdnet_analyzer.config as cfg
+import birdnet_analyzer.utils as utils
 
-FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
-if FROZEN:
+if utils.FROZEN:
     # divert stdout & stderr to logs.txt file since we have no console when deployed
     userdir = Path.home()
 
@@ -31,7 +31,6 @@ if FROZEN:
     cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
 
 import birdnet_analyzer.gui.settings as settings  # noqa: E402
-import birdnet_analyzer.utils as utils  # noqa: E402
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
 
 loc.load_local_state()
@@ -222,7 +221,7 @@ def build_footer():
             f"""
                 <div style='display: flex; justify-content: space-around; align-items: center; padding: 10px; text-align: center'>
                     <div>
-                        <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span id="current-version">{os.environ["GUI_VERSION"] if FROZEN else "main"}</span><span style="display: none" id="update-available"><a>+</a></span></div>
+                        <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span id="current-version">{os.environ["GUI_VERSION"] if utils.FROZEN else "main"}</span><span style="display: none" id="update-available"><a>+</a></span></div>
                         <div>Model version: {cfg.MODEL_VERSION}</div>
                     </div>
                     <div>K. Lisa Yang Center for Conservation Bioacoustics<br>Chemnitz University of Technology</div>
@@ -733,6 +732,8 @@ def open_window(builder: list[Callable] | Callable):
     global _URL
     multiprocessing.freeze_support()
 
+    utils.ensure_model_exists()
+
     with gr.Blocks(
         css=open(os.path.join(SCRIPT_DIR, "assets/gui.css")).read(),
         js=open(os.path.join(SCRIPT_DIR, "assets/gui.js")).read(),
@@ -773,6 +774,7 @@ def open_window(builder: list[Callable] | Callable):
         enable_monitoring=False,
         allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
     )[1]
+    webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer", _URL.rstrip("/") + f"?__theme={settings.theme()}", width=1300, height=900
     )
