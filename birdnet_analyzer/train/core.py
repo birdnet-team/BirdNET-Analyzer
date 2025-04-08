@@ -3,6 +3,7 @@ from typing import Literal
 
 def train(
     input: str,
+    test_data: str = None,
     output: str = "checkpoints/custom/Custom_Classifier",
     crop_mode: Literal["center", "first", "segments"] = "center",
     overlap: float = 0.0,
@@ -31,6 +32,7 @@ def train(
     Trains a custom classifier model using the BirdNET-Analyzer framework.
     Args:
         input (str): Path to the training data directory.
+        test_data (str, optional): Path to the test data directory. Defaults to None. If not specified, a validation split will be used.
         output (str, optional): Path to save the trained model. Defaults to "checkpoints/custom/Custom_Classifier".
         crop_mode (Literal["center", "first", "segments"], optional): Mode for cropping audio samples. Defaults to "center".
         overlap (float, optional): Overlap ratio for audio segments. Defaults to 0.0.
@@ -65,6 +67,7 @@ def train(
 
     # Config
     cfg.TRAIN_DATA_PATH = input
+    cfg.TEST_DATA_PATH = test_data
     cfg.SAMPLE_CROP_MODE = crop_mode
     cfg.SIG_OVERLAP = overlap
     cfg.CUSTOM_CLASSIFIER = output
