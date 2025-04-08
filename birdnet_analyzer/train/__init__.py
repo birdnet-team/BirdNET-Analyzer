@@ -15,6 +15,7 @@ def main():
 
     # Config
     cfg.TRAIN_DATA_PATH = args.input
+    cfg.TEST_DATA_PATH = args.test_data
     cfg.SAMPLE_CROP_MODE = args.crop_mode
     cfg.SIG_OVERLAP = args.overlap
     cfg.CUSTOM_CLASSIFIER = args.output

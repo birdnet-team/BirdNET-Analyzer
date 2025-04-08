@@ -114,24 +114,28 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
         cache_file: Path to cache file.
 
     Returns:
-        A tuple of (x_train, y_train, labels).
+        A tuple of (x_train, y_train, x_test, y_test, labels).
     """
     # Load from cache
     if cache_mode == "load":
         if os.path.isfile(cache_file):
             print(f"\t...loading from cache: {cache_file}", flush=True)
-            x_train, y_train, labels, cfg.BINARY_CLASSIFICATION, cfg.MULTI_LABEL = utils.load_from_cache(cache_file)
-            return x_train, y_train, labels
+            x_train, y_train, x_test, y_test, labels, cfg.BINARY_CLASSIFICATION, cfg.MULTI_LABEL = utils.load_from_cache(cache_file)
+            return x_train, y_train, x_test, y_test, labels
         else:
             print(f"\t...cache file not found: {cache_file}", flush=True)
 
+    # Print train and test data path as confirmation
+    print(f"\t...train data path: {cfg.TRAIN_DATA_PATH}", flush=True)
+    print(f"\t...test data path: {cfg.TEST_DATA_PATH}", flush=True)
+
     # Get list of subfolders as labels
-    folders = list(sorted(utils.list_subdirectories(cfg.TRAIN_DATA_PATH)))
+    train_folders = list(sorted(utils.list_subdirectories(cfg.TRAIN_DATA_PATH)))
 
     # Read all individual labels from the folder names
     labels = []
 
-    for folder in folders:
+    for folder in train_folders:
         labels_in_folder = folder.split(",")
         for label in labels_in_folder:
             if label not in labels:
@@ -150,19 +154,19 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
 
     # Validate the classes for binary classification
     if cfg.BINARY_CLASSIFICATION:
-        if len([f for f in folders if f.startswith("-")]) > 0:
+        if len([f for f in train_folders if f.startswith("-")]) > 0:
             raise Exception(
                 "Negative labels can't be used with binary classification",
                 "validation-no-negative-samples-in-binary-classification",
             )
-        if len([f for f in folders if f.lower() in cfg.NON_EVENT_CLASSES]) == 0:
+        if len([f for f in train_folders if f.lower() in cfg.NON_EVENT_CLASSES]) == 0:
             raise Exception(
                 "Non-event samples are required for binary classification",
                 "validation-non-event-samples-required-in-binary-classification",
             )
 
     # Check if multi label
-    cfg.MULTI_LABEL = len(valid_labels) > 1 and any("," in f for f in folders)
+    cfg.MULTI_LABEL = len(valid_labels) > 1 and any("," in f for f in train_folders)
 
     # Check if multi-label and binary classficication
     if cfg.BINARY_CLASSIFICATION and cfg.MULTI_LABEL:
@@ -177,73 +181,88 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     # Load training data
     x_train = []
     y_train = []
+    x_test = []
+    y_test = []
 
-    for folder in folders:
-        # Get label vector
-        label_vector = np.zeros((len(valid_labels),), dtype="float32")
-        folder_labels = folder.split(",")
+    def load_data(data_path, allowed_folders):
+        x = []
+        y = []
+        folders = list(sorted(utils.list_subdirectories(data_path)))
 
-        for label in folder_labels:
-            if label.lower() not in cfg.NON_EVENT_CLASSES and not label.startswith("-"):
-                label_vector[valid_labels.index(label)] = 1
-            elif (
-                label.startswith("-") and label[1:] in valid_labels
-            ):  # Negative labels need to be contained in the valid labels
-                label_vector[valid_labels.index(label[1:])] = -1
+        for folder in folders:
+            if folder not in allowed_folders:
+                print(f"Skipping folder {folder} because it is not in the training data.", flush=True)
+                continue
 
-        # Get list of files
-        # Filter files that start with '.' because macOS seems to them for temp files.
-        files = filter(
-            os.path.isfile,
-            (
-                os.path.join(cfg.TRAIN_DATA_PATH, folder, f)
-                for f in sorted(os.listdir(os.path.join(cfg.TRAIN_DATA_PATH, folder)))
-                if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in cfg.ALLOWED_FILETYPES
-            ),
-        )
+            # Get label vector
+            label_vector = np.zeros((len(valid_labels),), dtype="float32")
+            folder_labels = folder.split(",")
 
-        # Load files using thread pool
-        with Pool(cfg.CPU_THREADS) as p:
-            tasks = []
+            for label in folder_labels:
+                if label.lower() not in cfg.NON_EVENT_CLASSES and not label.startswith("-"):
+                    label_vector[valid_labels.index(label)] = 1
+                elif (
+                    label.startswith("-") and label[1:] in valid_labels
+                ):  # Negative labels need to be contained in the valid labels
+                    label_vector[valid_labels.index(label[1:])] = -1
 
-            for f in files:
-                task = p.apply_async(partial(_load_audio_file, f=f, label_vector=label_vector, config=cfg.get_config()))
-                tasks.append(task)
+            # Get list of files
+            # Filter files that start with '.' because macOS seems to them for temp files.
+            files = filter(
+                os.path.isfile,
+                (
+                    os.path.join(data_path, folder, f)
+                    for f in sorted(os.listdir(os.path.join(data_path, folder)))
+                    if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in cfg.ALLOWED_FILETYPES
+                ),
+            )
 
-            # Wait for tasks to complete and monitor progress with tqdm
-            num_files_processed = 0
+            # Load files using thread pool
+            with Pool(cfg.CPU_THREADS) as p:
+                tasks = []
 
-            with tqdm.tqdm(total=len(tasks), desc=f" - loading '{folder}'", unit="f") as progress_bar:
-                for task in tasks:
-                    result = task.get()
-                    # Make sure result is not empty
-                    # Empty results might be caused by errors when loading the audio file
-                    # TODO: We should check for embeddings size in result, otherwise we can't add them to the training data
-                    if len(result[0]) > 0:
-                        x_train += result[0]
-                        y_train += result[1]
+                for f in files:
+                    task = p.apply_async(partial(_load_audio_file, f=f, label_vector=label_vector, config=cfg.get_config()))
+                    tasks.append(task)
 
-                    num_files_processed += 1
-                    progress_bar.update(1)
+                # Wait for tasks to complete and monitor progress with tqdm
+                num_files_processed = 0
 
-                    if progress_callback:
-                        progress_callback(num_files_processed, len(tasks), folder)
+                with tqdm.tqdm(total=len(tasks), desc=f" - loading '{folder}'", unit="f") as progress_bar:
+                    for task in tasks:
+                        result = task.get()
+                        # Make sure result is not empty
+                        # Empty results might be caused by errors when loading the audio file
+                        # TODO: We should check for embeddings size in result, otherwise we can't add them to the training data
+                        if len(result[0]) > 0:
+                            x += result[0]
+                            y += result[1]
 
-    # Convert to numpy arrays
-    x_train = np.array(x_train, dtype="float32")
-    y_train = np.array(y_train, dtype="float32")
+                        num_files_processed += 1
+                        progress_bar.update(1)
+
+                        if progress_callback:
+                            progress_callback(num_files_processed, len(tasks), folder)
+        return np.array(x, dtype="float32"), np.array(y, dtype="float32")
+
+    x_train, y_train = load_data(cfg.TRAIN_DATA_PATH, train_folders)
+
+    if cfg.TEST_DATA_PATH and cfg.TEST_DATA_PATH != cfg.TRAIN_DATA_PATH:
+        test_folders = list(sorted(utils.list_subdirectories(cfg.TEST_DATA_PATH)))
+        allowed_test_folders = [folder for folder in test_folders if folder in train_folders and not folder.startswith("-")]
+        x_test, y_test = load_data(cfg.TEST_DATA_PATH, allowed_test_folders)
 
     # Save to cache?
     if cache_mode == "save":
         print(f"\t...saving training data to cache: {cache_file}", flush=True)
         try:
             # Only save the valid labels
-            utils.save_to_cache(cache_file, x_train, y_train, valid_labels)
+            utils.save_to_cache(cache_file, x_train, y_train, x_test, y_test, valid_labels)
         except Exception as e:
             print(f"\t...error saving cache: {e}", flush=True)
 
     # Return only the valid labels for further use
-    return x_train, y_train, valid_labels
+    return x_train, y_train, x_test, y_test, valid_labels
 
 
 def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, autotune_directory="autotune"):
@@ -258,8 +277,10 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
 
     # Load training data
     print("Loading training data...", flush=True)
-    x_train, y_train, labels = _load_training_data(cfg.TRAIN_CACHE_MODE, cfg.TRAIN_CACHE_FILE, on_data_load_end)
+    x_train, y_train, x_test, y_test, labels = _load_training_data(cfg.TRAIN_CACHE_MODE, cfg.TRAIN_CACHE_FILE, on_data_load_end)
     print(f"...Done. Loaded {x_train.shape[0]} training samples and {y_train.shape[1]} labels.", flush=True)
+    if x_test is not None:
+        print(f"...Loaded {x_test.shape[0]} test samples.", flush=True)
 
     if cfg.AUTOTUNE:
         import gc
@@ -272,7 +293,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
             on_trial_result(0)
 
         class BirdNetTuner(keras_tuner.BayesianOptimization):
-            def __init__(self, x_train, y_train, max_trials, executions_per_trial, on_trial_result):
+            def __init__(self, x_train, y_train, x_test, y_test, max_trials, executions_per_trial, on_trial_result):
                 super().__init__(
                     max_trials=max_trials,
                     executions_per_trial=executions_per_trial,
@@ -282,6 +303,8 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                 )
                 self.x_train = x_train
                 self.y_train = y_train
+                self.x_test = x_test
+                self.y_test = y_test
                 self.on_trial_result = on_trial_result
 
             def run_trial(self, trial, *args, **kwargs):
@@ -316,6 +339,8 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                         classifier,
                         self.x_train,
                         self.y_train,
+                        self.x_test,
+                        self.y_test,
                         epochs=cfg.TRAIN_EPOCHS,
                         batch_size=hp.Choice("batch_size", [8, 16, 32, 64, 128], default=cfg.TRAIN_BATCH_SIZE),
                         learning_rate=hp.Choice(
@@ -323,7 +348,9 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                             [0.1, 0.01, 0.005, 0.002, 0.001, 0.0005, 0.0002, 0.0001],
                             default=cfg.TRAIN_LEARNING_RATE,
                         ),
-                        val_split=cfg.TRAIN_VAL_SPLIT,
+                        # Use validation split if no test data is provided
+                        # Otherwise use 0.0 to avoid splitting the test data
+                        val_split=cfg.TRAIN_VAL_SPLIT if len(self.x_test) == 0 else 0.0,
                         upsampling_ratio=hp.Choice(
                             "upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0], default=cfg.UPSAMPLING_RATIO
                         ),
@@ -358,6 +385,8 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
         tuner = BirdNetTuner(
             x_train=x_train,
             y_train=y_train,
+            x_test=x_test,
+            y_test=y_test,
             max_trials=cfg.AUTOTUNE_TRIALS,
             executions_per_trial=cfg.AUTOTUNE_EXECUTIONS_PER_TRIAL,
             on_trial_result=on_trial_result,
@@ -402,10 +431,12 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
             classifier,
             x_train,
             y_train,
+            x_test,
+            y_test,
             epochs=cfg.TRAIN_EPOCHS,
             batch_size=cfg.TRAIN_BATCH_SIZE,
             learning_rate=cfg.TRAIN_LEARNING_RATE,
-            val_split=cfg.TRAIN_VAL_SPLIT,
+            val_split=cfg.TRAIN_VAL_SPLIT if len(x_test) == 0 else 0.0,
             upsampling_ratio=cfg.UPSAMPLING_RATIO,
             upsampling_mode=cfg.UPSAMPLING_MODE,
             train_with_mixup=cfg.TRAIN_WITH_MIXUP,

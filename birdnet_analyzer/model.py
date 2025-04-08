@@ -648,6 +648,8 @@ def train_linear_classifier(
     classifier,
     x_train,
     y_train,
+    x_test,
+    y_test,
     epochs,
     batch_size,
     learning_rate,
@@ -666,10 +668,12 @@ def train_linear_classifier(
         classifier: The classifier to be trained.
         x_train: Samples.
         y_train: Labels.
+        x_test: Validation samples.
+        y_test: Validation labels.
         epochs: Number of epochs to train.
         batch_size: Batch size.
         learning_rate: The learning rate during training.
-        val_split: Validation split ratio.
+        val_split: Validation split ratio (is 0 when using test data).
         upsampling_ratio: Upsampling ratio.
         upsampling_mode: Upsampling mode.
         train_with_mixup: If True, applies mixup to the training data.
@@ -701,11 +705,15 @@ def train_linear_classifier(
     y_train = y_train[idx]
 
     # Random val split
-    if not cfg.MULTI_LABEL:
-        x_train, y_train, x_val, y_val = random_split(x_train, y_train, val_split)
-    else:
-        x_train, y_train, x_val, y_val = random_multilabel_split(x_train, y_train, val_split)
-
+    if val_split > 0:
+        if not cfg.MULTI_LABEL:
+            x_train, y_train, x_val, y_val = random_split(x_train, y_train, val_split)
+        else:
+            x_train, y_train, x_val, y_val = random_multilabel_split(x_train, y_train, val_split)
+    else:        
+        x_val = x_test
+        y_val = y_test
+        
     print(
         f"Training on {x_train.shape[0]} samples, validating on {x_val.shape[0]} samples.",
         flush=True,
