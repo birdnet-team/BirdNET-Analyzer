@@ -391,7 +391,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                             [0.1, 0.01, 0.005, 0.002, 0.001, 0.0005, 0.0002, 0.0001],
                             default=cfg.TRAIN_LEARNING_RATE,
                         ),
-                        val_split=cfg.TRAIN_VAL_SPLIT,
+                        val_split=cfg.TRAIN_VAL_SPLIT if len(self.x_test) == 0 else 0.0,
                         upsampling_ratio=hp.Choice(
                             "upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0], default=cfg.UPSAMPLING_RATIO
                         ),
