@@ -5,11 +5,12 @@ import os
 
 import numpy as np
 
-import birdnet_analyzer.analyze.utils as analyze
 import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.model as model
 import birdnet_analyzer.utils as utils
+from birdnet_analyzer.analyze.utils import get_raw_audio_from_file
+
 
 from perch_hoplite.db import sqlite_usearch_impl
 from perch_hoplite.db import interface as hoplite
@@ -55,7 +56,7 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     # Process each chunk
     try:
         while offset < fileLengthSeconds:
-            chunks = analyze.get_raw_audio_from_file(fpath, offset, duration)
+            chunks = get_raw_audio_from_file(fpath, offset, duration)
             start, end = offset, cfg.SIG_LENGTH + offset
             samples = []
             timestamps = []

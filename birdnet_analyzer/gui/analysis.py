@@ -4,11 +4,13 @@ from pathlib import Path
 
 import gradio as gr
 
-import birdnet_analyzer.analyze.utils as analyze
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.model as model
+
+
+from birdnet_analyzer.analyze.utils import analyze_file, combine_results, save_analysis_params
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ORIGINAL_LABELS_FILE = str(Path(SCRIPT_DIR).parent / cfg.LABELS_FILE)
@@ -27,7 +29,7 @@ def analyze_file_wrapper(entry):
         tuple: A tuple where the first element is the file path and the second
                element is the result of the analyze.analyzeFile function.
     """
-    return (entry[0], analyze.analyze_file(entry))
+    return (entry[0], analyze_file(entry))
 
 
 def run_analysis(
@@ -91,7 +93,7 @@ def run_analysis(
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-preparing')} ...")
 
-    from birdnet_analyzer.analyze import _set_params
+    from birdnet_analyzer.analyze.core import _set_params
 
     locale = locale.lower()
     custom_classifier = custom_classifier_file if species_list_choice == gu._CUSTOM_CLASSIFIER else None
@@ -157,11 +159,11 @@ def run_analysis(
     if cfg.COMBINE_RESULTS:
         combine_list = [[r[1] for r in result_list if r[0] == i[0]][0] for i in flist]
         print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
-        analyze.combine_results(combine_list)
+        combine_results(combine_list)
         print("done!", flush=True)
 
     if save_params:
-        analyze.save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
+        save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
 
     return (
         [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list]

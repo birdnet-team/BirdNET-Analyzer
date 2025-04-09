@@ -5,13 +5,13 @@ from functools import partial
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.segments.utils as segments
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
 
+from birdnet_analyzer.segments.utils import extract_segments
 
 def extract_segments_wrapper(entry):
-    return (entry[0][0], segments.extract_segments(entry))
+    return (entry[0][0], extract_segments(entry))
 
 
 @gu.gui_runtime_error_handler
