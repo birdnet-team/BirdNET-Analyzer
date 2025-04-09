@@ -251,6 +251,9 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
         test_folders = list(sorted(utils.list_subdirectories(cfg.TEST_DATA_PATH)))
         allowed_test_folders = [folder for folder in test_folders if folder in train_folders and not folder.startswith("-")]
         x_test, y_test = load_data(cfg.TEST_DATA_PATH, allowed_test_folders)
+    else:
+        x_test =np.array([])
+        y_test = np.array([])
 
     # Save to cache?
     if cache_mode == "save":
