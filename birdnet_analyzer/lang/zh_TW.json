@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "隱藏單元的數量，若大於零，將使用雙層分類器",
     "training-tab-hiddenunits-number-label": "隱藏單元",
     "training-tab-input-selection-button-label": "選擇訓練資料",
+    "training-tab-test-data-selection-button-label": "選擇測試資料 (可選)",
     "training-tab-learningrate-number-info": "最佳化器的學習速率",
     "training-tab-learningrate-number-label": "學習速率",
     "training-tab-model-save-mode-radio-info": "'取代'將改寫原本的分類層，只留下新訓練的分類，而'附加'將結合原先的分類層，再加上新訓練的分類",

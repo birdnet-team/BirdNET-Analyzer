@@ -37,6 +37,7 @@ def select_subdirectories(state_key=None):
 @gu.gui_runtime_error_handler
 def start_training(
     data_dir,
+    test_data_dir,
     crop_mode,
     crop_overlap,
     fmin,
@@ -104,6 +105,7 @@ def start_training(
         progress((0, epochs), desc=loc.localize("progress-build-classifier"), unit="epochs")
 
     cfg.TRAIN_DATA_PATH = data_dir
+    cfg.TEST_DATA_PATH = test_data_dir
     cfg.SAMPLE_CROP_MODE = crop_mode
     cfg.SIG_OVERLAP = max(0.0, min(2.9, float(crop_overlap)))
     cfg.CUSTOM_CLASSIFIER = str(Path(output_dir) / classifier_name)
@@ -192,6 +194,7 @@ def build_train_tab():
     with gr.Tab(loc.localize("training-tab-title")):
         input_directory_state = gr.State()
         output_directory_state = gr.State()
+        test_data_dir_state = gr.State()
 
         with gr.Row():
             with gr.Column():
@@ -203,6 +206,17 @@ def build_train_tab():
                 select_directory_btn.click(
                     partial(select_subdirectories, state_key="train-data-dir"),
                     outputs=[input_directory_state, directory_input],
+                    show_progress=False,
+                )
+
+                select_test_directory_btn = gr.Button(loc.localize("training-tab-test-data-selection-button-label"))
+                test_directory_input = gr.List(
+                    headers=[loc.localize("training-tab-classes-dataframe-column-classes-header")],
+                    interactive=False,
+                )
+                select_test_directory_btn.click(
+                    partial(select_subdirectories, state_key="test-data-dir"),
+                    outputs=[test_data_dir_state, test_directory_input],
                     show_progress=False,
                 )
 
@@ -462,6 +476,7 @@ def build_train_tab():
             start_training,
             inputs=[
                 input_directory_state,
+                test_data_dir_state,
                 crop_mode,
                 crop_overlap,
                 fmin_number,

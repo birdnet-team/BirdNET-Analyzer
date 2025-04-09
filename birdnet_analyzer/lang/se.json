@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Antal dolda enheter. Om satt till >0 används en tvålagersklassificerare.",
     "training-tab-hiddenunits-number-label": "Dolda enheter",
     "training-tab-input-selection-button-label": "Välj träningsdata",
+    "training-tab-test-data-selection-button-label": "Välj testdata (valfritt)",
     "training-tab-learningrate-number-info": "Inlärningshastighet för optimeraren.",
     "training-tab-learningrate-number-label": "Inlärningshastighet",
     "training-tab-model-save-mode-radio-info": "'ersätt' kommer att skriva över det ursprungliga klassificeringslagret, så att endast de tränade klasserna finns kvar, och 'lägg till' kommer att kombinera det ursprungliga klassificeringslagret med det nya.",

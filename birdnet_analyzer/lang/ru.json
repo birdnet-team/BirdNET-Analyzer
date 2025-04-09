@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Количество скрытых единиц. Если установлено значение > 0, используется двухуровневый классификатор.",
     "training-tab-hiddenunits-number-label": "Скрытые единицы",
     "training-tab-input-selection-button-label": "Выбор данных обучения",
+    "training-tab-test-data-selection-button-label": "Выбор данных для тестирования (опционально)",
     "training-tab-learningrate-number-info": "Скорость обучения для оптимизатора.",
     "training-tab-learningrate-number-label": "Скорость обучения",
     "training-tab-model-save-mode-radio-info": " 'заменить' перезапишет исходный классификационный слой, оставив только обученные классы, а 'добавить' объединит исходный классификационный слой с новым.",

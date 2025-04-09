@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Number of hidden units. If set to >0, a two-layer classifier is used.",
     "training-tab-hiddenunits-number-label": "Hidden units",
     "training-tab-input-selection-button-label": "Select training data",
+    "training-tab-test-data-selection-button-label": "Select test data (optional)",
     "training-tab-learningrate-number-info": "Learning rate for the optimizer.",
     "training-tab-learningrate-number-label": "Learning rate",
     "training-tab-model-save-mode-radio-info": "'replace' will overwrite the original classification layer, leaving only the trained classes, and 'append' will combine the original classification layer with the new one.",

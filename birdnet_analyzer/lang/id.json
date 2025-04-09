@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Jumlah unit tersembunyi. Jika diatur >0, klasifikator dua lapis digunakan.",
     "training-tab-hiddenunits-number-label": "Unit tersembunyi",
     "training-tab-input-selection-button-label": "Pilih data pelatihan",
+    "training-tab-test-data-selection-button-label": "Pilih data pengujian (opsional)",
     "training-tab-learningrate-number-info": "Laju pembelajaran untuk optimalisasi.",
     "training-tab-learningrate-number-label": "Laju pembelajaran",
     "training-tab-model-save-mode-radio-info": "'ganti' akan menimpa lapisan klasifikasi asli, hanya tersisa kelas yang telah dilatih, dan 'tambahkan' akan menggabungkan lapisan klasifikasi asli dengan yang baru.",

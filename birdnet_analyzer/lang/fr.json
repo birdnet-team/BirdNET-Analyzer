@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Nombre d'unités cachées. Si la valeur est >0, un classificateur à deux couches est utilisé.",
     "training-tab-hiddenunits-number-label": "Unités cachées",
     "training-tab-input-selection-button-label": "Sélectionner les données d'apprentissage",
+    "training-tab-test-data-selection-button-label": "Sélectionner les données de test (optionnel)",
     "training-tab-learningrate-number-info": "Taux d'apprentissage de l'optimiseur.",
     "training-tab-learningrate-number-label": "Taux d'apprentissage",
     "training-tab-model-save-mode-radio-info": "L'option « replace » écrase la couche de classification originale, en ne laissant que les classes formées, et l'option « append » combine la couche de classification originale avec la nouvelle.",

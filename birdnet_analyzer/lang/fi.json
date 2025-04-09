@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Piiloyksiköiden määrä. Jos asetettu >0, käytetään kaksikerroksista luokittelijaa.",
     "training-tab-hiddenunits-number-label": "Piiloyksiköt",
     "training-tab-input-selection-button-label": "Valitse koulutusdata",
+    "training-tab-test-data-selection-button-label": "Valitse testidataa (Valinnainen)",
     "training-tab-learningrate-number-info": "Optimoijan oppimistahti.",
     "training-tab-learningrate-number-label": "Oppimistahti",
     "training-tab-model-save-mode-radio-info": "'korvaa' ylikirjoittaa alkuperäisen luokittelukerroksen, jättäen vain koulutetut luokat, ja 'lisää' yhdistää alkuperäisen luokittelukerroksen uuden kanssa.",

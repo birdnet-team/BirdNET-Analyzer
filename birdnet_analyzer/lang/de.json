@@ -281,6 +281,7 @@
     "training-tab-hiddenunits-number-info": "Anzahl der hidden units im Klassifikator. Wenn auf >0 gesetzt, wird ein Klassifikator mit zwei Schichten verwendet.",
     "training-tab-hiddenunits-number-label": "Hidden Units",
     "training-tab-input-selection-button-label": "Trainingsdaten auswählen",
+    "training-tab-test-data-selection-button-label": "Testdaten auswählen (optional)",
     "training-tab-learningrate-number-info": "Lernrate für den Optimizer.",
     "training-tab-learningrate-number-label": "Lernrate",
     "training-tab-model-save-mode-radio-info": "'Ersetzen' wird die ursprüngliche Klassifikationsschicht überschreiben, so dass nur die trainierten Klassen bleiben, 'Anhängen' wird die ursprüngliche Klassifikationsschicht mit der neuen kombinieren.",
