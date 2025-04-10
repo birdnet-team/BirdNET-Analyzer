@@ -1,6 +1,8 @@
 def embeddings(
     input: str,
     database: str,
+    /,
+    *,
     overlap: float = 0.0,
     audio_speed: float = 1.0,
     fmin: int = 0,

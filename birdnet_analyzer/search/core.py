@@ -4,6 +4,8 @@ def search(
     output: str,
     database: str,
     queryfile: str,
+    /,
+    *,
     n_results: int = 10,
     score_function: Literal["cosine", "euclidean", "dot"] = "cosine",
     crop_mode: Literal["center", "first", "segments"] = "center",

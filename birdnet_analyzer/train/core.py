@@ -3,8 +3,10 @@ from typing import Literal
 
 def train(
     input: str,
-    test_data: str = None,
+    /,
     output: str = "checkpoints/custom/Custom_Classifier",
+    test_data: str = None,
+    *,
     crop_mode: Literal["center", "first", "segments"] = "center",
     overlap: float = 0.0,
     epochs: int = 50,

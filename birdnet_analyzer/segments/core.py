@@ -1,7 +1,9 @@
 def segments(
     input: str,
+    /,
     output: str | None = None,
     results: str | None = None,
+    *,
     min_conf: float = 0.25,
     max_segments: int = 100,
     audio_speed: float = 1.0,
