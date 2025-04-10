@@ -13,7 +13,7 @@ def train(
     batch_size: int = 32,
     val_split: float = 0.2,
     learning_rate: float = 0.001,
-    focal_loss: bool = False,
+    use_focal_loss: bool = False,
     focal_loss_gamma: float = 2.0,
     focal_loss_alpha: float = 0.25,
     hidden_units: int = 0,
@@ -46,7 +46,7 @@ def train(
         batch_size (int, optional): Batch size for training. Defaults to 32.
         val_split (float, optional): Fraction of data to use for validation. Defaults to 0.2.
         learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.001.
-        focal_loss (bool, optional): Whether to use focal loss for training. Defaults to False.
+        use_focal_loss (bool, optional): Whether to use focal loss for training. Defaults to False.
         focal_loss_gamma (float, optional): Gamma parameter for focal loss. Defaults to 2.0.
         focal_loss_alpha (float, optional): Alpha parameter for focal loss. Defaults to 0.25.
         hidden_units (int, optional): Number of hidden units in the model. Defaults to 0.
@@ -85,7 +85,7 @@ def train(
     cfg.TRAIN_BATCH_SIZE = batch_size
     cfg.TRAIN_VAL_SPLIT = val_split
     cfg.TRAIN_LEARNING_RATE = learning_rate
-    cfg.TRAIN_WITH_FOCAL_LOSS = focal_loss if focal_loss is not None else cfg.TRAIN_WITH_FOCAL_LOSS
+    cfg.TRAIN_WITH_FOCAL_LOSS = use_focal_loss if use_focal_loss is not None else cfg.TRAIN_WITH_FOCAL_LOSS
     cfg.FOCAL_LOSS_GAMMA = focal_loss_gamma
     cfg.FOCAL_LOSS_ALPHA = focal_loss_alpha
     cfg.TRAIN_HIDDEN_UNITS = hidden_units
