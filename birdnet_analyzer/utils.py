@@ -240,12 +240,12 @@ def load_from_cache(path):
     y_train = data["y_train"]
     
     # Handle test data which might not be in older cache files
-    x_test = data["x_test"] if "x_test" in data else np.array([])
-    y_test = data["y_test"] if "y_test" in data else np.array([])
+    x_test = cache.get("x_test", np.array([]))
+    y_test = cache.get("y_test", np.array([]))
     
-    labels = data["labels"]
-    binary_classification = bool(data["binary_classification"])
-    multi_label = bool(data["multi_label"])
+    labels = cache["labels"]
+    binary_classification = bool(cache.get("binary_classification", False))
+    multi_label = bool(cache.get("multi_label", False))
     
     return x_train, y_train, x_test, y_test, labels, binary_classification, multi_label
 

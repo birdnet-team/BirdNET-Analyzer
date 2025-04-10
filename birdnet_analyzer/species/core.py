@@ -3,6 +3,8 @@ from typing import Literal
 
 def species(
     output: str,
+    /,
+    *,
     lat: float = -1,
     lon: float = -1,
     week: int = -1,

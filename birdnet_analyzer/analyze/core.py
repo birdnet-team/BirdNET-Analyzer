@@ -7,7 +7,9 @@ import birdnet_analyzer.utils as utils
 
 def analyze(
     input: str,
+    /,
     output: str | None = None,
+    *,
     min_conf: float = 0.25,
     classifier: str | None = None,
     lat: float = -1,

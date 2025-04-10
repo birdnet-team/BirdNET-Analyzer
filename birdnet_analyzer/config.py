@@ -213,6 +213,7 @@ OUTPUT_PATH: str = ""
 
 # Training data path
 TRAIN_DATA_PATH: str = ""
+TEST_DATA_PATH: str = ""
 
 CODES = {}
 LABELS: list[str] = []

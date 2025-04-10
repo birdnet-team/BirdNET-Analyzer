@@ -120,7 +120,9 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     if cache_mode == "load":
         if os.path.isfile(cache_file):
             print(f"\t...loading from cache: {cache_file}", flush=True)
-            x_train, y_train, x_test, y_test, labels, cfg.BINARY_CLASSIFICATION, cfg.MULTI_LABEL = utils.load_from_cache(cache_file)
+            x_train, y_train, x_test, y_test, labels, cfg.BINARY_CLASSIFICATION, cfg.MULTI_LABEL = (
+                utils.load_from_cache(cache_file)
+            )
             return x_train, y_train, x_test, y_test, labels
         else:
             print(f"\t...cache file not found: {cache_file}", flush=True)
@@ -222,7 +224,9 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
                 tasks = []
 
                 for f in files:
-                    task = p.apply_async(partial(_load_audio_file, f=f, label_vector=label_vector, config=cfg.get_config()))
+                    task = p.apply_async(
+                        partial(_load_audio_file, f=f, label_vector=label_vector, config=cfg.get_config())
+                    )
                     tasks.append(task)
 
                 # Wait for tasks to complete and monitor progress with tqdm
@@ -249,10 +253,12 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
 
     if cfg.TEST_DATA_PATH and cfg.TEST_DATA_PATH != cfg.TRAIN_DATA_PATH:
         test_folders = list(sorted(utils.list_subdirectories(cfg.TEST_DATA_PATH)))
-        allowed_test_folders = [folder for folder in test_folders if folder in train_folders and not folder.startswith("-")]
+        allowed_test_folders = [
+            folder for folder in test_folders if folder in train_folders and not folder.startswith("-")
+        ]
         x_test, y_test = load_data(cfg.TEST_DATA_PATH, allowed_test_folders)
     else:
-        x_test =np.array([])
+        x_test = np.array([])
         y_test = np.array([])
 
     # Save to cache?
@@ -420,13 +426,9 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                         self.x_test,
                         self.y_test,
                         epochs=cfg.TRAIN_EPOCHS,
-                        batch_size=hp.Choice("batch_size", [8, 16, 32, 64, 128], default=cfg.TRAIN_BATCH_SIZE),
-                        learning_rate=hp.Choice(
-                            "learning_rate",
-                            [0.1, 0.01, 0.005, 0.002, 0.001, 0.0005, 0.0002, 0.0001],
-                            default=cfg.TRAIN_LEARNING_RATE,
-                        ),
-                        val_split=cfg.TRAIN_VAL_SPLIT if len(self.x_test) == 0 else 0.0,
+                        batch_size=batch_size,
+                        learning_rate=learning_rate,
+                        val_split=0.0 if self.x_test else cfg.TRAIN_VAL_SPLIT,
                         upsampling_ratio=hp.Choice(
                             "upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0], default=cfg.UPSAMPLING_RATIO
                         ),
