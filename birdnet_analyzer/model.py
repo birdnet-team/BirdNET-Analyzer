@@ -623,20 +623,36 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
 
     # Input layer
     model.add(keras.layers.InputLayer(input_shape=(input_size,)))
+    
+    # Batch normalization on input to standardize embeddings
+    model.add(keras.layers.BatchNormalization())
+    
+    # Optional L2 regularization for all dense layers
+    regularizer = keras.regularizers.l2(1e-5)
 
-    # Hidden layer
+    # Hidden layer with improved architecture
     if hidden_units > 0:
-        # Dropout layer?
+        # Dropout layer before hidden layer
         if dropout > 0:
             model.add(keras.layers.Dropout(dropout))
-        model.add(keras.layers.Dense(hidden_units, activation="relu"))
+            
+        # Add a hidden layer with L2 regularization
+        model.add(keras.layers.Dense(hidden_units, 
+                                     activation="relu",
+                                     kernel_regularizer=regularizer,
+                                     kernel_initializer='he_normal'))
+        
+        # Add another batch normalization after the hidden layer
+        model.add(keras.layers.BatchNormalization())
 
-    # Dropout layer?
+    # Dropout layer before output
     if dropout > 0:
         model.add(keras.layers.Dropout(dropout))
 
-    # Classification layer
-    model.add(keras.layers.Dense(num_labels))
+    # Classification layer with L2 regularization
+    model.add(keras.layers.Dense(num_labels, 
+                                kernel_regularizer=regularizer,
+                                kernel_initializer='glorot_uniform'))
 
     # Activation layer
     model.add(keras.layers.Activation("sigmoid"))
@@ -658,6 +674,9 @@ def train_linear_classifier(
     upsampling_mode,
     train_with_mixup,
     train_with_label_smoothing,
+    train_with_focal_loss=False,
+    focal_loss_gamma=2.0,
+    focal_loss_alpha=0.25,
     on_epoch_end=None,
 ):
     """Trains a custom classifier.
@@ -678,6 +697,9 @@ def train_linear_classifier(
         upsampling_mode: Upsampling mode.
         train_with_mixup: If True, applies mixup to the training data.
         train_with_label_smoothing: If True, applies label smoothing to the training data.
+        train_with_focal_loss: If True, uses focal loss instead of binary cross-entropy loss.
+        focal_loss_gamma: Focal loss gamma parameter.
+        focal_loss_alpha: Focal loss alpha parameter.
         on_epoch_end: Optional callback `function(epoch, logs)`.
 
     Returns:
@@ -732,27 +754,54 @@ def train_linear_classifier(
     if train_with_label_smoothing and not cfg.BINARY_CLASSIFICATION:
         y_train = label_smoothing(y_train)
 
-    # Early stopping
+    # Early stopping with patience depending on dataset size
+    patience = min(10, max(5, int(epochs / 10)))
+    min_delta = 0.001
+    
     callbacks = [
+        # EarlyStopping with restore_best_weights
         keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=5,
+            monitor="val_AUPRC",
+            mode="max",
+            patience=patience,
             verbose=1,
-            start_from_epoch=5,
+            min_delta=min_delta,
             restore_best_weights=True,
         ),
+        # Function callback for progress tracking
         FunctionCallback(on_epoch_end=on_epoch_end),
     ]
 
-    # Cosine annealing lr schedule
-    lr_schedule = keras.experimental.CosineDecay(learning_rate, epochs * x_train.shape[0] / batch_size)
-
+    # Learning rate schedule - use cosine decay with warmup
+    warmup_epochs = min(5, int(epochs * 0.1))
+    total_steps = epochs * x_train.shape[0] / batch_size
+    warmup_steps = warmup_epochs * x_train.shape[0] / batch_size
+    
+    def lr_schedule(epoch, lr):
+        if epoch < warmup_epochs:
+            # Linear warmup
+            return learning_rate * (epoch + 1) / warmup_epochs
+        else:
+            # Cosine decay
+            progress = (epoch - warmup_epochs) / (epochs - warmup_epochs)
+            return learning_rate * (0.1 + 0.9 * (1 + np.cos(np.pi * progress)) / 2)
+    
+    # Add LR scheduler callback
+    callbacks.append(keras.callbacks.LearningRateScheduler(lr_schedule))
+    
     optimizer_cls = keras.optimizers.legacy.Adam if sys.platform == "darwin" else keras.optimizers.Adam
 
-    # Compile model
+    # Choose the loss function based on config
+    loss_function = custom_loss
+    if train_with_focal_loss:
+        loss_function = lambda y_true, y_pred: focal_loss(
+            y_true, y_pred, gamma=cfg.FOCAL_LOSS_GAMMA, alpha=cfg.FOCAL_LOSS_ALPHA
+        )
+
+    # Compile model with appropriate metrics for classification task
     classifier.compile(
-        optimizer=optimizer_cls(learning_rate=lr_schedule),
-        loss=custom_loss,
+        optimizer=optimizer_cls(learning_rate=learning_rate),
+        loss=loss_function,
         metrics=[
             keras.metrics.AUC(
                 curve="PR",
@@ -1012,18 +1061,45 @@ def explore(lat: float, lon: float, week: int):
     return l_filter
 
 
-def custom_loss(y_true, y_pred, epsilon=1e-7):
-    """Custom loss function that also estimated loss for negative labels.
-
-    Args:
-        y_true: True labels.
-        y_pred: Predicted labels.
-        epsilon: Epsilon value to avoid log(0).
-
-    Returns:
-        The loss.
+def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     """
+    Focal loss for better handling of class imbalance.
+    
+    This loss function gives more weight to hard examples and down-weights easy examples.
+    Particularly helpful for imbalanced datasets where some classes have few samples.
+    
+    Args:
+        y_true: Ground truth labels.
+        y_pred: Predicted probabilities.
+        gamma: Focusing parameter. Higher values mean more focus on hard examples.
+        alpha: Balance parameter. Controls weight of positive vs negative examples.
+        epsilon: Small constant to prevent log(0).
+        
+    Returns:
+        Focal loss value.
+    """
+    import tensorflow.keras.backend as K
+    
+    # Apply sigmoid if not already applied
+    y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
+    
+    # Calculate cross entropy
+    cross_entropy = -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred)
+    
+    # Calculate focal weight
+    p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
+    focal_weight = K.pow(1 - p_t, gamma)
+    
+    # Apply alpha balancing
+    alpha_factor = y_true * alpha + (1 - y_true) * (1 - alpha)
+    
+    # Calculate focal loss
+    focal_loss = alpha_factor * focal_weight * cross_entropy
+    
+    # Sum over all classes
+    return K.sum(focal_loss, axis=-1)
 
+def custom_loss(y_true, y_pred, epsilon=1e-7):
     import tensorflow.keras.backend as K
 
     # Calculate loss for positive labels with epsilon

@@ -54,7 +54,12 @@ def start_training(
     epochs,
     batch_size,
     learning_rate,
+    focal_loss,
+    focal_loss_gamma,
+    focal_loss_alpha,
     hidden_units,
+    dropout,
+    label_smoothing,
     use_mixup,
     upsampling_ratio,
     upsampling_mode,
@@ -66,13 +71,34 @@ def start_training(
 
     Args:
         data_dir: Directory containing the training data.
-        output_dir: Directory for the new classifier.
-        classifier_name: File name of the classifier.
-        epochs: Number of epochs to train for.
-        batch_size: Number of samples in one batch.
-        learning_rate: Learning rate for training.
-        hidden_units: If > 0 the classifier contains a further hidden layer.
-        progress: The gradio progress bar.
+        test_data_dir: Directory containing the test data.
+        crop_mode: Mode for cropping audio samples.
+        crop_overlap: Overlap ratio for audio segments.
+        fmin: Minimum frequency for bandpass filtering.
+        fmax: Maximum frequency for bandpass filtering.
+        output_dir: Directory to save the trained model.
+        classifier_name: Name of the custom classifier.
+        model_save_mode: Save mode for the model (replace or append).
+        cache_mode: Cache mode for training data (load, save, or None).
+        cache_file: Path to the cache file.
+        cache_file_name: Name of the cache file.
+        autotune: Whether to use hyperparameter autotuning.
+        autotune_trials: Number of trials for autotuning.
+        autotune_executions_per_trials: Number of executions per autotuning trial.
+        epochs: Number of training epochs.
+        batch_size: Batch size for training.
+        learning_rate: Learning rate for the optimizer.
+        focal_loss: Whether to use focal loss for training.
+        focal_loss_gamma: Gamma parameter for focal loss.
+        focal_loss_alpha: Alpha parameter for focal loss.
+        hidden_units: Number of hidden units in the droput: Dropout rate for regularization.
+        dropout: Dropout rate for regularization.
+        label_smoothing: Whether to apply label smoothing for training.
+        use_mixup: Whether to use mixup data augmentation.
+        upsampling_ratio: Ratio for upsampling underrepresented classes.
+        upsampling_mode: Mode for upsampling (repeat, mean, smote).
+        model_format: Format to save the trained model (tflite, raven, both).
+        audio_speed: Speed factor for audio playback.
 
     Returns:
         Returns a matplotlib.pyplot figure.
@@ -82,7 +108,10 @@ def start_training(
 
     from birdnet_analyzer.train.utils import train_model
 
-    gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
+    # Skip training data validation when cache mode is "load"
+    if cache_mode != "load":
+        gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
+    
     gu.validate(output_dir, loc.localize("validation-no-directory-for-classifier-selected"))
     gu.validate(classifier_name, loc.localize("validation-no-valid-classifier-name"))
 
@@ -98,8 +127,14 @@ def start_training(
     if fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
+    cfg.TRAIN_WITH_FOCALS = focal_loss
+    cfg.FOCAL_LOSS_GAMMA = max(0.0, float(focal_loss_gamma))
+    cfg.FOCAL_LOSS_ALPHA = max(0.0, min(1.0, float(focal_loss_alpha)))
+
     if not hidden_units or hidden_units < 0:
         hidden_units = 0
+        
+    cfg.TRAIN_DROPOUT = max(0.0, min(1.0, float(dropout)))
 
     if progress is not None:
         progress((0, epochs), desc=loc.localize("progress-build-classifier"), unit="epochs")
@@ -113,6 +148,7 @@ def start_training(
     cfg.TRAIN_BATCH_SIZE = int(batch_size)
     cfg.TRAIN_LEARNING_RATE = learning_rate
     cfg.TRAIN_HIDDEN_UNITS = int(hidden_units)
+    cfg.TRAIN_WITH_LABEL_SMOOTHING = label_smoothing
     cfg.TRAIN_WITH_MIXUP = use_mixup
     cfg.UPSAMPLING_RATIO = min(max(0, upsampling_ratio), 1)
     cfg.UPSAMPLING_MODE = upsampling_mode
@@ -255,6 +291,72 @@ def build_train_tab():
                     show_progress=False,
                 )
 
+        with gr.Row():
+            cache_file_state = gr.State()
+            cache_mode = gr.Radio(
+                [
+                    (loc.localize("training-tab-cache-mode-radio-option-none"), None),
+                    (loc.localize("training-tab-cache-mode-radio-option-load"), "load"),
+                    (loc.localize("training-tab-cache-mode-radio-option-save"), "save"),
+                ],
+                value=cfg.TRAIN_CACHE_MODE,
+                label=loc.localize("training-tab-cache-mode-radio-label"),
+                info=loc.localize("training-tab-cache-mode-radio-info"),
+            )
+            with gr.Column(visible=False) as new_cache_file_row:
+                select_cache_file_directory_btn = gr.Button(
+                    loc.localize("training-tab-cache-select-directory-button-label")
+                )
+
+                with gr.Column():
+                    cache_file_name = gr.Textbox(
+                        "train_cache.npz",
+                        visible=False,
+                        info=loc.localize("training-tab-cache-file-name-textbox-info"),
+                    )
+
+                def select_directory_and_update():
+                    dir_name = gu.select_folder(state_key="train-data-cache-file-output")
+
+                    if dir_name:
+                        return (
+                            dir_name,
+                            gr.Textbox(label=dir_name, visible=True),
+                        )
+
+                    return None, None
+
+                select_cache_file_directory_btn.click(
+                    select_directory_and_update,
+                    outputs=[cache_file_state, cache_file_name],
+                    show_progress=False,
+                )
+
+            with gr.Column(visible=False) as load_cache_file_row:
+                selected_cache_file_btn = gr.Button(loc.localize("training-tab-cache-select-file-button-label"))
+                cache_file_input = gr.File(file_types=[".npz"], visible=False, interactive=False)
+
+                def on_cache_file_selection_click():
+                    file = gu.select_file(("NPZ file (*.npz)",), state_key="train_data_cache_file")
+
+                    if file:
+                        return file, gr.File(value=file, visible=True)
+
+                    return None, None
+
+                selected_cache_file_btn.click(
+                    on_cache_file_selection_click,
+                    outputs=[cache_file_state, cache_file_input],
+                    show_progress=False,
+                )
+
+            def on_cache_mode_change(value):
+                return gr.Row(visible=value == "save"), gr.Row(visible=value == "load")
+
+            cache_mode.change(
+                on_cache_mode_change, inputs=cache_mode, outputs=[new_cache_file_row, load_cache_file_row]
+            )
+
         autotune_cb = gr.Checkbox(
             cfg.AUTOTUNE,
             label=loc.localize("training-tab-autotune-checkbox-label"),
@@ -281,20 +383,46 @@ def build_train_tab():
                 epoch_number = gr.Number(
                     cfg.TRAIN_EPOCHS,
                     minimum=1,
+                    step=1,
                     label=loc.localize("training-tab-epochs-number-label"),
                     info=loc.localize("training-tab-epochs-number-info"),
                 )
                 batch_size_number = gr.Number(
                     32,
                     minimum=1,
+                    step=8,
                     label=loc.localize("training-tab-batchsize-number-label"),
                     info=loc.localize("training-tab-batchsize-number-info"),
                 )
                 learning_rate_number = gr.Number(
                     cfg.TRAIN_LEARNING_RATE,
                     minimum=0.0001,
+                    step=0.0001,
                     label=loc.localize("training-tab-learningrate-number-label"),
                     info=loc.localize("training-tab-learningrate-number-info"),
+                )
+
+            with gr.Row():
+                hidden_units_number = gr.Number(
+                    cfg.TRAIN_HIDDEN_UNITS,
+                    minimum=0,
+                    step=64,
+                    label=loc.localize("training-tab-hiddenunits-number-label"),
+                    info=loc.localize("training-tab-hiddenunits-number-info"),
+                )
+                dropout_number = gr.Number(
+                    cfg.TRAIN_DROPOUT,
+                    minimum=0.0,
+                    maximum=0.9,
+                    step=0.1,
+                    label=loc.localize("training-tab-dropout-number-label"),
+                    info=loc.localize("training-tab-dropout-number-info"),
+                )
+                use_label_smoothing = gr.Checkbox(
+                    cfg.TRAIN_WITH_LABEL_SMOOTHING,
+                    label=loc.localize("training-tab-use-labelsmoothing-checkbox-label"),
+                    info=loc.localize("training-tab-use-labelsmoothing-checkbox-info"),
+                    show_label=True,
                 )
 
             with gr.Row():
@@ -313,24 +441,52 @@ def build_train_tab():
                     0.0,
                     1.0,
                     cfg.UPSAMPLING_RATIO,
-                    step=0.01,
+                    step=0.05,
                     label=loc.localize("training-tab-upsampling-ratio-slider-label"),
                     info=loc.localize("training-tab-upsampling-ratio-slider-info"),
                 )
 
             with gr.Row():
-                hidden_units_number = gr.Number(
-                    cfg.TRAIN_HIDDEN_UNITS,
-                    minimum=0,
-                    label=loc.localize("training-tab-hiddenunits-number-label"),
-                    info=loc.localize("training-tab-hiddenunits-number-info"),
-                )
                 use_mixup = gr.Checkbox(
                     cfg.TRAIN_WITH_MIXUP,
                     label=loc.localize("training-tab-use-mixup-checkbox-label"),
                     info=loc.localize("training-tab-use-mixup-checkbox-info"),
                     show_label=True,
                 )
+                use_focal_loss = gr.Checkbox(
+                    cfg.TRAIN_WITH_FOCAL_LOSS,
+                    label=loc.localize("training-tab-use-focal-loss-checkbox-label"),
+                    info=loc.localize("training-tab-use-focal-loss-checkbox-info"),
+                    show_label=True,
+                )
+
+        with gr.Row(visible=False) as focal_loss_params:
+            with gr.Column():
+                focal_loss_gamma = gr.Slider(
+                    minimum=0.5,
+                    maximum=5.0,
+                    value=cfg.FOCAL_LOSS_GAMMA,
+                    step=0.1,
+                    label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
+                    info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
+                    interactive=True,
+                )
+                focal_loss_alpha = gr.Slider(
+                    minimum=0.1,
+                    maximum=0.9,
+                    value=cfg.FOCAL_LOSS_ALPHA,
+                    step=0.05,
+                    label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
+                    info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
+                    interactive=True,
+                )
+
+        def on_focal_loss_change(value):
+            return gr.Row(visible=value)
+
+        use_focal_loss.change(
+            on_focal_loss_change, inputs=use_focal_loss, outputs=focal_loss_params, show_progress=False
+        )
 
         def on_autotune_change(value):
             return gr.Column(visible=not value), gr.Column(visible=value)
@@ -401,71 +557,7 @@ def build_train_tab():
             info=loc.localize("training-tab-model-save-mode-radio-info"),
         )
 
-        with gr.Row():
-            cache_file_state = gr.State()
-            cache_mode = gr.Radio(
-                [
-                    (loc.localize("training-tab-cache-mode-radio-option-none"), None),
-                    (loc.localize("training-tab-cache-mode-radio-option-load"), "load"),
-                    (loc.localize("training-tab-cache-mode-radio-option-save"), "save"),
-                ],
-                value=cfg.TRAIN_CACHE_MODE,
-                label=loc.localize("training-tab-cache-mode-radio-label"),
-                info=loc.localize("training-tab-cache-mode-radio-info"),
-            )
-            with gr.Column(visible=False) as new_cache_file_row:
-                select_cache_file_directory_btn = gr.Button(
-                    loc.localize("training-tab-cache-select-directory-button-label")
-                )
-
-                with gr.Column():
-                    cache_file_name = gr.Textbox(
-                        "train_cache.npz",
-                        visible=False,
-                        info=loc.localize("training-tab-cache-file-name-textbox-info"),
-                    )
-
-                def select_directory_and_update():
-                    dir_name = gu.select_folder(state_key="train-data-cache-file-output")
-
-                    if dir_name:
-                        return (
-                            dir_name,
-                            gr.Textbox(label=dir_name, visible=True),
-                        )
-
-                    return None, None
-
-                select_cache_file_directory_btn.click(
-                    select_directory_and_update,
-                    outputs=[cache_file_state, cache_file_name],
-                    show_progress=False,
-                )
-
-            with gr.Column(visible=False) as load_cache_file_row:
-                selected_cache_file_btn = gr.Button(loc.localize("training-tab-cache-select-file-button-label"))
-                cache_file_input = gr.File(file_types=[".npz"], visible=False, interactive=False)
-
-                def on_cache_file_selection_click():
-                    file = gu.select_file(("NPZ file (*.npz)",), state_key="train_data_cache_file")
-
-                    if file:
-                        return file, gr.File(value=file, visible=True)
-
-                    return None, None
-
-                selected_cache_file_btn.click(
-                    on_cache_file_selection_click,
-                    outputs=[cache_file_state, cache_file_input],
-                    show_progress=False,
-                )
-
-            def on_cache_mode_change(value):
-                return gr.Row(visible=value == "save"), gr.Row(visible=value == "load")
-
-            cache_mode.change(
-                on_cache_mode_change, inputs=cache_mode, outputs=[new_cache_file_row, load_cache_file_row]
-            )
+        
 
         train_history_plot = gr.Plot()
         start_training_button = gr.Button(
@@ -493,7 +585,12 @@ def build_train_tab():
                 epoch_number,
                 batch_size_number,
                 learning_rate_number,
+                use_focal_loss,
+                focal_loss_gamma,
+                focal_loss_alpha,
                 hidden_units_number,
+                dropout_number,
+                use_label_smoothing,
                 use_mixup,
                 upsampling_ratio,
                 upsampling_mode,
