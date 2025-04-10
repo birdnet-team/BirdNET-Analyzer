@@ -5,6 +5,7 @@ import itertools
 import os
 import traceback
 from pathlib import Path
+import numpy as np
 
 import birdnet_analyzer.config as cfg
 
@@ -176,59 +177,76 @@ def list_subdirectories(path: str):
     return filter(lambda el: os.path.isdir(os.path.join(path, el)), os.listdir(path))
 
 
-def save_to_cache(cache_file: str, x_train, y_train, x_test, y_test, labels: list[str]):
-    """Saves the training data to a cache file.
+def save_to_cache(path, x_train, y_train, x_test, y_test, labels):
+    """Saves training data to cache.
 
     Args:
-        cache_file: The path to the cache file.
-        x_train: The training samples.
-        y_train: The training labels.
-        x_test: The test samples.
-        y_test: The test labels.
-        labels: The list of labels.
+        path: Path to the cache file.
+        x_train: Training samples.
+        y_train: Training labels.
+        x_test: Test samples.
+        y_test: Test labels.
+        labels: Labels.
     """
-    import numpy as np
-
-    # Create cache directory
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-
-    # Save to cache
-    np.savez_compressed(
-        cache_file,
+    # Make directory if needed
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    # Save cache file with training data, test data, labels and configuration
+    np.savez(
+        path,
         x_train=x_train,
         y_train=y_train,
         x_test=x_test,
         y_test=y_test,
-        labels=labels,
+        labels=np.array(labels, dtype=object),
         binary_classification=cfg.BINARY_CLASSIFICATION,
         multi_label=cfg.MULTI_LABEL,
+        fmin=cfg.BANDPASS_FMIN,
+        fmax=cfg.BANDPASS_FMAX,
+        audio_speed=cfg.AUDIO_SPEED,
+        crop_mode=cfg.SAMPLE_CROP_MODE,
+        overlap=cfg.SIG_OVERLAP
     )
 
 
-def load_from_cache(cache_file: str):
-    """Loads the training data from a cache file.
+def load_from_cache(path):
+    """Loads training data from cache.
 
     Args:
-        cache_file: The path to the cache file.
+        path: Path to the cache file.
 
     Returns:
-        A tuple of (x_train, y_train, x_test, y_test, labels, binary_classification, multi_label).
-
+        A tuple of (x_train, y_train, labels, binary_classification, multi_label).
     """
-    import numpy as np
-
-    # Load from cache
-    cache = np.load(cache_file, allow_pickle=True)
-
-    # Get data
-    x_train = cache["x_train"]
-    y_train = cache["y_train"]
-    x_test = cache["x_test"] if "x_test" in cache.keys() else np.array([])
-    y_test = cache["y_test"] if "y_test" in cache.keys() else np.array([])
-    labels = cache["labels"]
-    binary_classification = bool(cache["binary_classification"]) if "binary_classification" in cache.keys() else False
-    multi_label = bool(cache["multi_label"]) if "multi_label" in cache.keys() else False
-
+    # Load cache file
+    data = np.load(path, allow_pickle=True)
+    
+    # Check if cache contains needed preprocessing parameters
+    if 'fmin' in data and 'fmax' in data and 'audio_speed' in data and 'crop_mode' in data and 'overlap' in data:
+        # Check if preprocessing parameters match current settings
+        if (data['fmin'] != cfg.BANDPASS_FMIN or data['fmax'] != cfg.BANDPASS_FMAX or 
+            data['audio_speed'] != cfg.AUDIO_SPEED or data['crop_mode'] != cfg.SAMPLE_CROP_MODE or 
+            data['overlap'] != cfg.SIG_OVERLAP):
+            print(f"\t...WARNING: Cache preprocessing parameters don't match current settings!", flush=True)
+            print(f"\t   Cache: fmin={data['fmin']}, fmax={data['fmax']}, speed={data['audio_speed']}", flush=True)
+            print(f"\t   Cache: crop_mode={data['crop_mode']}, overlap={data['overlap']}", flush=True)
+            print(f"\t   Current: fmin={cfg.BANDPASS_FMIN}, fmax={cfg.BANDPASS_FMAX}, speed={cfg.AUDIO_SPEED}", flush=True)
+            print(f"\t   Current: crop_mode={cfg.SAMPLE_CROP_MODE}, overlap={cfg.SIG_OVERLAP}", flush=True)
+    
+    # Extract and return data
+    x_train = data["x_train"]
+    y_train = data["y_train"]
+    
+    # Handle test data which might not be in older cache files
+    x_test = data["x_test"] if "x_test" in data else np.array([])
+    y_test = data["y_test"] if "y_test" in data else np.array([])
+    
+    labels = data["labels"]
+    binary_classification = bool(data["binary_classification"])
+    multi_label = bool(data["multi_label"])
+    
     return x_train, y_train, x_test, y_test, labels, binary_classification, multi_label
 
 
