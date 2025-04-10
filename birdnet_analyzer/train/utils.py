@@ -583,7 +583,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                 writer = csv.writer(f)
                 
                 # Define all the metrics as columns
-                header = ['Class', 'Precision', 'Recall', 'F1 Score', 'AUPRC', 'AUROC', 'Optimal Threshold'
+                header = ['Class', 'Precision', 'Recall', 'F1 Score', 'AUPRC', 'AUROC', 'Optimal Threshold',
                           'True Positives', 'False Positives', 'True Negatives', 'False Negatives', 
                           'Samples', 'Percentage (%)']
                 writer.writerow(header)
