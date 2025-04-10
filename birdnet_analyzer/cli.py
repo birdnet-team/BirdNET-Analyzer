@@ -603,7 +603,6 @@ def train_parser():
     )    
     parser.add_argument(
         "--test_data", 
-        default=None, 
         help="Path to test data folder. If not specified, a validation split will be used.")
     parser.add_argument(
         "--crop_mode",

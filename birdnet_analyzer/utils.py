@@ -223,11 +223,11 @@ def load_from_cache(cache_file: str):
     # Get data
     x_train = cache["x_train"]
     y_train = cache["y_train"]
-    x_test = cache["x_test"] if "x_test" in cache.keys() else np.array([])
-    y_test = cache["y_test"] if "y_test" in cache.keys() else np.array([])
+    x_test = cache.get("x_test", np.array([]))
+    y_test = cache.get("y_test", np.array([]))
     labels = cache["labels"]
-    binary_classification = bool(cache["binary_classification"]) if "binary_classification" in cache.keys() else False
-    multi_label = bool(cache["multi_label"]) if "multi_label" in cache.keys() else False
+    binary_classification = bool(cache.get("binary_classification", False))
+    multi_label = bool(cache.get("multi_label", False))
 
     return x_train, y_train, x_test, y_test, labels, binary_classification, multi_label
 

@@ -34,6 +34,7 @@ def select_subdirectories(state_key=None):
 
     return None, None
 
+
 @gu.gui_runtime_error_handler
 def start_training(
     data_dir,
