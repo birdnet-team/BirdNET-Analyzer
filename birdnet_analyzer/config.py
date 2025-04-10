@@ -166,6 +166,15 @@ TRAIN_WITH_MIXUP: bool = False
 # Whether to apply label smoothing for training
 TRAIN_WITH_LABEL_SMOOTHING: bool = False
 
+# Whether to use focal loss for training
+TRAIN_WITH_FOCAL_LOSS: bool = False
+
+# Focal loss gamma parameter
+FOCAL_LOSS_GAMMA: float = 2.0
+
+# Focal loss alpha parameter
+FOCAL_LOSS_ALPHA: float = 0.25
+
 # Model output format
 TRAINED_MODEL_OUTPUT_FORMAT: str = "tflite"
 

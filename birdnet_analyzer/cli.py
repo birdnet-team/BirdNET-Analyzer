@@ -629,7 +629,24 @@ def train_parser():
         type=float,
         default=cfg.TRAIN_LEARNING_RATE,
         help="Learning rate.",
+    )    
+    parser.add_argument(
+        "--focal-loss",
+        action="store_true",
+        help="Use focal loss for training (helps with imbalanced classes).",
     )
+    parser.add_argument(
+        "--focal-loss-gamma",
+        default=cfg.FOCAL_LOSS_GAMMA,
+        type=float,
+        help="Focal loss gamma parameter (focusing parameter). Higher values give more weight to hard examples.",
+    )
+    parser.add_argument(
+        "--focal-loss-alpha",
+        default=cfg.FOCAL_LOSS_ALPHA,
+        type=float,
+        help="Focal loss alpha parameter (balancing parameter). Controls weight between positive and negative examples.",
+    )    
     parser.add_argument(
         "--hidden_units",
         type=int,
@@ -642,6 +659,7 @@ def train_parser():
         default=cfg.TRAIN_DROPOUT,
         help="Dropout rate.",
     )
+    parser.add_argument("--label_smoothing", action="store_true", help="Whether to use label smoothing for training.")
     parser.add_argument("--mixup", action="store_true", help="Whether to use mixup for training.")
     parser.add_argument(
         "--upsampling_ratio",
