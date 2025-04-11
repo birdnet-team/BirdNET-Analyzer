@@ -276,7 +276,7 @@
     "training-tab-crop-mode-radio-option-smart": "smart",
     "training-tab-crop-overlap-number-info": "Adjust the overlap of training samples.",
     "training-tab-crop-overlap-number-label": "Crop segment overlap (s)",
-    "training-tab-dropout-number-info": "Sets the dropout rate for training. Higher values may help prevent overfitting.",
+    "training-tab-dropout-number-info": "Higher values may help prevent overfitting.",
     "training-tab-dropout-number-label": "Dropout rate",
     "training-tab-early-stoppage-msg": "Stopped early - validation metric not improving.",
     "training-tab-epochs-number-info": "Number of training epochs.",

@@ -276,7 +276,7 @@
     "training-tab-crop-mode-radio-option-smart": "intelligent",
     "training-tab-crop-overlap-number-info": "Ajuster le chevauchement des échantillons de formation.",
     "training-tab-crop-overlap-number-label": "Chevauchement des segments de culture",
-    "training-tab-dropout-number-info": "Définit le taux de dropout pour l'entraînement. Des valeurs plus élevées peuvent aider à prévenir le surapprentissage mais peuvent rendre l'entraînement moins stable.",
+    "training-tab-dropout-number-info": "Des valeurs plus élevées peuvent aider à prévenir le surapprentissage mais peuvent rendre l'entraînement moins stable.",
     "training-tab-dropout-number-label": "Taux de dropout",
     "training-tab-early-stoppage-msg": "Arrêt prématuré - la mesure de validation ne s'améliore pas.",
     "training-tab-epochs-number-info": "Nombre d'époques d'apprentissage.",

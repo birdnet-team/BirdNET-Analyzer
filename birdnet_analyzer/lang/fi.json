@@ -276,7 +276,7 @@
     "training-tab-crop-mode-radio-option-smart": "älykäs",
     "training-tab-crop-overlap-number-info": "Säädä koulutusnäytteiden päällekkäisyyttä.",
     "training-tab-crop-overlap-number-label": "Rajaussegmenttien päällekkäisyys (s)",
-    "training-tab-dropout-number-info": "Asettaa dropout-nopeuden koulutukseen. Korkeammat arvot voivat estää ylisovittamista, mutta voivat tehdä koulutuksesta epävakaampaa.",
+    "training-tab-dropout-number-info": "Korkeammat arvot voivat estää ylisovittamista, mutta voivat tehdä koulutuksesta epävakaampaa.",
     "training-tab-dropout-number-label": "Dropout-nopeus",
     "training-tab-early-stoppage-msg": "Pysäytetty aikaisin - validointimittari ei parantunut.",
     "training-tab-epochs-number-info": "Koulutusaikakausien määrä.",
