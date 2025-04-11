@@ -537,7 +537,8 @@ def build_train_tab():
                 [
                     (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
                     (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
-                    (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
+                    (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),                    
+                    (loc.localize("training-tab-crop-mode-radio-option-smart"), "smart"),
                 ],
                 value="center",
                 label=loc.localize("training-tab-crop-mode-radio-label"),
@@ -555,7 +556,9 @@ def build_train_tab():
             )
 
             def on_crop_select(new_crop_mode):
-                return gr.Number(visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments")
+                # Make overlap slider visible for both "segments" and "smart" crop modes
+                return gr.Number(visible=new_crop_mode in ["segments", "smart"], 
+                                interactive=new_crop_mode in ["segments", "smart"])
 
             crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
 

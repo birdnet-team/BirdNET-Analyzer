@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "centro",
     "training-tab-crop-mode-radio-option-first": "primeiro",
     "training-tab-crop-mode-radio-option-segments": "segmento",
+    "training-tab-crop-mode-radio-option-smart": "inteligente",
     "training-tab-crop-overlap-number-info": "Ajuste a sobreposição de amostras de treinamento.",
     "training-tab-crop-overlap-number-label": "Sobreposição do segmento de corte (s)",
     "training-tab-dropout-number-info": "Define a taxa de dropout para o treinamento. Valores mais altos podem ajudar a evitar overfitting, mas podem tornar o treinamento menos estável.",

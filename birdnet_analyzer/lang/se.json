@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "mitten",
     "training-tab-crop-mode-radio-option-first": "första",
     "training-tab-crop-mode-radio-option-segments": "segment",
+    "training-tab-crop-mode-radio-option-smart": "smart",
     "training-tab-crop-overlap-number-info": "Justera överlappningen av träningsprover.",
     "training-tab-crop-overlap-number-label": "Beskärningssegmentöverlappning (s)",
     "training-tab-dropout-number-info": "Ställer in dropout-hastigheten för träning. Högre värden kan hjälpa till att förhindra överanpassning men kan göra träningen mindre stabil.",

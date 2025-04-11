@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "Mitte",
     "training-tab-crop-mode-radio-option-first": "Erstes",
     "training-tab-crop-mode-radio-option-segments": "Segmente",
+    "training-tab-crop-mode-radio-option-smart": "Smart",
     "training-tab-crop-overlap-number-info": "Stellen Sie die Überlappung der Trainingssamples ein.",
     "training-tab-crop-overlap-number-label": "Überlappung des Zuschnittsegments (s)",
     "training-tab-dropout-number-info": "Legt die Dropout-Rate für das Training fest. Höhere Werte können helfen, Overfitting zu verhindern.",

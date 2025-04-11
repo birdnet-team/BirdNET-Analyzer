@@ -607,8 +607,8 @@ def train_parser():
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
-        choices=["center", "first", "segments"],
-        help="Crop mode for training data. Can be 'center', 'first' or 'segments'.",
+        choices=["center", "first", "segments", "smart"],
+        help="Crop mode for training data. Can be 'center', 'first', 'segments' or 'smart'.",
     )
     parser.add_argument("-o", "--output", default=c, help="Path to trained classifier model output.")
     parser.add_argument(

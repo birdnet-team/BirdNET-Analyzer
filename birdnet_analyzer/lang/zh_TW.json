@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "中間",
     "training-tab-crop-mode-radio-option-first": "第一個",
     "training-tab-crop-mode-radio-option-segments": "音檔片段",
+    "training-tab-crop-mode-radio-option-smart": "智慧型",
     "training-tab-crop-overlap-number-info": "調整訓練資料的重疊秒數",
     "training-tab-crop-overlap-number-label": "剪裁後音檔片段的重疊(秒)",
     "training-tab-dropout-number-info": "設置訓練的 Dropout 率。較高的值可能有助於防止過擬合，但可能使訓練不穩定。",

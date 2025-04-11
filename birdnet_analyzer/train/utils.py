@@ -83,6 +83,9 @@ def _load_audio_file(f, label_vector, config):
         sig_splits = [audio.crop_center(sig, rate, cfg.SIG_LENGTH)]
     elif cfg.SAMPLE_CROP_MODE == "first":
         sig_splits = [audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)[0]]
+    elif cfg.SAMPLE_CROP_MODE == "smart":
+        # Smart cropping - detect peaks in audio energy to identify potential signals
+        sig_splits = audio.smart_crop_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
     else:
         sig_splits = audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
@@ -98,7 +101,6 @@ def _load_audio_file(f, label_vector, config):
         y_train.extend(batch_label)
 
     return x_train, y_train
-
 
 def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     """Loads the data for training.

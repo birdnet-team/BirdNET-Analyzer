@@ -40,7 +40,7 @@ def train(
         input (str): Path to the training data directory.
         test_data (str, optional): Path to the test data directory. Defaults to None. If not specified, a validation split will be used.
         output (str, optional): Path to save the trained model. Defaults to "checkpoints/custom/Custom_Classifier".
-        crop_mode (Literal["center", "first", "segments"], optional): Mode for cropping audio samples. Defaults to "center".
+        crop_mode (Literal["center", "first", "segments", "smart"], optional): Mode for cropping audio samples. Defaults to "center".
         overlap (float, optional): Overlap ratio for audio segments. Defaults to 0.0.
         epochs (int, optional): Number of training epochs. Defaults to 50.
         batch_size (int, optional): Batch size for training. Defaults to 32.

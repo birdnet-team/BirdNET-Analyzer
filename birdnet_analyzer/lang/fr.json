@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "centré",
     "training-tab-crop-mode-radio-option-first": "début",
     "training-tab-crop-mode-radio-option-segments": "segmenté",
+    "training-tab-crop-mode-radio-option-smart": "intelligent",
     "training-tab-crop-overlap-number-info": "Ajuster le chevauchement des échantillons de formation.",
     "training-tab-crop-overlap-number-label": "Chevauchement des segments de culture",
     "training-tab-dropout-number-info": "Définit le taux de dropout pour l'entraînement. Des valeurs plus élevées peuvent aider à prévenir le surapprentissage mais peuvent rendre l'entraînement moins stable.",

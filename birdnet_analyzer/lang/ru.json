@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "центр",
     "training-tab-crop-mode-radio-option-first": "первый",
     "training-tab-crop-mode-radio-option-segments": "сегменты",
+    "training-tab-crop-mode-radio-option-smart": "умный",
     "training-tab-crop-overlap-number-info": "Отрегулируйте перекрытие обучающих выборок.",
     "training-tab-crop-overlap-number-label": "Перекрытие сегментов обрезки (сек)",
     "training-tab-dropout-number-info": "Устанавливает скорость dropout для обучения. Более высокие значения могут помочь предотвратить переобучение, но могут сделать обучение менее стабильным.",

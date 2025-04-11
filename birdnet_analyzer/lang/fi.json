@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "keskeltä",
     "training-tab-crop-mode-radio-option-first": "alusta",
     "training-tab-crop-mode-radio-option-segments": "segmentit",
+    "training-tab-crop-mode-radio-option-smart": "älykäs",
     "training-tab-crop-overlap-number-info": "Säädä koulutusnäytteiden päällekkäisyyttä.",
     "training-tab-crop-overlap-number-label": "Rajaussegmenttien päällekkäisyys (s)",
     "training-tab-dropout-number-info": "Asettaa dropout-nopeuden koulutukseen. Korkeammat arvot voivat estää ylisovittamista, mutta voivat tehdä koulutuksesta epävakaampaa.",

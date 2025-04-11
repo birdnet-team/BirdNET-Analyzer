@@ -273,6 +273,7 @@
     "training-tab-crop-mode-radio-option-center": "tengah",
     "training-tab-crop-mode-radio-option-first": "awal",
     "training-tab-crop-mode-radio-option-segments": "segments",
+    "training-tab-crop-mode-radio-option-smart": "pintar",
     "training-tab-crop-overlap-number-info": "Sesuaikan tumpang tindih sampel pelatihan.",
     "training-tab-crop-overlap-number-label": "Potong segment yang tumpang tindih (detik)",
     "training-tab-dropout-number-info": "Mengatur tingkat dropout untuk pelatihan. Nilai yang lebih tinggi dapat membantu mencegah overfitting tetapi dapat membuat pelatihan menjadi kurang stabil.",
