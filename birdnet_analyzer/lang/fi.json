@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "esiintymistiheys",
     "species-tab-start-button-label": "Luo lajilista",
     "species-tab-title": "Lajit",
-    "training-tab-audio-speed-slider-info": "Negatiiviset arvot hidastavat, positiiviset nopeuttavat. -10 vastaa 10x hidastusta, 10 vastaa 10x nopeutusta. 0 vastaa ei muutosta.",
+    "training-tab-audio-speed-slider-info": "Negatiiviset arvot hidastavat, positiiviset nopeuttavat. -10 vastaa 10x hidastusta, 10 vastaa 10x nopeutusta. 1.0 vastaa ei muutosta.",
     "training-tab-audio-speed-slider-label": "Äänen nopeuden muutos",
     "training-tab-autotune-checkbox-info": "Etsii parhaat hyperparametrit, mutta vie enemmän aikaa.",
     "training-tab-autotune-checkbox-label": "Käytä autovirittäjää",

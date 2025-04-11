@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "vIghro'",
     "species-tab-start-button-label": "Seghmey wav yInob",
     "species-tab-title": "Seghmey",
-    "training-tab-audio-speed-slider-info": "mI' motlhHa' veb, mI' motlh veb. -10 = 10logh veb, 10 = 10logh veb. 0 = pagh choH.",
+    "training-tab-audio-speed-slider-info": "mI' motlhHa' veb, mI' motlh veb. -10 = 10logh veb, 10 = 10logh veb. 1.0 = pagh choH.",
     "training-tab-audio-speed-slider-label": "Qo' veb",
     "training-tab-autotune-checkbox-info": "vIghro' qechmey chu'.",
     "training-tab-autotune-checkbox-label": "qeq yIchoH",

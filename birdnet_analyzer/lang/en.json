@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "frequency",
     "species-tab-start-button-label": "Generate species list",
     "species-tab-title": "Species",
-    "training-tab-audio-speed-slider-info": "Nуgative values slow down, positive values speed up. -10 equals 10x decrease, 10 equals 10x increase. 0 equals no change.",
+    "training-tab-audio-speed-slider-info": "Nуgative values slow down, positive values speed up. -10 equals 10x decrease, 10 equals 10x increase. 1.0 equals no change.",
     "training-tab-audio-speed-slider-label": "Audio speed modification",
     "training-tab-autotune-checkbox-info": "Searches for the best hyperparameters, but takes more time.",
     "training-tab-autotune-checkbox-label": "Use autotune",

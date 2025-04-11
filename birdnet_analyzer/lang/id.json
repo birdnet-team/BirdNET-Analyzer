@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "frekuensi",
     "species-tab-start-button-label": "Hasilkan daftar spesies",
     "species-tab-title": "Spesies",
-    "training-tab-audio-speed-slider-info": "Nilai negatif memperlambat, nilai positif mempercepat. -10 sama dengan penurunan 10x, 10 sama dengan peningkatan 10x. 0 sama dengan tidak ada perubahan.",
+    "training-tab-audio-speed-slider-info": "Nilai negatif memperlambat, nilai positif mempercepat. -10 sama dengan penurunan 10x, 10 sama dengan peningkatan 10x. 1.0 sama dengan tidak ada perubahan.",
     "training-tab-audio-speed-slider-label": "Modifikasi kecepatan audio",
     "training-tab-autotune-checkbox-info": "Mencari hiperparameter terbaik, namun memerlukan waktu lebih lama.",
     "training-tab-autotune-checkbox-label": "Gunakan autotune",

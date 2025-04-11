@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "frequência de ocorrência",
     "species-tab-start-button-label": "Gerar lista de espécies",
     "species-tab-title": "Espécies",
-    "training-tab-audio-speed-slider-info": "Valores negativos desaceleram, valores positivos aceleram. -10 equivale a uma diminuição de 10x, 10 equivale a um aumento de 10x. 0 equivale a nenhuma mudança.",
+    "training-tab-audio-speed-slider-info": "Valores negativos desaceleram, valores positivos aceleram. -10 equivale a uma diminuição de 10x, 10 equivale a um aumento de 10x. 1.0 equivale a nenhuma mudança.",
     "training-tab-audio-speed-slider-label": "Modificação da velocidade do áudio",
     "training-tab-autotune-checkbox-info": "Busca os melhore hiperparâmetros, mas toma mais tempo.",
     "training-tab-autotune-checkbox-label": "Usar autotune",

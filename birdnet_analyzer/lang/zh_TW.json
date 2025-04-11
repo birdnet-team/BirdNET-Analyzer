@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "出現頻率",
     "species-tab-start-button-label": "開始分析",
     "species-tab-title": "各地點物種清單",
-    "training-tab-audio-speed-slider-info": "負值減慢，正值加快。-10 等於減少 10 倍，10 等於增加 10 倍。0 等於沒有變化。",
+    "training-tab-audio-speed-slider-info": "負值減慢，正值加快。-10 等於減少 10 倍，10 等於增加 10 倍。1.0 等於沒有變化。",
     "training-tab-audio-speed-slider-label": "音頻速度修改",
     "training-tab-autotune-checkbox-info": "自動尋找最佳的超參數，但會需要較多的運算時間",
     "training-tab-autotune-checkbox-label": "使用自動調諧",

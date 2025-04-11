@@ -248,7 +248,7 @@
     "species-tab-sort-radio-option-frequency": "frekvens",
     "species-tab-start-button-label": "Generera artlista",
     "species-tab-title": "Arter",
-    "training-tab-audio-speed-slider-info": "Negativa värden saktar ner, positiva värden ökar hastigheten. -10 motsvarar 10x minskning, 10 motsvarar 10x ökning. 0 motsvarar ingen förändring.",
+    "training-tab-audio-speed-slider-info": "Negativa värden saktar ner, positiva värden ökar hastigheten. -10 motsvarar 10x minskning, 10 motsvarar 10x ökning. 1.0 motsvarar ingen förändring.",
     "training-tab-audio-speed-slider-label": "Ljudhastighetsmodifiering",
     "training-tab-autotune-checkbox-info": "Söker efter de bästa hyperparametrarna, men tar längre tid.",
     "training-tab-autotune-checkbox-label": "Använd autojustering",
