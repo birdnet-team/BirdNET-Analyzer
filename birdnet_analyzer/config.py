@@ -151,7 +151,7 @@ TRAIN_BATCH_SIZE: int = 32
 TRAIN_VAL_SPLIT: float = 0.2
 
 # Learning rate for training
-TRAIN_LEARNING_RATE: float = 0.001
+TRAIN_LEARNING_RATE: float = 0.0001
 
 # Number of hidden units in custom classifier
 # If >0, a two-layer classifier will be trained

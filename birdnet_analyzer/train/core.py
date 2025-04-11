@@ -12,7 +12,7 @@ def train(
     epochs: int = 50,
     batch_size: int = 32,
     val_split: float = 0.2,
-    learning_rate: float = 0.001,
+    learning_rate: float = 0.0001,
     use_focal_loss: bool = False,
     focal_loss_gamma: float = 2.0,
     focal_loss_alpha: float = 0.25,
@@ -45,7 +45,7 @@ def train(
         epochs (int, optional): Number of training epochs. Defaults to 50.
         batch_size (int, optional): Batch size for training. Defaults to 32.
         val_split (float, optional): Fraction of data to use for validation. Defaults to 0.2.
-        learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.001.
+        learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.0001.
         use_focal_loss (bool, optional): Whether to use focal loss for training. Defaults to False.
         focal_loss_gamma (float, optional): Gamma parameter for focal loss. Defaults to 2.0.
         focal_loss_alpha (float, optional): Alpha parameter for focal loss. Defaults to 0.25.
