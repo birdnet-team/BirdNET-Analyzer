@@ -112,7 +112,7 @@ def start_training(
     # Skip training data validation when cache mode is "load"
     if cache_mode != "load":
         gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
-    
+
     gu.validate(output_dir, loc.localize("validation-no-directory-for-classifier-selected"))
     gu.validate(classifier_name, loc.localize("validation-no-valid-classifier-name"))
 
@@ -128,13 +128,13 @@ def start_training(
     if fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
-    cfg.TRAIN_WITH_FOCALS = focal_loss
+    cfg.TRAIN_WITH_FOCAL_LOSS = focal_loss
     cfg.FOCAL_LOSS_GAMMA = max(0.0, float(focal_loss_gamma))
     cfg.FOCAL_LOSS_ALPHA = max(0.0, min(1.0, float(focal_loss_alpha)))
 
     if not hidden_units or hidden_units < 0:
         hidden_units = 0
-        
+
     cfg.TRAIN_DROPOUT = max(0.0, min(1.0, float(dropout)))
 
     if progress is not None:
@@ -163,6 +163,9 @@ def start_training(
     cfg.TRAIN_CACHE_FILE = os.path.join(cache_file, cache_file_name) if cache_mode == "save" else cache_file
     cfg.TFLITE_THREADS = 1
     cfg.CPU_THREADS = max(1, multiprocessing.cpu_count() - 1)  # let's use everything we have (well, almost)
+
+    if cache_mode == "load" and not os.path.isfile(cfg.TRAIN_CACHE_FILE):
+        raise gr.Error(loc.localize("validation-no-cache-file-selected"))
 
     cfg.AUTOTUNE = autotune
     cfg.AUTOTUNE_TRIALS = autotune_trials
@@ -557,8 +560,6 @@ def build_train_tab():
             label=loc.localize("training-tab-model-save-mode-radio-label"),
             info=loc.localize("training-tab-model-save-mode-radio-info"),
         )
-
-        
 
         train_history_plot = gr.Plot()
         start_training_button = gr.Button(
