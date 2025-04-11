@@ -5,7 +5,6 @@ import itertools
 import os
 import traceback
 from pathlib import Path
-import numpy as np
 
 import birdnet_analyzer.config as cfg
 
@@ -188,11 +187,13 @@ def save_to_cache(path, x_train, y_train, x_test, y_test, labels):
         y_test: Test labels.
         labels: Labels.
     """
+    import numpy as np
+
     # Make directory if needed
     directory = os.path.dirname(path)
     if directory and not os.path.exists(directory):
         os.makedirs(directory)
-    
+
     # Save cache file with training data, test data, labels and configuration
     np.savez(
         path,
@@ -207,7 +208,7 @@ def save_to_cache(path, x_train, y_train, x_test, y_test, labels):
         fmax=cfg.BANDPASS_FMAX,
         audio_speed=cfg.AUDIO_SPEED,
         crop_mode=cfg.SAMPLE_CROP_MODE,
-        overlap=cfg.SIG_OVERLAP
+        overlap=cfg.SIG_OVERLAP,
     )
 
 
@@ -220,33 +221,41 @@ def load_from_cache(path):
     Returns:
         A tuple of (x_train, y_train, labels, binary_classification, multi_label).
     """
+    import numpy as np
+
     # Load cache file
     data = np.load(path, allow_pickle=True)
-    
+
     # Check if cache contains needed preprocessing parameters
-    if 'fmin' in data and 'fmax' in data and 'audio_speed' in data and 'crop_mode' in data and 'overlap' in data:
+    if "fmin" in data and "fmax" in data and "audio_speed" in data and "crop_mode" in data and "overlap" in data:
         # Check if preprocessing parameters match current settings
-        if (data['fmin'] != cfg.BANDPASS_FMIN or data['fmax'] != cfg.BANDPASS_FMAX or 
-            data['audio_speed'] != cfg.AUDIO_SPEED or data['crop_mode'] != cfg.SAMPLE_CROP_MODE or 
-            data['overlap'] != cfg.SIG_OVERLAP):
-            print(f"\t...WARNING: Cache preprocessing parameters don't match current settings!", flush=True)
+        if (
+            data["fmin"] != cfg.BANDPASS_FMIN
+            or data["fmax"] != cfg.BANDPASS_FMAX
+            or data["audio_speed"] != cfg.AUDIO_SPEED
+            or data["crop_mode"] != cfg.SAMPLE_CROP_MODE
+            or data["overlap"] != cfg.SIG_OVERLAP
+        ):
+            print("\t...WARNING: Cache preprocessing parameters don't match current settings!", flush=True)
             print(f"\t   Cache: fmin={data['fmin']}, fmax={data['fmax']}, speed={data['audio_speed']}", flush=True)
             print(f"\t   Cache: crop_mode={data['crop_mode']}, overlap={data['overlap']}", flush=True)
-            print(f"\t   Current: fmin={cfg.BANDPASS_FMIN}, fmax={cfg.BANDPASS_FMAX}, speed={cfg.AUDIO_SPEED}", flush=True)
+            print(
+                f"\t   Current: fmin={cfg.BANDPASS_FMIN}, fmax={cfg.BANDPASS_FMAX}, speed={cfg.AUDIO_SPEED}", flush=True
+            )
             print(f"\t   Current: crop_mode={cfg.SAMPLE_CROP_MODE}, overlap={cfg.SIG_OVERLAP}", flush=True)
-    
+
     # Extract and return data
     x_train = data["x_train"]
     y_train = data["y_train"]
-    
+
     # Handle test data which might not be in older cache files
     x_test = data.get("x_test", np.array([]))
     y_test = data.get("y_test", np.array([]))
-    
+
     labels = data["labels"]
     binary_classification = bool(data.get("binary_classification", False))
     multi_label = bool(data.get("multi_label", False))
-    
+
     return x_train, y_train, x_test, y_test, labels, binary_classification, multi_label
 
 
