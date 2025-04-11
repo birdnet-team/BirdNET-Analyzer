@@ -12,9 +12,13 @@ def train(
     epochs: int = 50,
     batch_size: int = 32,
     val_split: float = 0.2,
-    learning_rate: float = 0.001,
+    learning_rate: float = 0.0001,
+    use_focal_loss: bool = False,
+    focal_loss_gamma: float = 2.0,
+    focal_loss_alpha: float = 0.25,
     hidden_units: int = 0,
     dropout: float = 0.0,
+    label_smoothing: bool = False,
     mixup: bool = False,
     upsampling_ratio: float = 0.0,
     upsampling_mode: Literal["repeat", "mean", "smote"] = "repeat",
@@ -36,14 +40,18 @@ def train(
         input (str): Path to the training data directory.
         test_data (str, optional): Path to the test data directory. Defaults to None. If not specified, a validation split will be used.
         output (str, optional): Path to save the trained model. Defaults to "checkpoints/custom/Custom_Classifier".
-        crop_mode (Literal["center", "first", "segments"], optional): Mode for cropping audio samples. Defaults to "center".
+        crop_mode (Literal["center", "first", "segments", "smart"], optional): Mode for cropping audio samples. Defaults to "center".
         overlap (float, optional): Overlap ratio for audio segments. Defaults to 0.0.
         epochs (int, optional): Number of training epochs. Defaults to 50.
         batch_size (int, optional): Batch size for training. Defaults to 32.
         val_split (float, optional): Fraction of data to use for validation. Defaults to 0.2.
-        learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.001.
+        learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.0001.
+        use_focal_loss (bool, optional): Whether to use focal loss for training. Defaults to False.
+        focal_loss_gamma (float, optional): Gamma parameter for focal loss. Defaults to 2.0.
+        focal_loss_alpha (float, optional): Alpha parameter for focal loss. Defaults to 0.25.
         hidden_units (int, optional): Number of hidden units in the model. Defaults to 0.
         dropout (float, optional): Dropout rate for regularization. Defaults to 0.0.
+        label_smoothing (bool, optional): Whether to use label smoothing. Defaults to False.
         mixup (bool, optional): Whether to use mixup data augmentation. Defaults to False.
         upsampling_ratio (float, optional): Ratio for upsampling underrepresented classes. Defaults to 0.0.
         upsampling_mode (Literal["repeat", "mean", "smote"], optional): Mode for upsampling. Defaults to "repeat".
@@ -77,8 +85,12 @@ def train(
     cfg.TRAIN_BATCH_SIZE = batch_size
     cfg.TRAIN_VAL_SPLIT = val_split
     cfg.TRAIN_LEARNING_RATE = learning_rate
+    cfg.TRAIN_WITH_FOCAL_LOSS = use_focal_loss if use_focal_loss is not None else cfg.TRAIN_WITH_FOCAL_LOSS
+    cfg.FOCAL_LOSS_GAMMA = focal_loss_gamma
+    cfg.FOCAL_LOSS_ALPHA = focal_loss_alpha
     cfg.TRAIN_HIDDEN_UNITS = hidden_units
     cfg.TRAIN_DROPOUT = dropout
+    cfg.TRAIN_WITH_LABEL_SMOOTHING = label_smoothing if label_smoothing is not None else cfg.TRAIN_WITH_LABEL_SMOOTHING
     cfg.TRAIN_WITH_MIXUP = mixup if mixup is not None else cfg.TRAIN_WITH_MIXUP
     cfg.UPSAMPLING_RATIO = upsampling_ratio
     cfg.UPSAMPLING_MODE = upsampling_mode
