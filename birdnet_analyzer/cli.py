@@ -603,7 +603,7 @@ def train_parser():
     )    
     parser.add_argument(
         "--test_data", 
-        help="Path to test data folder. If not specified, a validation split will be used.")
+        help="Path to test data folder. If not specified, a random validation split will be used.")
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
@@ -632,7 +632,7 @@ def train_parser():
     parser.add_argument(
         "--focal-loss",
         action="store_true",
-        help="Use focal loss for training (helps with imbalanced classes).",
+        help="Use focal loss for training (helps with imbalanced classes and hard examples).",
     )
     parser.add_argument(
         "--focal-loss-gamma",
@@ -656,7 +656,7 @@ def train_parser():
         "--dropout",
         type=lambda a: min(max(0, float(a)), 0.9),
         default=cfg.TRAIN_DROPOUT,
-        help="Dropout rate.",
+        help="Dropout rate. Higher values result in more regularization. Values in [0.0, 0.9].",
     )
     parser.add_argument("--label_smoothing", action="store_true", help="Whether to use label smoothing for training.")
     parser.add_argument("--mixup", action="store_true", help="Whether to use mixup for training.")
@@ -669,7 +669,7 @@ def train_parser():
     parser.add_argument(
         "--upsampling_mode",
         default=cfg.UPSAMPLING_MODE,
-        choices=["repeat", "mean", "smote"],
+        choices=["repeat", "linear", "mean", "smote"],
         help="Upsampling mode.",
     )
     parser.add_argument(
