@@ -389,7 +389,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                     elif batch_size == 16:
                         learning_rate = hp.Choice(
                             "learning_rate_16",
-                            [0.005, 0.002, 0.001, 0.0005],
+                            [0.005, 0.002, 0.001, 0.0005, 0.0002],
                             default=0.0005,
                             parent_name="batch_size",
                             parent_values=[16],
@@ -397,16 +397,16 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                     elif batch_size == 32:
                         learning_rate = hp.Choice(
                             "learning_rate_32",
-                            [0.01, 0.005, 0.002, 0.001],
-                            default=0.001,
+                            [0.01, 0.005, 0.001, 0.0005, 0.0001],
+                            default=0.0001,
                             parent_name="batch_size",
                             parent_values=[32],
                         )
                     elif batch_size == 64:
                         learning_rate = hp.Choice(
                             "learning_rate_64",
-                            [0.01, 0.005, 0.002],
-                            default=0.002,
+                            [0.01, 0.005, 0.002, 0.001],
+                            default=0.001,
                             parent_name="batch_size",
                             parent_values=[64],
                         )
