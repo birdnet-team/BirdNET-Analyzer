@@ -428,7 +428,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                         epochs=cfg.TRAIN_EPOCHS,
                         batch_size=batch_size,
                         learning_rate=learning_rate,
-                        val_split=0.0 if self.x_test else cfg.TRAIN_VAL_SPLIT,
+                        val_split=0.0 if len(self.x_test) > 0 else cfg.TRAIN_VAL_SPLIT,
                         upsampling_ratio=hp.Choice(
                             "upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0], default=cfg.UPSAMPLING_RATIO
                         ),
@@ -491,7 +491,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
         cfg.TRAIN_HIDDEN_UNITS = best_params["hidden_units"]
         cfg.TRAIN_DROPOUT = best_params["dropout"]
         cfg.TRAIN_BATCH_SIZE = best_params["batch_size"]
-        cfg.TRAIN_LEARNING_RATE = best_params["learning_rate"]
+        cfg.TRAIN_LEARNING_RATE = best_params[f"learning_rate_{cfg.TRAIN_BATCH_SIZE}"]
         if cfg.UPSAMPLING_RATIO > 0:
             cfg.UPSAMPLING_MODE = best_params["upsampling_mode"]
         cfg.UPSAMPLING_RATIO = best_params["upsampling_ratio"]
