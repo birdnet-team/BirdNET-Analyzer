@@ -261,7 +261,7 @@ def build_train_tab():
                 )
 
             with gr.Column():
-                select_directory_btn = gr.Button(loc.localize("training-tab-select-output-button-label"))
+                select_classifier_directory_btn = gr.Button(loc.localize("training-tab-select-output-button-label"))
 
                 with gr.Column():
                     classifier_name = gr.Textbox(
@@ -289,7 +289,7 @@ def build_train_tab():
 
                     return None, None
 
-                select_directory_btn.click(
+                select_classifier_directory_btn.click(
                     select_directory_and_update_tb,
                     outputs=[output_directory_state, classifier_name, output_format],
                     show_progress=False,
@@ -355,11 +355,19 @@ def build_train_tab():
                 )
 
             def on_cache_mode_change(value):
-                return gr.Row(visible=value == "save"), gr.Row(visible=value == "load")
-
-            cache_mode.change(
-                on_cache_mode_change, inputs=cache_mode, outputs=[new_cache_file_row, load_cache_file_row]
-            )
+                return (
+                    gr.update(visible=value == "save"),
+                    gr.update(visible=value == "load"),
+                    gr.update(interactive=value != "load"),
+                    [],
+                    gr.update(interactive=value != "load"),
+                    [],
+                    gr.update(interactive=value != "load"),
+                    gr.update(interactive=value != "load"),
+                    gr.update(interactive=value != "load"),
+                    gr.update(interactive=value != "load"),
+                    gr.update(interactive=value != "load"),
+                )
 
         autotune_cb = gr.Checkbox(
             cfg.AUTOTUNE,
@@ -550,6 +558,25 @@ def build_train_tab():
                 return gr.Number(visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments")
 
             crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
+
+            cache_mode.change(
+                on_cache_mode_change,
+                inputs=cache_mode,
+                outputs=[
+                    new_cache_file_row,
+                    load_cache_file_row,
+                    select_directory_btn,
+                    directory_input,
+                    select_test_directory_btn,
+                    test_directory_input,
+                    fmin_number,
+                    fmax_number,
+                    audio_speed_slider,
+                    crop_mode,
+                    crop_overlap,
+                ],
+                show_progress=False,
+            )
 
         model_save_mode = gr.Radio(
             [
