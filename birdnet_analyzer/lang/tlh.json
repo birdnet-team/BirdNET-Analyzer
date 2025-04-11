@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "wavmey",
     "training-tab-crop-overlap-number-info": "chu'law'.",
     "training-tab-crop-overlap-number-label": "wavmey qeq",
-    "training-tab-dropout-number-info": "qeq dropout patlh cher. patlhmey 0.0 'ej 0.9. patlhmey nIvqu' qeqHa'moHlaH 'ach qeq QatlhmoHlaH.",
+    "training-tab-dropout-number-info": "qeq dropout patlh cher. patlhmey nIvqu' qeqHa'moHlaH 'ach qeq QatlhmoHlaH.",
     "training-tab-dropout-number-label": "Dropout patlh",
     "training-tab-early-stoppage-msg": "qeqHa'laH.",
     "training-tab-epochs-number-info": "qeq epQochmey chu'.",

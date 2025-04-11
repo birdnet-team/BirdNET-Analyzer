@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "segmento",
     "training-tab-crop-overlap-number-info": "Ajuste a sobreposição de amostras de treinamento.",
     "training-tab-crop-overlap-number-label": "Sobreposição do segmento de corte (s)",
-    "training-tab-dropout-number-info": "Define a taxa de dropout para o treinamento. Os valores devem estar entre 0,0 e 0,9. Valores mais altos podem ajudar a evitar overfitting, mas podem tornar o treinamento menos estável.",
+    "training-tab-dropout-number-info": "Define a taxa de dropout para o treinamento. Valores mais altos podem ajudar a evitar overfitting, mas podem tornar o treinamento menos estável.",
     "training-tab-dropout-number-label": "Taxa de dropout",
     "training-tab-early-stoppage-msg": "Processo Interrompido antecipadamente - métrica de validação não está melhorando.",
     "training-tab-epochs-number-info": "Número de épocas de treinamento.",

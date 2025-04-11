@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "音檔片段",
     "training-tab-crop-overlap-number-info": "調整訓練資料的重疊秒數",
     "training-tab-crop-overlap-number-label": "剪裁後音檔片段的重疊(秒)",
-    "training-tab-dropout-number-info": "設置訓練的 Dropout 率。值應介於 0.0 和 0.9 之間。較高的值可能有助於防止過擬合，但可能使訓練不穩定。",
+    "training-tab-dropout-number-info": "設置訓練的 Dropout 率。較高的值可能有助於防止過擬合，但可能使訓練不穩定。",
     "training-tab-dropout-number-label": "Dropout 率",
     "training-tab-early-stoppage-msg": "提前終止，模型驗證指標並未改善",
     "training-tab-epochs-number-info": "訓練期(eopch)數量",

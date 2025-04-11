@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "сегменты",
     "training-tab-crop-overlap-number-info": "Отрегулируйте перекрытие обучающих выборок.",
     "training-tab-crop-overlap-number-label": "Перекрытие сегментов обрезки (сек)",
-    "training-tab-dropout-number-info": "Устанавливает скорость dropout для обучения. Значения должны быть в диапазоне от 0,0 до 0,9. Более высокие значения могут помочь предотвратить переобучение, но могут сделать обучение менее стабильным.",
+    "training-tab-dropout-number-info": "Устанавливает скорость dropout для обучения. Более высокие значения могут помочь предотвратить переобучение, но могут сделать обучение менее стабильным.",
     "training-tab-dropout-number-label": "Скорость dropout",
     "training-tab-early-stoppage-msg": "Остановлен на ранней стадии - показатель валидации не улучшается.",
     "training-tab-epochs-number-info": "Количество периодов обучения.",

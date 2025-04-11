@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "segment",
     "training-tab-crop-overlap-number-info": "Justera överlappningen av träningsprover.",
     "training-tab-crop-overlap-number-label": "Beskärningssegmentöverlappning (s)",
-    "training-tab-dropout-number-info": "Ställer in dropout-hastigheten för träning. Värden bör vara mellan 0,0 och 0,9. Högre värden kan hjälpa till att förhindra överanpassning men kan göra träningen mindre stabil.",
+    "training-tab-dropout-number-info": "Ställer in dropout-hastigheten för träning. Högre värden kan hjälpa till att förhindra överanpassning men kan göra träningen mindre stabil.",
     "training-tab-dropout-number-label": "Dropout-hastighet",
     "training-tab-early-stoppage-msg": "Stoppades tidigt - valideringsmåttet förbättras inte.",
     "training-tab-epochs-number-info": "Antal träningsepoker.",

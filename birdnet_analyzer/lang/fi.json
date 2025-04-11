@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "segmentit",
     "training-tab-crop-overlap-number-info": "Säädä koulutusnäytteiden päällekkäisyyttä.",
     "training-tab-crop-overlap-number-label": "Rajaussegmenttien päällekkäisyys (s)",
-    "training-tab-dropout-number-info": "Asettaa dropout-nopeuden koulutukseen. Arvojen tulisi olla välillä 0,0–0,9. Korkeammat arvot voivat estää ylisovittamista, mutta voivat tehdä koulutuksesta epävakaampaa.",
+    "training-tab-dropout-number-info": "Asettaa dropout-nopeuden koulutukseen. Korkeammat arvot voivat estää ylisovittamista, mutta voivat tehdä koulutuksesta epävakaampaa.",
     "training-tab-dropout-number-label": "Dropout-nopeus",
     "training-tab-early-stoppage-msg": "Pysäytetty aikaisin - validointimittari ei parantunut.",
     "training-tab-epochs-number-info": "Koulutusaikakausien määrä.",

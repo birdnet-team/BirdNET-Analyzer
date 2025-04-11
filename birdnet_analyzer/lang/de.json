@@ -275,7 +275,7 @@
     "training-tab-crop-mode-radio-option-segments": "Segmente",
     "training-tab-crop-overlap-number-info": "Stellen Sie die Überlappung der Trainingssamples ein.",
     "training-tab-crop-overlap-number-label": "Überlappung des Zuschnittsegments (s)",
-    "training-tab-dropout-number-info": "Legt die Dropout-Rate für das Training fest. Werte sollten zwischen 0,0 und 0,9 liegen. Höhere Werte können helfen, Overfitting zu verhindern, aber das Training instabiler machen.",
+    "training-tab-dropout-number-info": "Legt die Dropout-Rate für das Training fest. Höhere Werte können helfen, Overfitting zu verhindern.",
     "training-tab-dropout-number-label": "Dropout-Rate",
     "training-tab-early-stoppage-msg": "Frühzeitig gestoppt - Validierungsmetrik verbessert sich nicht.",
     "training-tab-epochs-number-info": "Anzahl der Trainingsepochen.",
