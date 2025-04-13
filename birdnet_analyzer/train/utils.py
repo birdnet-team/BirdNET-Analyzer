@@ -446,8 +446,20 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                             "label_smoothing", default=cfg.TRAIN_WITH_LABEL_SMOOTHING
                         ),
                         train_with_focal_loss=hp.Boolean("focal_loss", default=cfg.TRAIN_WITH_FOCAL_LOSS),
-                        focal_loss_gamma=hp.Choice("focal_loss_gamma", [0.5, 1.0, 2.0, 3.0, 4.0], default=cfg.FOCAL_LOSS_GAMMA),
-                        focal_loss_alpha=hp.Choice("focal_loss_alpha", [0.1, 0.25, 0.5, 0.75, 0.9], default=cfg.FOCAL_LOSS_ALPHA),
+                        focal_loss_gamma=hp.Choice(
+                            "focal_loss_gamma", 
+                            [0.5, 1.0, 2.0, 3.0, 4.0], 
+                            default=cfg.FOCAL_LOSS_GAMMA,
+                            parent_name="focal_loss",
+                            parent_values=[True]
+                        ),
+                        focal_loss_alpha=hp.Choice(
+                            "focal_loss_alpha", 
+                            [0.1, 0.25, 0.5, 0.75, 0.9], 
+                            default=cfg.FOCAL_LOSS_ALPHA,
+                            parent_name="focal_loss",
+                            parent_values=[True]
+                        ),
                     )
 
                     # Get the best validation AUPRC instead of loss
