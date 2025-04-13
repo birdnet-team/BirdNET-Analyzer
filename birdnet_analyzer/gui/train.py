@@ -372,6 +372,80 @@ def build_train_tab():
                     gr.update(interactive=value != "load"),
                 )
 
+        with gr.Row():
+            fmin_number = gr.Number(
+                cfg.SIG_FMIN,
+                minimum=0,
+                label=loc.localize("inference-settings-fmin-number-label"),
+                info=loc.localize("inference-settings-fmin-number-info"),
+            )
+
+            fmax_number = gr.Number(
+                cfg.SIG_FMAX,
+                minimum=0,
+                label=loc.localize("inference-settings-fmax-number-label"),
+                info=loc.localize("inference-settings-fmax-number-info"),
+            )
+
+        with gr.Row():
+            audio_speed_slider = gr.Slider(
+                minimum=-10,
+                maximum=10,
+                value=cfg.AUDIO_SPEED,
+                step=1,
+                label=loc.localize("training-tab-audio-speed-slider-label"),
+                info=loc.localize("training-tab-audio-speed-slider-info"),
+            )
+
+        with gr.Row():
+            crop_mode = gr.Radio(
+                [
+                    (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
+                    (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
+                    (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),                    
+                    (loc.localize("training-tab-crop-mode-radio-option-smart"), "smart"),
+                ],
+                value="center",
+                label=loc.localize("training-tab-crop-mode-radio-label"),
+                info=loc.localize("training-tab-crop-mode-radio-info"),
+            )
+
+            crop_overlap = gr.Slider(
+                minimum=0,
+                maximum=2.99,
+                value=cfg.SIG_OVERLAP,
+                step=0.01,
+                label=loc.localize("training-tab-crop-overlap-number-label"),
+                info=loc.localize("training-tab-crop-overlap-number-info"),
+                visible=False,
+            )
+
+            def on_crop_select(new_crop_mode):
+                # Make overlap slider visible for both "segments" and "smart" crop modes
+                return gr.Number(visible=new_crop_mode in ["segments", "smart"], 
+                                interactive=new_crop_mode in ["segments", "smart"])
+
+            crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
+
+            cache_mode.change(
+                on_cache_mode_change,
+                inputs=cache_mode,
+                outputs=[
+                    new_cache_file_row,
+                    load_cache_file_row,
+                    select_directory_btn,
+                    directory_input,
+                    select_test_directory_btn,
+                    test_directory_input,
+                    fmin_number,
+                    fmax_number,
+                    audio_speed_slider,
+                    crop_mode,
+                    crop_overlap,
+                ],
+                show_progress=False,
+            )
+
         autotune_cb = gr.Checkbox(
             cfg.AUTOTUNE,
             label=loc.localize("training-tab-autotune-checkbox-label"),
@@ -509,80 +583,6 @@ def build_train_tab():
         autotune_cb.change(
             on_autotune_change, inputs=autotune_cb, outputs=[custom_params, autotune_params], show_progress=False
         )
-
-        with gr.Row():
-            fmin_number = gr.Number(
-                cfg.SIG_FMIN,
-                minimum=0,
-                label=loc.localize("inference-settings-fmin-number-label"),
-                info=loc.localize("inference-settings-fmin-number-info"),
-            )
-
-            fmax_number = gr.Number(
-                cfg.SIG_FMAX,
-                minimum=0,
-                label=loc.localize("inference-settings-fmax-number-label"),
-                info=loc.localize("inference-settings-fmax-number-info"),
-            )
-
-        with gr.Row():
-            audio_speed_slider = gr.Slider(
-                minimum=-10,
-                maximum=10,
-                value=cfg.AUDIO_SPEED,
-                step=1,
-                label=loc.localize("training-tab-audio-speed-slider-label"),
-                info=loc.localize("training-tab-audio-speed-slider-info"),
-            )
-
-        with gr.Row():
-            crop_mode = gr.Radio(
-                [
-                    (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
-                    (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
-                    (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),                    
-                    (loc.localize("training-tab-crop-mode-radio-option-smart"), "smart"),
-                ],
-                value="center",
-                label=loc.localize("training-tab-crop-mode-radio-label"),
-                info=loc.localize("training-tab-crop-mode-radio-info"),
-            )
-
-            crop_overlap = gr.Slider(
-                minimum=0,
-                maximum=2.99,
-                value=cfg.SIG_OVERLAP,
-                step=0.01,
-                label=loc.localize("training-tab-crop-overlap-number-label"),
-                info=loc.localize("training-tab-crop-overlap-number-info"),
-                visible=False,
-            )
-
-            def on_crop_select(new_crop_mode):
-                # Make overlap slider visible for both "segments" and "smart" crop modes
-                return gr.Number(visible=new_crop_mode in ["segments", "smart"], 
-                                interactive=new_crop_mode in ["segments", "smart"])
-
-            crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
-
-            cache_mode.change(
-                on_cache_mode_change,
-                inputs=cache_mode,
-                outputs=[
-                    new_cache_file_row,
-                    load_cache_file_row,
-                    select_directory_btn,
-                    directory_input,
-                    select_test_directory_btn,
-                    test_directory_input,
-                    fmin_number,
-                    fmax_number,
-                    audio_speed_slider,
-                    crop_mode,
-                    crop_overlap,
-                ],
-                show_progress=False,
-            )
 
         model_save_mode = gr.Radio(
             [
