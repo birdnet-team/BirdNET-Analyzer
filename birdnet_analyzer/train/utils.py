@@ -715,6 +715,12 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     class_metrics = {}
     optimal_thresholds = {}
     
+    # Print the metric calculation method that's being used
+    print("\nNote: The AUPRC and AUROC metrics calculated during post-training evaluation may differ")
+    print("from training history values due to different calculation methods:")
+    print("  - Training history uses Keras metrics calculated over batches")
+    print("  - Evaluation uses scikit-learn metrics calculated over the entire dataset")
+    
     for i in range(y_test.shape[1]):
         try:
             # Find optimal threshold for this class
