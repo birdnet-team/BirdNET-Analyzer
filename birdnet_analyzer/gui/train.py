@@ -578,10 +578,10 @@ def build_train_tab():
         )
 
         def on_autotune_change(value):
-            return gr.Column(visible=not value), gr.Column(visible=value)
+            return gr.Column(visible=not value), gr.Column(visible=value), gr.Row(visible=not value and use_focal_loss.value)
 
         autotune_cb.change(
-            on_autotune_change, inputs=autotune_cb, outputs=[custom_params, autotune_params], show_progress=False
+            on_autotune_change, inputs=autotune_cb, outputs=[custom_params, autotune_params, focal_loss_params], show_progress=False
         )
 
         model_save_mode = gr.Radio(
