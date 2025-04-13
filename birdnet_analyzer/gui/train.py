@@ -201,12 +201,15 @@ def start_training(
             )
 
     try:
-        history = train_model(
+        history_result = train_model(
             on_epoch_end=epoch_progression,
             on_trial_result=trial_progression,
             on_data_load_end=data_load_progression,
             autotune_directory=gu.APPDIR if utils.FROZEN else "autotune",
         )
+        
+        # Unpack history and metrics
+        history, metrics = history_result
     except Exception as e:
         if e.args and len(e.args) > 1:
             raise gr.Error(loc.localize(e.args[1]))
@@ -227,7 +230,7 @@ def start_training(
     plt.legend()
     plt.xlabel("Epoch")
 
-    return fig
+    return fig, metrics
 
 
 def build_train_tab():
@@ -592,12 +595,54 @@ def build_train_tab():
         )
 
         train_history_plot = gr.Plot()
+        metrics_table = gr.Dataframe(
+            headers=["Class", "Precision", "Recall", "F1 Score", "AUPRC", "AUROC", "Samples"],
+            visible=False,
+            label="Model Performance Metrics (Default Threshold 0.5)",
+        )
         start_training_button = gr.Button(
             loc.localize("training-tab-start-training-button-label"), variant="huggingface"
         )
+        
+        def train_and_show_metrics(*args):
+            history, metrics = start_training(*args)
+            
+            # If metrics are available (test data was provided), create table
+            if metrics:
+                # Create dataframe data with metrics
+                table_data = []
+                
+                # Add overall metrics row first
+                table_data.append([
+                    "OVERALL (Macro-avg)",
+                    f"{metrics['macro_precision_default']:.4f}",
+                    f"{metrics['macro_recall_default']:.4f}",
+                    f"{metrics['macro_f1_default']:.4f}",
+                    f"{metrics['macro_auprc']:.4f}",
+                    f"{metrics['macro_auroc']:.4f}",
+                    ""
+                ])
+                
+                # Add class-specific metrics
+                for class_name, class_metrics in metrics['class_metrics'].items():
+                    distribution = metrics['class_distribution'].get(class_name, {'count': 0, 'percentage': 0.0})
+                    table_data.append([
+                        class_name,
+                        f"{class_metrics['precision_default']:.4f}",
+                        f"{class_metrics['recall_default']:.4f}",
+                        f"{class_metrics['f1_default']:.4f}",
+                        f"{class_metrics['auprc']:.4f}",
+                        f"{class_metrics['auroc']:.4f}",
+                        f"{distribution['count']} ({distribution['percentage']:.2f}%)"
+                    ])
+                
+                return history, gr.Dataframe(visible=True, value=table_data)
+            else:
+                # No metrics available, just return history and hide table
+                return history, gr.Dataframe(visible=False)
 
         start_training_button.click(
-            start_training,
+            train_and_show_metrics,
             inputs=[
                 input_directory_state,
                 test_data_dir_state,
@@ -629,7 +674,7 @@ def build_train_tab():
                 output_format,
                 audio_speed_slider,
             ],
-            outputs=[train_history_plot],
+            outputs=[train_history_plot, metrics_table],
         )
 
 

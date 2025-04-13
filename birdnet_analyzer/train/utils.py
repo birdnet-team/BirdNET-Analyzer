@@ -585,6 +585,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     save_sample_counts(labels, y_train)
 
     # Evaluate model on test data if available
+    metrics = None
     if len(x_test) > 0:
         print("\nEvaluating model on test data...", flush=True)
         metrics = evaluate_model(classifier, x_test, y_test, labels)
@@ -647,7 +648,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
 
     print(f"...Done. Best AUPRC: {best_val_auprc}, Best AUROC: {best_val_auroc}, Best Loss: {best_val_loss} (epoch {best_epoch+1}/{len(history.epoch)})", flush=True)
 
-    return history
+    return history, metrics
 
 def find_optimal_threshold(y_true, y_pred_prob):
     """
