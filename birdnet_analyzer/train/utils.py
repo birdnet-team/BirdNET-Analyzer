@@ -596,8 +596,11 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
             with open(eval_file_path, 'w', newline='') as f:
                 writer = csv.writer(f)
                 
-                # Define all the metrics as columns
-                header = ['Class', 'Precision', 'Recall', 'F1 Score', 'AUPRC', 'AUROC', 'Optimal Threshold',
+                # Define all the metrics as columns, including both default and optimized threshold metrics
+                header = ['Class', 
+                          'Precision (0.5)', 'Recall (0.5)', 'F1 Score (0.5)', 
+                          'Precision (opt)', 'Recall (opt)', 'F1 Score (opt)', 
+                          'AUPRC', 'AUROC', 'Optimal Threshold',
                           'True Positives', 'False Positives', 'True Negatives', 'False Negatives', 
                           'Samples', 'Percentage (%)']
                 writer.writerow(header)
@@ -605,9 +608,12 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                 # Write macro-averaged metrics (overall scores) first
                 writer.writerow([
                     'OVERALL (Macro-avg)', 
-                    f"{metrics['macro_precision']:.4f}",
-                    f"{metrics['macro_recall']:.4f}",
-                    f"{metrics['macro_f1']:.4f}",
+                    f"{metrics['macro_precision_default']:.4f}",
+                    f"{metrics['macro_recall_default']:.4f}",
+                    f"{metrics['macro_f1_default']:.4f}",
+                    f"{metrics['macro_precision_opt']:.4f}",
+                    f"{metrics['macro_recall_opt']:.4f}",
+                    f"{metrics['macro_f1_opt']:.4f}",
                     f"{metrics['macro_auprc']:.4f}",
                     f"{metrics['macro_auroc']:.4f}",
                     '', '', '', '', '', '', ''  # Empty cells for Threshold, TP, FP, TN, FN, Samples, Percentage
@@ -618,9 +624,12 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                     distribution = metrics['class_distribution'].get(class_name, {'count': 0, 'percentage': 0.0})
                     writer.writerow([
                         class_name,
-                        f"{class_metrics['precision']:.4f}",
-                        f"{class_metrics['recall']:.4f}",
-                        f"{class_metrics['f1']:.4f}",
+                        f"{class_metrics['precision_default']:.4f}",
+                        f"{class_metrics['recall_default']:.4f}",
+                        f"{class_metrics['f1_default']:.4f}",
+                        f"{class_metrics['precision_opt']:.4f}",
+                        f"{class_metrics['recall_opt']:.4f}",
+                        f"{class_metrics['f1_opt']:.4f}",
                         f"{class_metrics['auprc']:.4f}",
                         f"{class_metrics['auroc']:.4f}",
                         f"{class_metrics['threshold']:.2f}",
@@ -639,7 +648,6 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     print(f"...Done. Best AUPRC: {best_val_auprc}, Best AUROC: {best_val_auroc}, Best Loss: {best_val_loss} (epoch {best_epoch+1}/{len(history.epoch)})", flush=True)
 
     return history
-
 
 def find_optimal_threshold(y_true, y_pred_prob):
     """
@@ -707,9 +715,12 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     print("=================")
     
     # Calculate metrics for each class
-    precisions = []
-    recalls = []
-    f1s = []
+    precisions_default = []
+    recalls_default = []
+    f1s_default = []
+    precisions_opt = []
+    recalls_opt = []
+    f1s_opt = []
     auprcs = []
     aurocs = []
     class_metrics = {}
@@ -723,33 +734,49 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     
     for i in range(y_test.shape[1]):
         try:
-            # Find optimal threshold for this class
+            # Calculate metrics with default threshold (0.5)
+            y_pred_default = (y_pred_prob[:, i] >= 0.5).astype(int)
+            
+            class_precision_default = precision_score(y_test[:, i], y_pred_default)
+            class_recall_default = recall_score(y_test[:, i], y_pred_default)
+            class_f1_default = f1_score(y_test[:, i], y_pred_default)
+            
+            precisions_default.append(class_precision_default)
+            recalls_default.append(class_recall_default)
+            f1s_default.append(class_f1_default)
+            
+            # Find optimal threshold for this class if needed
             if threshold is None:
                 class_threshold = find_optimal_threshold(y_test[:, i], y_pred_prob[:, i])
                 optimal_thresholds[labels[i]] = class_threshold
             else:
                 class_threshold = threshold
             
-            y_pred_class = (y_pred_prob[:, i] >= class_threshold).astype(int)
+            # Calculate metrics with optimized threshold
+            y_pred_opt = (y_pred_prob[:, i] >= class_threshold).astype(int)
             
-            class_precision = precision_score(y_test[:, i], y_pred_class)
-            class_recall = recall_score(y_test[:, i], y_pred_class)
-            class_f1 = f1_score(y_test[:, i], y_pred_class)
+            class_precision_opt = precision_score(y_test[:, i], y_pred_opt)
+            class_recall_opt = recall_score(y_test[:, i], y_pred_opt)
+            class_f1_opt = f1_score(y_test[:, i], y_pred_opt)
             class_auprc = average_precision_score(y_test[:, i], y_pred_prob[:, i])
             class_auroc = roc_auc_score(y_test[:, i], y_pred_prob[:, i])
             
-            precisions.append(class_precision)
-            recalls.append(class_recall)
-            f1s.append(class_f1)
+            precisions_opt.append(class_precision_opt)
+            recalls_opt.append(class_recall_opt)
+            f1s_opt.append(class_f1_opt)
             auprcs.append(class_auprc)
             aurocs.append(class_auroc)
             
-            tn, fp, fn, tp = confusion_matrix(y_test[:, i], y_pred_class).ravel()
+            # Confusion matrix with optimized threshold
+            tn, fp, fn, tp = confusion_matrix(y_test[:, i], y_pred_opt).ravel()
             
             class_metrics[labels[i]] = {
-                'precision': class_precision,
-                'recall': class_recall,
-                'f1': class_f1,
+                'precision_default': class_precision_default,
+                'recall_default': class_recall_default,
+                'f1_default': class_f1_default,
+                'precision_opt': class_precision_opt,
+                'recall_opt': class_recall_opt,
+                'f1_opt': class_f1_opt,
                 'auprc': class_auprc,
                 'auroc': class_auroc,
                 'tp': tp,
@@ -760,33 +787,46 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
             }
             
             print(f"\nClass: {labels[i]}")
-            print(f"  Precision: {class_precision:.4f}")
-            print(f"  Recall:    {class_recall:.4f}")
-            print(f"  F1 Score:  {class_f1:.4f}")
+            print(f"  Default threshold (0.5):")
+            print(f"    Precision: {class_precision_default:.4f}")
+            print(f"    Recall:    {class_recall_default:.4f}")
+            print(f"    F1 Score:  {class_f1_default:.4f}")
+            print(f"  Optimized threshold ({class_threshold:.2f}):")
+            print(f"    Precision: {class_precision_opt:.4f}")
+            print(f"    Recall:    {class_recall_opt:.4f}")
+            print(f"    F1 Score:  {class_f1_opt:.4f}")
             print(f"  AUPRC:     {class_auprc:.4f}")
             print(f"  AUROC:     {class_auroc:.4f}")
-            print(f"  Optimal threshold: {class_threshold:.2f}")
-            print(f"  True Positives:  {tp}")
-            print(f"  False Positives: {fp}")
-            print(f"  True Negatives:  {tn}")
-            print(f"  False Negatives: {fn}")
+            print(f"  Confusion matrix (optimized threshold):")
+            print(f"    True Positives:  {tp}")
+            print(f"    False Positives: {fp}")
+            print(f"    True Negatives:  {tn}")
+            print(f"    False Negatives: {fn}")
             
         except Exception as e:
             print(f"Error calculating metrics for class {labels[i]}: {e}")
     
-    # Calculate macro-averaged metrics
-    metrics['macro_precision'] = np.mean(precisions)
-    metrics['macro_recall'] = np.mean(recalls)
-    metrics['macro_f1'] = np.mean(f1s)
+    # Calculate macro-averaged metrics for both default and optimized thresholds
+    metrics['macro_precision_default'] = np.mean(precisions_default)
+    metrics['macro_recall_default'] = np.mean(recalls_default)
+    metrics['macro_f1_default'] = np.mean(f1s_default)
+    metrics['macro_precision_opt'] = np.mean(precisions_opt)
+    metrics['macro_recall_opt'] = np.mean(recalls_opt)
+    metrics['macro_f1_opt'] = np.mean(f1s_opt)
     metrics['macro_auprc'] = np.mean(auprcs)
     metrics['macro_auroc'] = np.mean(aurocs)
     metrics['class_metrics'] = class_metrics
     metrics['optimal_thresholds'] = optimal_thresholds
     
     print("\nMacro-averaged metrics:")
-    print(f"  Precision: {metrics['macro_precision']:.4f}")
-    print(f"  Recall:    {metrics['macro_recall']:.4f}")
-    print(f"  F1 Score:  {metrics['macro_f1']:.4f}")
+    print(f"  Default threshold (0.5):")
+    print(f"    Precision: {metrics['macro_precision_default']:.4f}")
+    print(f"    Recall:    {metrics['macro_recall_default']:.4f}")
+    print(f"    F1 Score:  {metrics['macro_f1_default']:.4f}")
+    print(f"  Optimized thresholds:")
+    print(f"    Precision: {metrics['macro_precision_opt']:.4f}")
+    print(f"    Recall:    {metrics['macro_recall_opt']:.4f}")
+    print(f"    F1 Score:  {metrics['macro_f1_opt']:.4f}")
     print(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
     print(f"  AUROC:     {metrics['macro_auroc']:.4f}")
     
