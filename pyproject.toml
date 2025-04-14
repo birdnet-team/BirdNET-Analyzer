@@ -82,3 +82,7 @@ birdnet_analyzer = [
     "labels/**/*",
     "gui/assets/**/*",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["birdnet_analyzer"]
