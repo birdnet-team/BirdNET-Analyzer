@@ -1,5 +1,5 @@
 import numpy as np
-from perch_hoplite.db import brutalism, sqlite_usearch_impl
+from perch_hoplite.db import brutalism
 from perch_hoplite.db.search_results import SearchResult
 from scipy.spatial.distance import euclidean
 
