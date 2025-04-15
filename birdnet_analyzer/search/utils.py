@@ -56,10 +56,6 @@ def get_query_embedding(queryfile_path):
     return query
 
 
-def get_database(database_path):
-    return sqlite_usearch_impl.SQLiteUsearchDB.create(database_path).thread_split()
-
-
 def get_search_results(
     queryfile_path, db, n_results, audio_speed, fmin, fmax, score_function: str, crop_mode, crop_overlap
 ):

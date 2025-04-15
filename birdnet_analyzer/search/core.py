@@ -1,5 +1,6 @@
 from typing import Literal
 
+
 def search(
     output: str,
     database: str,
@@ -70,3 +71,9 @@ def search(
         sig, rate = audio.open_audio_file(file, offset=offset, duration=duration, sample_rate=None)
         result_path = os.path.join(output, f"{file[4]:.5f}_{filebasename}_{offset}_{offset + duration}.wav")
         audio.save_signal(sig, result_path, rate)
+
+
+def get_database(database_path):
+    from perch_hoplite.db import sqlite_usearch_impl
+
+    return sqlite_usearch_impl.SQLiteUsearchDB.create(database_path).thread_split()
