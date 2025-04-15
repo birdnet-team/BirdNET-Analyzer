@@ -1,9 +1,6 @@
 import os
 from typing import List, Literal
 
-import birdnet_analyzer.config as cfg
-import birdnet_analyzer.utils as utils
-
 
 def analyze(
     input: str,
@@ -69,9 +66,12 @@ def analyze(
     """
     from multiprocessing import Pool
 
-    from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params, combine_results as combine
+    import birdnet_analyzer.config as cfg
+    from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params
+    from birdnet_analyzer.analyze.utils import combine_results as combine
+    from birdnet_analyzer.utils import ensure_model_exists
 
-    utils.ensure_model_exists()
+    ensure_model_exists()
 
     flist = _set_params(
         input=input,
@@ -154,11 +154,13 @@ def _set_params(
     threads,
     labels_file=None,
 ):
-    from birdnet_analyzer.species.utils import get_species_list
+    import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.utils import load_codes  # noqa: E402
+    from birdnet_analyzer.species.utils import get_species_list
+    from birdnet_analyzer.utils import collect_audio_files, read_lines
 
     cfg.CODES = load_codes()
-    cfg.LABELS = utils.read_lines(labels_file if labels_file else cfg.LABELS_FILE)
+    cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
     cfg.SKIP_EXISTING_RESULTS = skip_existing_results
     cfg.LOCATION_FILTER_THRESHOLD = sf_thresh
     cfg.TOP_N = top_n
@@ -183,7 +185,7 @@ def _set_params(
         cfg.OUTPUT_PATH = output
 
     if os.path.isdir(cfg.INPUT_PATH):
-        cfg.FILE_LIST = utils.collect_audio_files(cfg.INPUT_PATH)
+        cfg.FILE_LIST = collect_audio_files(cfg.INPUT_PATH)
     else:
         cfg.FILE_LIST = [cfg.INPUT_PATH]
 
@@ -203,7 +205,7 @@ def _set_params(
             if not os.path.isfile(cfg.LABELS_FILE):
                 cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
 
-            cfg.LABELS = utils.read_lines(cfg.LABELS_FILE)
+            cfg.LABELS = read_lines(cfg.LABELS_FILE)
         else:
             cfg.APPLY_SIGMOID = False
             # our output format
@@ -211,9 +213,9 @@ def _set_params(
 
             if not os.path.isfile(cfg.LABELS_FILE):
                 cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
-                cfg.LABELS = utils.read_lines(cfg.LABELS_FILE)
+                cfg.LABELS = read_lines(cfg.LABELS_FILE)
             else:
-                cfg.LABELS = [line.split(",")[1] for line in utils.read_lines(cfg.LABELS_FILE)]
+                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE)]
     else:
         cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
         cfg.CUSTOM_CLASSIFIER = None
@@ -227,7 +229,7 @@ def _set_params(
                 if os.path.isdir(cfg.SPECIES_LIST_FILE):
                     cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
 
-            cfg.SPECIES_LIST = utils.read_lines(cfg.SPECIES_LIST_FILE)
+            cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE)
         else:
             cfg.SPECIES_LIST_FILE = None
             cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
@@ -237,7 +239,7 @@ def _set_params(
     )
 
     if locale not in ["en"] and os.path.isfile(lfile):
-        cfg.TRANSLATED_LABELS = utils.read_lines(lfile)
+        cfg.TRANSLATED_LABELS = read_lines(lfile)
     else:
         cfg.TRANSLATED_LABELS = cfg.LABELS
 
