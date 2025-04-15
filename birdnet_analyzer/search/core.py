@@ -39,7 +39,7 @@ def search(
 
     import birdnet_analyzer.audio as audio
     import birdnet_analyzer.config as cfg
-    from birdnet_analyzer.search.utils import get_database, get_search_results
+    from birdnet_analyzer.search.utils import get_search_results
 
     # Create output folder
     if not os.path.exists(output):

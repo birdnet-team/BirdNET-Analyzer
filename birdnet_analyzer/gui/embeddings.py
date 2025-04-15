@@ -77,14 +77,14 @@ def run_embeddings(
     fmax,
     progress,
 ):
-    from birdnet_analyzer.embeddings.utils import get_database, run
+    from birdnet_analyzer.embeddings.utils import run
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
     gu.validate(db_name, loc.localize("embeddings-db-name-validation-message"))
     db_path = os.path.join(db_directory, db_name)
 
-    db = get_database(db_path)
+    db = get_embeddings_database(db_path)
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
@@ -116,13 +116,13 @@ def run_embeddings(
 
 @gu.gui_runtime_error_handler
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
-    from birdnet_analyzer.search.utils import get_database, get_search_results
+    from birdnet_analyzer.search.utils import get_search_results
 
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
     gu.validate(query_path, loc.localize("embeddings-search-query-validation-message"))
     gu.validate(max_samples, loc.localize("embeddings-search-max-samples-validation-message"))
 
-    db = get_database(db_path)
+    db = get_search_database(db_path)
     settings = db.get_metadata("birdnet_analyzer_settings")
 
     results = get_search_results(
