@@ -2,6 +2,7 @@ import os
 from functools import partial
 
 import gradio as gr
+from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
@@ -37,8 +38,7 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
     return export_state
 
 
-@gu.gui_runtime_error_handler
-def run_embeddings(
+def rum_embeddings_with_tqdm_tracking(
     input_path,
     db_directory,
     db_name,
@@ -50,6 +50,33 @@ def run_embeddings(
     fmax,
     progress=gr.Progress(track_tqdm=True),
 ):
+    return run_embeddings(
+        input_path,
+        db_directory,
+        db_name,
+        overlap,
+        threads,
+        batch_size,
+        audio_speed,
+        fmin,
+        fmax,
+        progress,
+    )
+
+
+@gu.gui_runtime_error_handler
+def run_embeddings(
+    input_path,
+    db_directory,
+    db_name,
+    overlap,
+    threads,
+    batch_size,
+    audio_speed,
+    fmin,
+    fmax,
+    progress,
+):
     from birdnet_analyzer.embeddings.utils import get_database, run
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
@@ -58,6 +85,11 @@ def run_embeddings(
     db_path = os.path.join(db_directory, db_name)
 
     db = get_database(db_path)
+    import time
+
+    for i in tqdm(range(10)):
+        print(i)
+        time.sleep(1)
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
@@ -240,11 +272,14 @@ def build_embeddings_tab():
                 if dir_name:
                     db_path = os.path.join(dir_name, db_name_tb.value)
                     gui_settings.set_state("embeddings-db-dir", dir_name)
+
                     if os.path.exists(db_path):
                         db = get_embeddings_db(db_path)
+
                         try:
                             db.get_metadata("birdnet_analyzer_settings")
                             db.db.close()
+
                             return (
                                 dir_name,
                                 gr.Textbox(label=dir_name, visible=True),
@@ -254,6 +289,7 @@ def build_embeddings_tab():
                             )
                         except KeyError:
                             db.db.close()
+
                             return (
                                 dir_name,
                                 gr.Textbox(label=dir_name, visible=True),
@@ -315,7 +351,7 @@ def build_embeddings_tab():
             start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
 
             start_btn.click(
-                run_embeddings,
+                rum_embeddings_with_tqdm_tracking,
                 inputs=[
                     input_directory_state,
                     db_directory_state,
@@ -329,6 +365,7 @@ def build_embeddings_tab():
                 ],
                 outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
                 show_progress_on=[progress_plot],
+                show_progress=True,
             )
 
         with gr.Tab(loc.localize("embeddings-search-tab-title")):
