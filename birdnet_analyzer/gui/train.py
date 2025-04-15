@@ -10,6 +10,8 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.utils as utils
 
+_GRID_MAX_HEIGHT = 240
+
 
 def select_subdirectories(state_key=None):
     """Creates a directory selection dialog.
@@ -207,7 +209,7 @@ def start_training(
             on_data_load_end=data_load_progression,
             autotune_directory=gu.APPDIR if utils.FROZEN else "autotune",
         )
-        
+
         # Unpack history and metrics
         history, metrics = history_result
     except Exception as e:
@@ -245,6 +247,7 @@ def build_train_tab():
                 directory_input = gr.List(
                     headers=[loc.localize("training-tab-classes-dataframe-column-classes-header")],
                     interactive=False,
+                    max_height=_GRID_MAX_HEIGHT,
                 )
                 select_directory_btn.click(
                     partial(select_subdirectories, state_key="train-data-dir"),
@@ -256,6 +259,7 @@ def build_train_tab():
                 test_directory_input = gr.List(
                     headers=[loc.localize("training-tab-classes-dataframe-column-classes-header")],
                     interactive=False,
+                    max_height=_GRID_MAX_HEIGHT,
                 )
                 select_test_directory_btn.click(
                     partial(select_subdirectories, state_key="test-data-dir"),
@@ -402,7 +406,7 @@ def build_train_tab():
                 [
                     (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
                     (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
-                    (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),                    
+                    (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
                     (loc.localize("training-tab-crop-mode-radio-option-smart"), "smart"),
                 ],
                 value="center",
@@ -422,8 +426,9 @@ def build_train_tab():
 
             def on_crop_select(new_crop_mode):
                 # Make overlap slider visible for both "segments" and "smart" crop modes
-                return gr.Number(visible=new_crop_mode in ["segments", "smart"], 
-                                interactive=new_crop_mode in ["segments", "smart"])
+                return gr.Number(
+                    visible=new_crop_mode in ["segments", "smart"], interactive=new_crop_mode in ["segments", "smart"]
+                )
 
             crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
 
@@ -578,10 +583,17 @@ def build_train_tab():
         )
 
         def on_autotune_change(value):
-            return gr.Column(visible=not value), gr.Column(visible=value), gr.Row(visible=not value and use_focal_loss.value)
+            return (
+                gr.Column(visible=not value),
+                gr.Column(visible=value),
+                gr.Row(visible=not value and use_focal_loss.value),
+            )
 
         autotune_cb.change(
-            on_autotune_change, inputs=autotune_cb, outputs=[custom_params, autotune_params, focal_loss_params], show_progress=False
+            on_autotune_change,
+            inputs=autotune_cb,
+            outputs=[custom_params, autotune_params, focal_loss_params],
+            show_progress=False,
         )
 
         model_save_mode = gr.Radio(
@@ -603,39 +615,43 @@ def build_train_tab():
         start_training_button = gr.Button(
             loc.localize("training-tab-start-training-button-label"), variant="huggingface"
         )
-        
+
         def train_and_show_metrics(*args):
             history, metrics = start_training(*args)
-            
+
             # If metrics are available (test data was provided), create table
             if metrics:
                 # Create dataframe data with metrics
                 table_data = []
-                
+
                 # Add overall metrics row first
-                table_data.append([
-                    "OVERALL (Macro-avg)",
-                    f"{metrics['macro_precision_default']:.4f}",
-                    f"{metrics['macro_recall_default']:.4f}",
-                    f"{metrics['macro_f1_default']:.4f}",
-                    f"{metrics['macro_auprc']:.4f}",
-                    f"{metrics['macro_auroc']:.4f}",
-                    ""
-                ])
-                
+                table_data.append(
+                    [
+                        "OVERALL (Macro-avg)",
+                        f"{metrics['macro_precision_default']:.4f}",
+                        f"{metrics['macro_recall_default']:.4f}",
+                        f"{metrics['macro_f1_default']:.4f}",
+                        f"{metrics['macro_auprc']:.4f}",
+                        f"{metrics['macro_auroc']:.4f}",
+                        "",
+                    ]
+                )
+
                 # Add class-specific metrics
-                for class_name, class_metrics in metrics['class_metrics'].items():
-                    distribution = metrics['class_distribution'].get(class_name, {'count': 0, 'percentage': 0.0})
-                    table_data.append([
-                        class_name,
-                        f"{class_metrics['precision_default']:.4f}",
-                        f"{class_metrics['recall_default']:.4f}",
-                        f"{class_metrics['f1_default']:.4f}",
-                        f"{class_metrics['auprc']:.4f}",
-                        f"{class_metrics['auroc']:.4f}",
-                        f"{distribution['count']} ({distribution['percentage']:.2f}%)"
-                    ])
-                
+                for class_name, class_metrics in metrics["class_metrics"].items():
+                    distribution = metrics["class_distribution"].get(class_name, {"count": 0, "percentage": 0.0})
+                    table_data.append(
+                        [
+                            class_name,
+                            f"{class_metrics['precision_default']:.4f}",
+                            f"{class_metrics['recall_default']:.4f}",
+                            f"{class_metrics['f1_default']:.4f}",
+                            f"{class_metrics['auprc']:.4f}",
+                            f"{class_metrics['auroc']:.4f}",
+                            f"{distribution['count']} ({distribution['percentage']:.2f}%)",
+                        ]
+                    )
+
                 return history, gr.Dataframe(visible=True, value=table_data)
             else:
                 # No metrics available, just return history and hide table
