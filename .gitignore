@@ -162,6 +162,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# GUI generated
 
 train_data/
 train_cache.npz
@@ -170,3 +171,4 @@ autotune/
 gui-settings.json
 state.json
 entitlements.plist
+BirdNET_analysis_params.csv
