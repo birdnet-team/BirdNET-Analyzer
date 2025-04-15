@@ -2,7 +2,6 @@ import os
 from functools import partial
 
 import gradio as gr
-from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
@@ -85,11 +84,6 @@ def run_embeddings(
     db_path = os.path.join(db_directory, db_name)
 
     db = get_database(db_path)
-    import time
-
-    for i in tqdm(range(10)):
-        print(i)
-        time.sleep(1)
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
