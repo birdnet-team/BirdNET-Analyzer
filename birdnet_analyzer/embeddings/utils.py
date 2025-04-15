@@ -10,6 +10,7 @@ import birdnet_analyzer.config as cfg
 import birdnet_analyzer.model as model
 import birdnet_analyzer.utils as utils
 from birdnet_analyzer.analyze.utils import get_raw_audio_from_file
+from birdnet_analyzer.embeddings.core import get_database
 
 
 from perch_hoplite.db import sqlite_usearch_impl
@@ -114,24 +115,6 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
 
     delta_time = (datetime.datetime.now() - start_time).total_seconds()
     print("Finished {} in {:.2f} seconds".format(fpath, delta_time), flush=True)
-
-
-def get_database(db_path: str):
-    """Get the database object. Creates or opens the databse.
-    Args:
-        db: The path to the database.
-    Returns:
-        The database object.
-    """
-
-    if not os.path.exists(db_path):
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        db = sqlite_usearch_impl.SQLiteUsearchDB.create(
-            db_path=db_path,
-            usearch_cfg=sqlite_usearch_impl.get_default_usearch_config(embedding_dim=1024),  # TODO dont hardcode this
-        )
-        return db
-    return sqlite_usearch_impl.SQLiteUsearchDB.create(db_path=db_path)
 
 
 def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):

@@ -48,3 +48,24 @@ def embeddings(
 
     ensure_model_exists()
     run(input, database, overlap, audio_speed, fmin, fmax, threads, batch_size)
+
+
+def get_database(db_path: str):
+    """Get the database object. Creates or opens the databse.
+    Args:
+        db: The path to the database.
+    Returns:
+        The database object.
+    """
+    import os
+
+    from perch_hoplite.db import sqlite_usearch_impl
+
+    if not os.path.exists(db_path):
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        db = sqlite_usearch_impl.SQLiteUsearchDB.create(
+            db_path=db_path,
+            usearch_cfg=sqlite_usearch_impl.get_default_usearch_config(embedding_dim=1024),  # TODO dont hardcode this
+        )
+        return db
+    return sqlite_usearch_impl.SQLiteUsearchDB.create(db_path=db_path)

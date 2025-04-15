@@ -5,10 +5,10 @@ import gradio as gr
 from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.settings as gui_settings
-
+import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.embeddings.core import get_database
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 PAGE_SIZE = 4
@@ -168,21 +168,9 @@ def run_export(export_state):
         gr.Info(loc.localize("embeddings-search-export-no-results-info"))
 
 
-def get_embeddings_db(db_path):
-    from birdnet_analyzer.embeddings.utils import get_database
-
-    return get_database(db_path)
-
-
-def get_search_db(db_path):
-    from birdnet_analyzer.search.utils import get_database
-
-    return get_database(db_path)
-
-
 def build_embeddings_tab():
-    import birdnet_analyzer.utils as utils
     import birdnet_analyzer.audio as audio
+    import birdnet_analyzer.utils as utils
 
     with gr.Tab(loc.localize("embeddings-tab-title")):
         with gr.Tab(loc.localize("embeddings-extract-tab-title")):
@@ -274,7 +262,7 @@ def build_embeddings_tab():
                     gui_settings.set_state("embeddings-db-dir", dir_name)
 
                     if os.path.exists(db_path):
-                        db = get_embeddings_db(db_path)
+                        db = get_database(db_path)
 
                         try:
                             db.get_metadata("birdnet_analyzer_settings")
@@ -318,7 +306,7 @@ def build_embeddings_tab():
                 db_path = os.path.join(dir_name, db_name)
 
                 if db_name and os.path.exists(db_path):
-                    db = get_embeddings_db(db_path)
+                    db = get_database(db_path)
 
                     try:
                         db.get_metadata("birdnet_analyzer_settings")
@@ -404,7 +392,7 @@ def build_embeddings_tab():
 
                     def on_db_selection_click():
                         folder = gu.select_folder(state_key="embeddings_search_db")
-                        db = get_embeddings_db(folder)
+                        db = get_database(folder)
                         embedding_count = db.count_embeddings()
                         settings = db.get_metadata("birdnet_analyzer_settings")
                         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
@@ -486,7 +474,7 @@ def build_embeddings_tab():
                         import numpy as np
 
                         if audiofilepath and db_selection:
-                            db = get_embeddings_db(db_selection)
+                            db = get_database(db_selection)
                             settings = db.get_metadata("birdnet_analyzer_settings")
                             audio_speed = settings["AUDIO_SPEED"]
                             fmin = settings["BANDPASS_FMIN"]
@@ -553,7 +541,7 @@ def build_embeddings_tab():
                     def render_results(results, page, db_path, exports):
                         with gr.Row():
                             if db_path is not None and len(results) > 0:
-                                db = get_search_db(db_path)
+                                db = get_database(db_path)
                                 settings = db.get_metadata("birdnet_analyzer_settings")
 
                                 for i, r in enumerate(results[page]):
