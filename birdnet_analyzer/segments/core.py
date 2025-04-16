@@ -1,6 +1,5 @@
 def segments(
     input: str,
-    /,
     output: str | None = None,
     results: str | None = None,
     *,

@@ -3,7 +3,6 @@ from typing import Literal
 
 def train(
     input: str,
-    /,
     output: str = "checkpoints/custom/Custom_Classifier",
     test_data: str = None,
     *,

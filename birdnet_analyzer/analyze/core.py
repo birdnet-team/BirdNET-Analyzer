@@ -4,7 +4,6 @@ from typing import List, Literal
 
 def analyze(
     input: str,
-    /,
     output: str | None = None,
     *,
     min_conf: float = 0.25,
