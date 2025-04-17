@@ -805,4 +805,4 @@ def open_window(builder: list[Callable] | Callable):
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False, debug=True)
+    webview.start(private_mode=False)
