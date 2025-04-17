@@ -413,7 +413,9 @@ def locale():
         The dropdown element.
     """
     label_files = os.listdir(ORIGINAL_TRANSLATED_LABELS_PATH)
-    options = ["EN"] + [label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split('.txt')[0].upper() for label_file in label_files]
+    options = ["EN"] + [
+        label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files
+    ]
 
     return gr.Dropdown(
         options,
@@ -510,7 +512,7 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
 
     if file:
         if state_key:
-            settings.set_state(state_key, file)
+            settings.set_state(state_key, os.path.dirname(file))
 
         return file
 
@@ -531,7 +533,7 @@ def select_file(filetypes=(), state_key=None):
 
     if files:
         if state_key:
-            settings.set_state(state_key, files[0])
+            settings.set_state(state_key, os.path.dirname(files[0]))
 
         return files[0]
 
@@ -776,7 +778,11 @@ def open_window(builder: list[Callable] | Callable):
     )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
-        "BirdNET-Analyzer", _URL.rstrip("/") + f"?__theme={settings.theme()}", width=1300, height=900
+        "BirdNET-Analyzer",
+        _URL.rstrip("/") + f"?__theme={settings.theme()}",
+        width=1300,
+        height=900,
+        min_size=(1300, 900),
     )
     set_window(_WINDOW)
 
@@ -799,4 +805,4 @@ def open_window(builder: list[Callable] | Callable):
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False)
+    webview.start(private_mode=False, debug=True)

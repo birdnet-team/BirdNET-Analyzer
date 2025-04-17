@@ -33,7 +33,7 @@ train = ["keras-tuner"]
 server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio==5.23.3",
+    "gradio==5.25.2",
     "pywebview",
     "matplotlib",
     "plotly[express]",

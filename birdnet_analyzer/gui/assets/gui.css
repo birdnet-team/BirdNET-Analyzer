@@ -22,7 +22,8 @@ footer {
 }
 
 #embeddings-search-results {
-    overflow-y: scroll;
-    height: 700px;
+    max-height: 1107px;
+    overflow: auto;
+    flex-wrap: nowrap;
+    padding-right: 5px;
 }
-
