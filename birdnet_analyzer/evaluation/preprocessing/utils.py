@@ -69,7 +69,7 @@ def read_and_concatenate_files_in_directory(directory_path: str) -> pd.DataFrame
     columns_set = None  # To ensure consistency in column names
 
     # Iterate through each file in the directory
-    for filename in os.listdir(directory_path):
+    for filename in sorted(os.listdir(directory_path)):
         if filename.endswith(".txt"):
             filepath = os.path.join(directory_path, filename)  # Construct the full file path
 
