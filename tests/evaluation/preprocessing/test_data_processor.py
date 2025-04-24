@@ -1130,7 +1130,7 @@ class TestDataProcessorPrepareDataFrame:
 
     def test_complex_paths_in_recording_column(self):
         """Test 'Recording' column with complex paths."""
-        df = pd.DataFrame({"Recording": ["/a/b/c/d/e.wav", "C:\\folder\\subfolder\\file.wav"]})
+        df = pd.DataFrame({"Recording": ["/a/b/c/d/e.wav", "C:/folder/subfolder/file.wav"]})
         result_df = self.dp._prepare_dataframe(df.copy(), prediction=True)
         expected_filenames = ["e", "file"]
         assert result_df["recording_filename"].tolist() == expected_filenames
