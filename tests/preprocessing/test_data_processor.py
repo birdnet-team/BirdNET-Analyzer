@@ -54,7 +54,7 @@ class TestDataProcessorInit:
         )
         # Your assertions here
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_minimal_parameters(self, mock_read_concat):
         """Test initializing DataProcessor with minimal parameters."""
         # Mock the dataframes returned by the read function
@@ -137,7 +137,7 @@ class TestDataProcessorInit:
                 min_overlap=6,  # Greater than default sample_duration=3
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_nonexistent_paths(self, mock_read_concat):
         """Test initializing with paths that do not exist."""
         # Mock the dataframes to be empty but with required columns
@@ -169,7 +169,7 @@ class TestDataProcessorInit:
         pd.testing.assert_frame_equal(dp.predictions_df, mock_predictions_df)
         pd.testing.assert_frame_equal(dp.annotations_df, mock_annotations_df)
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_none_columns(self, mock_read_concat):
         """Test initializing with None columns mappings."""
         # Mock the dataframes returned by the read function
@@ -201,7 +201,7 @@ class TestDataProcessorInit:
         assert dp.columns_predictions == dp.DEFAULT_COLUMNS_PREDICTIONS
         assert dp.columns_annotations == dp.DEFAULT_COLUMNS_ANNOTATIONS
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_empty_class_mapping(self, mock_read_concat):
         """Test initializing with empty class_mapping."""
         # Mock the dataframes returned by the read function
@@ -241,7 +241,7 @@ class TestDataProcessorInit:
                 recording_duration=-10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_large_sample_duration(self, mock_read_concat):
         """Test initializing with large sample_duration."""
         # Mock the dataframes returned by the read function
@@ -271,7 +271,7 @@ class TestDataProcessorInit:
         )
         assert dp.sample_duration == 1000
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_non_default_columns(self, mock_read_concat):
         """Test initializing with custom columns mappings."""
         # Mock the dataframes returned by the read function
@@ -334,7 +334,7 @@ class TestDataProcessorInit:
 
 class TestDataProcessorLoadData:
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_with_none_filenames(self, mock_read_concat):
         """Test load_data when prediction_file_name and annotation_file_name are None."""
         # Mocking the DataFrames returned by the utility function
@@ -500,7 +500,7 @@ class TestDataProcessorLoadData:
                 recording_duration=10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_with_empty_directories(self, mock_read_concat):
         """Test load_data when directories are empty."""
         mock_read_concat.return_value = pd.DataFrame(
@@ -570,7 +570,7 @@ class TestDataProcessorLoadData:
                 recording_duration=10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_inconsistent_columns(self, mock_read_concat):
         """Test load_data when files have inconsistent columns."""
         mock_read_concat.side_effect = ValueError(
@@ -596,7 +596,7 @@ class TestDataProcessorLoadData:
                 recording_duration=10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_handle_different_encodings(self, mock_read_concat):
         """Test load_data handling different file encodings."""
         mock_read_concat.return_value = pd.DataFrame(
@@ -626,7 +626,7 @@ class TestDataProcessorLoadData:
         )
         # Should proceed without errors
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_with_class_mapping(self, mock_read_concat):
         """Test load_data applying class mapping."""
         mock_predictions_df = pd.DataFrame(
@@ -670,7 +670,7 @@ class TestDataProcessorLoadData:
         expected_classes = ("C", "ClassA", "ClassB", "ClassC")
         assert dp.classes == expected_classes
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_without_class_mapping(self, mock_read_concat):
         """Test load_data without class mapping."""
         mock_predictions_df = pd.DataFrame(
@@ -1075,7 +1075,7 @@ class TestDataProcessorPrepareDataFrame:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock empty DataFrames for predictions and annotations
@@ -1206,7 +1206,7 @@ class TestDataProcessorProcessData:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock empty DataFrames for predictions and annotations
@@ -1350,7 +1350,7 @@ class TestDataProcessorProcessRecording:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock empty DataFrames for predictions and annotations
@@ -1493,7 +1493,7 @@ class TestDetermineFileDuration:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1615,7 +1615,7 @@ class TestInitializeSamples:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1719,7 +1719,7 @@ class TestUpdateSamplesWithPredictions:
         """Set up a DataProcessor instance and samples DataFrame for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1899,7 +1899,7 @@ class TestUpdateSamplesWithAnnotations:
         """Set up a DataProcessor instance and samples DataFrame for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -2034,7 +2034,7 @@ class TestCreateTensors:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2049,7 +2049,7 @@ class TestCreateTensors:
         self.mock_read_concat_pred = self.patcher_pred.start()
 
         self.patcher_annot = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2092,7 +2092,7 @@ class TestCreateTensors:
         self.dp.create_tensors()
         assert self.dp.prediction_tensors.shape == (1, 1)
         assert self.dp.label_tensors.shape == (1, 1)
-        assert self.dp.prediction_tensors[0, 0] == 0.8
+        np.testing.assert_almost_equal(self.dp.prediction_tensors[0, 0], 0.8)
         assert self.dp.label_tensors[0, 0] == 1
 
     def test_multiple_samples_multiple_classes(self):
@@ -2201,7 +2201,7 @@ class TestGetColumnName:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2216,7 +2216,7 @@ class TestGetColumnName:
         self.mock_read_concat_pred = self.patcher_pred.start()
 
         self.patcher_annot = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2297,7 +2297,7 @@ class TestGetSampleData:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2312,7 +2312,7 @@ class TestGetSampleData:
         self.mock_read_concat_pred = self.patcher_pred.start()
 
         self.patcher_annot = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2421,7 +2421,7 @@ class TestGetFilteredTensors:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             side_effect=[
                 pd.DataFrame(
                     {

@@ -16,7 +16,9 @@
 [![Docker](https://github.com/birdnet-team/BirdNET-Analyzer/actions/workflows/docker-build.yml/badge.svg)](https://github.com/birdnet-team/BirdNET-Analyzer/actions/workflows/docker-build.yml)
 [![Reddit](https://img.shields.io/badge/Reddit-FF4500?style=flat&logo=reddit&logoColor=white)](https://www.reddit.com/r/BirdNET_Analyzer/)
 ![GitHub stars)](https://img.shields.io/github/stars/birdnet-team/BirdNET-Analyzer)
+
 [![GitHub release](https://img.shields.io/github/v/release/birdnet-team/BirdNET-Analyzer)](https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest)
+[![PyPI - Version](https://img.shields.io/pypi/v/birdnet_analyzer?logo=pypi)](https://pypi.org/project/birdnet-analyzer/)
 
 </div>
 

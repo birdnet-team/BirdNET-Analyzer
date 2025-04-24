@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+    push:
+        branches: [main]
+
+concurrency:
+  group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+            python-version: ${{ matrix.python-version }}
+            cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[all]
+      - name: Run tests
+        run: |
+          pip install pytest pytest-cov
+          pytest tests
+
