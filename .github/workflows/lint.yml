@@ -3,9 +3,11 @@ name: Lint
 on:
   push:
     branches: [main]
+    paths: [birdnet_analyzer/**, .github/workflows/lint.yml, tests/**, pyproject.toml]
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, edited]
+    paths: [birdnet_analyzer/**, .github/workflows/lint.yml, tests/**, pyproject.toml]
 
 jobs:
   ruff:

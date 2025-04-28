@@ -1,9 +1,14 @@
 name: documentation
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [main]
+    paths: [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py]
   push:
     branches:
       - main
+    paths: [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py]
 
 permissions:
   contents: write
