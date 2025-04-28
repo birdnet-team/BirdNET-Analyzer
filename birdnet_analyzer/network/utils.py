@@ -10,10 +10,8 @@ from datetime import date, datetime
 
 import bottle
 
-import birdnet_analyzer.analyze as analyze
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.species as species
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import analyze, species, utils
 
 
 def result_pooling(lines: list[str], num_results=5, pmode="avg"):
@@ -137,7 +135,7 @@ def handle_request():
         cfg.LOCATION_FILTER_THRESHOLD = max(0.01, min(0.99, float(mdata.get("sf_thresh", 0.03))))
 
         # Set species list
-        if not cfg.LATITUDE == -1 and not cfg.LONGITUDE == -1:
+        if cfg.LATITUDE != -1 and cfg.LONGITUDE != -1:
             cfg.SPECIES_LIST_FILE = None
             cfg.SPECIES_LIST = species.get_species_list(
                 cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD
@@ -177,8 +175,7 @@ def handle_request():
 
             return json.dumps(data)
 
-        else:
-            return json.dumps({"msg": "Error during analysis."})
+        return json.dumps({"msg": "Error during analysis."})
 
     except Exception as e:
         # Write error log

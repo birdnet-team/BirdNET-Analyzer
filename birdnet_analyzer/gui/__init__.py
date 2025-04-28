@@ -1,13 +1,9 @@
 def main():
     import birdnet_analyzer.gui.multi_file as mfa
-    import birdnet_analyzer.gui.review as review
     import birdnet_analyzer.gui.segments as gs
     import birdnet_analyzer.gui.single_file as sfa
-    import birdnet_analyzer.gui.species as species
-    import birdnet_analyzer.gui.train as train
     import birdnet_analyzer.gui.utils as gu
-    import birdnet_analyzer.gui.embeddings as embeddings
-    import birdnet_analyzer.gui.evaluation as evaluation
+    from birdnet_analyzer.gui import embeddings, evaluation, review, species, train
 
     gu.open_window(
         [

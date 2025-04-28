@@ -3,9 +3,8 @@ from perch_hoplite.db import brutalism
 from perch_hoplite.db.search_results import SearchResult
 from scipy.spatial.distance import euclidean
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.model as model
+from birdnet_analyzer import audio, model
 
 
 def cosine_sim(a, b):
@@ -52,8 +51,8 @@ def get_query_embedding(queryfile_path):
 
     samples = sig_splits
     data = np.array(samples, dtype="float32")
-    query = model.embeddings(data)
-    return query
+
+    return model.embeddings(data)
 
 
 def get_search_results(
@@ -80,10 +79,7 @@ def get_search_results(
         raise ValueError("Invalid score function. Choose 'cosine', 'euclidean' or 'dot'.")
 
     db_embeddings_count = db.count_embeddings()
-
-    if n_results > db_embeddings_count - 1:
-        n_results = db_embeddings_count - 1
-
+    n_results = min(n_results, db_embeddings_count - 1)
     scores_by_embedding_id = {}
 
     for embedding in query_embeddings:

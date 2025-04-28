@@ -1,5 +1,5 @@
 def embeddings(
-    input: str,
+    audio_input: str,
     database: str,
     *,
     overlap: float = 0.0,
@@ -15,7 +15,7 @@ def embeddings(
     representations of audio features. The embeddings can be used for
     further analysis or comparison.
     Args:
-        input (str): Path to the input audio file or directory containing audio files.
+        audio_input (str): Path to the input audio file or directory containing audio files.
         database (str): Path to the database where embeddings will be stored.
         overlap (float, optional): Overlap between consecutive audio segments in seconds. Defaults to 0.0.
         audio_speed (float, optional): Speed factor for audio processing. Defaults to 1.0.
@@ -32,8 +32,8 @@ def embeddings(
         verify this.
     Example:
         embeddings(
-            input="path/to/audio",
-            database="path/to/database",
+            "path/to/audio",
+            "path/to/database",
             overlap=0.5,
             audio_speed=1.0,
             fmin=500,
@@ -46,7 +46,7 @@ def embeddings(
     from birdnet_analyzer.utils import ensure_model_exists
 
     ensure_model_exists()
-    run(input, database, overlap, audio_speed, fmin, fmax, threads, batch_size)
+    run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batch_size)
 
 
 def get_database(db_path: str):
@@ -62,9 +62,8 @@ def get_database(db_path: str):
 
     if not os.path.exists(db_path):
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        db = sqlite_usearch_impl.SQLiteUsearchDB.create(
+        return sqlite_usearch_impl.SQLiteUsearchDB.create(
             db_path=db_path,
-            usearch_cfg=sqlite_usearch_impl.get_default_usearch_config(embedding_dim=1024),  # TODO dont hardcode this
+            usearch_cfg=sqlite_usearch_impl.get_default_usearch_config(embedding_dim=1024),  # TODO: dont hardcode this
         )
-        return db
     return sqlite_usearch_impl.SQLiteUsearchDB.create(db_path=db_path)

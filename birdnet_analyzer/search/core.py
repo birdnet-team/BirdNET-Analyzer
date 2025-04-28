@@ -36,8 +36,8 @@ def search(
     """
     import os
 
-    import birdnet_analyzer.audio as audio
     import birdnet_analyzer.config as cfg
+    from birdnet_analyzer import audio
     from birdnet_analyzer.search.utils import get_search_results
 
     # Create output folder
@@ -49,8 +49,8 @@ def search(
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
-    except:
-        raise ValueError("No settings present in database.")
+    except KeyError as e:
+        raise ValueError("No settings present in database.") from e
 
     fmin = settings["BANDPASS_FMIN"]
     fmax = settings["BANDPASS_FMAX"]
@@ -60,7 +60,7 @@ def search(
     results = get_search_results(queryfile, db, n_results, audio_speed, fmin, fmax, score_function, crop_mode, overlap)
 
     # Save the results
-    for i, r in enumerate(results):
+    for r in results:
         embedding_source = db.get_embedding_source(r.embedding_id)
         file = embedding_source.source_id
         filebasename = os.path.basename(file)

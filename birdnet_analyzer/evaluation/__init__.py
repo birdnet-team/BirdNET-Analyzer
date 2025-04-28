@@ -9,24 +9,25 @@ for columns, class mappings, and filtering based on selected classes or recordin
 import argparse
 import json
 import os
-from typing import Optional, Dict, List, Tuple
 
+from birdnet_analyzer.evaluation.assessment.performance_assessor import (
+    PerformanceAssessor,
+)
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
-from birdnet_analyzer.evaluation.assessment.performance_assessor import PerformanceAssessor
 
 
 def process_data(
     annotation_path: str,
     prediction_path: str,
-    mapping_path: Optional[str] = None,
+    mapping_path: str | None = None,
     sample_duration: float = 3.0,
     min_overlap: float = 0.5,
-    recording_duration: Optional[float] = None,
-    columns_annotations: Optional[Dict[str, str]] = None,
-    columns_predictions: Optional[Dict[str, str]] = None,
-    selected_classes: Optional[List[str]] = None,
-    selected_recordings: Optional[List[str]] = None,
-    metrics_list: Tuple[str, ...] = ("accuracy", "precision", "recall"),
+    recording_duration: float | None = None,
+    columns_annotations: dict[str, str] | None = None,
+    columns_predictions: dict[str, str] | None = None,
+    selected_classes: list[str] | None = None,
+    selected_recordings: list[str] | None = None,
+    metrics_list: tuple[str, ...] = ("accuracy", "precision", "recall"),
     threshold: float = 0.1,
     class_wise: bool = False,
 ):
@@ -53,7 +54,7 @@ def process_data(
     """
     # Load class mapping if provided
     if mapping_path:
-        with open(mapping_path, "r") as f:
+        with open(mapping_path) as f:
             class_mapping = json.load(f)
     else:
         class_mapping = None

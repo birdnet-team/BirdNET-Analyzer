@@ -86,3 +86,55 @@ birdnet_analyzer = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["birdnet_analyzer"]
+
+[tool.ruff]
+exclude = ["conf.py"]
+line-length = 165
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "B",
+    "A",
+    "C4",
+    "T10",
+    "EXE",
+    "PIE",
+    "PYI",
+    "PT",
+    "Q",
+    "RSE",
+    "RET",
+    "SIM",
+    "TID",
+    "TD",
+    "TC",
+    #"PTH",
+    "FLY",
+    "I",
+    "NPY",
+    "PD",
+    #"N",
+    "PERF",
+    "E",
+    "W",
+    #"D",
+    "PL",
+    "UP",
+    "FURB",
+    "RUF",
+]
+ignore = [
+    "B008",
+    "TD003",
+    "TD002",
+    "PD901",
+    "SIM108",
+    "E722",
+    "PLR2004",
+    "PLR0913",
+    "PLR0915",
+    "PLR0912",
+    "PLC0206",
+    "RUF015",
+]

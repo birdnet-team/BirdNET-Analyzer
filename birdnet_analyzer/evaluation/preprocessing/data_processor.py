@@ -7,7 +7,7 @@ aligns them with sampled time intervals, and generates tensors for further model
 
 import os
 import warnings
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -28,7 +28,7 @@ class DataProcessor:
     """
 
     # Default column mappings for predictions and annotations
-    DEFAULT_COLUMNS_PREDICTIONS = {
+    DEFAULT_COLUMNS_PREDICTIONS: ClassVar[dict[str, str]] = {
         "Start Time": "Start Time",
         "End Time": "End Time",
         "Class": "Class",
@@ -37,7 +37,7 @@ class DataProcessor:
         "Confidence": "Confidence",
     }
 
-    DEFAULT_COLUMNS_ANNOTATIONS = {
+    DEFAULT_COLUMNS_ANNOTATIONS: ClassVar[dict[str, str]] = {
         "Start Time": "Start Time",
         "End Time": "End Time",
         "Class": "Class",
@@ -49,14 +49,14 @@ class DataProcessor:
         self,
         prediction_directory_path: str,
         annotation_directory_path: str,
-        prediction_file_name: Optional[str] = None,
-        annotation_file_name: Optional[str] = None,
-        class_mapping: Optional[Dict[str, str]] = None,
+        prediction_file_name: str | None = None,
+        annotation_file_name: str | None = None,
+        class_mapping: dict[str, str] | None = None,
         sample_duration: int = 3,
         min_overlap: float = 0.5,
-        columns_predictions: Optional[Dict[str, str]] = None,
-        columns_annotations: Optional[Dict[str, str]] = None,
-        recording_duration: Optional[float] = None,
+        columns_predictions: dict[str, str] | None = None,
+        columns_annotations: dict[str, str] | None = None,
+        recording_duration: float | None = None,
     ) -> None:
         """
         Initializes the DataProcessor by loading prediction and annotation data.
@@ -66,12 +66,15 @@ class DataProcessor:
             annotation_directory_path (str): Path to the folder containing annotation files.
             prediction_file_name (Optional[str]): Name of the prediction file to process.
             annotation_file_name (Optional[str]): Name of the annotation file to process.
-            class_mapping (Optional[Dict[str, str]]): Optional dictionary mapping raw class names to standardized class names.
+            class_mapping (Optional[Dict[str, str]]): Optional dictionary mapping raw class
+                                                      names to standardized class names.
             sample_duration (int, optional): Length of each data sample in seconds. Defaults to 3.
-            min_overlap (float, optional): Minimum overlap required between prediction and annotation to consider a match.
+            min_overlap (float, optional): Minimum overlap required between prediction and
+                                           annotation to consider a match.
             columns_predictions (Optional[Dict[str, str]], optional): Column name mappings for prediction files.
             columns_annotations (Optional[Dict[str, str]], optional): Column name mappings for annotation files.
-            recording_duration (Optional[float], optional): User-specified recording duration in seconds. Defaults to None.
+            recording_duration (Optional[float], optional): User-specified recording duration in seconds.
+                                                            Defaults to None.
 
         Raises:
             ValueError: If any parameter is invalid (e.g., negative sample duration).
@@ -79,30 +82,26 @@ class DataProcessor:
         # Initialize instance variables
         self.sample_duration: int = sample_duration
         self.min_overlap: float = min_overlap
-        self.class_mapping: Optional[Dict[str, str]] = class_mapping
+        self.class_mapping: dict[str, str] | None = class_mapping
 
         # Use provided column mappings or defaults
-        self.columns_predictions: Dict[str, str] = (
-            columns_predictions if columns_predictions is not None else self.DEFAULT_COLUMNS_PREDICTIONS.copy()
-        )
-        self.columns_annotations: Dict[str, str] = (
-            columns_annotations if columns_annotations is not None else self.DEFAULT_COLUMNS_ANNOTATIONS.copy()
-        )
+        self.columns_predictions: dict[str, str] = columns_predictions if columns_predictions is not None else self.DEFAULT_COLUMNS_PREDICTIONS.copy()
+        self.columns_annotations: dict[str, str] = columns_annotations if columns_annotations is not None else self.DEFAULT_COLUMNS_ANNOTATIONS.copy()
 
-        self.recording_duration: Optional[float] = recording_duration
+        self.recording_duration: float | None = recording_duration
 
         # Paths and filenames
         self.prediction_directory_path: str = prediction_directory_path
-        self.prediction_file_name: Optional[str] = prediction_file_name
+        self.prediction_file_name: str | None = prediction_file_name
         self.annotation_directory_path: str = annotation_directory_path
-        self.annotation_file_name: Optional[str] = annotation_file_name
+        self.annotation_file_name: str | None = annotation_file_name
 
         # DataFrames for predictions and annotations
         self.predictions_df: pd.DataFrame = pd.DataFrame()
         self.annotations_df: pd.DataFrame = pd.DataFrame()
 
         # Placeholder for unique classes across predictions and annotations
-        self.classes: Tuple[str, ...] = ()
+        self.classes: tuple[str, ...] = ()
 
         # Placeholder for samples DataFrame and tensors
         self.samples_df: pd.DataFrame = pd.DataFrame()
@@ -153,18 +152,10 @@ class DataProcessor:
         required_columns = ["Start Time", "End Time", "Class"]
 
         # Check for missing or None columns in predictions
-        missing_pred_columns = [
-            col
-            for col in required_columns
-            if col not in self.columns_predictions or self.columns_predictions[col] is None
-        ]
+        missing_pred_columns = [col for col in required_columns if col not in self.columns_predictions or self.columns_predictions[col] is None]
 
         # Check for missing or None columns in annotations
-        missing_annot_columns = [
-            col
-            for col in required_columns
-            if col not in self.columns_annotations or self.columns_annotations[col] is None
-        ]
+        missing_annot_columns = [col for col in required_columns if col not in self.columns_annotations or self.columns_annotations[col] is None]
 
         if missing_pred_columns:
             raise ValueError(f"Missing or None prediction columns: {', '.join(missing_pred_columns)}")
@@ -201,15 +192,14 @@ class DataProcessor:
             # Apply class mapping to predictions if provided
             if self.class_mapping:
                 class_col_pred = self.get_column_name("Class", prediction=True)
-                self.predictions_df[class_col_pred] = self.predictions_df[class_col_pred].apply(
-                    lambda x: self.class_mapping.get(x, x)
-                )
+                self.predictions_df[class_col_pred] = self.predictions_df[class_col_pred].apply(lambda x: self.class_mapping.get(x, x))
         else:
             # Case: Specific files are provided for predictions and annotations.
             # Ensure filenames correspond to the same recording (heuristic check).
             if not self.prediction_file_name.startswith(os.path.splitext(self.annotation_file_name)[0]):
                 warnings.warn(
-                    "Prediction file name and annotation file name do not fully match, but proceeding anyway."
+                    "Prediction file name and annotation file name do not fully match, but proceeding anyway.",
+                    stacklevel=2,
                 )
 
             # Construct full file paths
@@ -231,9 +221,7 @@ class DataProcessor:
             # Apply class mapping to predictions if provided
             if self.class_mapping:
                 class_col_pred = self.get_column_name("Class", prediction=True)
-                self.predictions_df[class_col_pred] = self.predictions_df[class_col_pred].apply(
-                    lambda x: self.class_mapping.get(x, x)
-                )
+                self.predictions_df[class_col_pred] = self.predictions_df[class_col_pred].apply(lambda x: self.class_mapping.get(x, x))
 
         # Consolidate all unique classes from predictions and annotations
         class_col_pred = self.get_column_name("Class", prediction=True)
@@ -266,13 +254,12 @@ class DataProcessor:
         if recording_col in df.columns:
             # Extract recording filename using the 'Recording' column
             df["recording_filename"] = extract_recording_filename(df[recording_col])
+        elif "source_file" in df.columns:
+            # Fall back to extracting from the 'source_file' column
+            df["recording_filename"] = extract_recording_filename_from_filename(df["source_file"])
         else:
-            if "source_file" in df.columns:
-                # Fall back to extracting from the 'source_file' column
-                df["recording_filename"] = extract_recording_filename_from_filename(df["source_file"])
-            else:
-                # Assign a default empty string if no relevant columns exist
-                df["recording_filename"] = ""
+            # Assign a default empty string if no relevant columns exist
+            df["recording_filename"] = ""
 
         return df
 
@@ -287,9 +274,7 @@ class DataProcessor:
         self.samples_df = pd.DataFrame()  # Initialize the samples DataFrame
 
         # Get the unique set of recording filenames from both predictions and annotations
-        recording_filenames = set(self.predictions_df["recording_filename"].unique()).union(
-            set(self.annotations_df["recording_filename"].unique())
-        )
+        recording_filenames = set(self.predictions_df["recording_filename"].unique()).union(set(self.annotations_df["recording_filename"].unique()))
 
         # Process each recording
         for recording_filename in recording_filenames:
@@ -362,11 +347,11 @@ class DataProcessor:
         file_duration_col_annot = self.get_column_name("Duration", prediction=False)
 
         # Try to get duration from 'Duration' column in pred_df
-        if file_duration_col_pred in pred_df.columns and pred_df[file_duration_col_pred].notnull().any():
+        if file_duration_col_pred in pred_df.columns and pred_df[file_duration_col_pred].notna().any():
             duration = max(duration, pred_df[file_duration_col_pred].dropna().max())
 
         # Try to get duration from 'Duration' column in annot_df
-        if file_duration_col_annot in annot_df.columns and annot_df[file_duration_col_annot].notnull().any():
+        if file_duration_col_annot in annot_df.columns and annot_df[file_duration_col_annot].notna().any():
             duration = max(duration, annot_df[file_duration_col_annot].dropna().max())
 
         # If no duration is found, use the maximum 'End Time' value
@@ -459,10 +444,7 @@ class DataProcessor:
             confidence = row.get(confidence_col, 0.0)
 
             # Identify samples that overlap with the prediction based on min_overlap
-            sample_indices = samples_df[
-                (samples_df["start_time"] <= end_time - self.min_overlap)
-                & (samples_df["end_time"] >= begin_time + self.min_overlap)
-            ].index
+            sample_indices = samples_df[(samples_df["start_time"] <= end_time - self.min_overlap) & (samples_df["end_time"] >= begin_time + self.min_overlap)].index
 
             # Update the confidence scores for the overlapping samples
             for i in sample_indices:
@@ -497,10 +479,7 @@ class DataProcessor:
             end_time = row[end_time_col]
 
             # Identify samples that overlap with the annotation based on min_overlap
-            sample_indices = samples_df[
-                (samples_df["start_time"] <= end_time - self.min_overlap)
-                & (samples_df["end_time"] >= begin_time + self.min_overlap)
-            ].index
+            sample_indices = samples_df[(samples_df["start_time"] <= end_time - self.min_overlap) & (samples_df["end_time"] >= begin_time + self.min_overlap)].index
 
             # Set annotation value to 1 for the overlapping samples
             for i in sample_indices:
@@ -525,12 +504,12 @@ class DataProcessor:
 
         # Check for NaN values in annotation columns
         annotation_columns = [f"{cls}_annotation" for cls in self.classes]
-        if self.samples_df[annotation_columns].isnull().values.any():
+        if self.samples_df[annotation_columns].isna().to_numpy().any():
             raise ValueError("NaN values found in annotation columns.")
 
         # Check for NaN values in confidence columns
         confidence_columns = [f"{cls}_confidence" for cls in self.classes]
-        if self.samples_df[confidence_columns].isnull().values.any():
+        if self.samples_df[confidence_columns].isna().to_numpy().any():
             raise ValueError("NaN values found in confidence columns.")
 
         # Convert confidence scores and annotations into numpy arrays (tensors)
@@ -584,9 +563,9 @@ class DataProcessor:
 
     def get_filtered_tensors(
         self,
-        selected_classes: Optional[List[str]] = None,
-        selected_recordings: Optional[List[str]] = None,
-    ) -> Tuple[np.ndarray, np.ndarray, Tuple[str]]:
+        selected_classes: list[str] | None = None,
+        selected_recordings: list[str] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, tuple[str]]:
         """
         Filters the prediction and label tensors based on selected classes and recordings.
 
@@ -617,9 +596,7 @@ class DataProcessor:
             raise ValueError("samples_df must contain a 'filename' column.")
 
         # Determine the classes to filter by
-        classes = (
-            self.classes if selected_classes is None else tuple(cls for cls in selected_classes if cls in self.classes)
-        )
+        classes = self.classes if selected_classes is None else tuple(cls for cls in selected_classes if cls in self.classes)
 
         if not classes:
             raise ValueError("No valid classes selected.")

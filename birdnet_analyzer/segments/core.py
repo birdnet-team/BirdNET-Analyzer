@@ -1,5 +1,5 @@
 def segments(
-    input: str,
+    audio_input: str,
     output: str | None = None,
     results: str | None = None,
     *,
@@ -12,7 +12,7 @@ def segments(
     """
     Processes audio files to extract segments based on detection results.
     Args:
-        input (str): Path to the input folder containing audio files.
+        audio_input (str): Path to the input folder containing audio files.
         output (str | None, optional): Path to the output folder where segments will be saved.
             If not provided, the input folder will be used as the output folder. Defaults to None.
         results (str | None, optional): Path to the folder containing detection result files.
@@ -36,10 +36,13 @@ def segments(
     from multiprocessing import Pool
 
     import birdnet_analyzer.config as cfg
+    from birdnet_analyzer.segments.utils import (
+        extract_segments,
+        parse_files,
+        parse_folders,
+    )
 
-    from birdnet_analyzer.segments.utils import extract_segments, parse_folders, parse_files  # noqa: E402
-
-    cfg.INPUT_PATH = input
+    cfg.INPUT_PATH = audio_input
 
     if not output:
         cfg.OUTPUT_PATH = cfg.INPUT_PATH
@@ -49,7 +52,7 @@ def segments(
     results = results if results else cfg.INPUT_PATH
 
     # Parse audio and result folders
-    cfg.FILE_LIST = parse_folders(input, results)
+    cfg.FILE_LIST = parse_folders(audio_input, results)
 
     # Set number of threads
     cfg.CPU_THREADS = threads

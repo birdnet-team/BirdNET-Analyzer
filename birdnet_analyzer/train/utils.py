@@ -11,10 +11,8 @@ from multiprocessing.pool import Pool
 import numpy as np
 import tqdm
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.model as model
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import audio, model, utils
 
 
 def save_sample_counts(labels, y_train):
@@ -102,6 +100,7 @@ def _load_audio_file(f, label_vector, config):
 
     return x_train, y_train
 
+
 def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     """Loads the data for training.
 
@@ -126,15 +125,15 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
                 utils.load_from_cache(cache_file)
             )
             return x_train, y_train, x_test, y_test, labels
-        else:
-            print(f"\t...cache file not found: {cache_file}", flush=True)
+
+        print(f"\t...cache file not found: {cache_file}", flush=True)
 
     # Print train and test data path as confirmation
     print(f"\t...train data path: {cfg.TRAIN_DATA_PATH}", flush=True)
     print(f"\t...test data path: {cfg.TEST_DATA_PATH}", flush=True)
 
     # Get list of subfolders as labels
-    train_folders = list(sorted(utils.list_subdirectories(cfg.TRAIN_DATA_PATH)))
+    train_folders = sorted(utils.list_subdirectories(cfg.TRAIN_DATA_PATH))
 
     # Read all individual labels from the folder names
     labels = []
@@ -146,7 +145,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
                 labels.append(label)
 
     # Sort labels
-    labels = list(sorted(labels))
+    labels = sorted(labels)
 
     # Get valid labels
     valid_labels = [
@@ -191,7 +190,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     def load_data(data_path, allowed_folders):
         x = []
         y = []
-        folders = list(sorted(utils.list_subdirectories(data_path)))
+        folders = sorted(utils.list_subdirectories(data_path))
 
         for folder in folders:
             if folder not in allowed_folders:
@@ -254,7 +253,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     x_train, y_train = load_data(cfg.TRAIN_DATA_PATH, train_folders)
 
     if cfg.TEST_DATA_PATH and cfg.TEST_DATA_PATH != cfg.TRAIN_DATA_PATH:
-        test_folders = list(sorted(utils.list_subdirectories(cfg.TEST_DATA_PATH)))
+        test_folders = sorted(utils.list_subdirectories(cfg.TEST_DATA_PATH))
         allowed_test_folders = [
             folder for folder in test_folders if folder in train_folders and not folder.startswith("-")
         ]
@@ -279,14 +278,14 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
 def normalize_embeddings(embeddings):
     """
     Normalize embeddings to improve training stability and performance.
-    
+
     This applies L2 normalization to each embedding vector, which can help
-    with convergence and model performance, especially when training on 
+    with convergence and model performance, especially when training on
     embeddings from different sources or domains.
-    
+
     Args:
         embeddings: numpy array of embedding vectors
-        
+
     Returns:
         Normalized embeddings array
     """
@@ -295,8 +294,7 @@ def normalize_embeddings(embeddings):
     # Avoid division by zero
     norms[norms == 0] = 1.0
     # Normalize each embedding vector
-    normalized = embeddings / norms
-    return normalized
+    return embeddings / norms
 
 
 def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, autotune_directory="autotune"):
@@ -314,7 +312,9 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
 
     # Load training data
     print("Loading training data...", flush=True)
-    x_train, y_train, x_test, y_test, labels = _load_training_data(cfg.TRAIN_CACHE_MODE, cfg.TRAIN_CACHE_FILE, on_data_load_end)
+    x_train, y_train, x_test, y_test, labels = _load_training_data(
+        cfg.TRAIN_CACHE_MODE, cfg.TRAIN_CACHE_FILE, on_data_load_end
+    )
     print(f"...Done. Loaded {x_train.shape[0]} training samples and {y_train.shape[1]} labels.", flush=True)
     if len(x_test) > 0:
         print(f"...Loaded {x_test.shape[0]} test samples.", flush=True)
@@ -447,18 +447,18 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                         ),
                         train_with_focal_loss=hp.Boolean("focal_loss", default=cfg.TRAIN_WITH_FOCAL_LOSS),
                         focal_loss_gamma=hp.Choice(
-                            "focal_loss_gamma", 
-                            [0.5, 1.0, 2.0, 3.0, 4.0], 
+                            "focal_loss_gamma",
+                            [0.5, 1.0, 2.0, 3.0, 4.0],
                             default=cfg.FOCAL_LOSS_GAMMA,
                             parent_name="focal_loss",
-                            parent_values=[True]
+                            parent_values=[True],
                         ),
                         focal_loss_alpha=hp.Choice(
-                            "focal_loss_alpha", 
-                            [0.1, 0.25, 0.5, 0.75, 0.9], 
+                            "focal_loss_alpha",
+                            [0.1, 0.25, 0.5, 0.75, 0.9],
                             default=cfg.FOCAL_LOSS_ALPHA,
                             parent_name="focal_loss",
-                            parent_values=[True]
+                            parent_values=[True],
                         ),
                     )
 
@@ -482,7 +482,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
 
                 # Return the negative AUPRC for minimization (keras-tuner minimizes by default)
                 return [-h for h in histories]
-                
+
         # Create the tuner instance
         tuner = BirdNetTuner(
             x_train=x_train,
@@ -589,132 +589,162 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     if len(x_test) > 0:
         print("\nEvaluating model on test data...", flush=True)
         metrics = evaluate_model(classifier, x_test, y_test, labels)
-        
+
         # Save evaluation results to file
         if metrics:
             import csv
+
             eval_file_path = cfg.CUSTOM_CLASSIFIER + "_evaluation.csv"
-            with open(eval_file_path, 'w', newline='') as f:
+            with open(eval_file_path, "w", newline="") as f:
                 writer = csv.writer(f)
-                
+
                 # Define all the metrics as columns, including both default and optimized threshold metrics
-                header = ['Class', 
-                          'Precision (0.5)', 'Recall (0.5)', 'F1 Score (0.5)', 
-                          'Precision (opt)', 'Recall (opt)', 'F1 Score (opt)', 
-                          'AUPRC', 'AUROC', 'Optimal Threshold',
-                          'True Positives', 'False Positives', 'True Negatives', 'False Negatives', 
-                          'Samples', 'Percentage (%)']
+                header = [
+                    "Class",
+                    "Precision (0.5)",
+                    "Recall (0.5)",
+                    "F1 Score (0.5)",
+                    "Precision (opt)",
+                    "Recall (opt)",
+                    "F1 Score (opt)",
+                    "AUPRC",
+                    "AUROC",
+                    "Optimal Threshold",
+                    "True Positives",
+                    "False Positives",
+                    "True Negatives",
+                    "False Negatives",
+                    "Samples",
+                    "Percentage (%)",
+                ]
                 writer.writerow(header)
-                
+
                 # Write macro-averaged metrics (overall scores) first
-                writer.writerow([
-                    'OVERALL (Macro-avg)', 
-                    f"{metrics['macro_precision_default']:.4f}",
-                    f"{metrics['macro_recall_default']:.4f}",
-                    f"{metrics['macro_f1_default']:.4f}",
-                    f"{metrics['macro_precision_opt']:.4f}",
-                    f"{metrics['macro_recall_opt']:.4f}",
-                    f"{metrics['macro_f1_opt']:.4f}",
-                    f"{metrics['macro_auprc']:.4f}",
-                    f"{metrics['macro_auroc']:.4f}",
-                    '', '', '', '', '', '', ''  # Empty cells for Threshold, TP, FP, TN, FN, Samples, Percentage
-                ])
-                
+                writer.writerow(
+                    [
+                        "OVERALL (Macro-avg)",
+                        f"{metrics['macro_precision_default']:.4f}",
+                        f"{metrics['macro_recall_default']:.4f}",
+                        f"{metrics['macro_f1_default']:.4f}",
+                        f"{metrics['macro_precision_opt']:.4f}",
+                        f"{metrics['macro_recall_opt']:.4f}",
+                        f"{metrics['macro_f1_opt']:.4f}",
+                        f"{metrics['macro_auprc']:.4f}",
+                        f"{metrics['macro_auroc']:.4f}",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",  # Empty cells for Threshold, TP, FP, TN, FN, Samples, Percentage
+                    ]
+                )
+
                 # Write per-class metrics (one row per species)
-                for class_name, class_metrics in metrics['class_metrics'].items():
-                    distribution = metrics['class_distribution'].get(class_name, {'count': 0, 'percentage': 0.0})
-                    writer.writerow([
-                        class_name,
-                        f"{class_metrics['precision_default']:.4f}",
-                        f"{class_metrics['recall_default']:.4f}",
-                        f"{class_metrics['f1_default']:.4f}",
-                        f"{class_metrics['precision_opt']:.4f}",
-                        f"{class_metrics['recall_opt']:.4f}",
-                        f"{class_metrics['f1_opt']:.4f}",
-                        f"{class_metrics['auprc']:.4f}",
-                        f"{class_metrics['auroc']:.4f}",
-                        f"{class_metrics['threshold']:.2f}",
-                        class_metrics['tp'],
-                        class_metrics['fp'],
-                        class_metrics['tn'],
-                        class_metrics['fn'],
-                        distribution['count'],
-                        f"{distribution['percentage']:.2f}"
-                    ])
-                
+                for class_name, class_metrics in metrics["class_metrics"].items():
+                    distribution = metrics["class_distribution"].get(class_name, {"count": 0, "percentage": 0.0})
+                    writer.writerow(
+                        [
+                            class_name,
+                            f"{class_metrics['precision_default']:.4f}",
+                            f"{class_metrics['recall_default']:.4f}",
+                            f"{class_metrics['f1_default']:.4f}",
+                            f"{class_metrics['precision_opt']:.4f}",
+                            f"{class_metrics['recall_opt']:.4f}",
+                            f"{class_metrics['f1_opt']:.4f}",
+                            f"{class_metrics['auprc']:.4f}",
+                            f"{class_metrics['auroc']:.4f}",
+                            f"{class_metrics['threshold']:.2f}",
+                            class_metrics["tp"],
+                            class_metrics["fp"],
+                            class_metrics["tn"],
+                            class_metrics["fn"],
+                            distribution["count"],
+                            f"{distribution['percentage']:.2f}",
+                        ]
+                    )
+
             print(f"Evaluation results saved to {eval_file_path}", flush=True)
     else:
         print("\nNo separate test data provided for evaluation. Using validation metrics.", flush=True)
 
-    print(f"...Done. Best AUPRC: {best_val_auprc}, Best AUROC: {best_val_auroc}, Best Loss: {best_val_loss} (epoch {best_epoch+1}/{len(history.epoch)})", flush=True)
+    print(
+        f"...Done. Best AUPRC: {best_val_auprc}, Best AUROC: {best_val_auroc}, Best Loss: {best_val_loss} (epoch {best_epoch + 1}/{len(history.epoch)})",
+        flush=True,
+    )
 
     return history, metrics
+
 
 def find_optimal_threshold(y_true, y_pred_prob):
     """
     Find the optimal classification threshold using the F1 score.
-    
+
     For imbalanced datasets, the default threshold of 0.5 may not be optimal.
     This function finds the threshold that maximizes the F1 score for each class.
-    
+
     Args:
         y_true: Ground truth labels
         y_pred_prob: Predicted probabilities
-        
+
     Returns:
         The optimal threshold value
     """
     from sklearn.metrics import f1_score
-    
+
     # Try different thresholds and find the one that gives the best F1 score
     best_threshold = 0.5
     best_f1 = 0.0
-    
+
     for threshold in np.arange(0.1, 0.9, 0.05):
         y_pred = (y_pred_prob >= threshold).astype(int)
         f1 = f1_score(y_true, y_pred)
-        
+
         if f1 > best_f1:
             best_f1 = f1
             best_threshold = threshold
-    
+
     return best_threshold
 
 
 def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     """
     Evaluates the trained model on test data and prints detailed metrics.
-    
+
     Args:
         classifier: The trained model
         x_test: Test features (embeddings)
         y_test: Test labels
         labels: List of label names
         threshold: Classification threshold (if None, will find optimal threshold for each class)
-        
+
     Returns:
         Dictionary with evaluation metrics
     """
     from sklearn.metrics import (
-        precision_score, recall_score, f1_score, 
-        confusion_matrix, classification_report,
-        average_precision_score, roc_auc_score
+        average_precision_score,
+        confusion_matrix,
+        f1_score,
+        precision_score,
+        recall_score,
+        roc_auc_score,
     )
-    
+
     # Skip evaluation if test set is empty
     if len(x_test) == 0:
         print("No test data available for evaluation.")
         return {}
-    
+
     # Make predictions
     y_pred_prob = classifier.predict(x_test)
-    
+
     # Calculate metrics for each class
     metrics = {}
-    
+
     print("\nModel Evaluation:")
     print("=================")
-    
+
     # Calculate metrics for each class
     precisions_default = []
     recalls_default = []
@@ -726,69 +756,69 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     aurocs = []
     class_metrics = {}
     optimal_thresholds = {}
-    
+
     # Print the metric calculation method that's being used
     print("\nNote: The AUPRC and AUROC metrics calculated during post-training evaluation may differ")
     print("from training history values due to different calculation methods:")
     print("  - Training history uses Keras metrics calculated over batches")
     print("  - Evaluation uses scikit-learn metrics calculated over the entire dataset")
-    
+
     for i in range(y_test.shape[1]):
         try:
             # Calculate metrics with default threshold (0.5)
             y_pred_default = (y_pred_prob[:, i] >= 0.5).astype(int)
-            
+
             class_precision_default = precision_score(y_test[:, i], y_pred_default)
             class_recall_default = recall_score(y_test[:, i], y_pred_default)
             class_f1_default = f1_score(y_test[:, i], y_pred_default)
-            
+
             precisions_default.append(class_precision_default)
             recalls_default.append(class_recall_default)
             f1s_default.append(class_f1_default)
-            
+
             # Find optimal threshold for this class if needed
             if threshold is None:
                 class_threshold = find_optimal_threshold(y_test[:, i], y_pred_prob[:, i])
                 optimal_thresholds[labels[i]] = class_threshold
             else:
                 class_threshold = threshold
-            
+
             # Calculate metrics with optimized threshold
             y_pred_opt = (y_pred_prob[:, i] >= class_threshold).astype(int)
-            
+
             class_precision_opt = precision_score(y_test[:, i], y_pred_opt)
             class_recall_opt = recall_score(y_test[:, i], y_pred_opt)
             class_f1_opt = f1_score(y_test[:, i], y_pred_opt)
             class_auprc = average_precision_score(y_test[:, i], y_pred_prob[:, i])
             class_auroc = roc_auc_score(y_test[:, i], y_pred_prob[:, i])
-            
+
             precisions_opt.append(class_precision_opt)
             recalls_opt.append(class_recall_opt)
             f1s_opt.append(class_f1_opt)
             auprcs.append(class_auprc)
             aurocs.append(class_auroc)
-            
+
             # Confusion matrix with optimized threshold
             tn, fp, fn, tp = confusion_matrix(y_test[:, i], y_pred_opt).ravel()
-            
+
             class_metrics[labels[i]] = {
-                'precision_default': class_precision_default,
-                'recall_default': class_recall_default,
-                'f1_default': class_f1_default,
-                'precision_opt': class_precision_opt,
-                'recall_opt': class_recall_opt,
-                'f1_opt': class_f1_opt,
-                'auprc': class_auprc,
-                'auroc': class_auroc,
-                'tp': tp,
-                'fp': fp,
-                'tn': tn,
-                'fn': fn,
-                'threshold': class_threshold
+                "precision_default": class_precision_default,
+                "recall_default": class_recall_default,
+                "f1_default": class_f1_default,
+                "precision_opt": class_precision_opt,
+                "recall_opt": class_recall_opt,
+                "f1_opt": class_f1_opt,
+                "auprc": class_auprc,
+                "auroc": class_auroc,
+                "tp": tp,
+                "fp": fp,
+                "tn": tn,
+                "fn": fn,
+                "threshold": class_threshold,
             }
-            
+
             print(f"\nClass: {labels[i]}")
-            print(f"  Default threshold (0.5):")
+            print("  Default threshold (0.5):")
             print(f"    Precision: {class_precision_default:.4f}")
             print(f"    Recall:    {class_recall_default:.4f}")
             print(f"    F1 Score:  {class_f1_default:.4f}")
@@ -798,50 +828,50 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
             print(f"    F1 Score:  {class_f1_opt:.4f}")
             print(f"  AUPRC:     {class_auprc:.4f}")
             print(f"  AUROC:     {class_auroc:.4f}")
-            print(f"  Confusion matrix (optimized threshold):")
+            print("  Confusion matrix (optimized threshold):")
             print(f"    True Positives:  {tp}")
             print(f"    False Positives: {fp}")
             print(f"    True Negatives:  {tn}")
             print(f"    False Negatives: {fn}")
-            
+
         except Exception as e:
             print(f"Error calculating metrics for class {labels[i]}: {e}")
-    
+
     # Calculate macro-averaged metrics for both default and optimized thresholds
-    metrics['macro_precision_default'] = np.mean(precisions_default)
-    metrics['macro_recall_default'] = np.mean(recalls_default)
-    metrics['macro_f1_default'] = np.mean(f1s_default)
-    metrics['macro_precision_opt'] = np.mean(precisions_opt)
-    metrics['macro_recall_opt'] = np.mean(recalls_opt)
-    metrics['macro_f1_opt'] = np.mean(f1s_opt)
-    metrics['macro_auprc'] = np.mean(auprcs)
-    metrics['macro_auroc'] = np.mean(aurocs)
-    metrics['class_metrics'] = class_metrics
-    metrics['optimal_thresholds'] = optimal_thresholds
-    
+    metrics["macro_precision_default"] = np.mean(precisions_default)
+    metrics["macro_recall_default"] = np.mean(recalls_default)
+    metrics["macro_f1_default"] = np.mean(f1s_default)
+    metrics["macro_precision_opt"] = np.mean(precisions_opt)
+    metrics["macro_recall_opt"] = np.mean(recalls_opt)
+    metrics["macro_f1_opt"] = np.mean(f1s_opt)
+    metrics["macro_auprc"] = np.mean(auprcs)
+    metrics["macro_auroc"] = np.mean(aurocs)
+    metrics["class_metrics"] = class_metrics
+    metrics["optimal_thresholds"] = optimal_thresholds
+
     print("\nMacro-averaged metrics:")
-    print(f"  Default threshold (0.5):")
+    print("  Default threshold (0.5):")
     print(f"    Precision: {metrics['macro_precision_default']:.4f}")
     print(f"    Recall:    {metrics['macro_recall_default']:.4f}")
     print(f"    F1 Score:  {metrics['macro_f1_default']:.4f}")
-    print(f"  Optimized thresholds:")
+    print("  Optimized thresholds:")
     print(f"    Precision: {metrics['macro_precision_opt']:.4f}")
     print(f"    Recall:    {metrics['macro_recall_opt']:.4f}")
     print(f"    F1 Score:  {metrics['macro_f1_opt']:.4f}")
     print(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
     print(f"  AUROC:     {metrics['macro_auroc']:.4f}")
-    
+
     # Calculate class distribution in test set
     class_counts = y_test.sum(axis=0)
     total_samples = len(y_test)
     class_distribution = {}
-    
+
     print("\nClass distribution in test set:")
     for i, count in enumerate(class_counts):
         percentage = count / total_samples * 100
-        class_distribution[labels[i]] = {'count': int(count), 'percentage': percentage}
+        class_distribution[labels[i]] = {"count": int(count), "percentage": percentage}
         print(f"  {labels[i]}: {int(count)} samples ({percentage:.2f}%)")
-    
-    metrics['class_distribution'] = class_distribution
-    
+
+    metrics["class_distribution"] = class_distribution
+
     return metrics

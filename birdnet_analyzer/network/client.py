@@ -29,20 +29,19 @@ def send_request(host: str, port: int, fpath: str, mdata: str) -> dict:
 
     print(f"Requesting analysis for {fpath}")
 
-    # Make payload
-    multipart_form_data = {"audio": (fpath.rsplit(os.sep, 1)[-1], open(fpath, "rb")), "meta": (None, mdata)}
+    with open(fpath, "rb") as f:
+        # Make payload
+        multipart_form_data = {"audio": (fpath.rsplit(os.sep, 1)[-1], f), "meta": (None, mdata)}
 
-    # Send request
-    start_time = time.time()
-    response = requests.post(url, files=multipart_form_data)
-    end_time = time.time()
+        # Send request
+        start_time = time.time()
+        response = requests.post(url, files=multipart_form_data)
+        end_time = time.time()
 
-    print("Response: {}, Time: {:.4f}s".format(response.text, end_time - start_time), flush=True)
+        print(f"Response: {response.text}, Time: {end_time - start_time:.4f}s", flush=True)
 
-    # Convert to dict
-    data = json.loads(response.text)
-
-    return data
+        # Convert to dict
+        return json.loads(response.text)
 
 
 def _save_result(data, fpath):
@@ -62,7 +61,7 @@ def _save_result(data, fpath):
 
 
 if __name__ == "__main__":
-    import birdnet_analyzer.cli as cli
+    from birdnet_analyzer import cli
 
     # Freeze support for executable
     freeze_support()

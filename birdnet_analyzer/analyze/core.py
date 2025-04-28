@@ -1,9 +1,9 @@
 import os
-from typing import List, Literal
+from typing import Literal
 
 
 def analyze(
-    input: str,
+    audio_input: str,
     output: str | None = None,
     *,
     min_conf: float = 0.25,
@@ -19,8 +19,7 @@ def analyze(
     audio_speed: float = 1.0,
     batch_size: int = 1,
     combine_results: bool = False,
-    rtype: Literal["table", "audacity", "kaleidoscope", "csv"]
-    | List[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
+    rtype: Literal["table", "audacity", "kaleidoscope", "csv"] | list[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
     skip_existing_results: bool = False,
     sf_thresh: float = 0.03,
     top_n: int | None = None,
@@ -31,7 +30,7 @@ def analyze(
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
     Args:
-        input (str): Path to the input directory or file containing audio data.
+        audio_input (str): Path to the input directory or file containing audio data.
         output (str | None, optional): Path to the output directory for results. Defaults to None.
         min_conf (float, optional): Minimum confidence threshold for detections. Defaults to 0.25.
         classifier (str | None, optional): Path to a custom classifier file. Defaults to None.
@@ -73,7 +72,7 @@ def analyze(
     ensure_model_exists()
 
     flist = _set_params(
-        input=input,
+        audio_input=audio_input,
         output=output,
         min_conf=min_conf,
         custom_classifier=classifier,
@@ -109,8 +108,7 @@ def analyze(
 
     # Analyze files
     if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        for entry in flist:
-            result_files.append(analyze_file(entry))
+        result_files.extend(analyze_file(f) for f in flist)
     else:
         with Pool(cfg.CPU_THREADS) as p:
             # Map analyzeFile function to each entry in flist
@@ -129,7 +127,7 @@ def analyze(
 
 
 def _set_params(
-    input,
+    audio_input,
     output,
     min_conf,
     custom_classifier,
@@ -154,7 +152,7 @@ def _set_params(
     labels_file=None,
 ):
     import birdnet_analyzer.config as cfg
-    from birdnet_analyzer.analyze.utils import load_codes  # noqa: E402
+    from birdnet_analyzer.analyze.utils import load_codes
     from birdnet_analyzer.species.utils import get_species_list
     from birdnet_analyzer.utils import collect_audio_files, read_lines
 
@@ -164,7 +162,7 @@ def _set_params(
     cfg.LOCATION_FILTER_THRESHOLD = sf_thresh
     cfg.TOP_N = top_n
     cfg.MERGE_CONSECUTIVE = merge_consecutive
-    cfg.INPUT_PATH = input
+    cfg.INPUT_PATH = audio_input
     cfg.MIN_CONFIDENCE = min_conf
     cfg.SIGMOID_SENSITIVITY = sensitivity
     cfg.SIG_OVERLAP = overlap
@@ -233,9 +231,7 @@ def _set_params(
             cfg.SPECIES_LIST_FILE = None
             cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
 
-    lfile = os.path.join(
-        cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", "_{}.txt".format(locale))
-    )
+    lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
 
     if locale not in ["en"] and os.path.isfile(lfile):
         cfg.TRANSLATED_LABELS = read_lines(lfile)

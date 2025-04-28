@@ -5,10 +5,10 @@ from functools import partial
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
-
+import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.segments.utils import extract_segments
+
 
 def extract_segments_wrapper(entry):
     return (entry[0][0], extract_segments(entry))
@@ -18,7 +18,7 @@ def extract_segments_wrapper(entry):
 def _extract_segments(
     audio_dir, result_dir, output_dir, min_conf, num_seq, audio_speed, seq_length, threads, progress=gr.Progress()
 ):
-    from birdnet_analyzer.segments.utils import parse_folders, parse_files
+    from birdnet_analyzer.segments.utils import parse_files, parse_folders
 
     gu.validate(audio_dir, loc.localize("validation-no-audio-directory-selected"))
 

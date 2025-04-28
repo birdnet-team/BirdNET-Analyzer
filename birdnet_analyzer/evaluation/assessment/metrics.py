@@ -14,7 +14,7 @@ Functions:
     - calculate_auroc: Computes the Area Under the Receiver Operating Characteristic curve (AUROC).
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from sklearn.metrics import (
@@ -33,7 +33,7 @@ def calculate_accuracy(
     task: Literal["binary", "multilabel"],
     num_classes: int,
     threshold: float,
-    averaging_method: Optional[Literal["micro", "macro", "weighted", "none"]] = "macro",
+    averaging_method: Literal["micro", "macro", "weighted", "none"] | None = "macro",
 ) -> np.ndarray:
     """
     Calculate accuracy for the given predictions and labels.
@@ -115,7 +115,7 @@ def calculate_recall(
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
     threshold: float,
-    averaging_method: Optional[Literal["binary", "micro", "macro", "weighted", "samples", "none"]] = None,
+    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"] | None = None,
 ) -> np.ndarray:
     """
     Calculate recall for the given predictions and labels.
@@ -172,7 +172,7 @@ def calculate_precision(
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
     threshold: float,
-    averaging_method: Optional[Literal["binary", "micro", "macro", "weighted", "samples", "none"]] = None,
+    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"] | None = None,
 ) -> np.ndarray:
     """
     Calculate precision for the given predictions and labels.
@@ -229,7 +229,7 @@ def calculate_f1_score(
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
     threshold: float,
-    averaging_method: Optional[Literal["binary", "micro", "macro", "weighted", "samples", "none"]] = None,
+    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"] | None = None,
 ) -> np.ndarray:
     """
     Calculate the F1 score for the given predictions and labels.
@@ -285,7 +285,7 @@ def calculate_average_precision(
     predictions: np.ndarray,
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
-    averaging_method: Optional[Literal["micro", "macro", "weighted", "samples", "none"]] = None,
+    averaging_method: Literal["micro", "macro", "weighted", "samples", "none"] | None = None,
 ) -> np.ndarray:
     """
     Calculate the average precision (AP) for the given predictions and labels.
@@ -313,12 +313,7 @@ def calculate_average_precision(
     averaging = None if averaging_method == "none" else averaging_method
 
     # Compute average precision based on task type
-    if task == "binary":
-        y_true = labels.astype(int)
-        y_scores = predictions
-        ap = average_precision_score(y_true, y_scores, average=averaging)
-
-    elif task == "multilabel":
+    if task in ("binary", "multilabel"):
         y_true = labels.astype(int)
         y_scores = predictions
         ap = average_precision_score(y_true, y_scores, average=averaging)
@@ -337,7 +332,7 @@ def calculate_auroc(
     predictions: np.ndarray,
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
-    averaging_method: Optional[Literal["macro", "weighted", "samples", "none"]] = "macro",
+    averaging_method: Literal["macro", "weighted", "samples", "none"] | None = "macro",
 ) -> np.ndarray:
     """
     Calculate the Area Under the Receiver Operating Characteristic curve (AUROC).
@@ -382,9 +377,7 @@ def calculate_auroc(
 
     except ValueError as e:
         # Handle edge cases where AUROC cannot be computed
-        if "Only one class present in y_true" in str(e):
-            auroc = np.nan
-        elif "Number of classes in y_true" in str(e):
+        if "Only one class present in y_true" in str(e) or "Number of classes in y_true" in str(e):
             auroc = np.nan
         else:
             raise

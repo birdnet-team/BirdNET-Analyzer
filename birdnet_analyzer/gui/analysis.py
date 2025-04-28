@@ -5,12 +5,14 @@ from pathlib import Path
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
-import birdnet_analyzer.model as model
-
-
-from birdnet_analyzer.analyze.utils import analyze_file, combine_results, save_analysis_params
+import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer import model
+from birdnet_analyzer.analyze.utils import (
+    analyze_file,
+    combine_results,
+    save_analysis_params,
+)
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ORIGINAL_LABELS_FILE = str(Path(SCRIPT_DIR).parent / cfg.LABELS_FILE)
@@ -103,7 +105,7 @@ def run_analysis(
     week = -1 if use_yearlong else week
 
     flist = _set_params(
-        input=input_dir if input_dir else input_path,
+        audio_input=input_dir if input_dir else input_path,
         min_conf=confidence,
         custom_classifier=custom_classifier,
         sensitivity=min(1.25, max(0.75, float(sensitivity))),
@@ -143,8 +145,7 @@ def run_analysis(
 
     # Analyze files
     if cfg.CPU_THREADS < 2:
-        for entry in flist:
-            result_list.append(analyze_file_wrapper(entry))
+        result_list.extend(analyze_file_wrapper(entry) for entry in flist)
     else:
         with concurrent.futures.ProcessPoolExecutor(max_workers=cfg.CPU_THREADS) as executor:
             futures = (executor.submit(analyze_file_wrapper, arg) for arg in flist)

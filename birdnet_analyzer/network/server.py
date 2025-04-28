@@ -1,11 +1,10 @@
 import os
-from multiprocessing import freeze_support
 import shutil
 import tempfile
+from multiprocessing import freeze_support
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.cli as cli
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import cli, utils
 
 
 def start_server(host="0.0.0.0", port=8080, spath="uploads/", threads=1, locale="en"):
@@ -38,7 +37,7 @@ def start_server(host="0.0.0.0", port=8080, spath="uploads/", threads=1, locale=
 
     # Load translated labels
     lfile = os.path.join(
-        cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", "_{}.txt".format(locale))
+        cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt")
     )
 
     if locale not in ["en"] and os.path.isfile(lfile):

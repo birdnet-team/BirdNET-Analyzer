@@ -418,14 +418,13 @@ class TestDataProcessorLoadData:
         def side_effect(*args, **kwargs):
             if "predictions.txt" in args[0]:
                 raise FileNotFoundError("File not found")
-            else:
-                return pd.DataFrame(
-                    {
-                        "Class": ["A", "C"],
-                        "Start Time": [0.5, 1.5],
-                        "End Time": [1.5, 2.5],
-                    }
-                )
+            return pd.DataFrame(
+                {
+                    "Class": ["A", "C"],
+                    "Start Time": [0.5, 1.5],
+                    "End Time": [1.5, 2.5],
+                }
+            )
 
         mock_read_csv.side_effect = side_effect
 
@@ -456,14 +455,14 @@ class TestDataProcessorLoadData:
         def side_effect(*args, **kwargs):
             if "annotations.txt" in args[0]:
                 raise FileNotFoundError("File not found")
-            else:
-                return pd.DataFrame(
-                    {
-                        "Class": ["A", "B"],
-                        "Start Time": [0, 1],
-                        "End Time": [1, 2],
-                    }
-                )
+
+            return pd.DataFrame(
+                {
+                    "Class": ["A", "B"],
+                    "Start Time": [0, 1],
+                    "End Time": [1, 2],
+                }
+            )
 
         mock_read_csv.side_effect = side_effect
 
@@ -1643,29 +1642,32 @@ class TestUpdateSamplesWithPredictions:
 
     def test_single_prediction_overlapping_one_sample(self):
         """Test single prediction overlapping one sample."""
-        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [1], "End Time": [4], "Confidence": [0.8]})
+        target_confidence = 0.6
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [1], "End Time": [4], "Confidence": [target_confidence]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.8
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
 
     def test_single_prediction_overlapping_multiple_samples(self):
         """Test single prediction overlapping multiple samples."""
-        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [3], "End Time": [8], "Confidence": [0.6]})
+        target_confidence = 0.6
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [3], "End Time": [8], "Confidence": [target_confidence]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.6
-        assert self.samples_df.loc[1, "A_confidence"] == 0.6
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
+        assert self.samples_df.loc[1, "A_confidence"] == target_confidence
 
     def test_multiple_predictions_same_sample(self):
         """Test multiple predictions overlapping the same sample for the same class."""
+        target_confidence = 0.7
         pred_df = pd.DataFrame(
             {
                 "Class": ["A", "A"],
                 "Start Time": [1, 1],
                 "End Time": [4, 4],
-                "Confidence": [0.5, 0.7],
+                "Confidence": [0.5, target_confidence],
             }
         )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.7  # Max confidence
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence  # Max confidence
 
     def test_predictions_classes_not_in_self_classes(self):
         """Test predictions with classes not in self.classes."""
@@ -1688,9 +1690,10 @@ class TestUpdateSamplesWithPredictions:
 
     def test_predictions_with_negative_times(self):
         """Test predictions with negative times."""
-        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [-3], "End Time": [2], "Confidence": [0.5]})
+        target_confidence = 0.5
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [-3], "End Time": [2], "Confidence": [target_confidence]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.5
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
 
     def test_predictions_no_overlap(self):
         """Test predictions that do not overlap any samples."""
@@ -1700,12 +1703,13 @@ class TestUpdateSamplesWithPredictions:
 
     def test_predictions_with_different_min_overlap(self):
         """Test predictions with different min_overlap values."""
+        target_confidence = 0.8
         pred_df = pd.DataFrame(
             {
                 "Class": ["A"],
                 "Start Time": [4.6],
                 "End Time": [5.1],
-                "Confidence": [0.8],
+                "Confidence": [target_confidence],
             }
         )
         # With min_overlap 0.5, should not overlap
@@ -1716,36 +1720,40 @@ class TestUpdateSamplesWithPredictions:
         # With min_overlap 0.0, should overlap
         self.dp.min_overlap = 0.0
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.8
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
 
     def test_predictions_overlapping_different_classes(self):
         """Test predictions overlapping different classes."""
+        target_confidence_1 = 0.7
+        target_confidence_2 = 0.9
         pred_df = pd.DataFrame(
             {
                 "Class": ["A", "B"],
                 "Start Time": [1, 6],
                 "End Time": [4, 9],
-                "Confidence": [0.7, 0.9],
+                "Confidence": [target_confidence_1, target_confidence_2],
             }
         )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.7
-        assert self.samples_df.loc[1, "B_confidence"] == 0.9
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence_1
+        assert self.samples_df.loc[1, "B_confidence"] == target_confidence_2
 
     def test_multiple_predictions_overlapping_multiple_samples(self):
         """Test multiple predictions overlapping multiple samples."""
+        target_confidence_1 = 0.5
+        target_confidence_2 = 0.6
         pred_df = pd.DataFrame(
             {
                 "Class": ["A", "A"],
                 "Start Time": [2, 7],
                 "End Time": [6, 12],
-                "Confidence": [0.5, 0.6],
+                "Confidence": [target_confidence_1, target_confidence_2],
             }
         )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.5
-        assert self.samples_df.loc[1, "A_confidence"] == 0.6
-        assert self.samples_df.loc[2, "A_confidence"] == 0.6
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence_1
+        assert self.samples_df.loc[1, "A_confidence"] == target_confidence_2
+        assert self.samples_df.loc[2, "A_confidence"] == target_confidence_2
 
     def test_empty_predictions_dataframe(self):
         """Test when pred_df is empty."""
@@ -1911,6 +1919,8 @@ class TestCreateTensors:
             annotation_directory_path="dummy_path",
         )
 
+        self.rng = np.random.default_rng(seed=42)  # For reproducibility
+
     def teardown_method(self):
         """Stop patching."""
         self.patcher_pred.stop()
@@ -2021,7 +2031,7 @@ class TestCreateTensors:
                 "A_annotation": [1],
             }
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="could not convert string to float: 'high'"):
             self.dp.create_tensors()
 
     def test_large_number_of_samples_and_classes(self):
@@ -2032,8 +2042,8 @@ class TestCreateTensors:
         self.dp.classes = classes
         data = {}
         for cls in classes:
-            data[f"{cls}_confidence"] = np.random.rand(num_samples)
-            data[f"{cls}_annotation"] = np.random.randint(0, 2, size=num_samples)
+            data[f"{cls}_confidence"] = self.rng.random(num_samples)
+            data[f"{cls}_annotation"] = self.rng.integers(0, 2, size=num_samples)
         self.dp.samples_df = pd.DataFrame(data)
         self.dp.create_tensors()
         assert self.dp.prediction_tensors.shape == (num_samples, num_classes)
@@ -2174,6 +2184,8 @@ class TestGetSampleData:
             annotation_directory_path="dummy_path",
         )
 
+        self.rng = np.random.default_rng(seed=42)  # For reproducibility
+
     def teardown_method(self):
         """Stop patching."""
         self.patcher_pred.stop()
@@ -2201,10 +2213,11 @@ class TestGetSampleData:
 
     def test_modifying_returned_df_does_not_affect_samples_df(self):
         """Test that modifying returned DataFrame does not affect samples_df."""
-        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]})
+        target_value = 0.8
+        self.dp.samples_df = pd.DataFrame({"A_confidence": [target_value]})
         sample_data = self.dp.get_sample_data()
         sample_data["A_confidence"] = [0.5]
-        assert self.dp.samples_df["A_confidence"][0] == 0.8
+        assert self.dp.samples_df["A_confidence"][0] == target_value
 
     def test_samples_df_with_nan_values(self):
         """Test when samples_df contains NaN values."""
@@ -2222,15 +2235,16 @@ class TestGetSampleData:
     def test_samples_df_large_data(self):
         """Test with a large samples_df."""
         num_samples = 1000
-        self.dp.samples_df = pd.DataFrame({"A_confidence": np.random.rand(num_samples)})
+        self.dp.samples_df = pd.DataFrame({"A_confidence": self.rng.random(num_samples)})
         sample_data = self.dp.get_sample_data()
         pd.testing.assert_frame_equal(sample_data, self.dp.samples_df)
 
     def test_samples_df_with_custom_index(self):
         """Test that index is preserved."""
-        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]}, index=[10])
+        target_index = 10
+        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]}, index=[target_index])
         sample_data = self.dp.get_sample_data()
-        assert sample_data.index[0] == 10
+        assert sample_data.index[0] == target_index
 
     def test_samples_df_with_different_dtypes(self):
         """Test that data types are preserved."""
@@ -2247,10 +2261,11 @@ class TestGetSampleData:
 
     def test_modifications_after_get_sample_data(self):
         """Test that modifications to samples_df after get_sample_data do not affect returned DataFrame."""
-        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]})
+        target_value = 0.8
+        self.dp.samples_df = pd.DataFrame({"A_confidence": [target_value]})
         sample_data = self.dp.get_sample_data()
         self.dp.samples_df["A_confidence"] = [0.5]
-        assert sample_data["A_confidence"][0] == 0.8
+        assert sample_data["A_confidence"][0] == target_value
 
     def test_samples_df_with_multiindex(self):
         """Test when samples_df has a MultiIndex."""
@@ -2310,6 +2325,8 @@ class TestGetFilteredTensors:
         # Create tensors for the DataProcessor
         self.dp.create_tensors()
 
+        self.rng = np.random.default_rng(123)
+
     def teardown_method(self):
         """Stop patching."""
         self.patcher_pred.stop()
@@ -2325,7 +2342,7 @@ class TestGetFilteredTensors:
 
     def test_selected_classes_not_in_data(self):
         """Test when selected classes are not in data."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No valid classes selected."):
             self.dp.get_filtered_tensors(selected_classes=["C"], selected_recordings=["rec1"])
 
     def test_selected_recordings_not_in_data(self):
@@ -2339,7 +2356,7 @@ class TestGetFilteredTensors:
 
     def test_empty_selected_classes(self):
         """Test when selected_classes is empty."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No valid classes selected."):
             self.dp.get_filtered_tensors(selected_classes=[], selected_recordings=["rec1"])
 
     def test_empty_selected_recordings(self):
@@ -2398,8 +2415,8 @@ class TestGetFilteredTensors:
         self.dp.samples_df = pd.DataFrame(
             {
                 "filename": ["rec1"] * num_samples,
-                "A_confidence": np.random.rand(num_samples),
-                "A_annotation": np.random.randint(0, 2, size=num_samples),
+                "A_confidence": self.rng.random(num_samples),
+                "A_annotation": self.rng.integers(0, 2, size=num_samples),
             }
         )
         predictions, labels, classes = self.dp.get_filtered_tensors(

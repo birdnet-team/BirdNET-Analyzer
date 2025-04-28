@@ -9,7 +9,7 @@ It is designed to work seamlessly with pandas and file system operations.
 """
 
 import os
-from typing import List
+
 import pandas as pd
 
 
@@ -65,7 +65,7 @@ def read_and_concatenate_files_in_directory(directory_path: str) -> pd.DataFrame
     Raises:
         ValueError: If the columns in the files are inconsistent.
     """
-    df_list: List[pd.DataFrame] = []  # List to hold individual DataFrames
+    df_list: list[pd.DataFrame] = []  # List to hold individual DataFrames
     columns_set = None  # To ensure consistency in column names
 
     # Iterate through each file in the directory

@@ -13,7 +13,7 @@ Functions:
     - plot_confusion_matrices: Visualizes confusion matrices for binary, multiclass, or multilabel tasks.
 """
 
-from typing import Dict, List, Literal
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +21,7 @@ import pandas as pd
 import seaborn as sns
 
 
-def plot_overall_metrics(metrics_df: pd.DataFrame, colors: List[str]) -> plt.Figure:
+def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Figure:
     """
     Plots a bar chart for overall performance metrics.
 
@@ -52,7 +52,7 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: List[str]) -> plt.Fig
 
     # Extract metric names and values
     metrics = metrics_df.index  # Metric names
-    values = metrics_df["Overall"].values  # Metric values
+    values = metrics_df["Overall"].to_numpy()  # Metric values
 
     # Plot bar chart
     fig = plt.figure(figsize=(10, 6))
@@ -69,7 +69,7 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: List[str]) -> plt.Fig
     return fig
 
 
-def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: List[str]) -> plt.Figure:
+def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Figure:
     """
     Plots metric values per class, with each metric represented by a distinct color and line.
 
@@ -127,9 +127,9 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: List[str]) -> plt.F
 
 def plot_metrics_across_thresholds(
     thresholds: np.ndarray,
-    metric_values_dict: Dict[str, np.ndarray],
-    metrics_to_plot: List[str],
-    colors: List[str],
+    metric_values_dict: dict[str, np.ndarray],
+    metrics_to_plot: list[str],
+    colors: list[str],
 ) -> plt.Figure:
     """
     Plots metrics across different thresholds.
@@ -195,10 +195,10 @@ def plot_metrics_across_thresholds(
 
 def plot_metrics_across_thresholds_per_class(
     thresholds: np.ndarray,
-    metric_values_dict_per_class: Dict[str, Dict[str, np.ndarray]],
-    metrics_to_plot: List[str],
-    class_names: List[str],
-    colors: List[str],
+    metric_values_dict_per_class: dict[str, dict[str, np.ndarray]],
+    metrics_to_plot: list[str],
+    class_names: list[str],
+    colors: list[str],
 ) -> plt.Figure:
     """
     Plots metrics across different thresholds per class.
@@ -247,10 +247,7 @@ def plot_metrics_across_thresholds_per_class(
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4))
 
     # Flatten axes for easy indexing
-    if num_classes == 1:
-        axes = [axes]
-    else:
-        axes = axes.flatten()
+    axes = [axes] if num_classes == 1 else axes.flatten()
 
     # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
@@ -269,7 +266,8 @@ def plot_metrics_across_thresholds_per_class(
             metric_values = metric_values_dict[metric_name]
             if len(metric_values) != len(thresholds):
                 raise ValueError(
-                    f"Length of metric '{metric_name}' values for class '{class_name}' does not match length of thresholds."
+                    f"Length of metric '{metric_name}' values for class '{class_name}' "
+                    + "does not match length of thresholds."
                 )
             ax.plot(
                 thresholds,
@@ -300,7 +298,7 @@ def plot_metrics_across_thresholds_per_class(
 def plot_confusion_matrices(
     conf_mat: np.ndarray,
     task: Literal["binary", "multiclass", "multilabel"],
-    class_names: List[str],
+    class_names: list[str],
 ) -> plt.Figure:
     """
     Plots confusion matrices for each class in a single figure with multiple subplots.
@@ -360,10 +358,7 @@ def plot_confusion_matrices(
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2, n_rows * 2))
 
         # Flatten axes for easy indexing
-        if num_labels == 1:
-            axes = [axes]
-        else:
-            axes = axes.flatten()
+        axes = [axes] if num_labels == 1 else axes.flatten()
 
         # Plot each class's confusion matrix
         for i in range(num_labels):

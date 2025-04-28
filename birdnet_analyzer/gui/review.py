@@ -7,9 +7,9 @@ from functools import partial
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
-import birdnet_analyzer.utils as utils
+import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer import utils
 
 POSITIVE_LABEL_DIR = "Positive"
 NEGATIVE_LABEL_DIR = "Negative"
@@ -24,9 +24,9 @@ def build_review_tab():
                 entry.path
                 for entry in os.scandir(directory)
                 if (
-                    entry.is_file() and 
-                    not entry.name.startswith(".") and
-                    entry.name.rsplit(".", 1)[-1] in cfg.ALLOWED_FILETYPES
+                    entry.is_file()
+                    and not entry.name.startswith(".")
+                    and entry.name.rsplit(".", 1)[-1] in cfg.ALLOWED_FILETYPES
                 )
             ]
             if os.path.isdir(directory)
@@ -94,7 +94,7 @@ def build_review_tab():
             ]
             p_colors = ["blue", "purple", "orange", "green"]
 
-            for target_p, p_color, threshold in zip(target_ps, p_colors, thresholds):
+            for target_p, p_color, threshold in zip(target_ps, p_colors, thresholds, strict=True):
                 if threshold <= 1:
                     ax.vlines(
                         threshold,
@@ -150,49 +150,42 @@ def build_review_tab():
                     elem_id="segments-results-grid",
                 )
 
-            with gr.Column() as review_item_col:
-                with gr.Row():
-                    with gr.Column():
-                        with gr.Group():
-                            spectrogram_image = gr.Plot(
-                                label=loc.localize("review-tab-spectrogram-plot-label"), show_label=False
-                            )
-                            # with gr.Row():
-                            spectrogram_dl_btn = gr.Button("Download spectrogram", size="sm")
+            with gr.Column() as review_item_col, gr.Row():
+                with gr.Column(), gr.Group():
+                    spectrogram_image = gr.Plot(
+                        label=loc.localize("review-tab-spectrogram-plot-label"), show_label=False
+                    )
+                    spectrogram_dl_btn = gr.Button("Download spectrogram", size="sm")
 
-                    with gr.Column():
-                        positive_btn = gr.Button(
-                            loc.localize("review-tab-pos-button-label"),
-                            elem_id="positive-button",
-                            variant="huggingface",
-                            icon=os.path.join(SCRIPT_DIR, "assets/arrow_up.svg"),
+                with gr.Column():
+                    positive_btn = gr.Button(
+                        loc.localize("review-tab-pos-button-label"),
+                        elem_id="positive-button",
+                        variant="huggingface",
+                        icon=os.path.join(SCRIPT_DIR, "assets/arrow_up.svg"),
+                    )
+                    negative_btn = gr.Button(
+                        loc.localize("review-tab-neg-button-label"),
+                        elem_id="negative-button",
+                        variant="huggingface",
+                        icon=os.path.join(SCRIPT_DIR, "assets/arrow_down.svg"),
+                    )
+
+                    with gr.Row():
+                        undo_btn = gr.Button(
+                            loc.localize("review-tab-undo-button-label"),
+                            elem_id="undo-button",
+                            icon=os.path.join(SCRIPT_DIR, "assets/arrow_left.svg"),
                         )
-                        negative_btn = gr.Button(
-                            loc.localize("review-tab-neg-button-label"),
-                            elem_id="negative-button",
-                            variant="huggingface",
-                            icon=os.path.join(SCRIPT_DIR, "assets/arrow_down.svg"),
+                        skip_btn = gr.Button(
+                            loc.localize("review-tab-skip-button-label"),
+                            elem_id="skip-button",
+                            icon=os.path.join(SCRIPT_DIR, "assets/arrow_right.svg"),
                         )
 
-                        with gr.Row():
-                            undo_btn = gr.Button(
-                                loc.localize("review-tab-undo-button-label"),
-                                elem_id="undo-button",
-                                icon=os.path.join(SCRIPT_DIR, "assets/arrow_left.svg"),
-                            )
-                            skip_btn = gr.Button(
-                                loc.localize("review-tab-skip-button-label"),
-                                elem_id="skip-button",
-                                icon=os.path.join(SCRIPT_DIR, "assets/arrow_right.svg"),
-                            )
-
-                        with gr.Group():
-                            review_audio = gr.Audio(
-                                type="filepath", sources=[], show_download_button=False, autoplay=True
-                            )
-                            autoplay_checkbox = gr.Checkbox(
-                                True, label=loc.localize("review-tab-autoplay-checkbox-label")
-                            )
+                    with gr.Group():
+                        review_audio = gr.Audio(type="filepath", sources=[], show_download_button=False, autoplay=True)
+                        autoplay_checkbox = gr.Checkbox(True, label=loc.localize("review-tab-autoplay-checkbox-label"))
 
             no_samles_label = gr.Label(loc.localize("review-tab-no-files-label"), visible=False, show_label=False)
             with gr.Group():
@@ -239,12 +232,12 @@ def build_review_tab():
 
             return update_dict
 
-        def next_review(next_review_state: dict, target_dir: str = None):
+        def next_review(next_review_state: dict, target_dir: str | None = None):
             try:
                 current_file = next_review_state["files"][0]
-            except IndexError:
+            except IndexError as e:
                 if next_review_state["input_directory"]:
-                    raise gr.Error(loc.localize("review-tab-no-files-error"))
+                    raise gr.Error(loc.localize("review-tab-no-files-error")) from e
 
                 return {review_state: next_review_state}
 
@@ -276,8 +269,8 @@ def build_review_tab():
         def select_subdir(new_value: str, next_review_state: dict):
             if new_value != next_review_state["current_species"]:
                 return update_review(next_review_state, selected_species=new_value)
-            else:
-                return {review_state: next_review_state}
+
+            return {review_state: next_review_state}
 
         def start_review(next_review_state):
             dir_name = gu.select_folder(state_key="review-input-dir")
@@ -287,15 +280,14 @@ def build_review_tab():
                 specieslist = [
                     e.name
                     for e in os.scandir(next_review_state["input_directory"])
-                    if e.is_dir() and e.name != POSITIVE_LABEL_DIR and e.name != NEGATIVE_LABEL_DIR
+                    if e.is_dir() and e.name not in (POSITIVE_LABEL_DIR, NEGATIVE_LABEL_DIR)
                 ]
 
                 next_review_state["species_list"] = specieslist
 
                 return update_review(next_review_state)
 
-            else:
-                return {review_state: next_review_state}
+            return {review_state: next_review_state}
 
         def try_confidence(filename):
             try:
@@ -308,7 +300,7 @@ def build_review_tab():
             except ValueError:
                 return 0
 
-        def update_review(next_review_state: dict, selected_species: str = None):
+        def update_review(next_review_state: dict, selected_species: str | None = None):
             next_review_state["history"] = []
             next_review_state["skipped"] = []
 
@@ -488,7 +480,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
-            show_progress_on=review_audio
+            show_progress_on=review_audio,
         )
 
         negative_btn.click(
@@ -496,7 +488,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
-            show_progress_on=review_audio
+            show_progress_on=review_audio,
         )
 
         skip_btn.click(
@@ -504,7 +496,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
-            show_progress_on=review_audio
+            show_progress_on=review_audio,
         )
 
         undo_btn.click(
@@ -512,7 +504,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
-            show_progress_on=review_audio
+            show_progress_on=review_audio,
         )
 
         select_directory_btn.click(

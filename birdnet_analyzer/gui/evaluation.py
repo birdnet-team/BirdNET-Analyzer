@@ -10,8 +10,10 @@ import pandas as pd
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.evaluation.assessment.performance_assessor import PerformanceAssessor
 from birdnet_analyzer.evaluation import process_data
+from birdnet_analyzer.evaluation.assessment.performance_assessor import (
+    PerformanceAssessor,
+)
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 
 
@@ -134,7 +136,7 @@ def build_evaluation_tab():
                     print(f"Error reading file {file_obj}: {e}")
                     gr.Warning(f"{loc.localize('eval-tab-warning-error-reading-file')} {file_obj}")
 
-        return sorted(list(columns))
+        return sorted(columns)
 
     def save_uploaded_files(files):
         if not files:
@@ -217,7 +219,7 @@ def build_evaluation_tab():
             mapping_path = mapping_file_obj if mapping_file_obj else None
 
         if mapping_path:
-            with open(mapping_path, "r") as f:
+            with open(mapping_path) as f:
                 class_mapping = json.load(f)
         else:
             class_mapping = None
@@ -241,11 +243,7 @@ def build_evaluation_tab():
             return avail_classes, avail_recordings, proc, annotation_dir, prediction_dir
         except KeyError as e:
             print(f"Column missing in files: {e}")
-            raise gr.Error(
-                f"{loc.localize('eval-tab-error-missing-col')}: "
-                + str(e)
-                + f". {loc.localize('eval-tab-error-missing-col-info')}"
-            ) from e
+            raise gr.Error(f"{loc.localize('eval-tab-error-missing-col')}: " + str(e) + f". {loc.localize('eval-tab-error-missing-col-info')}") from e
         except Exception as e:
             print(f"Error initializing processor: {e}")
 
@@ -311,16 +309,8 @@ def build_evaluation_tab():
         state = ProcessorState(proc, annotation_dir, prediction_dir)
         # If no current selection exists, default to all available classes/recordings;
         # otherwise, preserve any selections that are still valid.
-        new_classes = (
-            avail_classes
-            if not current_classes
-            else [c for c in current_classes if c in avail_classes] or avail_classes
-        )
-        new_recordings = (
-            avail_recordings
-            if not current_recordings
-            else [r for r in current_recordings if r in avail_recordings] or avail_recordings
-        )
+        new_classes = avail_classes if not current_classes else [c for c in current_classes if c in avail_classes] or avail_classes
+        new_recordings = avail_recordings if not current_recordings else [r for r in current_recordings if r in avail_recordings] or avail_recordings
 
         return (
             gr.update(choices=avail_classes, value=new_classes),
@@ -360,7 +350,7 @@ def build_evaluation_tab():
         # Update column dropdowns when files are uploaded.
         def update_annotation_columns(uploaded_files):
             cols = get_columns_from_uploaded_files(uploaded_files)
-            cols = [""] + cols
+            cols = ["", *cols]
             updates = []
 
             for label in ["Start Time", "End Time", "Class", "Recording", "Duration"]:
@@ -372,7 +362,7 @@ def build_evaluation_tab():
 
         def update_prediction_columns(uploaded_files):
             cols = get_columns_from_uploaded_files(uploaded_files)
-            cols = [""] + cols
+            cols = ["", *cols]
             updates = []
 
             for label in ["Start Time", "End Time", "Class", "Confidence", "Recording", "Duration"]:
@@ -389,7 +379,7 @@ def build_evaluation_tab():
                 if folder:
                     files = get_selection_tables(folder)
                     files_to_display = files[:100] + [["..."]] if len(files) > 100 else files
-                    return [files, files_to_display, gr.update(visible=True)] + on_select(files)
+                    return [files, files_to_display, gr.update(visible=True), *on_select(files)]
 
                 return ["", [[loc.localize("eval-tab-no-files-found")]]]
 
@@ -415,115 +405,112 @@ def build_evaluation_tab():
                 )
 
         # ----------------------- Annotations Columns Box -----------------------
-        with gr.Group(visible=False) as annotation_group:
-            with gr.Accordion(loc.localize("eval-tab-annotation-col-accordion-label"), open=True):
-                with gr.Row():
-                    annotation_columns: dict[str, gr.Dropdown] = {}
+        with (
+            gr.Group(visible=False) as annotation_group,
+            gr.Accordion(loc.localize("eval-tab-annotation-col-accordion-label"), open=True),
+            gr.Row(),
+        ):
+            annotation_columns: dict[str, gr.Dropdown] = {}
 
-                    for col in ["Start Time", "End Time", "Class", "Recording", "Duration"]:
-                        annotation_columns[col] = gr.Dropdown(choices=[], label=localized_column_labels[col])
+            for col in ["Start Time", "End Time", "Class", "Recording", "Duration"]:
+                annotation_columns[col] = gr.Dropdown(choices=[], label=localized_column_labels[col])
 
         # ----------------------- Predictions Columns Box -----------------------
-        with gr.Group(visible=False) as prediction_group:
-            with gr.Accordion(loc.localize("eval-tab-prediction-col-accordion-label"), open=True):
-                with gr.Row():
-                    prediction_columns: dict[str, gr.Dropdown] = {}
+        with (
+            gr.Group(visible=False) as prediction_group,
+            gr.Accordion(loc.localize("eval-tab-prediction-col-accordion-label"), open=True),
+            gr.Row(),
+        ):
+            prediction_columns: dict[str, gr.Dropdown] = {}
 
-                    for col in ["Start Time", "End Time", "Class", "Confidence", "Recording", "Duration"]:
-                        prediction_columns[col] = gr.Dropdown(choices=[], label=localized_column_labels[col])
+            for col in ["Start Time", "End Time", "Class", "Confidence", "Recording", "Duration"]:
+                prediction_columns[col] = gr.Dropdown(choices=[], label=localized_column_labels[col])
 
         # ----------------------- Class Mapping Box -----------------------
         with gr.Group(visible=False) as mapping_group:
-            with gr.Accordion(loc.localize("eval-tab-class-mapping-accordion-label"), open=False):
-                with gr.Row():
-                    mapping_file = gr.File(
-                        label=loc.localize("eval-tab-upload-mapping-file-label"),
-                        file_count="single",
-                        file_types=[".json"],
-                    )
-                    download_mapping_button = gr.DownloadButton(
-                        label=loc.localize("eval-tab-mapping-file-template-download-button-label")
-                    )
+            with gr.Accordion(loc.localize("eval-tab-class-mapping-accordion-label"), open=False), gr.Row():
+                mapping_file = gr.File(
+                    label=loc.localize("eval-tab-upload-mapping-file-label"),
+                    file_count="single",
+                    file_types=[".json"],
+                )
+                download_mapping_button = gr.DownloadButton(label=loc.localize("eval-tab-mapping-file-template-download-button-label"))
 
             download_mapping_button.click(fn=download_class_mapping_template)
 
         # ----------------------- Classes and Recordings Selection Box -----------------------
-        with gr.Group(visible=False) as class_recording_group:
-            with gr.Accordion(loc.localize("eval-tab-select-classes-recordings-accordion-label"), open=False):
-                with gr.Row():
-                    with gr.Column():
-                        select_classes_checkboxgroup = gr.CheckboxGroup(
-                            choices=[],
-                            value=[],
-                            label=loc.localize("eval-tab-select-classes-checkboxgroup-label"),
-                            info=loc.localize("eval-tab-select-classes-checkboxgroup-info"),
-                            interactive=True,
-                            elem_classes="custom-checkbox-group",
-                        )
+        with (
+            gr.Group(visible=False) as class_recording_group,
+            gr.Accordion(loc.localize("eval-tab-select-classes-recordings-accordion-label"), open=False),
+            gr.Row(),
+        ):
+            with gr.Column():
+                select_classes_checkboxgroup = gr.CheckboxGroup(
+                    choices=[],
+                    value=[],
+                    label=loc.localize("eval-tab-select-classes-checkboxgroup-label"),
+                    info=loc.localize("eval-tab-select-classes-checkboxgroup-info"),
+                    interactive=True,
+                    elem_classes="custom-checkbox-group",
+                )
 
-                    with gr.Column():
-                        select_recordings_checkboxgroup = gr.CheckboxGroup(
-                            choices=[],
-                            value=[],
-                            label=loc.localize("eval-tab-select-recordings-checkboxgroup-label"),
-                            info=loc.localize("eval-tab-select-recordings-checkboxgroup-info"),
-                            interactive=True,
-                            elem_classes="custom-checkbox-group",
-                        )
+            with gr.Column():
+                select_recordings_checkboxgroup = gr.CheckboxGroup(
+                    choices=[],
+                    value=[],
+                    label=loc.localize("eval-tab-select-recordings-checkboxgroup-label"),
+                    info=loc.localize("eval-tab-select-recordings-checkboxgroup-info"),
+                    interactive=True,
+                    elem_classes="custom-checkbox-group",
+                )
 
         # ----------------------- Parameters Box -----------------------
-        with gr.Group():
-            with gr.Accordion(loc.localize("eval-tab-parameters-accordion-label"), open=False):
-                with gr.Row():
-                    sample_duration = gr.Number(
-                        value=3,
-                        label=loc.localize("eval-tab-sample-duration-number-label"),
-                        precision=0,
-                        info=loc.localize("eval-tab-sample-duration-number-info"),
-                    )
-                    recording_duration = gr.Textbox(
-                        label=loc.localize("eval-tab-recording-duration-textbox-label"),
-                        placeholder=loc.localize("eval-tab-recording-duration-textbox-placeholder"),
-                        info=loc.localize("eval-tab-recording-duration-textbox-info"),
-                    )
-                    min_overlap = gr.Number(
-                        value=0.5,
-                        label=loc.localize("eval-tab-min-overlap-number-label"),
-                        info=loc.localize("eval-tab-min-overlap-number-info"),
-                    )
-                    threshold = gr.Slider(
-                        minimum=0.01,
-                        maximum=0.99,
-                        value=0.1,
-                        label=loc.localize("eval-tab-threshold-number-label"),
-                        info=loc.localize("eval-tab-threshold-number-info"),
-                    )
-                    class_wise = gr.Checkbox(
-                        label=loc.localize("eval-tab-classwise-checkbox-label"),
-                        value=False,
-                        info=loc.localize("eval-tab-classwise-checkbox-info"),
-                    )
+        with gr.Group(), gr.Accordion(loc.localize("eval-tab-parameters-accordion-label"), open=False), gr.Row():
+            sample_duration = gr.Number(
+                value=3,
+                label=loc.localize("eval-tab-sample-duration-number-label"),
+                precision=0,
+                info=loc.localize("eval-tab-sample-duration-number-info"),
+            )
+            recording_duration = gr.Textbox(
+                label=loc.localize("eval-tab-recording-duration-textbox-label"),
+                placeholder=loc.localize("eval-tab-recording-duration-textbox-placeholder"),
+                info=loc.localize("eval-tab-recording-duration-textbox-info"),
+            )
+            min_overlap = gr.Number(
+                value=0.5,
+                label=loc.localize("eval-tab-min-overlap-number-label"),
+                info=loc.localize("eval-tab-min-overlap-number-info"),
+            )
+            threshold = gr.Slider(
+                minimum=0.01,
+                maximum=0.99,
+                value=0.1,
+                label=loc.localize("eval-tab-threshold-number-label"),
+                info=loc.localize("eval-tab-threshold-number-info"),
+            )
+            class_wise = gr.Checkbox(
+                label=loc.localize("eval-tab-classwise-checkbox-label"),
+                value=False,
+                info=loc.localize("eval-tab-classwise-checkbox-info"),
+            )
 
         # ----------------------- Metrics Box -----------------------
-        with gr.Group():
-            with gr.Accordion(loc.localize("eval-tab-metrics-accordian-label"), open=False):
-                with gr.Row():
-                    metric_info = {
-                        "AUROC": loc.localize("eval-tab-auroc-checkbox-info"),
-                        "Precision": loc.localize("eval-tab-precision-checkbox-info"),
-                        "Recall": loc.localize("eval-tab-recall-checkbox-info"),
-                        "F1 Score": loc.localize("eval-tab-f1-score-checkbox-info"),
-                        "Average Precision (AP)": loc.localize("eval-tab-ap-checkbox-info"),
-                        "Accuracy": loc.localize("eval-tab-accuracy-checkbox-info"),
-                    }
-                    metrics_checkboxes = {}
+        with gr.Group(), gr.Accordion(loc.localize("eval-tab-metrics-accordian-label"), open=False), gr.Row():
+            metric_info = {
+                "AUROC": loc.localize("eval-tab-auroc-checkbox-info"),
+                "Precision": loc.localize("eval-tab-precision-checkbox-info"),
+                "Recall": loc.localize("eval-tab-recall-checkbox-info"),
+                "F1 Score": loc.localize("eval-tab-f1-score-checkbox-info"),
+                "Average Precision (AP)": loc.localize("eval-tab-ap-checkbox-info"),
+                "Accuracy": loc.localize("eval-tab-accuracy-checkbox-info"),
+            }
+            metrics_checkboxes = {}
 
-                    for metric_name, description in metric_info.items():
-                        metrics_checkboxes[metric_name.lower()] = gr.Checkbox(
-                            label=metric_name, value=True, info=description
-                        )
+            for metric_name, description in metric_info.items():
+                metrics_checkboxes[metric_name.lower()] = gr.Checkbox(label=metric_name, value=True, info=description)
 
-            # ----------------------- Actions Box -----------------------
+        # ----------------------- Actions Box -----------------------
 
         calculate_button = gr.Button(loc.localize("eval-tab-calculate-metrics-button-label"), variant="huggingface")
 
@@ -531,9 +518,7 @@ def build_evaluation_tab():
             with gr.Row():
                 plot_metrics_button = gr.Button(loc.localize("eval-tab-plot-metrics-button-label"))
                 plot_confusion_button = gr.Button(loc.localize("eval-tab-plot-confusion-matrix-button-label"))
-                plot_metrics_all_thresholds_button = gr.Button(
-                    loc.localize("eval-tab-plot-metrics-all-thresholds-button-label")
-                )
+                plot_metrics_all_thresholds_button = gr.Button(loc.localize("eval-tab-plot-metrics-all-thresholds-button-label"))
 
             with gr.Row():
                 download_results_button = gr.DownloadButton(loc.localize("eval-tab-result-table-download-button-label"))
@@ -607,7 +592,7 @@ def build_evaluation_tab():
         ):
             selected_metrics = []
 
-            for value, (m_lower, _) in zip(metrics_checkbox_values, metrics_checkboxes.items()):
+            for value, (m_lower, _) in zip(metrics_checkbox_values, metrics_checkboxes.items(), strict=True):
                 if value:
                     selected_metrics.append(m_lower)
 
@@ -711,8 +696,8 @@ def build_evaluation_tab():
                 select_classes_checkboxgroup,
                 select_recordings_checkboxgroup,
                 processor_state,
-            ]
-            + [checkbox for checkbox in metrics_checkboxes.values()],
+                *list(metrics_checkboxes.values()),
+            ],
             outputs=[
                 metric_table,
                 action_col,
@@ -769,10 +754,7 @@ def build_evaluation_tab():
         prediction_select_directory_btn.click(
             get_selection_func("eval-predictions-dir", update_prediction_columns),
             outputs=[prediction_files_state, prediction_directory_input, prediction_group]
-            + [
-                prediction_columns[label]
-                for label in ["Start Time", "End Time", "Class", "Confidence", "Recording", "Duration"]
-            ],
+            + [prediction_columns[label] for label in ["Start Time", "End Time", "Class", "Confidence", "Recording", "Duration"]],
             show_progress=True,
         )
 

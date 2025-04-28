@@ -1,10 +1,9 @@
+import json
 import os
 from pathlib import Path
-import json
 
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.utils as utils
-
+from birdnet_analyzer import utils
 
 FALLBACK_LANGUAGE = "en"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -24,7 +23,7 @@ def get_state_dict() -> dict:
         dict: The state dictionary loaded from the JSON file, or an empty dictionary if the file does not exist or an error occurs.
     """
     try:
-        with open(STATE_SETTINGS_PATH, "r", encoding="utf-8") as f:
+        with open(STATE_SETTINGS_PATH, encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         try:
@@ -98,7 +97,7 @@ def get_setting(key, default=None):
     ensure_settings_file()
 
     try:
-        with open(GUI_SETTINGS_PATH, "r", encoding="utf-8") as f:
+        with open(GUI_SETTINGS_PATH, encoding="utf-8") as f:
             settings_dict: dict = json.load(f)
 
             return settings_dict.get(key, default)

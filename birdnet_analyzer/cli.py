@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 import argparse
 import os
 
@@ -30,7 +31,7 @@ ASCII_LOGO = r"""
                                                  **=====        
                                                ***+==           
                                               ****+             
-"""
+""" # noqa: W291
 
 
 def io_args():
@@ -46,6 +47,7 @@ def io_args():
     p.add_argument(
         "input",
         metavar="INPUT",
+        dest="audio_input",
         help="Path to input file or folder.",
     )
     p.add_argument("-o", "--output", help="Path to output folder. Defaults to the input path.")
@@ -399,6 +401,7 @@ def embeddings_parser():
     parser.add_argument(
         "-i",
         "--input",
+        dest="audio_input",
         help="Path to input file or folder.",
     )
 
@@ -494,7 +497,7 @@ def segments_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[audio_speed_args(), threads_args(), min_conf_args()],
     )
-    parser.add_argument("input", metavar="INPUT", help="Path to folder containing audio files.")
+    parser.add_argument("input", dest="audio_input", metavar="INPUT", help="Path to folder containing audio files.")
     parser.add_argument("-r", "--results", help="Path to folder containing result files. Defaults to the `input` path.")
     parser.add_argument(
         "-o", "--output", help="Output folder path for extracted segments. Defaults to the `input` path."
@@ -599,11 +602,12 @@ def train_parser():
     parser.add_argument(
         "input",
         metavar="INPUT",
+        dest="audio_input",
         help="Path to training data folder. Subfolder names are used as labels.",
-    )    
+    )
     parser.add_argument(
-        "--test_data", 
-        help="Path to test data folder. If not specified, a random validation split will be used.")
+        "--test_data", help="Path to test data folder. If not specified, a random validation split will be used."
+    )
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
@@ -628,7 +632,7 @@ def train_parser():
         type=float,
         default=cfg.TRAIN_LEARNING_RATE,
         help="Learning rate.",
-    )    
+    )
     parser.add_argument(
         "--focal-loss",
         action="store_true",
@@ -645,7 +649,7 @@ def train_parser():
         default=cfg.FOCAL_LOSS_ALPHA,
         type=float,
         help="Focal loss alpha parameter (balancing parameter). Controls weight between positive and negative examples.",
-    )    
+    )
     parser.add_argument(
         "--hidden_units",
         type=int,

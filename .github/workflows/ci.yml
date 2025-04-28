@@ -1,18 +1,18 @@
 name: Tests
 
 on:
-    pull_request:
-        types: [opened, synchronize, reopened, edited]
-    push:
-        branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [main]
+  push:
+    branches: [main]
 
 concurrency:
   group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
   cancel-in-progress: true
 
 jobs:
-  build:
-
+  running-tests:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -27,10 +27,14 @@ jobs:
             cache: 'pip'
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install .[all]
+          python -m pip install --upgrade pip ruff
+          python -m pip install .[all]
+      - name: Run linter
+        run: |
+          ruff check
+
       - name: Run tests
         run: |
-          pip install pytest pytest-cov
+          python -m pip install pytest pytest-cov
           pytest
 
