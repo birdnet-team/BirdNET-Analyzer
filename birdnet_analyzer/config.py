@@ -151,7 +151,7 @@ TRAIN_BATCH_SIZE: int = 32
 TRAIN_VAL_SPLIT: float = 0.2
 
 # Learning rate for training
-TRAIN_LEARNING_RATE: float = 0.001
+TRAIN_LEARNING_RATE: float = 0.0001
 
 # Number of hidden units in custom classifier
 # If >0, a two-layer classifier will be trained
@@ -165,6 +165,15 @@ TRAIN_WITH_MIXUP: bool = False
 
 # Whether to apply label smoothing for training
 TRAIN_WITH_LABEL_SMOOTHING: bool = False
+
+# Whether to use focal loss for training
+TRAIN_WITH_FOCAL_LOSS: bool = False
+
+# Focal loss gamma parameter
+FOCAL_LOSS_GAMMA: float = 2.0
+
+# Focal loss alpha parameter
+FOCAL_LOSS_ALPHA: float = 0.25
 
 # Model output format
 TRAINED_MODEL_OUTPUT_FORMAT: str = "tflite"
@@ -204,6 +213,7 @@ OUTPUT_PATH: str = ""
 
 # Training data path
 TRAIN_DATA_PATH: str = ""
+TEST_DATA_PATH: str = ""
 
 CODES = {}
 LABELS: list[str] = []

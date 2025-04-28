@@ -7,7 +7,7 @@ You can access the map here: `Open projects map <../projects.html>`_
 
 We will update the map regularly and also work on the visual representation. **However, we need your help to add more projects to the map and keep the information accurate**.
 
-There are three ways to contribute: you can submit a pull request with an additional entry in the `projects data <https://github.com/kahst/BirdNET-Analyzer/blob/main/docs/assets/js/projects_data.js>`_ file, you can submit `this Google form <https://forms.gle/z5aydVaRB9op3Tem9>`_, or you can simply reply in this thread and provide the following information:
+There are three ways to contribute: you can submit a pull request with an additional entry in the `projects data <https://github.com/birdnet-team/BirdNET-Analyzer/blob/main/docs/assets/js/projects_data.js>`_ file, you can submit `this Google form <https://forms.gle/z5aydVaRB9op3Tem9>`_, or you can simply reply in this thread and provide the following information:
 
 - Project name*
 - Organization/project lead*

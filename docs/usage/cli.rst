@@ -48,7 +48,7 @@ birdnet_analyzer.embeddings
 
    .. code:: bash
 
-      python -m birdnet_analyzer.embeddings example/ --threads 4 --batchsize 16
+      python -m birdnet_analyzer.embeddings example/ --threads 4 --batch_size 16
 
 .. _cli-segments:
 
@@ -67,7 +67,7 @@ birdnet_analyzer.segments
 birdnet_analyzer.species
 -------------------------
 
-The year-round list may contain some species, that are not included in any list for a specific week. See `kahst#211 <https://github.com/kahst/BirdNET-Analyzer/issues/211#issuecomment-1849833360>`_ for more details.
+The year-round list may contain some species, that are not included in any list for a specific week. See `birdnet-team#211 <https://github.com/birdnet-team/BirdNET-Analyzer/issues/211#issuecomment-1849833360>`_ for more details.
 
 .. argparse::
    :ref: birdnet_analyzer.cli.species_parser

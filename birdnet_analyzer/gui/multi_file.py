@@ -2,7 +2,7 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 
 OUTPUT_TYPE_MAP = {
     "Raven selection table": "table",
@@ -12,6 +12,7 @@ OUTPUT_TYPE_MAP = {
 }
 
 
+@gu.gui_runtime_error_handler
 def run_batch_analysis(
     output_path,
     use_top_n,
@@ -94,7 +95,6 @@ def build_multi_analysis_tab():
                 select_directory_btn = gr.Button(loc.localize("multi-tab-input-selection-button-label"))
                 directory_input = gr.Matrix(
                     interactive=False,
-                    elem_classes="matrix-mh-200",
                     headers=[
                         loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
                         loc.localize("multi-tab-samples-dataframe-column-duration-header"),
@@ -105,7 +105,7 @@ def build_multi_analysis_tab():
                     folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
                     if folder:
-                        files_and_durations = gu.get_files_and_durations(folder)
+                        files_and_durations = gu.get_audio_files_and_durations(folder)
                         if len(files_and_durations) > 100:
                             return [folder, files_and_durations[:100] + [["..."]]]  # hopefully fixes issue#272
                         return [folder, files_and_durations]
@@ -155,7 +155,7 @@ def build_multi_analysis_tab():
             sf_thresh_number,
             yearlong_checkbox,
             selected_classifier_state,
-            map_plot
+            map_plot,
         ) = gu.species_lists()
 
         with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True):
@@ -207,7 +207,6 @@ def build_multi_analysis_tab():
                 loc.localize("multi-tab-result-dataframe-column-file-header"),
                 loc.localize("multi-tab-result-dataframe-column-execution-header"),
             ],
-            elem_classes="matrix-mh-200",
         )
 
         inputs = [
@@ -239,7 +238,7 @@ def build_multi_analysis_tab():
         ]
 
         start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
-    
+
     return lat_number, lon_number, map_plot
 
 

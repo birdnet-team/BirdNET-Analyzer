@@ -6,7 +6,7 @@ Download & Setup
 GUI installer
 -------------
 
-You can download the latest BirdNET-Analyzer installer for Windows and MacOS from our `Releases page <https://github.com/kahst/BirdNET-Analyzer/releases/latest>`_. This installer provides an easy setup process for running BirdNET-Analyzer on your system. Make sure to check to select the correct installer for your system.
+You can download the latest BirdNET-Analyzer installer for Windows and MacOS from our `Releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_. This installer provides an easy setup process for running BirdNET-Analyzer on your system. Make sure to check to select the correct installer for your system.
 
 .. note::
     | Installation was only tested on M1 and M2 chips.
@@ -75,7 +75,7 @@ Clone the repository
 
 .. code-block:: bash
 
-   git clone https://github.com/kahst/BirdNET-Analyzer.git
+   git clone https://github.com/birdnet-team/BirdNET-Analyzer.git
    cd BirdNET-Analyzer
 
 Install the packages
@@ -89,10 +89,13 @@ Install the packages
    If you also want to use the GUI, you need to install the additional packages with: ``pip install .[gui]``.
    Same goes for server and training tools: ``pip install .[server]`` and ``pip install .[train]``.
 
-   Use ``pip install .[gui,server,train]`` to install all packages.
+   Use ``pip install .[all]`` to install all packages.
+
+   When building a GUI for systems using GTK with pywebview, you may need to install additional packages: qtpy and PyGObject. 
+   Use the following command: ``pip install qtpy PyGObject``.
 
 Verify the installation
 
 .. code-block:: bash
 
-   python -m birdnet_analyzer.analyze
+   python -m birdnet_analyzer.analyze <some-audio-file.wav>

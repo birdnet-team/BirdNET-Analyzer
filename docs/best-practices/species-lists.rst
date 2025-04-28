@@ -60,4 +60,4 @@ Overall, the model works well in regions with good data coverage. In other regio
 
 By understanding the limitations and capabilities of the GeoModel, you can make informed decisions when creating and using custom species lists for BirdNET-Analyzer.
 
-See this post in the discussion forum for more details: `Species range model details <https://github.com/kahst/BirdNET-Analyzer/discussions/234>`_
+See this post in the discussion forum for more details: `Species range model details <https://github.com/birdnet-team/BirdNET-Analyzer/discussions/234>`_

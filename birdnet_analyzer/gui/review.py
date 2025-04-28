@@ -8,7 +8,7 @@ import gradio as gr
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
+import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.utils as utils
 
 POSITIVE_LABEL_DIR = "Positive"
@@ -23,7 +23,11 @@ def build_review_tab():
             [
                 entry.path
                 for entry in os.scandir(directory)
-                if entry.is_file() and entry.name.rsplit(".", 1)[-1] in cfg.ALLOWED_FILETYPES
+                if (
+                    entry.is_file() and 
+                    not entry.name.startswith(".") and
+                    entry.name.rsplit(".", 1)[-1] in cfg.ALLOWED_FILETYPES
+                )
             ]
             if os.path.isdir(directory)
             else []
@@ -36,7 +40,7 @@ def build_review_tab():
 
     def collect_files(directory):
         return (
-            collect_segments(directory, shuffle=True),
+            collect_segments(directory),
             collect_segments(os.path.join(directory, POSITIVE_LABEL_DIR)),
             collect_segments(os.path.join(directory, NEGATIVE_LABEL_DIR)),
         )
@@ -51,9 +55,9 @@ def build_review_tab():
         matplotlib.use("agg")
 
         f = plt.figure(fig_num, figsize=(12, 6))
-        f.tight_layout()
-        f.set_dpi(300)
         f.clf()
+        f.tight_layout(pad=0)
+        f.set_dpi(300)
 
         ax = f.add_subplot(111)
         ax.set_xlim(0, 1)
@@ -117,7 +121,7 @@ def build_review_tab():
 
         return gr.Plot(value=f, visible=bool(y_val))
 
-    with gr.Tab(loc.localize("review-tab-title")):
+    with gr.Tab(loc.localize("review-tab-title"), elem_id="review-tab"):
         review_state = gr.State(
             {
                 "input_directory": "",
@@ -153,9 +157,8 @@ def build_review_tab():
                             spectrogram_image = gr.Plot(
                                 label=loc.localize("review-tab-spectrogram-plot-label"), show_label=False
                             )
-                            with gr.Row():
-                                spectrogram_dl_btn = gr.Button("Download spectrogram", size="sm")
-                                regression_dl_btn = gr.Button("Download regression", size="sm")
+                            # with gr.Row():
+                            spectrogram_dl_btn = gr.Button("Download spectrogram", size="sm")
 
                     with gr.Column():
                         positive_btn = gr.Button(
@@ -191,8 +194,10 @@ def build_review_tab():
                                 True, label=loc.localize("review-tab-autoplay-checkbox-label")
                             )
 
-            no_samles_label = gr.Label(loc.localize("review-tab-no-files-label"), visible=False)
-            species_regression_plot = gr.Plot(label=loc.localize("review-tab-regression-plot-label"))
+            no_samles_label = gr.Label(loc.localize("review-tab-no-files-label"), visible=False, show_label=False)
+            with gr.Group():
+                species_regression_plot = gr.Plot(label=loc.localize("review-tab-regression-plot-label"))
+                regression_dl_btn = gr.Button("Download regression", size="sm")
 
         def update_values(next_review_state, skip_plot=False):
             update_dict = {review_state: next_review_state}
@@ -210,11 +215,6 @@ def build_review_tab():
                     review_audio: gr.Audio(next_file, label=os.path.basename(next_file)),
                     spectrogram_image: utils.spectrogram_from_file(next_file, fig_size=(8, 4)),
                 }
-            else:
-                update_dict |= {
-                    no_samles_label: gr.Label(visible=True),
-                    review_item_col: gr.Column(visible=False),
-                }
 
             update_dict |= {
                 file_count_matrix: [
@@ -225,6 +225,16 @@ def build_review_tab():
                     ],
                 ],
                 undo_btn: gr.Button(interactive=bool(next_review_state["history"])),
+                positive_btn: gr.Button(interactive=bool(next_review_state["files"])),
+                negative_btn: gr.Button(interactive=bool(next_review_state["files"])),
+                skip_btn: gr.Button(interactive=bool(next_review_state["files"])),
+                no_samles_label: gr.Label(visible=not bool(next_review_state["files"])),
+                review_item_col: gr.Column(visible=bool(next_review_state["files"])),
+                regression_dl_btn: gr.Button(
+                    visible=update_dict[species_regression_plot].constructor_args["visible"]
+                    if species_regression_plot in update_dict
+                    else False
+                ),
             }
 
             return update_dict
@@ -233,7 +243,10 @@ def build_review_tab():
             try:
                 current_file = next_review_state["files"][0]
             except IndexError:
-                raise gr.Error("No more files to review.")
+                if next_review_state["input_directory"]:
+                    raise gr.Error(loc.localize("review-tab-no-files-error"))
+
+                return {review_state: next_review_state}
 
             if target_dir:
                 selected_dir = os.path.join(
@@ -276,12 +289,24 @@ def build_review_tab():
                     for e in os.scandir(next_review_state["input_directory"])
                     if e.is_dir() and e.name != POSITIVE_LABEL_DIR and e.name != NEGATIVE_LABEL_DIR
                 ]
+
                 next_review_state["species_list"] = specieslist
 
                 return update_review(next_review_state)
 
             else:
                 return {review_state: next_review_state}
+
+        def try_confidence(filename):
+            try:
+                val = float(os.path.basename(filename).split("_", 1)[0])
+
+                if 0 > val > 1:
+                    return 0
+
+                return val
+            except ValueError:
+                return 0
 
         def update_review(next_review_state: dict, selected_species: str = None):
             next_review_state["history"] = []
@@ -300,6 +325,8 @@ def build_review_tab():
                 else next_review_state["input_directory"]
             )
 
+            todo_files = sorted(todo_files, key=try_confidence, reverse=True)
+
             next_review_state |= {
                 "files": todo_files,
                 POSITIVE_LABEL_DIR: positives,
@@ -310,6 +337,9 @@ def build_review_tab():
                 review_col: gr.Column(visible=True),
                 review_state: next_review_state,
                 undo_btn: gr.Button(interactive=bool(next_review_state["history"])),
+                positive_btn: gr.Button(interactive=bool(next_review_state["files"])),
+                negative_btn: gr.Button(interactive=bool(next_review_state["files"])),
+                skip_btn: gr.Button(interactive=bool(next_review_state["files"])),
                 file_count_matrix: [
                     [
                         len(next_review_state["files"]),
@@ -345,7 +375,7 @@ def build_review_tab():
                 update_dict |= {review_item_col: gr.Column(visible=False), no_samles_label: gr.Label(visible=True)}
 
             update_dict[regression_dl_btn] = gr.Button(
-                interactive=update_dict[species_regression_plot].constructor_args["visible"]
+                visible=update_dict[species_regression_plot].constructor_args["visible"]
             )
 
             return update_dict
@@ -373,9 +403,10 @@ def build_review_tab():
                 else:
                     next_review_state["skipped"].remove(last_file)
 
+                was_last_file = not next_review_state["files"]
                 next_review_state["files"].insert(0, last_file)
 
-                return update_values(next_review_state, skip_plot=not last_dir)
+                return update_values(next_review_state, skip_plot=not (was_last_file or last_dir))
 
             return {
                 review_state: next_review_state,
@@ -417,6 +448,9 @@ def build_review_tab():
             file_count_matrix,
             species_regression_plot,
             undo_btn,
+            skip_btn,
+            positive_btn,
+            negative_btn,
             regression_dl_btn,
         ]
 
@@ -443,6 +477,10 @@ def build_review_tab():
             file_count_matrix,
             species_regression_plot,
             undo_btn,
+            skip_btn,
+            positive_btn,
+            negative_btn,
+            regression_dl_btn,
         ]
 
         positive_btn.click(
@@ -450,6 +488,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
+            show_progress_on=review_audio
         )
 
         negative_btn.click(
@@ -457,6 +496,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
+            show_progress_on=review_audio
         )
 
         skip_btn.click(
@@ -464,6 +504,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
+            show_progress_on=review_audio
         )
 
         undo_btn.click(
@@ -471,6 +512,7 @@ def build_review_tab():
             inputs=review_state,
             outputs=review_btn_output,
             show_progress=True,
+            show_progress_on=review_audio
         )
 
         select_directory_btn.click(

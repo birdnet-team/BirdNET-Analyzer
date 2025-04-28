@@ -4,9 +4,10 @@ from functools import partial
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
+import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.localization as loc
-
+from birdnet_analyzer.embeddings.core import get_database as get_embeddings_database
+from birdnet_analyzer.search.core import get_database as get_search_database
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 PAGE_SIZE = 4
@@ -36,7 +37,7 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
     return export_state
 
 
-def run_embeddings(
+def rum_embeddings_with_tqdm_tracking(
     input_path,
     db_directory,
     db_name,
@@ -48,19 +49,46 @@ def run_embeddings(
     fmax,
     progress=gr.Progress(track_tqdm=True),
 ):
-    import birdnet_analyzer.embeddings.utils as embeddings
+    return run_embeddings(
+        input_path,
+        db_directory,
+        db_name,
+        overlap,
+        threads,
+        batch_size,
+        audio_speed,
+        fmin,
+        fmax,
+        progress,
+    )
+
+
+@gu.gui_runtime_error_handler
+def run_embeddings(
+    input_path,
+    db_directory,
+    db_name,
+    overlap,
+    threads,
+    batch_size,
+    audio_speed,
+    fmin,
+    fmax,
+    progress,
+):
+    from birdnet_analyzer.embeddings.utils import run
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
     gu.validate(db_name, loc.localize("embeddings-db-name-validation-message"))
     db_path = os.path.join(db_directory, db_name)
 
-    db = embeddings.get_database(db_path)
+    db = get_embeddings_database(db_path)
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
         db.db.close()
-        embeddings.run(
+        run(
             input_path,
             db_path,
             overlap,
@@ -78,24 +106,25 @@ def run_embeddings(
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
             raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
-        embeddings.run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
+        run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_path}")
 
     return gr.Plot(), gr.Slider(visible=False), gr.Number(visible=False), gr.Number(visible=False)
 
 
+@gu.gui_runtime_error_handler
 def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
-    import birdnet_analyzer.search.utils as search
+    from birdnet_analyzer.search.utils import get_search_results
 
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
     gu.validate(query_path, loc.localize("embeddings-search-query-validation-message"))
     gu.validate(max_samples, loc.localize("embeddings-search-max-samples-validation-message"))
 
-    db = search.get_database(db_path)
+    db = get_search_database(db_path)
     settings = db.get_metadata("birdnet_analyzer_settings")
 
-    results = search.get_search_results(
+    results = get_search_results(
         query_path,
         db,
         max_samples,
@@ -121,7 +150,10 @@ def run_export(export_state):
 
         if export_folder:
             for index, file in export_state.items():
-                dest = os.path.join(export_folder, f"result_{index + 1}_score_{file[4]:.5f}.wav")
+                filebasename = os.path.basename(file[0])
+                filebasename = os.path.splitext(filebasename)[0]
+                dest = os.path.join(export_folder, f"{file[4]:.5f}_{filebasename}_{file[1]}_{file[1] + file[2]}.wav")
+                # @mamau: Missing audio speed?
                 sig, rate = audio.open_audio_file(file[0], offset=file[1], duration=file[2], sample_rate=None)
                 audio.save_signal(sig, dest, rate)
 
@@ -130,208 +162,192 @@ def run_export(export_state):
         gr.Info(loc.localize("embeddings-search-export-no-results-info"))
 
 
-def get_embeddings_db(db_path):
-    import birdnet_analyzer.embeddings.utils as embeddings
+def _build_extract_tab():
+    with gr.Tab(loc.localize("embeddings-extract-tab-title")):
+        input_directory_state = gr.State()
+        db_directory_state = gr.State()
 
-    return embeddings.get_database(db_path)
+        def select_directory_to_state_and_tb(state_key):
+            return (gu.select_directory(collect_files=False, state_key=state_key),) * 2
 
+        with gr.Row():
+            select_audio_directory_btn = gr.Button(loc.localize("embeddings-tab-select-input-directory-button-label"))
+            selected_audio_directory_tb = gr.Textbox(show_label=False, interactive=False)
+            select_audio_directory_btn.click(
+                partial(select_directory_to_state_and_tb, state_key="embeddings-input-dir"),
+                outputs=[selected_audio_directory_tb, input_directory_state],
+                show_progress=False,
+            )
 
-def get_search_db(db_path):
-    import birdnet_analyzer.search.utils as search
+        with gr.Row():
+            select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
 
-    return search.get_database(db_path)
+        with gr.Row():
+            db_name_tb = gr.Textbox(
+                "embeddings_database",
+                visible=False,
+                interactive=True,
+                info=loc.localize("embeddings-tab-db-info"),
+            )
 
-
-def build_embeddings_tab():
-    import birdnet_analyzer.utils as utils
-    import birdnet_analyzer.audio as audio
-
-    with gr.Tab(loc.localize("embeddings-tab-title")):
-        with gr.Tab(loc.localize("embeddings-extract-tab-title")):
-            input_directory_state = gr.State()
-            db_directory_state = gr.State()
-
-            def select_directory_to_state_and_tb(state_key):
-                return (gu.select_directory(collect_files=False, state_key=state_key),) * 2
-
+        with gr.Accordion(loc.localize("embedding-settings-accordion-label"), open=False):
             with gr.Row():
-                select_audio_directory_btn = gr.Button(
-                    loc.localize("embeddings-tab-select-input-directory-button-label")
+                overlap_slider = gr.Slider(
+                    minimum=0,
+                    maximum=2.9,
+                    value=0,
+                    step=0.1,
+                    label=loc.localize("embedding-settings-overlap-slider-label"),
+                    info=loc.localize("embedding-settings-overlap-slider-info"),
                 )
-                selected_audio_directory_tb = gr.Textbox(show_label=False, interactive=False)
-                select_audio_directory_btn.click(
-                    partial(select_directory_to_state_and_tb, state_key="embeddings-input-dir"),
-                    outputs=[selected_audio_directory_tb, input_directory_state],
-                    show_progress=False,
-                )
-
-            with gr.Row():
-                select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
-
-            with gr.Row():
-                db_name_tb = gr.Textbox(
-                    "embeddings_database",
-                    visible=False,
+                batch_size_number = gr.Number(
+                    precision=1,
+                    label=loc.localize("embedding-settings-batchsize-number-label"),
+                    value=1,
+                    info=loc.localize("embedding-settings-batchsize-number-info"),
+                    minimum=1,
                     interactive=True,
-                    info=loc.localize("embeddings-tab-db-info"),
+                )
+                threads_number = gr.Number(
+                    precision=1,
+                    label=loc.localize("embedding-settings-threads-number-label"),
+                    value=4,
+                    info=loc.localize("embedding-settings-threads-number-info"),
+                    minimum=1,
+                    interactive=True,
                 )
 
-            with gr.Accordion(loc.localize("embedding-settings-accordion-label"), open=False):
-                with gr.Row():
-                    overlap_slider = gr.Slider(
-                        minimum=0,
-                        maximum=2.9,
-                        value=0,
-                        step=0.1,
-                        label=loc.localize("embedding-settings-overlap-slider-label"),
-                        info=loc.localize("embedding-settings-overlap-slider-info"),
-                    )
-                    batch_size_number = gr.Number(
-                        precision=1,
-                        label=loc.localize("embedding-settings-batchsize-number-label"),
-                        value=1,
-                        info=loc.localize("embedding-settings-batchsize-number-info"),
-                        minimum=1,
-                        interactive=True,
-                    )
-                    threads_number = gr.Number(
-                        precision=1,
-                        label=loc.localize("embedding-settings-threads-number-label"),
-                        value=4,
-                        info=loc.localize("embedding-settings-threads-number-info"),
-                        minimum=1,
-                        interactive=True,
-                    )
+            with gr.Row():
+                audio_speed_slider = gr.Slider(
+                    minimum=-10,
+                    maximum=10,
+                    value=0,
+                    step=1,
+                    label=loc.localize("embedding-settings-audio-speed-slider-label"),
+                    info=loc.localize("embedding-settings-audio-speed-slider-info"),
+                )
+            with gr.Row():
+                fmin_number = gr.Number(
+                    cfg.SIG_FMIN,
+                    minimum=0,
+                    label=loc.localize("embedding-settings-fmin-number-label"),
+                    info=loc.localize("embedding-settings-fmin-number-info"),
+                    interactive=True,
+                )
+                fmax_number = gr.Number(
+                    cfg.SIG_FMAX,
+                    minimum=0,
+                    label=loc.localize("embedding-settings-fmax-number-label"),
+                    info=loc.localize("embedding-settings-fmax-number-info"),
+                    interactive=True,
+                )
 
-                with gr.Row():
-                    audio_speed_slider = gr.Slider(
-                        minimum=-10,
-                        maximum=10,
-                        value=0,
-                        step=1,
-                        label=loc.localize("embedding-settings-audio-speed-slider-label"),
-                        info=loc.localize("embedding-settings-audio-speed-slider-info"),
-                    )
-                with gr.Row():
-                    fmin_number = gr.Number(
-                        cfg.SIG_FMIN,
-                        minimum=0,
-                        label=loc.localize("embedding-settings-fmin-number-label"),
-                        info=loc.localize("embedding-settings-fmin-number-info"),
-                        interactive=True,
-                    )
-                    fmax_number = gr.Number(
-                        cfg.SIG_FMAX,
-                        minimum=0,
-                        label=loc.localize("embedding-settings-fmax-number-label"),
-                        info=loc.localize("embedding-settings-fmax-number-info"),
-                        interactive=True,
-                    )
+        def select_directory_and_update_tb(db_name):
+            dir_name = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
 
-            def select_directory_and_update_tb():
-                dir_name = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
+            if dir_name:
+                db_path = os.path.join(dir_name, db_name)
 
-                if dir_name:
-                    db_path = os.path.join(dir_name, db_name_tb.value)
-                    loc.set_state("embeddings-db-dir", dir_name)
-                    if os.path.exists(db_path):
-                        db = get_embeddings_db(db_path)
-                        try:
-                            db.get_metadata("birdnet_analyzer_settings")
-                            db.db.close()
-                            return (
-                                dir_name,
-                                gr.Textbox(label=dir_name, visible=True),
-                                gr.Slider(visible=False),
-                                gr.Number(visible=False),
-                                gr.Number(visible=False),
-                            )
-                        except KeyError:
-                            db.db.close()
-                            return (
-                                dir_name,
-                                gr.Textbox(label=dir_name, visible=True),
-                                gr.Slider(visible=True),
-                                gr.Number(visible=True),
-                                gr.Number(visible=True),
-                            )
-                    else:
+                if os.path.exists(db_path):
+                    db = get_embeddings_database(db_path)
+
+                    try:
+                        settings = db.get_metadata("birdnet_analyzer_settings")
+                        gr.Info(loc.localize("embeddings-db-already-exists-info"))
+
                         return (
                             dir_name,
                             gr.Textbox(label=dir_name, visible=True),
-                            gr.Slider(visible=True),
-                            gr.Number(visible=True),
-                            gr.Number(visible=True),
-                        )
-
-                return None, None, gr.Slider(visible=True), gr.Number(visible=True), gr.Number(visible=True)
-
-            select_db_directory_btn.click(
-                select_directory_and_update_tb,
-                outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number],
-                show_progress=False,
-            )
-
-            def check_settings(dir_name, db_name):
-                db_path = os.path.join(dir_name, db_name)
-
-                if db_name and os.path.exists(db_path):
-                    db = get_embeddings_db(db_path)
-
-                    try:
-                        db.get_metadata("birdnet_analyzer_settings")
-                        db.db.close()
-
-                        return (
-                            gr.Slider(visible=False),
-                            gr.Number(visible=False),
-                            gr.Number(visible=False),
+                            gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
+                            gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
+                            gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
                         )
                     except KeyError:
+                        pass
+                    finally:
                         db.db.close()
 
-                        return (
-                            gr.Slider(visible=True),
-                            gr.Number(visible=True),
-                            gr.Number(visible=True),
-                        )
-                else:
-                    return gr.Slider(visible=True), gr.Number(visible=True), gr.Number(visible=True)
+                return (
+                    dir_name,
+                    gr.Textbox(label=dir_name, visible=True),
+                    gr.Slider(interactive=True),
+                    gr.Number(interactive=True),
+                    gr.Number(interactive=True),
+                )
 
-            db_name_tb.change(
-                check_settings,
-                inputs=[db_directory_state, db_name_tb],
-                outputs=[audio_speed_slider, fmin_number, fmax_number],
-                show_progress=False,
-            )
+            return None, None, gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
 
-            progress_plot = gr.Plot()
-            start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
+        select_db_directory_btn.click(
+            select_directory_and_update_tb,
+            inputs=[db_name_tb],
+            outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number],
+            show_progress=False,
+        )
 
-            start_btn.click(
-                run_embeddings,
-                inputs=[
-                    input_directory_state,
-                    db_directory_state,
-                    db_name_tb,
-                    overlap_slider,
-                    batch_size_number,
-                    threads_number,
-                    audio_speed_slider,
-                    fmin_number,
-                    fmax_number,
-                ],
-                outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
-                show_progress_on=[progress_plot]
-            )
+        def check_settings(dir_name, db_name):
+            db_path = os.path.join(dir_name, db_name)
 
-        with gr.Tab(loc.localize("embeddings-search-tab-title")):
-            results_state = gr.State([])
-            page_state = gr.State(0)
-            export_state = gr.State({})
+            if db_name and os.path.exists(db_path):
+                db = get_embeddings_database(db_path)
 
-            with gr.Row():
-                with gr.Column():
+                try:
+                    settings = db.get_metadata("birdnet_analyzer_settings")
+
+                    return (
+                        gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
+                        gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
+                        gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
+                    )
+                except KeyError:
+                    pass
+                finally:
+                    db.db.close()
+
+            return gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
+
+        db_name_tb.change(
+            check_settings,
+            inputs=[db_directory_state, db_name_tb],
+            outputs=[audio_speed_slider, fmin_number, fmax_number],
+            show_progress=False,
+        )
+
+        progress_plot = gr.Plot()
+        start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
+
+        start_btn.click(
+            rum_embeddings_with_tqdm_tracking,
+            inputs=[
+                input_directory_state,
+                db_directory_state,
+                db_name_tb,
+                overlap_slider,
+                batch_size_number,
+                threads_number,
+                audio_speed_slider,
+                fmin_number,
+                fmax_number,
+            ],
+            outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
+            show_progress_on=progress_plot,
+            show_progress=True,
+        )
+
+
+def _build_search_tab():
+    import birdnet_analyzer.audio as audio
+    import birdnet_analyzer.utils as utils
+
+    with gr.Tab(loc.localize("embeddings-search-tab-title")):
+        results_state = gr.State([])
+        page_state = gr.State(0)
+        export_state = gr.State({})
+        hidden_audio = gr.Audio(visible=False, autoplay=True, type="numpy")
+
+        with gr.Row():
+            with gr.Column():
+                db_selection_button = gr.Button(loc.localize("embeddings-search-db-selection-button-label"))
+                with gr.Group():
                     with gr.Row():
                         db_selection_tb = gr.Textbox(
                             label=loc.localize("embeddings-search-db-selection-textbox-label"),
@@ -344,7 +360,6 @@ def build_embeddings_tab():
                             visible=False,
                             label=loc.localize("embeddings-search-db-embedding-count-number-label"),
                         )
-
                     with gr.Row():
                         db_bandpass_frequencies_tb = gr.Textbox(
                             label=loc.localize("embeddings-search-db-bandpass-frequencies-label"),
@@ -356,151 +371,59 @@ def build_embeddings_tab():
                             visible=False,
                             label=loc.localize("embeddings-search-db-audio-speed-number-label"),
                         )
+                query_spectrogram = gr.Plot(show_label=False)
+                select_query_btn = gr.Button(loc.localize("embeddings-search-select-query-button-label"))
+                query_sample_tb = gr.Textbox(
+                    label=loc.localize("embeddings-search-query-sample-textbox-label"),
+                    visible=False,
+                    interactive=False,
+                )
 
-                    db_selection_button = gr.Button(loc.localize("embeddings-search-db-selection-button-label"))
+                crop_mode = gr.Radio(
+                    [
+                        (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
+                        (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
+                        (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
+                    ],
+                    value="center",
+                    label=loc.localize("training-tab-crop-mode-radio-label"),
+                    info=loc.localize("embeddings-search-crop-mode-radio-info"),
+                )
 
-                    def on_db_selection_click():
-                        folder = gu.select_folder(state_key="embeddings_search_db")
-                        db = get_embeddings_db(folder)
-                        embedding_count = db.count_embeddings()
-                        settings = db.get_metadata("birdnet_analyzer_settings")
-                        frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
-                        speed = settings["AUDIO_SPEED"]
-                        db.db.close()
+                crop_overlap = gr.Slider(
+                    minimum=0,
+                    maximum=2.9,
+                    value=0,
+                    step=0.1,
+                    label=loc.localize("training-tab-crop-overlap-number-label"),
+                    info=loc.localize("embeddings-search-crop-overlap-number-info"),
+                    visible=False,
+                )
+                max_samples_number = gr.Number(
+                    label=loc.localize("embeddings-search-max-samples-number-label"),
+                    value=10,
+                    interactive=True,
+                )
+                score_fn_select = gr.Radio(
+                    label=loc.localize("embeddings-search-score-fn-select-label"),
+                    choices=["cosine", "dot", "euclidean"],
+                    value="cosine",
+                    interactive=True,
+                )
+                max_samples_number = gr.Number(
+                    label=loc.localize("embeddings-search-max-samples-number-label"),
+                    value=10,
+                    interactive=True,
+                )
+                score_fn_select = gr.Radio(
+                    label=loc.localize("embeddings-search-score-fn-select-label"),
+                    choices=["cosine", "dot", "euclidean"],
+                    value="cosine",
+                    interactive=True,
+                )
+                search_btn = gr.Button(loc.localize("embeddings-search-start-button-label"), variant="huggingface")
 
-                        if folder:
-                            return (
-                                gr.Textbox(value=folder, visible=True),
-                                gr.Number(value=embedding_count, visible=True),
-                                gr.Textbox(visible=True, value=frequencies),
-                                gr.Number(visible=True, value=speed),
-                                [],
-                                {},
-                                gr.Button(visible=True),
-                                gr.Textbox(value=None, visible=False),
-                            )
-
-                        return None, None, None, None, [], {}, gr.Button(visible=False), gr.Textbox(visible=False)
-
-                with gr.Column():
-                    max_samples_number = gr.Number(
-                        label=loc.localize("embeddings-search-max-samples-number-label"),
-                        value=10,
-                        interactive=True,
-                    )
-                    score_fn_select = gr.Radio(
-                        label=loc.localize("embeddings-search-score-fn-select-label"),
-                        choices=["cosine", "dot", "euclidean"],
-                        value="cosine",
-                        interactive=True,
-                    )
-
-            hidden_audio = gr.Audio(visible=False, autoplay=True, type="numpy")
-
-            with gr.Row():
-                with gr.Column():
-                    query_spectrogram = gr.Plot(label="")
-                    select_query_btn = gr.Button(loc.localize("embeddings-search-select-query-button-label"))
-                    query_sample_tb = gr.Textbox(
-                        label=loc.localize("embeddings-search-query-sample-textbox-label"),
-                        visible=False,
-                        interactive=False,
-                    )
-
-                    def select_query_sample():
-                        file = gu.select_file(state_key="query_sample")
-                        return gr.Textbox(file, visible=True)
-
-                    select_query_btn.click(select_query_sample, outputs=[query_sample_tb])
-
-                    crop_mode = gr.Radio(
-                        [
-                            (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
-                            (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
-                            (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
-                        ],
-                        value="center",
-                        label=loc.localize("training-tab-crop-mode-radio-label"),
-                        info=loc.localize("embeddings-search-crop-mode-radio-info"),
-                    )
-
-                    crop_overlap = gr.Slider(
-                        minimum=0,
-                        maximum=2.9,
-                        value=0,
-                        step=0.1,
-                        label=loc.localize("training-tab-crop-overlap-number-label"),
-                        info=loc.localize("embeddings-search-crop-overlap-number-info"),
-                        visible=False,
-                    )
-
-                    def on_crop_select(new_crop_mode):
-                        return gr.Number(visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments")
-
-                    crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
-
-                    def update_query_spectrogram(audiofilepath, db_selection, crop_mode, crop_overlap):
-                        import numpy as np
-
-                        if audiofilepath and db_selection:
-                            db = get_embeddings_db(db_selection)
-                            settings = db.get_metadata("birdnet_analyzer_settings")
-                            audio_speed = settings["AUDIO_SPEED"]
-                            fmin = settings["BANDPASS_FMIN"]
-                            fmax = settings["BANDPASS_FMAX"]
-                            db.db.close()
-
-                            sig, rate = audio.open_audio_file(
-                                audiofilepath,
-                                duration=cfg.SIG_LENGTH * audio_speed if crop_mode == "first" else None,
-                                fmin=fmin,
-                                fmax=fmax,
-                                speed=audio_speed,
-                            )
-
-                            # Crop query audio
-                            if crop_mode == "center":
-                                sig = [audio.crop_center(sig, rate, cfg.SIG_LENGTH)][0]
-                            elif crop_mode == "first":
-                                sig = [audio.split_signal(sig, rate, cfg.SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][
-                                    0
-                                ]
-
-                            sig = np.array(sig, dtype="float32")
-                            spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))
-
-                            return spec, [], {}
-                        else:
-                            return None, [], {}
-
-                    crop_mode.change(
-                        update_query_spectrogram,
-                        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
-                        outputs=[query_spectrogram, results_state, export_state],
-                        preprocess=False,
-                    )
-                    query_sample_tb.change(
-                        update_query_spectrogram,
-                        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
-                        outputs=[query_spectrogram, results_state, export_state],
-                        preprocess=False,
-                    )
-
-                    db_selection_button.click(
-                        on_db_selection_click,
-                        outputs=[
-                            db_selection_tb,
-                            db_embedding_count_number,
-                            db_bandpass_frequencies_tb,
-                            db_audio_speed_number,
-                            results_state,
-                            export_state,
-                            select_query_btn,
-                            query_sample_tb,
-                        ],
-                        show_progress=False,
-                    )
-
+            with gr.Column():
                 with gr.Column(elem_id="embeddings-search-results"):
 
                     @gr.render(
@@ -510,7 +433,7 @@ def build_embeddings_tab():
                     def render_results(results, page, db_path, exports):
                         with gr.Row():
                             if db_path is not None and len(results) > 0:
-                                db = get_search_db(db_path)
+                                db = get_search_database(db_path)
                                 settings = db.get_metadata("birdnet_analyzer_settings")
 
                                 for i, r in enumerate(results[page]):
@@ -559,34 +482,139 @@ def build_embeddings_tab():
                             prev_btn = gr.Button("Previous Page", interactive=page > 0)
                             next_btn = gr.Button("Next Page", interactive=page < len(results) - 1)
 
-                            def prev_page(page):
-                                return page - 1 if page > 0 else 0
+                        def prev_page(page):
+                            return page - 1 if page > 0 else 0
 
-                            def next_page(page):
-                                return page + 1
+                        def next_page(page):
+                            return page + 1
 
-                            prev_btn.click(prev_page, inputs=[page_state], outputs=[page_state])
-                            next_btn.click(next_page, inputs=[page_state], outputs=[page_state])
+                        prev_btn.click(prev_page, inputs=[page_state], outputs=[page_state])
+                        next_btn.click(next_page, inputs=[page_state], outputs=[page_state])
 
-            with gr.Row():
-                search_btn = gr.Button(loc.localize("embeddings-search-start-button-label"), variant="huggingface")
                 export_btn = gr.Button(
                     loc.localize("embeddings-search-export-button-label"), variant="huggingface", interactive=False
                 )
-                search_btn.click(
-                    run_search,
-                    inputs=[
-                        db_selection_tb,
-                        query_sample_tb,
-                        max_samples_number,
-                        score_fn_select,
-                        crop_mode,
-                        crop_overlap,
-                    ],
-                    outputs=[results_state, page_state, export_btn, export_state],
-                )
 
-                export_btn.click(
-                    run_export,
-                    inputs=[export_state],
-                )
+    def on_db_selection_click():
+        folder = gu.select_folder(state_key="embeddings_search_db")
+
+        try:
+            db = get_embeddings_database(folder)
+        except ValueError as e:
+            raise gr.Error(loc.localize("embeddings-search-db-selection-error")) from e
+
+        embedding_count = db.count_embeddings()
+        settings = db.get_metadata("birdnet_analyzer_settings")
+        frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
+        speed = settings["AUDIO_SPEED"]
+        db.db.close()
+
+        if folder:
+            return (
+                gr.Textbox(value=folder, visible=True),
+                gr.Number(value=embedding_count, visible=True),
+                gr.Textbox(visible=True, value=frequencies),
+                gr.Number(visible=True, value=speed),
+                [],
+                {},
+                gr.Button(visible=True),
+                gr.Textbox(value=None, visible=False),
+            )
+
+        return None, None, None, None, [], {}, gr.Button(visible=False), gr.Textbox(visible=False)
+
+    def select_query_sample():
+        file = gu.select_file(state_key="query_sample")
+        return gr.Textbox(file, visible=True)
+
+    select_query_btn.click(select_query_sample, outputs=[query_sample_tb])
+
+    def on_crop_select(new_crop_mode):
+        return gr.Number(visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments")
+
+    crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
+
+    def update_query_spectrogram(audiofilepath, db_selection, crop_mode, crop_overlap):
+        import numpy as np
+
+        if audiofilepath and db_selection:
+            db = get_embeddings_database(db_selection)
+            settings = db.get_metadata("birdnet_analyzer_settings")
+            audio_speed = settings["AUDIO_SPEED"]
+            fmin = settings["BANDPASS_FMIN"]
+            fmax = settings["BANDPASS_FMAX"]
+            db.db.close()
+
+            sig, rate = audio.open_audio_file(
+                audiofilepath,
+                duration=cfg.SIG_LENGTH * audio_speed if crop_mode == "first" else None,
+                fmin=fmin,
+                fmax=fmax,
+                speed=audio_speed,
+            )
+
+            # Crop query audio
+            if crop_mode == "center":
+                sig = [audio.crop_center(sig, rate, cfg.SIG_LENGTH)][0]
+            elif crop_mode == "first":
+                sig = [audio.split_signal(sig, rate, cfg.SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][0]
+
+            sig = np.array(sig, dtype="float32")
+            spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))
+
+            return spec, [], {}
+        else:
+            return None, [], {}
+
+    crop_mode.change(
+        update_query_spectrogram,
+        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
+        outputs=[query_spectrogram, results_state, export_state],
+        preprocess=False,
+    )
+    query_sample_tb.change(
+        update_query_spectrogram,
+        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
+        outputs=[query_spectrogram, results_state, export_state],
+        preprocess=False,
+    )
+
+    db_selection_button.click(
+        on_db_selection_click,
+        outputs=[
+            db_selection_tb,
+            db_embedding_count_number,
+            db_bandpass_frequencies_tb,
+            db_audio_speed_number,
+            results_state,
+            export_state,
+            select_query_btn,
+            query_sample_tb,
+        ],
+        show_progress=False,
+    )
+
+    search_btn.click(
+        run_search,
+        inputs=[
+            db_selection_tb,
+            query_sample_tb,
+            max_samples_number,
+            score_fn_select,
+            crop_mode,
+            crop_overlap,
+        ],
+        outputs=[results_state, page_state, export_btn, export_state],
+        show_progress_on=export_btn,
+    )
+
+    export_btn.click(
+        run_export,
+        inputs=[export_state],
+    )
+
+
+def build_embeddings_tab():
+    with gr.Tab(loc.localize("embeddings-tab-title")):
+        _build_extract_tab()
+        _build_search_tab()

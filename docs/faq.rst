@@ -16,7 +16,7 @@ BirdNET-Analyzer can be installed using different methods, including:
 - | **Raven Pro**: Follow the instructions provided in the Raven Pro documentation.
 - | **Python Package**: Install via pip using `pip install birdnet`.
 - | **Command Line**: Download the repository and run the scripts from the command line.
-- | **GUI**: Download the GUI version from the `releases page <https://github.com/kahst/BirdNET-Analyzer/releases/latest>`_ and follow the installation instructions.
+- | **GUI**: Download the GUI version from the `releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_ and follow the installation instructions.
 
 What licenses are used in BirdNET-Analyzer?
 -------------------------------------------
