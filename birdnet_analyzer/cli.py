@@ -45,9 +45,8 @@ def io_args():
     """
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument(
-        "input",
+        "audio_input",
         metavar="INPUT",
-        dest="audio_input",
         help="Path to input file or folder.",
     )
     p.add_argument("-o", "--output", help="Path to output folder. Defaults to the input path.")
@@ -497,7 +496,7 @@ def segments_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[audio_speed_args(), threads_args(), min_conf_args()],
     )
-    parser.add_argument("input", dest="audio_input", metavar="INPUT", help="Path to folder containing audio files.")
+    parser.add_argument("audio_input", metavar="INPUT", help="Path to folder containing audio files.")
     parser.add_argument("-r", "--results", help="Path to folder containing result files. Defaults to the `input` path.")
     parser.add_argument(
         "-o", "--output", help="Output folder path for extracted segments. Defaults to the `input` path."
@@ -600,9 +599,8 @@ def train_parser():
         else os.path.join(SCRIPT_DIR, "checkpoints/custom/Custom_Classifier")
     )
     parser.add_argument(
-        "input",
+        "audio_input",
         metavar="INPUT",
-        dest="audio_input",
         help="Path to training data folder. Subfolder names are used as labels.",
     )
     parser.add_argument(
