@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "birdnet_analyzer"
-version = "2.0.0"
+version = "2.0.1"
 license = { text = "MIT" }
 description = "BirdNET analyzer for scientific audio data processing and bird classification."
 authors = [{ name = "Stefan Kahl" }]
@@ -42,6 +42,7 @@ gui = [
 ]
 embeddings = ["perch-hoplite"]
 all = ["birdnet-analyzer[server,gui]"]
+dev = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse", "pytest", "ruff"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
@@ -73,6 +74,8 @@ packages = [
     "birdnet_analyzer.segments",
     "birdnet_analyzer.train",
     "birdnet_analyzer.evaluation",
+    "birdnet_analyzer.evaluation.preprocessing",
+    "birdnet_analyzer.evaluation.assessment"
 ]
 
 [tool.setuptools.package-data]
