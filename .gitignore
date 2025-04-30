@@ -1,3 +1,6 @@
+# UV
+uv.lock
+
 # IDE/Editor settings
 .vscode/*
 

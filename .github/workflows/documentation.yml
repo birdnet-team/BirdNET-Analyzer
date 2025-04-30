@@ -25,7 +25,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          pip install sphinx sphinx_rtd_theme sphinx-argparse
+          pip install .[docs]
       - name: Sphinx build
         run: |
           sphinx-build -E docs _build
