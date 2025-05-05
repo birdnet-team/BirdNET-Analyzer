@@ -125,8 +125,6 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
 
 
 def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB):
-    import pandas as pd
-
     """Creates a file output for the database.
 
     Args:
@@ -158,7 +156,7 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
         with open(target_path, "w") as f:
             f.write(",".join(map(str, embedding.tolist())))
 
-def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize):
+def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
     ### Make sure to comment out appropriately if you are not using args. ###
 
     # Set input and output path
@@ -210,6 +208,7 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         with Pool(cfg.CPU_THREADS) as p:
             tqdm(p.imap(partial(analyze_file, db=db), flist))
 
-    create_file_output("example/test-embedding-fileoutput", db)
+    if file_output is not None:
+        create_file_output(file_output, db)
 
     db.db.close()
