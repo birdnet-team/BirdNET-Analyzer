@@ -26,6 +26,7 @@ dependencies = [
     "tensorflow==2.15.1",
     "scikit-learn==1.6.1",
     "tqdm",
+    "pandas"
 ]
 
 [project.optional-dependencies]
