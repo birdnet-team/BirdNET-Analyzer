@@ -24,7 +24,7 @@ dependencies = [
     "librosa",
     "resampy",
     "tensorflow==2.15.1",
-    "tensorflow-io-gcs-filesystem<0.37.0",
+    "tensorflow-io-gcs-filesystem==0.31.0",
     "scikit-learn==1.6.1",
     "tqdm",
     "pandas",
