@@ -4,10 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
     branches: [main]
-    paths: [birdnet_analyzer/**, .github/workflows/ci.yml, tests/**, pyproject.toml]
+    paths: [birdnet_analyzer/**, .github/workflows/ci-uv.yml, tests/**, pyproject.toml]
   push:
     branches: [main]
-    paths: [birdnet_analyzer/**, .github/workflows/ci.yml, tests/**, pyproject.toml]
+    paths: [birdnet_analyzer/**, .github/workflows/ci-uv.yml, tests/**, pyproject.toml]
 
 concurrency:
   group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
