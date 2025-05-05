@@ -28,6 +28,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
+    "seaborn"
 ]
 
 [project.optional-dependencies]
@@ -37,9 +38,7 @@ gui = [
     "birdnet-analyzer[train,embeddings]",
     "gradio==5.25.2",
     "pywebview",
-    "matplotlib",
     "plotly[express]",
-    "seaborn",
     "pywin32;platform_system=='Windows'",
     "qtpy;platform_system=='Linux'",
     "PyGObject;platform_system=='Linux'",
