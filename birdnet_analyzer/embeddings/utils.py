@@ -124,6 +124,40 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
         db.commit()
 
 
+def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB):
+    import pandas as pd
+
+    """Creates a file output for the database.
+
+    Args:
+        output_path: Path to the output file.
+        db: Database object.
+    """
+    # Check if output path exists
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    # Get all embeddings
+    embedding_ids = db.get_embedding_ids()
+
+    # Write embeddings to file
+    for embedding_id in embedding_ids:
+        embedding = db.get_embedding(embedding_id)
+        source = db.get_embedding_source(embedding_id)
+
+        # Get start and end time
+        start, end = source.offsets
+
+        filename = f"{source.source_id}_{start}_{end}.birdnet.embeddings.txt"
+        target_path = os.path.join(output_path, os.path.relpath(filename))
+
+        # Ensure the target directory exists
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+        # Write embedding values to a text file
+        with open(target_path, "w") as f:
+            f.write(",".join(map(str, embedding.tolist())))
+
 def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize):
     ### Make sure to comment out appropriately if you are not using args. ###
 
@@ -175,5 +209,7 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
     else:
         with Pool(cfg.CPU_THREADS) as p:
             tqdm(p.imap(partial(analyze_file, db=db), flist))
+
+    create_file_output("example/test-embedding-fileoutput", db)
 
     db.db.close()
