@@ -10,7 +10,7 @@ from birdnet_analyzer.embeddings.core import get_database as get_embeddings_data
 from birdnet_analyzer.search.core import get_database as get_search_database
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-PAGE_SIZE = 4
+PAGE_SIZE = 6
 
 
 def play_audio(audio_infos):
@@ -37,7 +37,7 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
     return export_state
 
 
-def rum_embeddings_with_tqdm_tracking(
+def run_embeddings_with_tqdm_tracking(
     input_path,
     db_directory,
     db_name,
@@ -47,6 +47,7 @@ def rum_embeddings_with_tqdm_tracking(
     audio_speed,
     fmin,
     fmax,
+    file_output,
     progress=gr.Progress(track_tqdm=True),
 ):
     return run_embeddings(
@@ -59,6 +60,7 @@ def rum_embeddings_with_tqdm_tracking(
         audio_speed,
         fmin,
         fmax,
+        file_output,
         progress,
     )
 
@@ -74,6 +76,7 @@ def run_embeddings(
     audio_speed,
     fmin,
     fmax,
+    file_output,
     progress,
 ):
     from birdnet_analyzer.embeddings.utils import run
@@ -97,6 +100,7 @@ def run_embeddings(
             settings["BANDPASS_FMAX"],
             threads,
             batch_size,
+            file_output,
         )
     except Exception as e:
         db.db.close()
@@ -106,7 +110,7 @@ def run_embeddings(
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
             raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]") from e
 
-        run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
+        run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_path}")
 
@@ -284,6 +288,32 @@ def _build_extract_tab():
             show_progress=False,
         )
 
+        with gr.Accordion(loc.localize("embedding-file-output-accordion-label"), open=False):
+            with gr.Row():
+                select_file_output_directory_btn = gr.Button(loc.localize("embeddings-select-file-output-directory-button-label"))
+
+            with gr.Row():
+                file_output_tb = gr.Textbox(
+                    value=None,
+                    placeholder=loc.localize("embeddings-tab-file-output-directory-textbox-placeholder"),
+                    interactive=True,
+                    label=loc.localize("embeddings-tab-file-output-directory-textbox-label"),
+                )
+
+        def select_file_output_directory_and_update_tb():
+            dir_name = gu.select_directory(state_key="embeddings-file-output-dir", collect_files=False)
+
+            if dir_name:
+                return dir_name
+
+            return None
+
+        select_file_output_directory_btn.click(
+            select_file_output_directory_and_update_tb,
+            inputs=[],
+            outputs=[file_output_tb],
+        )
+
         def check_settings(dir_name, db_name):
             db_path = os.path.join(dir_name, db_name)
 
@@ -316,7 +346,7 @@ def _build_extract_tab():
         start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
 
         start_btn.click(
-            rum_embeddings_with_tqdm_tracking,
+            run_embeddings_with_tqdm_tracking,
             inputs=[
                 input_directory_state,
                 db_directory_state,
@@ -327,6 +357,7 @@ def _build_extract_tab():
                 audio_speed_slider,
                 fmin_number,
                 fmax_number,
+                file_output_tb,
             ],
             outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
             show_progress_on=progress_plot,
@@ -397,17 +428,6 @@ def _build_search_tab():
                     label=loc.localize("training-tab-crop-overlap-number-label"),
                     info=loc.localize("embeddings-search-crop-overlap-number-info"),
                     visible=False,
-                )
-                max_samples_number = gr.Number(
-                    label=loc.localize("embeddings-search-max-samples-number-label"),
-                    value=10,
-                    interactive=True,
-                )
-                score_fn_select = gr.Radio(
-                    label=loc.localize("embeddings-search-score-fn-select-label"),
-                    choices=["cosine", "dot", "euclidean"],
-                    value="cosine",
-                    interactive=True,
                 )
                 max_samples_number = gr.Number(
                     label=loc.localize("embeddings-search-max-samples-number-label"),

@@ -134,7 +134,6 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
     # Check if output path exists
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-
     # Get all embeddings
     embedding_ids = db.get_embedding_ids()
 
@@ -147,7 +146,11 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
         start, end = source.offsets
 
         filename = f"{source.source_id}_{start}_{end}.birdnet.embeddings.txt"
-        target_path = os.path.join(output_path, os.path.relpath(filename))
+
+        # Get the common prefix between the output path and the filename
+        common_prefix = os.path.commonpath([output_path, os.path.dirname(filename)])
+        relative_filename = os.path.relpath(filename, common_prefix)
+        target_path = os.path.join(output_path, relative_filename)
 
         # Ensure the target directory exists
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
@@ -208,7 +211,7 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         with Pool(cfg.CPU_THREADS) as p:
             tqdm(p.imap(partial(analyze_file, db=db), flist))
 
-    if file_output is not None:
+    if file_output is not None and file_output != "":
         create_file_output(file_output, db)
 
     db.db.close()
