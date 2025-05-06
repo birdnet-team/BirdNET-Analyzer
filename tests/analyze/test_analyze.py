@@ -265,6 +265,8 @@ def test_analyze_with_speed_up(mock_ensure_model, setup_test_environment):
 
     soundscape_path = "example/soundscape.wav"
 
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
     # Call function under test
     analyze(soundscape_path, env["output_dir"], audio_speed=5.0, top_n=1, min_conf=0)
 
@@ -289,6 +291,8 @@ def test_analyze_with_slow_down(mock_ensure_model, setup_test_environment):
     env = setup_test_environment
 
     soundscape_path = "example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
     analyze(soundscape_path, env["output_dir"], audio_speed=0.2, top_n=1, min_conf=0)
