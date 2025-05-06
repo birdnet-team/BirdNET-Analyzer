@@ -34,7 +34,7 @@ desktop.ini
 checkpoints/custom/
 
 # Example output
-example
+example/*
 !example/soundscape.wav
 !example/species_list.txt
 
