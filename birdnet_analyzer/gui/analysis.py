@@ -5,7 +5,6 @@ from pathlib import Path
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import model
 from birdnet_analyzer.analyze.utils import (
@@ -92,6 +91,8 @@ def run_analysis(
         input_dir: The input directory.
         progress: The gradio progress bar.
     """
+    import birdnet_analyzer.gui.localization as loc
+
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-preparing')} ...")
 
