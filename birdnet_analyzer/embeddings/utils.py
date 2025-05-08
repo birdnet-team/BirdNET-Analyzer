@@ -26,9 +26,6 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
         item: (filepath, config)
     """
 
-    import birdnet_analyzer.model as model
-    import birdnet_analyzer.analyze.utils as analyze
-
     # Get file path and restore cfg
     fpath: str = item[0]
     cfg.set_config(item[1])
@@ -149,7 +146,9 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
         # Get start and end time
         start, end = source.offsets
 
-        filename = f"{source.source_id}_{start}_{end}.birdnet.embeddings.txt"
+        source_id = source.source_id.rsplit(".", 1)[0]
+
+        filename = f"{source_id}_{start}_{end}.birdnet.embeddings.txt"
 
         # Get the common prefix between the output path and the filename
         common_prefix = os.path.commonpath([output_path, os.path.dirname(filename)])

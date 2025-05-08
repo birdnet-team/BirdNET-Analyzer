@@ -19,16 +19,26 @@ After that choose the directory where your embeddings database should be created
 You can further specify the following parameters for the extraction:
 
 - | **Overlap**: Audio is still processed in 3-second snippets. This parameter specifies the overlap between these snippets.
-- | **Batch size and Threads**: These can be adjusted to increase the performance of the extraction process depending on your hardware.
+- | **Batch size**: This can be adjusted to increase the performance of the extraction process depending on your hardware.
 - | **Audio speed modifier**:  This can be used to speed up or slow down the audio during the extraction process to enable working with ultra- and infrasonic recordings.
 - | **Bandpass filter frequencies**: This sets the bandpass filter which is applied after the speed modifier, to further filter out unwanted frequencies.
 
 .. note::
     The audio speed and bandpass parameters will be stored in the database and will also applied during the search process.
 
+.. note::
+    Due to limitations of the underlying hoplite database, multithreading is not supported for the extraction process.
+
 The database will be created as a folder with the specified name containing two files:
     - 'hoplite.sqlite'
     - 'usearch.index'
+
+2.1. File output
+^^^^^^^^^^^^^^^^^^^
+
+If you want to process the embeddings as files, you can also specify a folder for the file output. If no folder is specified the file output will be omitted.
+The file output will create an individual file for each 3 second audio snippet that is processed, containing the extracted embedding.
+
 
 3. Searching your database
 -------------------------------------------------
