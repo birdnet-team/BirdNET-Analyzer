@@ -184,7 +184,7 @@ def split_signal(sig, rate, seconds, overlap, minlen, amount=None):
 
     # Split signal with overlap
     sig_splits = []
-    sig_splits.extend(data[i : i + chunksize] for i in range(0, lastchunkpos, stepsize))
+    sig_splits.extend(data[i : i + chunksize] for i in range(0, lastchunkpos + 1, stepsize))
 
     return sig_splits
 

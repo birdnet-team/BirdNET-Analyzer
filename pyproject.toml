@@ -26,6 +26,9 @@ dependencies = [
     "tensorflow==2.15.1",
     "scikit-learn==1.6.1",
     "tqdm",
+    "pandas",
+    "matplotlib",
+    "seaborn"
 ]
 
 [project.optional-dependencies]
@@ -35,14 +38,16 @@ gui = [
     "birdnet-analyzer[train,embeddings]",
     "gradio==5.25.2",
     "pywebview",
-    "matplotlib",
     "plotly[express]",
-    "seaborn",
     "pywin32;platform_system=='Windows'",
+    "qtpy;platform_system=='Linux'",
+    "PyGObject;platform_system=='Linux'",
 ]
 embeddings = ["perch-hoplite"]
 all = ["birdnet-analyzer[server,gui]"]
-dev = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse", "pytest", "ruff"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
+tests = ["pytest"]
+dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
@@ -75,7 +80,7 @@ packages = [
     "birdnet_analyzer.train",
     "birdnet_analyzer.evaluation",
     "birdnet_analyzer.evaluation.preprocessing",
-    "birdnet_analyzer.evaluation.assessment"
+    "birdnet_analyzer.evaluation.assessment",
 ]
 
 [tool.setuptools.package-data]

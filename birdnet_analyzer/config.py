@@ -69,8 +69,8 @@ LOCATION_FILTER_THRESHOLD: float = 0.03
 
 # If None or empty file, no custom species list will be used
 # Note: Entries in this list have to match entries from the LABELS_FILE
-# We use the 2021 eBird taxonomy for species names (Clements list)
-CODES_FILE: str = os.path.join(SCRIPT_DIR, "eBird_taxonomy_codes_2021E.json")
+# We use the 2024 eBird taxonomy for species names (Clements list)
+CODES_FILE: str = os.path.join(SCRIPT_DIR, "eBird_taxonomy_codes_2024E.json")
 SPECIES_LIST_FILE: str = os.path.join(SCRIPT_DIR, "example/species_list.txt")
 
 # Supported file types

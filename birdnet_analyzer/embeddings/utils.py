@@ -25,6 +25,10 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     Args:
         item: (filepath, config)
     """
+
+    import birdnet_analyzer.model as model
+    import birdnet_analyzer.analyze.utils as analyze
+
     # Get file path and restore cfg
     fpath: str = item[0]
     cfg.set_config(item[1])

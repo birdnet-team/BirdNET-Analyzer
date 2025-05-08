@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 import birdnet_analyzer.config as cfg
@@ -256,3 +257,57 @@ def test_analyze_with_custom_species_list(
     mock_set_params.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["slist"] == species_list
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_speed_up(mock_ensure_model, setup_test_environment):
+    """Test analyzing with speed up."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(soundscape_path, env["output_dir"], audio_speed=5.0, top_n=1, min_conf=0)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        assert len(lines) == 8, "Number of predicted segments does not match"
+
+        for index, line in enumerate(lines):
+            parts = line.strip().split("\t")
+            start = float(parts[3])
+            end = float(parts[4])
+            assert np.isclose(start, index * 15), "Start time does not match expected value"
+            assert np.isclose(end, (index + 1) * 15), "End time does not match expected value"
+
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_slow_down(mock_ensure_model, setup_test_environment):
+    """Test analyzing with speed up."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(soundscape_path, env["output_dir"], audio_speed=0.2, top_n=1, min_conf=0)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        assert len(lines) == 200, "Number of predicted segments does not match"
+
+        for index, line in enumerate(lines):
+            parts = line.strip().split("\t")
+            start = float(parts[3])
+            end = float(parts[4])
+            assert np.isclose(start, index * 0.6), "Start time does not match expected value"
+            assert np.isclose(end, (index + 1) * 0.6), "End time does not match expected value"
+
