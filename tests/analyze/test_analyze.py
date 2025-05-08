@@ -56,7 +56,7 @@ def setup_test_environment():
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
 def test_analyze_single_file(
-    mock_save_params, mock_analyze_file, mock_set_params, mock_ensure_model, setup_test_environment
+    mock_save_params: MagicMock, mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment
 ):
     """Test analyzing a single audio file."""
     env = setup_test_environment
@@ -88,7 +88,7 @@ def test_analyze_single_file(
 @patch("multiprocessing.Pool")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
 def test_analyze_directory_multiprocess(
-    mock_save_params, mock_pool, mock_set_params, mock_ensure_model, setup_test_environment
+    mock_save_params: MagicMock, mock_pool, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment
 ):
     """Test analyzing multiple files with multiprocessing."""
     env = setup_test_environment
@@ -129,11 +129,11 @@ def test_analyze_directory_multiprocess(
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
 @patch("birdnet_analyzer.analyze.utils.combine_results")
 def test_analyze_with_combined_results(
-    mock_combine_results,
-    mock_save_params,
-    mock_analyze_file,
-    mock_set_params,
-    mock_ensure_model,
+    mock_combine_results: MagicMock,
+    mock_save_params: MagicMock,
+    mock_analyze_file: MagicMock,
+    mock_set_params: MagicMock,
+    mock_ensure_model: MagicMock,
     setup_test_environment,
 ):
     """Test analyzing files with combined results."""
@@ -166,7 +166,7 @@ def test_analyze_with_combined_results(
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_location_filtering(mock_analyze_file, mock_set_params, mock_ensure_model, setup_test_environment):
+def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
     """Test analyzing with location-based filtering."""
     env = setup_test_environment
 
@@ -188,7 +188,7 @@ def test_analyze_with_location_filtering(mock_analyze_file, mock_set_params, moc
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_custom_classifier(mock_analyze_file, mock_set_params, mock_ensure_model, setup_test_environment):
+def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
     """Test analyzing with a custom classifier."""
     env = setup_test_environment
 
@@ -214,7 +214,7 @@ def test_analyze_with_custom_classifier(mock_analyze_file, mock_set_params, mock
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 def test_analyze_with_multiple_result_types(
-    mock_analyze_file, mock_set_params, mock_ensure_model, setup_test_environment
+    mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment
 ):
     """Test analyzing with multiple output result types."""
     env = setup_test_environment
@@ -236,7 +236,7 @@ def test_analyze_with_multiple_result_types(
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 def test_analyze_with_custom_species_list(
-    mock_analyze_file, mock_set_params, mock_ensure_model, setup_test_environment
+    mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment
 ):
     """Test analyzing with a custom species list."""
     env = setup_test_environment
@@ -258,12 +258,11 @@ def test_analyze_with_custom_species_list(
     _, kwargs = mock_set_params.call_args
     assert kwargs["slist"] == species_list
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
-def test_analyze_with_speed_up(mock_ensure_model, setup_test_environment):
+def test_analyze_with_speed_up(setup_test_environment):
     """Test analyzing with speed up."""
     env = setup_test_environment
 
-    soundscape_path = "example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -285,12 +284,11 @@ def test_analyze_with_speed_up(mock_ensure_model, setup_test_environment):
             assert np.isclose(end, (index + 1) * 15), "End time does not match expected value"
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
-def test_analyze_with_slow_down(mock_ensure_model, setup_test_environment):
+def test_analyze_with_slow_down(setup_test_environment):
     """Test analyzing with speed up."""
     env = setup_test_environment
 
-    soundscape_path = "example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 

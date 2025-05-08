@@ -6,8 +6,8 @@ from unittest.mock import patch
 import pytest
 
 import birdnet_analyzer.config as cfg
-from birdnet_analyzer.cli import train_parser
-from birdnet_analyzer.train.core import train
+from birdnet_analyzer.cli import embeddings_parser
+from birdnet_analyzer.embeddings.core import embeddings
 
 
 @pytest.fixture
@@ -20,8 +20,6 @@ def setup_test_environment():
     os.makedirs(input_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
 
-    classifier_output = os.path.join(output_dir, "classifier_output")
-
     # Store original config values
     original_config = {
         attr: getattr(cfg, attr) for attr in dir(cfg) if not attr.startswith("_") and not callable(getattr(cfg, attr))
@@ -31,7 +29,6 @@ def setup_test_environment():
         "test_dir": test_dir,
         "input_dir": input_dir,
         "output_dir": output_dir,
-        "classifier_output": classifier_output,
     }
 
     # Clean up
@@ -42,16 +39,16 @@ def setup_test_environment():
         setattr(cfg, attr, value)
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
-@patch("birdnet_analyzer.train.utils.train_model")
-def test_train_cli(mock_train_model, mock_ensure_model, setup_test_environment):
+@patch("birdnet_analyzer.embeddings.utils.run")
+def test_embeddings_cli(mock_run_embeddings, mock_ensure_model, setup_test_environment):
     env = setup_test_environment
 
     mock_ensure_model.return_value = True
 
-    parser = train_parser()
-    args = parser.parse_args([env["input_dir"], "--output", env["classifier_output"]])
+    parser = embeddings_parser()
+    args = parser.parse_args(["--input", env["input_dir"], "-db", env["output_dir"]])
 
-    train(**vars(args))
+    embeddings(**vars(args))
 
     mock_ensure_model.assert_called_once()
-    mock_train_model.assert_called_once_with()
+    mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0,  1.0, 0, 15000, 4, 1)
