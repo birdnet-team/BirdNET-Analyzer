@@ -633,6 +633,7 @@ def train_parser():
     )
     parser.add_argument(
         "--focal-loss",
+        dest="use_focal_loss",
         action="store_true",
         help="Use focal loss for training (helps with imbalanced classes and hard examples).",
     )
