@@ -1,21 +1,23 @@
-import pytest
+import re
+
 import numpy as np
+import pytest
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
 from birdnet_analyzer.evaluation.assessment.metrics import (
     calculate_accuracy,
-    calculate_recall,
-    calculate_precision,
-    calculate_f1_score,
-    calculate_average_precision,
     calculate_auroc,
-)
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    average_precision_score,
-    roc_auc_score,
+    calculate_average_precision,
+    calculate_f1_score,
+    calculate_precision,
+    calculate_recall,
 )
 
 
@@ -104,7 +106,7 @@ class TestCalculateAccuracy:
     def test_incorrect_shapes(self):
         predictions = np.array([0.9, 0.2, 0.8])
         labels = np.array([1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must have the same shape.")):
             calculate_accuracy(
                 predictions,
                 labels,
@@ -116,7 +118,7 @@ class TestCalculateAccuracy:
     def test_invalid_threshold(self):
         predictions = np.array([0.9, 0.2, 0.8, 0.1])
         labels = np.array([1, 0, 1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Invalid threshold: 1.5. Must be between 0 and 1.")):
             calculate_accuracy(
                 predictions,
                 labels,
@@ -140,7 +142,7 @@ class TestCalculateAccuracy:
     def test_empty_arrays(self):
         predictions = np.array([])
         labels = np.array([])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must not be empty.")):
             calculate_accuracy(
                 predictions,
                 labels,
@@ -249,15 +251,13 @@ class TestCalculateRecall:
             threshold=0.5,
             averaging_method="macro",
         )
-        expected_recall = recall_score(
-            labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0
-        )
+        expected_recall = recall_score(labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0)
         assert np.isclose(result, expected_recall)
 
     def test_incorrect_shapes(self):
         predictions = np.array([0.9, 0.2, 0.8])
         labels = np.array([1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must have the same shape.")):
             calculate_recall(
                 predictions,
                 labels,
@@ -268,7 +268,7 @@ class TestCalculateRecall:
     def test_invalid_threshold(self):
         predictions = np.array([0.9, 0.2, 0.8, 0.1])
         labels = np.array([1, 0, 1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Invalid threshold: -0.1. Must be between 0 and 1.")):
             calculate_recall(
                 predictions,
                 labels,
@@ -290,7 +290,7 @@ class TestCalculateRecall:
     def test_empty_arrays(self):
         predictions = np.array([])
         labels = np.array([])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must not be empty.")):
             calculate_recall(
                 predictions,
                 labels,
@@ -308,9 +308,7 @@ class TestCalculateRecall:
             threshold=0.5,
             averaging_method="macro",
         )
-        expected_recall = recall_score(
-            labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0
-        )
+        expected_recall = recall_score(labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0)
         assert np.isclose(result, expected_recall)
 
     def test_binary_classification_no_positive_predictions(self):
@@ -322,9 +320,7 @@ class TestCalculateRecall:
             task="binary",
             threshold=0.5,
         )
-        expected_recall = recall_score(
-            labels, (predictions >= 0.5).astype(int), zero_division=0
-        )
+        expected_recall = recall_score(labels, (predictions >= 0.5).astype(int), zero_division=0)
         assert np.isclose(result, expected_recall)
 
     def test_binary_classification_no_positive_labels(self):
@@ -423,15 +419,13 @@ class TestCalculatePrecision:
             threshold=0.5,
             averaging_method="macro",
         )
-        expected_precision = precision_score(
-            labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0
-        )
+        expected_precision = precision_score(labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0)
         assert np.isclose(result, expected_precision, atol=1e-4)
 
     def test_incorrect_shapes(self):
         predictions = np.array([0.9, 0.2, 0.8])
         labels = np.array([1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must have the same shape.")):
             calculate_precision(
                 predictions,
                 labels,
@@ -442,7 +436,7 @@ class TestCalculatePrecision:
     def test_invalid_threshold(self):
         predictions = np.array([0.9, 0.2, 0.8, 0.1])
         labels = np.array([1, 0, 1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Invalid threshold: -0.1. Must be between 0 and 1.")):
             calculate_precision(
                 predictions,
                 labels,
@@ -464,7 +458,7 @@ class TestCalculatePrecision:
     def test_empty_arrays(self):
         predictions = np.array([])
         labels = np.array([])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must not be empty.")):
             calculate_precision(
                 predictions,
                 labels,
@@ -499,9 +493,7 @@ class TestCalculatePrecision:
             task="binary",
             threshold=0.5,
         )
-        expected_precision = precision_score(
-            labels, (predictions >= 0.5).astype(int), zero_division=0
-        )
+        expected_precision = precision_score(labels, (predictions >= 0.5).astype(int), zero_division=0)
         assert np.isclose(result, expected_precision)
 
     def test_binary_classification_no_positive_labels(self):
@@ -584,15 +576,13 @@ class TestCalculateF1Score:
             threshold=0.5,
             averaging_method="macro",
         )
-        expected_f1 = f1_score(
-            labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0
-        )
+        expected_f1 = f1_score(labels, (predictions >= 0.5).astype(int), average="macro", zero_division=0)
         assert np.isclose(result, expected_f1, atol=1e-4)
 
     def test_incorrect_shapes(self):
         predictions = np.array([0.9, 0.2, 0.8])
         labels = np.array([1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must have the same shape.")):
             calculate_f1_score(
                 predictions,
                 labels,
@@ -603,7 +593,7 @@ class TestCalculateF1Score:
     def test_invalid_threshold(self):
         predictions = np.array([0.9, 0.2, 0.8, 0.1])
         labels = np.array([1, 0, 1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Invalid threshold: 1.5. Must be between 0 and 1.")):
             calculate_f1_score(
                 predictions,
                 labels,
@@ -625,7 +615,7 @@ class TestCalculateF1Score:
     def test_empty_arrays(self):
         predictions = np.array([])
         labels = np.array([])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must not be empty.")):
             calculate_f1_score(
                 predictions,
                 labels,
@@ -672,9 +662,7 @@ class TestCalculateF1Score:
             task="binary",
             threshold=0.5,
         )
-        expected_f1 = f1_score(
-            labels, (predictions >= 0.5).astype(int), zero_division=0
-        )
+        expected_f1 = f1_score(labels, (predictions >= 0.5).astype(int), zero_division=0)
         assert np.isclose(result, expected_f1)
 
 
@@ -763,7 +751,7 @@ class TestCalculateAveragePrecision:
     def test_incorrect_shapes(self):
         predictions = np.array([0.9, 0.2, 0.8])
         labels = np.array([1, 0])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must have the same shape.")):
             calculate_average_precision(
                 predictions,
                 labels,
@@ -784,7 +772,7 @@ class TestCalculateAveragePrecision:
     def test_empty_arrays(self):
         predictions = np.array([])
         labels = np.array([])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must not be empty.")):
             calculate_average_precision(
                 predictions,
                 labels,
@@ -925,7 +913,7 @@ class TestCalculateAUROC:
     def test_incorrect_shapes(self):
         predictions = np.array([0.9, 0.2])
         labels = np.array([1])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must have the same shape.")):
             calculate_auroc(
                 predictions,
                 labels,
@@ -946,7 +934,7 @@ class TestCalculateAUROC:
     def test_empty_arrays(self):
         predictions = np.array([])
         labels = np.array([])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Predictions and labels must not be empty.")):
             calculate_auroc(
                 predictions,
                 labels,

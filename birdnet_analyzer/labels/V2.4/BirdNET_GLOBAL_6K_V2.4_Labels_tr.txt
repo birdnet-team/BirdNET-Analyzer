@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Al Omuzlu Ara
 Diuca diuca_Duika İspinozu
 Dives dives_Ötücü Karatavuk
 Dives warczewiczi_Çalılık Karatavuğu
-Dog_Dog
+Dog_Köpek
 Dolichonyx oryzivorus_Pirinç Karatavuğu
 Donacobius atricapilla_Donakobiyus
 Donacospiza albifrons_Saz İspinozu

@@ -14,7 +14,7 @@ PAGE_SIZE = 4
 
 
 def play_audio(audio_infos):
-    import birdnet_analyzer.audio as audio
+    from birdnet_analyzer import audio
 
     arr, sr = audio.open_audio_file(
         audio_infos[0],
@@ -98,13 +98,13 @@ def run_embeddings(
             threads,
             batch_size,
         )
-    except:
+    except Exception as e:
         db.db.close()
         # Transform audiospeed from slider to float
         audio_speed = max(0.1, 1.0 / (audio_speed * -1)) if audio_speed < 0 else max(1.0, float(audio_speed))
 
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
-            raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
+            raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]") from e
 
         run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size)
 
@@ -142,14 +142,14 @@ def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overl
     return chunks, 0, gr.Button(interactive=True), {}
 
 
-def run_export(export_state):
-    import birdnet_analyzer.audio as audio
+def run_export(export_state: dict):
+    from birdnet_analyzer import audio
 
     if len(export_state.items()) > 0:
         export_folder = gu.select_folder(state_key="embeddings-search-export-folder")
 
         if export_folder:
-            for index, file in export_state.items():
+            for file in export_state.values():
                 filebasename = os.path.basename(file[0])
                 filebasename = os.path.splitext(filebasename)[0]
                 dest = os.path.join(export_folder, f"{file[4]:.5f}_{filebasename}_{file[1]}_{file[1] + file[2]}.wav")
@@ -335,8 +335,7 @@ def _build_extract_tab():
 
 
 def _build_search_tab():
-    import birdnet_analyzer.audio as audio
-    import birdnet_analyzer.utils as utils
+    from birdnet_analyzer import audio, utils
 
     with gr.Tab(loc.localize("embeddings-search-tab-title")):
         results_state = gr.State([])
@@ -470,7 +469,7 @@ def _build_search_tab():
                                         with gr.Row():
                                             play_btn = gr.Button("▶")
                                             play_btn.click(play_audio, inputs=plot_audio_state, outputs=hidden_audio)
-                                            checkbox = gr.Checkbox(label="Export", value=(index in exports.keys()))
+                                            checkbox = gr.Checkbox(label="Export", value=(index in exports))
                                             checkbox.change(
                                                 update_export_state,
                                                 inputs=[plot_audio_state, checkbox, export_state],
@@ -563,8 +562,8 @@ def _build_search_tab():
             spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))
 
             return spec, [], {}
-        else:
-            return None, [], {}
+
+        return None, [], {}
 
     crop_mode.change(
         update_query_spectrogram,

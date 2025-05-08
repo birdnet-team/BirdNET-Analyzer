@@ -1,3 +1,4 @@
+ # ruff: noqa: I001
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
@@ -75,7 +76,7 @@ def run_batch_analysis(
         custom_classifier_file,
         output_type,
         combine_tables,
-        "en" if not locale else locale,
+        locale if locale else "en",
         batch_size if batch_size and batch_size > 0 else 1,
         threads if threads and threads > 0 else 4,
         input_dir,
@@ -158,29 +159,27 @@ def build_multi_analysis_tab():
             map_plot,
         ) = gu.species_lists()
 
-        with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True):
-            with gr.Group():
-                output_type_radio = gr.CheckboxGroup(
-                    list(OUTPUT_TYPE_MAP.items()),
-                    value="table",
-                    label=loc.localize("multi-tab-output-radio-label"),
-                    info=loc.localize("multi-tab-output-radio-info"),
+        with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True), gr.Group():
+            output_type_radio = gr.CheckboxGroup(
+                list(OUTPUT_TYPE_MAP.items()),
+                value="table",
+                label=loc.localize("multi-tab-output-radio-label"),
+                info=loc.localize("multi-tab-output-radio-info"),
+            )
+
+            with gr.Row():
+                combine_tables_checkbox = gr.Checkbox(
+                    False,
+                    label=loc.localize("multi-tab-output-combine-tables-checkbox-label"),
+                    info=loc.localize("multi-tab-output-combine-tables-checkbox-info"),
                 )
 
-                with gr.Row():
-                    with gr.Column():
-                        combine_tables_checkbox = gr.Checkbox(
-                            False,
-                            label=loc.localize("multi-tab-output-combine-tables-checkbox-label"),
-                            info=loc.localize("multi-tab-output-combine-tables-checkbox-info"),
-                        )
-
-                with gr.Row():
-                    skip_existing_checkbox = gr.Checkbox(
-                        False,
-                        label=loc.localize("multi-tab-skip-existing-checkbox-label"),
-                        info=loc.localize("multi-tab-skip-existing-checkbox-info"),
-                    )
+            with gr.Row():
+                skip_existing_checkbox = gr.Checkbox(
+                    False,
+                    label=loc.localize("multi-tab-skip-existing-checkbox-label"),
+                    info=loc.localize("multi-tab-skip-existing-checkbox-info"),
+                )
 
         with gr.Row():
             batch_size_number = gr.Number(

@@ -1,8 +1,8 @@
 """Module containing common function."""
 
-import sys
 import itertools
 import os
+import sys
 import traceback
 from pathlib import Path
 
@@ -54,7 +54,7 @@ def spectrogram_from_file(path, fig_num=None, fig_size=None, offset=0, duration=
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
     """
-    import birdnet_analyzer.audio as audio
+    from birdnet_analyzer import audio
 
     # s, sr = librosa.load(path, offset=offset, duration=duration)
     s, sr = audio.open_audio_file(path, offset=offset, duration=duration, fmin=fmin, fmax=fmax, speed=speed)
@@ -103,7 +103,7 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None):
     return librosa.display.specshow(S_db, ax=ax, n_fft=1024, hop_length=512).figure
 
 
-def collect_audio_files(path: str, max_files: int = None):
+def collect_audio_files(path: str, max_files: int | None = None):
     """Collects all audio files in the given directory.
 
     Args:
@@ -140,9 +140,11 @@ def collect_all_files(path: str, filetypes: list[str], pattern: str = ""):
     files = []
 
     for root, _, flist in os.walk(path):
-        for f in flist:
-            if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in filetypes and (pattern in f or not pattern):
-                files.append(os.path.join(root, f))
+        files.extend(
+            os.path.join(root, f)
+            for f in flist
+            if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in filetypes and (pattern in f or not pattern)
+        )
 
     return sorted(files)
 
@@ -227,22 +229,25 @@ def load_from_cache(path):
     data = np.load(path, allow_pickle=True)
 
     # Check if cache contains needed preprocessing parameters
-    if "fmin" in data and "fmax" in data and "audio_speed" in data and "crop_mode" in data and "overlap" in data:
-        # Check if preprocessing parameters match current settings
-        if (
+    if (
+        "fmin" in data
+        and "fmax" in data
+        and "audio_speed" in data
+        and "crop_mode" in data
+        and "overlap" in data
+        and (  # Check if preprocessing parameters match current settings
             data["fmin"] != cfg.BANDPASS_FMIN
             or data["fmax"] != cfg.BANDPASS_FMAX
             or data["audio_speed"] != cfg.AUDIO_SPEED
             or data["crop_mode"] != cfg.SAMPLE_CROP_MODE
             or data["overlap"] != cfg.SIG_OVERLAP
-        ):
-            print("\t...WARNING: Cache preprocessing parameters don't match current settings!", flush=True)
-            print(f"\t   Cache: fmin={data['fmin']}, fmax={data['fmax']}, speed={data['audio_speed']}", flush=True)
-            print(f"\t   Cache: crop_mode={data['crop_mode']}, overlap={data['overlap']}", flush=True)
-            print(
-                f"\t   Current: fmin={cfg.BANDPASS_FMIN}, fmax={cfg.BANDPASS_FMAX}, speed={cfg.AUDIO_SPEED}", flush=True
-            )
-            print(f"\t   Current: crop_mode={cfg.SAMPLE_CROP_MODE}, overlap={cfg.SIG_OVERLAP}", flush=True)
+        )
+    ):
+        print("\t...WARNING: Cache preprocessing parameters don't match current settings!", flush=True)
+        print(f"\t   Cache: fmin={data['fmin']}, fmax={data['fmax']}, speed={data['audio_speed']}", flush=True)
+        print(f"\t   Cache: crop_mode={data['crop_mode']}, overlap={data['overlap']}", flush=True)
+        print(f"\t   Current: fmin={cfg.BANDPASS_FMIN}, fmax={cfg.BANDPASS_FMAX}, speed={cfg.AUDIO_SPEED}", flush=True)
+        print(f"\t   Current: crop_mode={cfg.SAMPLE_CROP_MODE}, overlap={cfg.SIG_OVERLAP}", flush=True)
 
     # Extract and return data
     x_train = data["x_train"]
@@ -400,11 +405,13 @@ def ensure_model_exists():
     total_size = int(response.headers.get("content-length", 0))
     block_size = 1024
 
-    with tqdm(total=total_size, unit="iB", unit_scale=True, desc="Downloading model") as tqdm_bar:
-        with open(download_path, "wb") as file:
-            for data in response.iter_content(block_size):
-                tqdm_bar.update(len(data))
-                file.write(data)
+    with (
+        tqdm(total=total_size, unit="iB", unit_scale=True, desc="Downloading model") as tqdm_bar,
+        open(download_path, "wb") as file,
+    ):
+        for data in response.iter_content(block_size):
+            tqdm_bar.update(len(data))
+            file.write(data)
 
     if response.status_code != 200 or (total_size not in (0, tqdm_bar.n)):
         raise ValueError(f"Failed to download the file. Status code: {response.status_code}")

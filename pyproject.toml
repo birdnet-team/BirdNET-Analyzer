@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "birdnet_analyzer"
-version = "2.0.0"
+version = "2.0.1"
 license = { text = "MIT" }
 description = "BirdNET analyzer for scientific audio data processing and bird classification."
 authors = [{ name = "Stefan Kahl" }]
@@ -26,6 +26,9 @@ dependencies = [
     "tensorflow==2.15.1",
     "scikit-learn==1.6.1",
     "tqdm",
+    "pandas",
+    "matplotlib",
+    "seaborn"
 ]
 
 [project.optional-dependencies]
@@ -35,13 +38,16 @@ gui = [
     "birdnet-analyzer[train,embeddings]",
     "gradio==5.25.2",
     "pywebview",
-    "matplotlib",
     "plotly[express]",
-    "seaborn",
     "pywin32;platform_system=='Windows'",
+    "qtpy;platform_system=='Linux'",
+    "PyGObject;platform_system=='Linux'",
 ]
 embeddings = ["perch-hoplite"]
 all = ["birdnet-analyzer[server,gui]"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
+tests = ["pytest"]
+dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
@@ -73,6 +79,8 @@ packages = [
     "birdnet_analyzer.segments",
     "birdnet_analyzer.train",
     "birdnet_analyzer.evaluation",
+    "birdnet_analyzer.evaluation.preprocessing",
+    "birdnet_analyzer.evaluation.assessment",
 ]
 
 [tool.setuptools.package-data]
@@ -81,4 +89,60 @@ birdnet_analyzer = [
     "lang/*",
     "labels/**/*",
     "gui/assets/**/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["birdnet_analyzer"]
+
+[tool.ruff]
+exclude = ["conf.py"]
+line-length = 165
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "B",
+    "A",
+    "C4",
+    "T10",
+    "EXE",
+    "PIE",
+    "PYI",
+    "PT",
+    "Q",
+    "RSE",
+    "RET",
+    "SIM",
+    "TID",
+    "TD",
+    "TC",
+    #"PTH",
+    "FLY",
+    "I",
+    "NPY",
+    "PD",
+    #"N",
+    "PERF",
+    "E",
+    "W",
+    #"D",
+    "PL",
+    "UP",
+    "FURB",
+    "RUF",
+]
+ignore = [
+    "B008",
+    "TD003",
+    "TD002",
+    "PD901",
+    "SIM108",
+    "E722",
+    "PLR2004",
+    "PLR0913",
+    "PLR0915",
+    "PLR0912",
+    "PLC0206",
+    "RUF015",
 ]

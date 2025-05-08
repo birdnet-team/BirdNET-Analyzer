@@ -39,9 +39,7 @@ def test_extract_recording_filename_multiple_dots():
 
     Ensures that the function correctly extracts the base filename when there are multiple dots in the filename.
     """
-    input_series = pd.Series(
-        ["/path/to/file.name.ext", "/path/to/another.file.name.ext"]
-    )
+    input_series = pd.Series(["/path/to/file.name.ext", "/path/to/another.file.name.ext"])
     expected_output = pd.Series(["file.name", "another.file.name"])
     output_series = extract_recording_filename(input_series)
     pd.testing.assert_series_equal(output_series, expected_output)
@@ -298,7 +296,7 @@ def test_read_and_concatenate_files_different_structures(tmp_path):
     df1.to_csv(tmp_path / "file1.txt", sep="\t", index=False)
     df2.to_csv(tmp_path / "file2.txt", sep="\t", index=False)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="File file2.txt has different columns than the previous files."):
         read_and_concatenate_files_in_directory(str(tmp_path))
 
 
@@ -316,9 +314,7 @@ def test_read_and_concatenate_files_ignores_non_txt(tmp_path):
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))
     expected_df = df_txt.assign(source_file="file1.txt")
 
-    pd.testing.assert_frame_equal(
-        result_df.reset_index(drop=True), expected_df.reset_index(drop=True)
-    )
+    pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected_df.reset_index(drop=True))
 
 
 def test_read_and_concatenate_files_nonexistent_directory():
@@ -354,9 +350,7 @@ def test_read_and_concatenate_files_large_files(tmp_path):
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))
     expected_df = df_large.assign(source_file="large_file.txt")
 
-    pd.testing.assert_frame_equal(
-        result_df.reset_index(drop=True), expected_df.reset_index(drop=True)
-    )
+    pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected_df.reset_index(drop=True))
 
 
 def test_read_and_concatenate_files_invalid_path():
@@ -380,9 +374,7 @@ def test_read_and_concatenate_files_different_encodings(tmp_path):
 
     # Write files with utf-8 encoding
     df_utf8.to_csv(tmp_path / "utf8_file.txt", sep="\t", index=False, encoding="utf-8")
-    df_ascii.to_csv(
-        tmp_path / "ascii_file.txt", sep="\t", index=False, encoding="utf-8"
-    )
+    df_ascii.to_csv(tmp_path / "ascii_file.txt", sep="\t", index=False, encoding="utf-8")
 
     # Call the function to read and concatenate
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))

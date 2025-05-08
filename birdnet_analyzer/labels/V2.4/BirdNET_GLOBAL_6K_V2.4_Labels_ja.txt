@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_コミドリコンゴウインコ
 Diuca diuca_ジュウカチョウ
 Dives dives_ウタムクドリモドキ
 Dives warczewiczi_ヤブクロムクドリモドキ
-Dog_Dog
+Dog_犬
 Dolichonyx oryzivorus_ボボリンク
 Donacobius atricapilla_ミズベマネシツグミ
 Donacospiza albifrons_ミズベシトド

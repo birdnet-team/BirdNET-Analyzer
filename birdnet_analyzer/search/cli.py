@@ -1,10 +1,9 @@
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import utils
 
 
 @utils.runtime_error_handler
 def main():
-    import birdnet_analyzer.cli as cli
-    from birdnet_analyzer import search
+    from birdnet_analyzer import cli, search
 
     parser = cli.search_parser()
     args = parser.parse_args()

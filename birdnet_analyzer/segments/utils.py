@@ -7,12 +7,11 @@ import os
 
 import numpy as np
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import audio, utils
 
 # Set numpy random seed
-np.random.seed(cfg.RANDOM_SEED)
+RNG = np.random.default_rng(cfg.RANDOM_SEED)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -27,14 +26,14 @@ def detect_rtype(line: str):
     """
     if line.lower().startswith("selection"):
         return "table"
-    # elif line.lower().startswith("filepath"):
-    #     return "r"
-    elif line.lower().startswith("indir"):
+
+    if line.lower().startswith("indir"):
         return "kaleidoscope"
-    elif line.lower().startswith("start (s)"):
+
+    if line.lower().startswith("start (s)"):
         return "csv"
-    else:
-        return "audacity"
+
+    return "audacity"
 
 
 def get_header_mapping(line: str) -> dict:
@@ -49,22 +48,14 @@ def get_header_mapping(line: str) -> dict:
     """
     rtype = detect_rtype(line)
 
-    if rtype == "table" or rtype == "audacity":
-        sep = "\t"
-    else:
-        sep = ","
+    sep = "\t" if rtype in ("table", "audacity") else ","
 
     cols = line.split(sep)
 
-    mapping = {}
-
-    for i, col in enumerate(cols):
-        mapping[col] = i
-
-    return mapping
+    return {col: i for i, col in enumerate(cols)}
 
 
-def parse_folders(apath: str, rpath: str, allowed_result_filetypes: list[str] = ["txt", "csv"]) -> list[dict]:
+def parse_folders(apath: str, rpath: str, allowed_result_filetypes: tuple[str] = ("txt", "csv")) -> list[dict]:
     """Read audio and result files.
 
     Reads all audio files and BirdNET output inside directory recursively.
@@ -72,7 +63,7 @@ def parse_folders(apath: str, rpath: str, allowed_result_filetypes: list[str] = 
     Args:
         apath (str): Path to search for audio files.
         rpath (str): Path to search for result files.
-        allowed_result_filetypes (list[str]): List of extensions for the result files.
+        allowed_result_filetypes (tuple[str]): List of extensions for the result files.
 
     Returns:
         list[dict]: A list of {"audio": path_to_audio, "result": path_to_result }.
@@ -169,7 +160,7 @@ def parse_files(flist: list[dict], max_segments=100):
 
     # Shuffle segments for each species and limit to max_segments
     for s in species_segments:
-        np.random.shuffle(species_segments[s])
+        RNG.shuffle(species_segments[s])
         species_segments[s] = species_segments[s][:max_segments]
 
     # Make dict of segments per audio file
@@ -187,9 +178,7 @@ def parse_files(flist: list[dict], max_segments=100):
     print(f"Found {seg_cnt} segments in {len(segments)} audio files.")
 
     # Convert to list
-    flist = [tuple(e) for e in segments.items()]
-
-    return flist
+    return [tuple(e) for e in segments.items()]
 
 
 def find_segments_from_combined(rfile: str) -> list[dict]:
@@ -352,7 +341,7 @@ def extract_segments(item: tuple[tuple[str, list[dict]], float, dict[str]]):
         print(f"Error: Cannot open audio file {afile}", flush=True)
         utils.write_error_log(ex)
 
-        return
+        return None
 
     # Extract segments
     for seg_cnt, seg in enumerate(segments, 1):

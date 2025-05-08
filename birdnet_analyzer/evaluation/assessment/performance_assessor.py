@@ -6,15 +6,14 @@ It includes methods to compute metrics like precision, recall, F1 score, AUROC, 
 as well as utilities for generating related plots.
 """
 
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
-from birdnet_analyzer.evaluation.assessment import metrics
-from birdnet_analyzer.evaluation.assessment import plotting
+from birdnet_analyzer.evaluation.assessment import metrics, plotting
 
 
 class PerformanceAssessor:
@@ -27,9 +26,9 @@ class PerformanceAssessor:
         self,
         num_classes: int,
         threshold: float = 0.5,
-        classes: Optional[Tuple[str, ...]] = None,
+        classes: tuple[str, ...] | None = None,
         task: Literal["binary", "multilabel"] = "multilabel",
-        metrics_list: Tuple[str, ...] = (
+        metrics_list: tuple[str, ...] = (
             "recall",
             "precision",
             "f1",
@@ -73,7 +72,7 @@ class PerformanceAssessor:
             raise ValueError("task must be 'binary' or 'multilabel'.")
 
         # Validate the metrics list
-        valid_metrics = {"accuracy", "recall", "precision", "f1", "ap", "auroc"}
+        valid_metrics = ["accuracy", "recall", "precision", "f1", "ap", "auroc"]
         if not metrics_list:
             raise ValueError("metrics_list cannot be empty.")
         if not all(metric in valid_metrics for metric in metrics_list):
@@ -123,7 +122,8 @@ class PerformanceAssessor:
             raise ValueError("predictions and labels must be 2-dimensional arrays.")
         if predictions.shape[1] != self.num_classes:
             raise ValueError(
-                f"The number of columns in predictions ({predictions.shape[1]}) must match num_classes ({self.num_classes})."
+                f"The number of columns in predictions ({predictions.shape[1]}) "
+                + f"must match num_classes ({self.num_classes})."
             )
 
         # Determine the averaging method for metrics
@@ -192,10 +192,11 @@ class PerformanceAssessor:
                 metrics_results["Accuracy"] = np.atleast_1d(result)
 
         # Define column names for the DataFrame
-        if per_class_metrics:
-            columns = self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)]
-        else:
-            columns = ["Overall"]
+        columns = (
+            (self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)])
+            if per_class_metrics
+            else ["Overall"]
+        )
 
         # Create a DataFrame to organize metric results
         metrics_data = {key: np.atleast_1d(value) for key, value in metrics_results.items()}
@@ -225,14 +226,11 @@ class PerformanceAssessor:
         metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics)
 
         # Choose the plotting method based on whether per-class metrics are required
-        if per_class_metrics:
-            # Plot metrics per class
-            fig = plotting.plot_metrics_per_class(metrics_df, self.colors)
-        else:
-            # Plot overall metrics
-            fig = plotting.plot_overall_metrics(metrics_df, self.colors)
-
-        return fig
+        return (
+            plotting.plot_metrics_per_class(metrics_df, self.colors)
+            if per_class_metrics
+            else plotting.plot_overall_metrics(metrics_df, self.colors)
+        )
 
     def plot_metrics_all_thresholds(
         self,
@@ -349,7 +347,8 @@ class PerformanceAssessor:
             raise ValueError("predictions and labels must be 2-dimensional arrays.")
         if predictions.shape[1] != self.num_classes:
             raise ValueError(
-                f"The number of columns in predictions ({predictions.shape[1]}) must match num_classes ({self.num_classes})."
+                f"The number of columns in predictions ({predictions.shape[1]}) "
+                + f"must match num_classes ({self.num_classes})."
             )
 
         if self.task == "binary":
@@ -369,7 +368,7 @@ class PerformanceAssessor:
 
             return fig
 
-        elif self.task == "multilabel":
+        if self.task == "multilabel":
             # Binarize predictions for multilabel classification
             y_pred = (predictions >= self.threshold).astype(int)
             y_true = labels.astype(int)
@@ -392,7 +391,7 @@ class PerformanceAssessor:
             axes = axes.flatten()
 
             # Plot each confusion matrix
-            for idx, (conf_mat, class_name) in enumerate(zip(conf_mats, class_names)):
+            for idx, (conf_mat, class_name) in enumerate(zip(conf_mats, class_names, strict=True)):
                 disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
                 disp.plot(cmap="Reds", ax=axes[idx], colorbar=False, values_format=".2f")
                 axes[idx].set_title(f"{class_name}")
@@ -407,5 +406,4 @@ class PerformanceAssessor:
 
             return fig
 
-        else:
-            raise ValueError(f"Unsupported task type: {self.task}")
+        raise ValueError(f"Unsupported task type: {self.task}")

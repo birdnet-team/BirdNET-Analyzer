@@ -1,0 +1,27 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+    paths: [birdnet_analyzer/**, .github/workflows/lint.yml, tests/**, pyproject.toml]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+    paths: [birdnet_analyzer/**, .github/workflows/lint.yml, tests/**, pyproject.toml]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      - name: Lint with Ruff
+        run: |
+          ruff check

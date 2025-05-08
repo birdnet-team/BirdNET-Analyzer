@@ -8,7 +8,7 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import utils
 
 _GRID_MAX_HEIGHT = 240
 
@@ -214,9 +214,9 @@ def start_training(
         history, metrics = history_result
     except Exception as e:
         if e.args and len(e.args) > 1:
-            raise gr.Error(loc.localize(e.args[1]))
-        else:
-            raise gr.Error(f"{e}")
+            raise gr.Error(loc.localize(e.args[1])) from e
+
+        raise gr.Error(f"{e}") from e
 
     if len(history.epoch) < epochs:
         gr.Info(loc.localize("training-tab-early-stoppage-msg"))
@@ -457,20 +457,19 @@ def build_train_tab():
             info=loc.localize("training-tab-autotune-checkbox-info"),
         )
 
-        with gr.Column(visible=False) as autotune_params:
-            with gr.Row():
-                autotune_trials = gr.Number(
-                    cfg.AUTOTUNE_TRIALS,
-                    label=loc.localize("training-tab-autotune-trials-number-label"),
-                    info=loc.localize("training-tab-autotune-trials-number-info"),
-                    minimum=1,
-                )
-                autotune_executions_per_trials = gr.Number(
-                    cfg.AUTOTUNE_EXECUTIONS_PER_TRIAL,
-                    minimum=1,
-                    label=loc.localize("training-tab-autotune-executions-number-label"),
-                    info=loc.localize("training-tab-autotune-executions-number-info"),
-                )
+        with gr.Column(visible=False) as autotune_params, gr.Row():
+            autotune_trials = gr.Number(
+                cfg.AUTOTUNE_TRIALS,
+                label=loc.localize("training-tab-autotune-trials-number-label"),
+                info=loc.localize("training-tab-autotune-trials-number-info"),
+                minimum=1,
+            )
+            autotune_executions_per_trials = gr.Number(
+                cfg.AUTOTUNE_EXECUTIONS_PER_TRIAL,
+                minimum=1,
+                label=loc.localize("training-tab-autotune-executions-number-label"),
+                info=loc.localize("training-tab-autotune-executions-number-info"),
+            )
 
         with gr.Column() as custom_params:
             with gr.Row():
@@ -554,26 +553,25 @@ def build_train_tab():
                     show_label=True,
                 )
 
-        with gr.Row(visible=False) as focal_loss_params:
-            with gr.Column():
-                focal_loss_gamma = gr.Slider(
-                    minimum=0.5,
-                    maximum=5.0,
-                    value=cfg.FOCAL_LOSS_GAMMA,
-                    step=0.1,
-                    label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
-                    info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
-                    interactive=True,
-                )
-                focal_loss_alpha = gr.Slider(
-                    minimum=0.1,
-                    maximum=0.9,
-                    value=cfg.FOCAL_LOSS_ALPHA,
-                    step=0.05,
-                    label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
-                    info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
-                    interactive=True,
-                )
+        with gr.Row(visible=False) as focal_loss_params, gr.Row():
+            focal_loss_gamma = gr.Slider(
+                minimum=0.5,
+                maximum=5.0,
+                value=cfg.FOCAL_LOSS_GAMMA,
+                step=0.1,
+                label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
+                info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
+                interactive=True,
+            )
+            focal_loss_alpha = gr.Slider(
+                minimum=0.1,
+                maximum=0.9,
+                value=cfg.FOCAL_LOSS_ALPHA,
+                step=0.05,
+                label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
+                info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
+                interactive=True,
+            )
 
         def on_focal_loss_change(value):
             return gr.Row(visible=value)
@@ -653,9 +651,9 @@ def build_train_tab():
                     )
 
                 return history, gr.Dataframe(visible=True, value=table_data)
-            else:
-                # No metrics available, just return history and hide table
-                return history, gr.Dataframe(visible=False)
+
+            # No metrics available, just return history and hide table
+            return history, gr.Dataframe(visible=False)
 
         start_training_button.click(
             train_and_show_metrics,

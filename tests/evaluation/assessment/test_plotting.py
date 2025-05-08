@@ -1,15 +1,17 @@
-import pytest
-import pandas as pd
-import numpy as np
+import re
+
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pytest
 
 from birdnet_analyzer.evaluation.assessment.plotting import (
-    plot_overall_metrics,
-    plot_metrics_per_class,
+    plot_confusion_matrices,
     plot_metrics_across_thresholds,
     plot_metrics_across_thresholds_per_class,
-    plot_confusion_matrices,
+    plot_metrics_per_class,
+    plot_overall_metrics,
 )
 
 # Set the matplotlib backend to 'Agg' to prevent GUI issues during testing
@@ -28,9 +30,7 @@ class TestPlotOverallMetrics:
         """
         Test with valid inputs to ensure the function runs without errors.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [0.8, 0.75, 0.9]}, index=["Precision", "Recall", "F1"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [0.8, 0.75, 0.9]}, index=["Precision", "Recall", "F1"])
         colors = ["blue", "green", "red"]
         plot_overall_metrics(metrics_df, colors)
 
@@ -40,17 +40,16 @@ class TestPlotOverallMetrics:
         """
         metrics_df = pd.DataFrame({"Overall": []})
         colors = []
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("metrics_df is empty.")):
             plot_overall_metrics(metrics_df, colors)
 
     def test_missing_overall_column(self):
         """
         Test with metrics_df missing 'Overall' column to ensure it raises KeyError.
         """
-        metrics_df = pd.DataFrame(
-            {"Value": [0.8, 0.75, 0.9]}, index=["Precision", "Recall", "F1"]
-        )
+        metrics_df = pd.DataFrame({"Value": [0.8, 0.75, 0.9]}, index=["Precision", "Recall", "F1"])
         colors = ["blue", "green", "red"]
+
         with pytest.raises(KeyError):
             plot_overall_metrics(metrics_df, colors)
 
@@ -58,9 +57,7 @@ class TestPlotOverallMetrics:
         """
         Test with fewer colors than metrics to check color assignment.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [0.8, 0.75, 0.9]}, index=["Precision", "Recall", "F1"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [0.8, 0.75, 0.9]}, index=["Precision", "Recall", "F1"])
         colors = ["blue", "green"]  # Only two colors for three metrics
         plot_overall_metrics(metrics_df, colors)
 
@@ -68,9 +65,7 @@ class TestPlotOverallMetrics:
         """
         Test with more colors than metrics to ensure extra colors are ignored.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [0.8, 0.75]}, index=["Precision", "Recall"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [0.8, 0.75]}, index=["Precision", "Recall"])
         colors = ["blue", "green", "red", "yellow"]
         plot_overall_metrics(metrics_df, colors)
 
@@ -87,9 +82,7 @@ class TestPlotOverallMetrics:
         """
         Test with invalid type for colors to ensure it raises TypeError.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [0.8, 0.75]}, index=["Precision", "Recall"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [0.8, 0.75]}, index=["Precision", "Recall"])
         colors = "blue"  # Should be a list
         with pytest.raises(TypeError):
             plot_overall_metrics(metrics_df, colors)
@@ -98,9 +91,7 @@ class TestPlotOverallMetrics:
         """
         Test with NaN values in metrics_df to ensure it handles missing data.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [0.8, np.nan, 0.9]}, index=["Precision", "Recall", "F1"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [0.8, np.nan, 0.9]}, index=["Precision", "Recall", "F1"])
         colors = ["blue", "green", "red"]
         plot_overall_metrics(metrics_df, colors)
 
@@ -108,9 +99,7 @@ class TestPlotOverallMetrics:
         """
         Test with non-unique metric names to check handling of index duplication.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [0.8, 0.75, 0.9]}, index=["Precision", "Precision", "F1"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [0.8, 0.75, 0.9]}, index=["Precision", "Precision", "F1"])
         colors = ["blue", "green", "red"]
         plot_overall_metrics(metrics_df, colors)
 
@@ -118,9 +107,7 @@ class TestPlotOverallMetrics:
         """
         Test with extremely large values to check plot scaling.
         """
-        metrics_df = pd.DataFrame(
-            {"Overall": [1e10, 5e10, 1e11]}, index=["Metric1", "Metric2", "Metric3"]
-        )
+        metrics_df = pd.DataFrame({"Overall": [1e10, 5e10, 1e11]}, index=["Metric1", "Metric2", "Metric3"])
         colors = ["blue", "green", "red"]
         plot_overall_metrics(metrics_df, colors)
 
@@ -129,6 +116,9 @@ class TestPlotMetricsPerClass:
     """
     Test suite for the plot_metrics_per_class function.
     """
+
+    def setup_method(self):
+        self.rng = np.random.default_rng(42)
 
     def test_valid_input(self):
         """
@@ -151,7 +141,7 @@ class TestPlotMetricsPerClass:
         """
         metrics_df = pd.DataFrame()
         colors = []
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("metrics_df is empty.")):
             plot_metrics_per_class(metrics_df, colors)
 
     def test_mismatched_colors_length(self):
@@ -224,9 +214,7 @@ class TestPlotMetricsPerClass:
         """
         Test with non-string metric names to ensure labels are handled correctly.
         """
-        metrics_df = pd.DataFrame(
-            {"Class1": [0.8, 0.7, 0.9], "Class2": [0.85, 0.75, 0.95]}, index=[1, 2, 3]
-        )
+        metrics_df = pd.DataFrame({"Class1": [0.8, 0.7, 0.9], "Class2": [0.85, 0.75, 0.95]}, index=[1, 2, 3])
         colors = ["blue", "green"]
         plot_metrics_per_class(metrics_df, colors)
 
@@ -235,10 +223,8 @@ class TestPlotMetricsPerClass:
         Test with many classes to check plotting scales correctly.
         """
         classes = [f"Class{i}" for i in range(20)]
-        data = np.random.rand(3, 20)
-        metrics_df = pd.DataFrame(
-            data, index=["Precision", "Recall", "F1"], columns=classes
-        )
+        data = self.rng.random((3, 20))
+        metrics_df = pd.DataFrame(data, index=["Precision", "Recall", "F1"], columns=classes)
         colors = ["blue", "green", "red"]
         plot_metrics_per_class(metrics_df, colors)
 
@@ -248,21 +234,22 @@ class TestPlotMetricsAcrossThresholds:
     Test suite for the plot_metrics_across_thresholds function.
     """
 
+    def setup_method(self):
+        self.rng = np.random.default_rng(42)
+
     def test_valid_input(self):
         """
         Test with valid inputs to ensure the function runs without errors.
         """
         thresholds = np.linspace(0, 1, 10)
         metric_values_dict = {
-            "precision": np.random.rand(10),
-            "recall": np.random.rand(10),
-            "f1": np.random.rand(10),
+            "precision": self.rng.random(10),
+            "recall": self.rng.random(10),
+            "f1": self.rng.random(10),
         }
         metrics_to_plot = ["precision", "recall", "f1"]
         colors = ["blue", "green", "red"]
-        plot_metrics_across_thresholds(
-            thresholds, metric_values_dict, metrics_to_plot, colors
-        )
+        plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_empty_thresholds(self):
         """
@@ -272,10 +259,9 @@ class TestPlotMetricsAcrossThresholds:
         metric_values_dict = {}
         metrics_to_plot = []
         colors = []
-        with pytest.raises(ValueError):
-            plot_metrics_across_thresholds(
-                thresholds, metric_values_dict, metrics_to_plot, colors
-            )
+
+        with pytest.raises(ValueError, match=re.escape("thresholds array is empty.")):
+            plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_mismatched_lengths(self):
         """
@@ -283,16 +269,14 @@ class TestPlotMetricsAcrossThresholds:
         """
         thresholds = np.linspace(0, 1, 10)
         metric_values_dict = {
-            "precision": np.random.rand(8),  # Should be length 10
-            "recall": np.random.rand(10),
-            "f1": np.random.rand(10),
+            "precision": self.rng.random(8),  # Should be length 10
+            "recall": self.rng.random(10),
+            "f1": self.rng.random(10),
         }
         metrics_to_plot = ["precision", "recall", "f1"]
         colors = ["blue", "green", "red"]
-        with pytest.raises(ValueError):
-            plot_metrics_across_thresholds(
-                thresholds, metric_values_dict, metrics_to_plot, colors
-            )
+        with pytest.raises(ValueError, match=re.escape("Length of metric 'precision' values does not match length of thresholds.")):
+            plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_invalid_thresholds_type(self):
         """
@@ -303,35 +287,29 @@ class TestPlotMetricsAcrossThresholds:
         metrics_to_plot = []
         colors = []
         with pytest.raises(TypeError):
-            plot_metrics_across_thresholds(
-                thresholds, metric_values_dict, metrics_to_plot, colors
-            )
+            plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_invalid_metrics_dict_type(self):
         """
         Test with invalid type for metric_values_dict.
         """
         thresholds = np.linspace(0, 1, 10)
-        metric_values_dict = [("precision", np.random.rand(10))]
+        metric_values_dict = [("precision", self.rng.random(10))]
         metrics_to_plot = ["precision"]
         colors = ["blue"]
         with pytest.raises(TypeError):
-            plot_metrics_across_thresholds(
-                thresholds, metric_values_dict, metrics_to_plot, colors
-            )
+            plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_invalid_metrics_to_plot_type(self):
         """
         Test with invalid type for metrics_to_plot.
         """
         thresholds = np.linspace(0, 1, 10)
-        metric_values_dict = {"precision": np.random.rand(10)}
+        metric_values_dict = {"precision": self.rng.random(10)}
         metrics_to_plot = "precision"  # Should be a list
         colors = ["blue"]
         with pytest.raises(TypeError):
-            plot_metrics_across_thresholds(
-                thresholds, metric_values_dict, metrics_to_plot, colors
-            )
+            plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_nan_values(self):
         """
@@ -339,15 +317,13 @@ class TestPlotMetricsAcrossThresholds:
         """
         thresholds = np.linspace(0, 1, 10)
         metric_values_dict = {
-            "precision": np.append(np.random.rand(9), np.nan),
-            "recall": np.random.rand(10),
-            "f1": np.random.rand(10),
+            "precision": np.append(self.rng.random(9), np.nan),
+            "recall": self.rng.random(10),
+            "f1": self.rng.random(10),
         }
         metrics_to_plot = ["precision", "recall", "f1"]
         colors = ["blue", "green", "red"]
-        plot_metrics_across_thresholds(
-            thresholds, metric_values_dict, metrics_to_plot, colors
-        )
+        plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_empty_colors_list(self):
         """
@@ -355,15 +331,13 @@ class TestPlotMetricsAcrossThresholds:
         """
         thresholds = np.linspace(0, 1, 10)
         metric_values_dict = {
-            "precision": np.random.rand(10),
-            "recall": np.random.rand(10),
-            "f1": np.random.rand(10),
+            "precision": self.rng.random(10),
+            "recall": self.rng.random(10),
+            "f1": self.rng.random(10),
         }
         metrics_to_plot = ["precision", "recall", "f1"]
         colors = []
-        plot_metrics_across_thresholds(
-            thresholds, metric_values_dict, metrics_to_plot, colors
-        )
+        plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_many_metrics(self):
         """
@@ -371,11 +345,9 @@ class TestPlotMetricsAcrossThresholds:
         """
         thresholds = np.linspace(0, 1, 10)
         metrics_to_plot = [f"metric{i}" for i in range(20)]
-        metric_values_dict = {metric: np.random.rand(10) for metric in metrics_to_plot}
+        metric_values_dict = {metric: self.rng.random(10) for metric in metrics_to_plot}
         colors = ["blue", "green", "red"] * 7
-        plot_metrics_across_thresholds(
-            thresholds, metric_values_dict, metrics_to_plot, colors
-        )
+        plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_mismatched_colors_length(self):
         """
@@ -383,14 +355,12 @@ class TestPlotMetricsAcrossThresholds:
         """
         thresholds = np.linspace(0, 1, 10)
         metric_values_dict = {
-            "precision": np.random.rand(10),
-            "recall": np.random.rand(10),
+            "precision": self.rng.random(10),
+            "recall": self.rng.random(10),
         }
         metrics_to_plot = ["precision", "recall"]
         colors = ["blue"]  # Only one color provided
-        plot_metrics_across_thresholds(
-            thresholds, metric_values_dict, metrics_to_plot, colors
-        )
+        plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
     def test_large_thresholds_array(self):
         """
@@ -398,21 +368,22 @@ class TestPlotMetricsAcrossThresholds:
         """
         thresholds = np.linspace(0, 1, 1000)
         metric_values_dict = {
-            "precision": np.random.rand(1000),
-            "recall": np.random.rand(1000),
-            "f1": np.random.rand(1000),
+            "precision": self.rng.random(1000),
+            "recall": self.rng.random(1000),
+            "f1": self.rng.random(1000),
         }
         metrics_to_plot = ["precision", "recall", "f1"]
         colors = ["blue", "green", "red"]
-        plot_metrics_across_thresholds(
-            thresholds, metric_values_dict, metrics_to_plot, colors
-        )
+        plot_metrics_across_thresholds(thresholds, metric_values_dict, metrics_to_plot, colors)
 
 
 class TestPlotMetricsAcrossThresholdsPerClass:
     """
     Test suite for the plot_metrics_across_thresholds_per_class function.
     """
+
+    def setup_method(self):
+        self.rng = np.random.default_rng(42)
 
     def test_valid_input(self):
         """
@@ -422,8 +393,8 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         class_names = ["Class1", "Class2"]
         metrics_to_plot = ["precision", "recall"]
         metric_values_dict_per_class = {
-            "Class1": {"precision": np.random.rand(10), "recall": np.random.rand(10)},
-            "Class2": {"precision": np.random.rand(10), "recall": np.random.rand(10)},
+            "Class1": {"precision": self.rng.random(10), "recall": self.rng.random(10)},
+            "Class2": {"precision": self.rng.random(10), "recall": self.rng.random(10)},
         }
         colors = ["blue", "green"]
         plot_metrics_across_thresholds_per_class(
@@ -443,7 +414,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         metrics_to_plot = []
         metric_values_dict_per_class = {}
         colors = []
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("thresholds array is empty.")):
             plot_metrics_across_thresholds_per_class(
                 thresholds,
                 metric_values_dict_per_class,
@@ -477,9 +448,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         thresholds = np.linspace(0, 1, 10)
         class_names = ["Class1"]
         metrics_to_plot = ["precision"]
-        metric_values_dict_per_class = {
-            "Class1": {"precision": np.append(np.random.rand(9), np.nan)}
-        }
+        metric_values_dict_per_class = {"Class1": {"precision": np.append(self.rng.random(9), np.nan)}}
         colors = ["blue"]
         plot_metrics_across_thresholds_per_class(
             thresholds,
@@ -496,7 +465,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         thresholds = np.linspace(0, 1, 10)
         class_names = ["Class1"]
         metrics_to_plot = ["precision"]
-        metric_values_dict_per_class = {"Class1": {"precision": np.random.rand(10)}}
+        metric_values_dict_per_class = {"Class1": {"precision": self.rng.random(10)}}
         colors = []
         plot_metrics_across_thresholds_per_class(
             thresholds,
@@ -513,9 +482,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         thresholds = np.linspace(0, 1, 10)
         class_names = [f"Class{i}" for i in range(20)]
         metrics_to_plot = ["precision"]
-        metric_values_dict_per_class = {
-            class_name: {"precision": np.random.rand(10)} for class_name in class_names
-        }
+        metric_values_dict_per_class = {class_name: {"precision": self.rng.random(10)} for class_name in class_names}
         colors = ["blue", "green", "red"] * 7
         plot_metrics_across_thresholds_per_class(
             thresholds,
@@ -533,8 +500,8 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         class_names = ["Class1", "Class2"]
         metrics_to_plot = ["precision"]
         metric_values_dict_per_class = {
-            "Class1": {"precision": np.random.rand(10)},
-            "Class2": {"precision": np.random.rand(10)},
+            "Class1": {"precision": self.rng.random(10)},
+            "Class2": {"precision": self.rng.random(10)},
         }
         colors = ["blue"]  # Only one color provided
         plot_metrics_across_thresholds_per_class(
@@ -552,7 +519,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         thresholds = np.linspace(0, 1, 10)
         class_names = ["Class1"]
         metrics_to_plot = "precision"  # Should be a list
-        metric_values_dict_per_class = {"Class1": {"precision": np.random.rand(10)}}
+        metric_values_dict_per_class = {"Class1": {"precision": self.rng.random(10)}}
         colors = ["blue"]
         with pytest.raises(TypeError):
             plot_metrics_across_thresholds_per_class(
@@ -571,7 +538,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         class_names = ["Class1", "Class2"]
         metrics_to_plot = ["precision"]
         metric_values_dict_per_class = {
-            "Class1": {"precision": np.random.rand(10)}
+            "Class1": {"precision": self.rng.random(10)}
             # 'Class2' is missing
         }
         colors = ["blue", "green"]
@@ -592,10 +559,13 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         class_names = ["Class1"]
         metrics_to_plot = ["precision"]
         metric_values_dict_per_class = {
-            "Class1": {"precision": np.random.rand(9)}  # Length should be 10
+            "Class1": {"precision": self.rng.random(9)}  # Length should be 10
         }
         colors = ["blue"]
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Length of metric 'precision' values for class 'Class1' does not match length of thresholds."),
+        ):
             plot_metrics_across_thresholds_per_class(
                 thresholds,
                 metric_values_dict_per_class,
@@ -611,7 +581,7 @@ class TestPlotMetricsAcrossThresholdsPerClass:
         thresholds = np.linspace(0, 1, 1000)
         class_names = ["Class1"]
         metrics_to_plot = ["precision"]
-        metric_values_dict_per_class = {"Class1": {"precision": np.random.rand(1000)}}
+        metric_values_dict_per_class = {"Class1": {"precision": self.rng.random(1000)}}
         colors = ["blue"]
         plot_metrics_across_thresholds_per_class(
             thresholds,
@@ -626,6 +596,9 @@ class TestPlotConfusionMatrices:
     """
     Test suite for the plot_confusion_matrices function.
     """
+
+    def setup_method(self):
+        self.rng = np.random.default_rng(42)  # For reproducibility
 
     def test_binary_task(self):
         """
@@ -652,7 +625,7 @@ class TestPlotConfusionMatrices:
         conf_mat = np.array([[50, 10], [5, 35]])
         task = "invalid_task"
         class_names = ["Positive", "Negative"]
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("Invalid task. Expected 'binary', 'multiclass', or 'multilabel'.")):
             plot_confusion_matrices(conf_mat, task, class_names)
 
     def test_empty_conf_mat(self):
@@ -662,7 +635,7 @@ class TestPlotConfusionMatrices:
         conf_mat = np.array([])
         task = "binary"
         class_names = ["Positive", "Negative"]
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("conf_mat is empty.")):
             plot_confusion_matrices(conf_mat, task, class_names)
 
     def test_mismatched_class_names(self):
@@ -672,7 +645,7 @@ class TestPlotConfusionMatrices:
         conf_mat = np.array([[50, 10], [5, 35]])
         task = "binary"
         class_names = ["Positive"]  # Should be two class names
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="For binary task, class_names must have exactly two elements."):
             plot_confusion_matrices(conf_mat, task, class_names)
 
     def test_invalid_conf_mat_type(self):
@@ -708,7 +681,7 @@ class TestPlotConfusionMatrices:
         Test with many classes to check plotting scales correctly.
         """
         num_classes = 10
-        conf_mat = np.random.randint(0, 100, size=(num_classes, 2, 2))
+        conf_mat = self.rng.integers(0, 100, size=(num_classes, 2, 2))
         task = "multilabel"
         class_names = [f"Class{i}" for i in range(num_classes)]
         plot_confusion_matrices(conf_mat, task, class_names)
@@ -720,5 +693,5 @@ class TestPlotConfusionMatrices:
         conf_mat = np.array([50, 10, 5, 35])  # Should be 2x2 or Nx2x2
         task = "binary"
         class_names = ["Positive", "Negative"]
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape("For binary task, conf_mat must be of shape (2, 2).")):
             plot_confusion_matrices(conf_mat, task, class_names)

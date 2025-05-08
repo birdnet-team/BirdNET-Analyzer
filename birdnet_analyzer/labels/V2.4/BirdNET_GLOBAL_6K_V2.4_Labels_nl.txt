@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Roodschouderara
 Diuca diuca_Gewone Diucagors
 Dives dives_Rouwtroepiaal
 Dives warczewiczi_Struiktroepiaal
-Dog_Dog
+Dog_Hond
 Dolichonyx oryzivorus_Bobolink
 Donacobius atricapilla_Zwartkopdonacobius
 Donacospiza albifrons_Witbrauwgrasgors

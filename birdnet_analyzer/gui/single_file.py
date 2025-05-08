@@ -2,11 +2,10 @@ import os
 
 import gradio as gr
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import audio, utils
 
 
 @gu.gui_runtime_error_handler
@@ -66,7 +65,7 @@ def run_single_file_analysis(
         custom_classifier_file,
         "csv",
         None,
-        "en" if not locale else locale,
+        locale if locale else "en",
         1,
         4,
         None,
@@ -79,7 +78,7 @@ def run_single_file_analysis(
         raise gr.Error(loc.localize("single-tab-analyze-file-error"))
 
     # read the result file to return the data to be displayed.
-    with open(result_filepath, "r", encoding="utf-8") as f:
+    with open(result_filepath, encoding="utf-8") as f:
         reader = csv.reader(f)
         data = list(reader)
         data = [lc[0:-1] for lc in data[1:]]  # remove last column (file path) and first row (header)
@@ -176,8 +175,8 @@ def build_single_analysis_tab():
                         else gr.Plot(visible=False),
                         gr.Button(interactive=True),
                     )
-                except:
-                    raise gr.Error(loc.localize("single-tab-generate-spectrogram-error"))
+                except Exception as e:
+                    raise gr.Error(loc.localize("single-tab-generate-spectrogram-error")) from e
             else:
                 return None, None, gr.Plot(visible=False), gr.update(interactive=False)
 
@@ -187,8 +186,8 @@ def build_single_analysis_tab():
                     return gr.Plot(
                         visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20, 4))
                     )
-                except:
-                    raise gr.Error(loc.localize("single-tab-generate-spectrogram-error"))
+                except Exception as e:
+                    raise gr.Error(loc.localize("single-tab-generate-spectrogram-error")) from e
             else:
                 return gr.Plot()
 
@@ -231,8 +230,7 @@ def build_single_analysis_tab():
         def time_to_seconds(time_str):
             try:
                 hours, minutes, seconds = time_str.split(":")
-                total_seconds = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
-                return total_seconds
+                return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
             except ValueError as e:
                 raise ValueError("Input must be in the format hh:mm:ss or hh:mm:ss.ssssss with numeric values.") from e

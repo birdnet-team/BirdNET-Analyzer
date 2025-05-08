@@ -8,7 +8,6 @@ from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcess
 
 
 class TestDataProcessorInit:
-
     @patch("pandas.read_csv")
     def test_init_with_all_parameters(self, mock_read_csv):
         """Test initializing DataProcessor with all parameters."""
@@ -54,7 +53,7 @@ class TestDataProcessorInit:
         )
         # Your assertions here
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_minimal_parameters(self, mock_read_concat):
         """Test initializing DataProcessor with minimal parameters."""
         # Mock the dataframes returned by the read function
@@ -101,9 +100,7 @@ class TestDataProcessorInit:
                 sample_duration=0,
             )
 
-        with pytest.raises(
-            ValueError, match="Sample duration cannot exceed the recording duration."
-        ):
+        with pytest.raises(ValueError, match="Sample duration cannot exceed the recording duration."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
@@ -128,16 +125,14 @@ class TestDataProcessorInit:
                 min_overlap=0,
             )
 
-        with pytest.raises(
-            ValueError, match="Min overlap cannot exceed the sample duration."
-        ):
+        with pytest.raises(ValueError, match="Min overlap cannot exceed the sample duration."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
                 min_overlap=6,  # Greater than default sample_duration=3
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_nonexistent_paths(self, mock_read_concat):
         """Test initializing with paths that do not exist."""
         # Mock the dataframes to be empty but with required columns
@@ -169,7 +164,7 @@ class TestDataProcessorInit:
         pd.testing.assert_frame_equal(dp.predictions_df, mock_predictions_df)
         pd.testing.assert_frame_equal(dp.annotations_df, mock_annotations_df)
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_none_columns(self, mock_read_concat):
         """Test initializing with None columns mappings."""
         # Mock the dataframes returned by the read function
@@ -201,7 +196,7 @@ class TestDataProcessorInit:
         assert dp.columns_predictions == dp.DEFAULT_COLUMNS_PREDICTIONS
         assert dp.columns_annotations == dp.DEFAULT_COLUMNS_ANNOTATIONS
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_empty_class_mapping(self, mock_read_concat):
         """Test initializing with empty class_mapping."""
         # Mock the dataframes returned by the read function
@@ -224,24 +219,20 @@ class TestDataProcessorInit:
         # Set side effect for the mock
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
 
-        dp = DataProcessor(
-            prediction_directory_path="", annotation_directory_path="", class_mapping={}
-        )
+        dp = DataProcessor(prediction_directory_path="", annotation_directory_path="", class_mapping={})
         assert dp.class_mapping == {}
 
     @patch.object(DataProcessor, "load_data")
     def test_init_with_invalid_recording_duration(self, mock_load_data):
         """Test initializing with negative recording_duration."""
-        with pytest.raises(
-            ValueError, match="Recording duration must be greater than 0."
-        ):
+        with pytest.raises(ValueError, match="Recording duration must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
                 recording_duration=-10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_large_sample_duration(self, mock_read_concat):
         """Test initializing with large sample_duration."""
         # Mock the dataframes returned by the read function
@@ -271,7 +262,7 @@ class TestDataProcessorInit:
         )
         assert dp.sample_duration == 1000
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_init_with_non_default_columns(self, mock_read_concat):
         """Test initializing with custom columns mappings."""
         # Mock the dataframes returned by the read function
@@ -323,18 +314,17 @@ class TestDataProcessorInit:
         # Since all required columns are provided, this isn't necessary,
         # but if you want to check optional columns:
         optional_col = "Confidence"
-        assert dp.get_column_name(
-            optional_col, prediction=True
-        ) == dp.DEFAULT_COLUMNS_PREDICTIONS.get(optional_col, optional_col)
+        assert dp.get_column_name(optional_col, prediction=True) == dp.DEFAULT_COLUMNS_PREDICTIONS.get(
+            optional_col, optional_col
+        )
         optional_col = "Recording"
-        assert dp.get_column_name(
-            optional_col, prediction=False
-        ) == dp.DEFAULT_COLUMNS_ANNOTATIONS.get(optional_col, optional_col)
+        assert dp.get_column_name(optional_col, prediction=False) == dp.DEFAULT_COLUMNS_ANNOTATIONS.get(
+            optional_col, optional_col
+        )
 
 
 class TestDataProcessorLoadData:
-
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_with_none_filenames(self, mock_read_concat):
         """Test load_data when prediction_file_name and annotation_file_name are None."""
         # Mocking the DataFrames returned by the utility function
@@ -417,12 +407,8 @@ class TestDataProcessorLoadData:
         )
 
         # Ensure that predictions_df and annotations_df are set correctly
-        pd.testing.assert_frame_equal(
-            dp.predictions_df, mock_predictions_df.assign(source_file="predictions.txt")
-        )
-        pd.testing.assert_frame_equal(
-            dp.annotations_df, mock_annotations_df.assign(source_file="annotations.txt")
-        )
+        pd.testing.assert_frame_equal(dp.predictions_df, mock_predictions_df.assign(source_file="predictions.txt"))
+        pd.testing.assert_frame_equal(dp.annotations_df, mock_annotations_df.assign(source_file="annotations.txt"))
 
     @patch("pandas.read_csv")
     def test_load_data_missing_prediction_file(self, mock_read_csv):
@@ -432,14 +418,13 @@ class TestDataProcessorLoadData:
         def side_effect(*args, **kwargs):
             if "predictions.txt" in args[0]:
                 raise FileNotFoundError("File not found")
-            else:
-                return pd.DataFrame(
-                    {
-                        "Class": ["A", "C"],
-                        "Start Time": [0.5, 1.5],
-                        "End Time": [1.5, 2.5],
-                    }
-                )
+            return pd.DataFrame(
+                {
+                    "Class": ["A", "C"],
+                    "Start Time": [0.5, 1.5],
+                    "End Time": [1.5, 2.5],
+                }
+            )
 
         mock_read_csv.side_effect = side_effect
 
@@ -470,14 +455,14 @@ class TestDataProcessorLoadData:
         def side_effect(*args, **kwargs):
             if "annotations.txt" in args[0]:
                 raise FileNotFoundError("File not found")
-            else:
-                return pd.DataFrame(
-                    {
-                        "Class": ["A", "B"],
-                        "Start Time": [0, 1],
-                        "End Time": [1, 2],
-                    }
-                )
+
+            return pd.DataFrame(
+                {
+                    "Class": ["A", "B"],
+                    "Start Time": [0, 1],
+                    "End Time": [1, 2],
+                }
+            )
 
         mock_read_csv.side_effect = side_effect
 
@@ -500,7 +485,7 @@ class TestDataProcessorLoadData:
                 recording_duration=10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_with_empty_directories(self, mock_read_concat):
         """Test load_data when directories are empty."""
         mock_read_concat.return_value = pd.DataFrame(
@@ -570,12 +555,10 @@ class TestDataProcessorLoadData:
                 recording_duration=10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_inconsistent_columns(self, mock_read_concat):
         """Test load_data when files have inconsistent columns."""
-        mock_read_concat.side_effect = ValueError(
-            "File has different columns than previous files."
-        )
+        mock_read_concat.side_effect = ValueError("File has different columns than previous files.")
 
         with pytest.raises(ValueError, match="different columns than previous files"):
             DataProcessor(
@@ -596,7 +579,7 @@ class TestDataProcessorLoadData:
                 recording_duration=10,
             )
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_handle_different_encodings(self, mock_read_concat):
         """Test load_data handling different file encodings."""
         mock_read_concat.return_value = pd.DataFrame(
@@ -626,7 +609,7 @@ class TestDataProcessorLoadData:
         )
         # Should proceed without errors
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_with_class_mapping(self, mock_read_concat):
         """Test load_data applying class mapping."""
         mock_predictions_df = pd.DataFrame(
@@ -670,7 +653,7 @@ class TestDataProcessorLoadData:
         expected_classes = ("C", "ClassA", "ClassB", "ClassC")
         assert dp.classes == expected_classes
 
-    @patch("bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory")
+    @patch("birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory")
     def test_load_data_without_class_mapping(self, mock_read_concat):
         """Test load_data without class mapping."""
         mock_predictions_df = pd.DataFrame(
@@ -715,7 +698,6 @@ class TestDataProcessorLoadData:
 
 
 class TestDataProcessorValidateParameters:
-
     @patch.object(DataProcessor, "load_data")
     def test_sample_duration_zero(self, mock_load_data):
         """Test sample_duration=0 raises ValueError."""
@@ -762,13 +744,9 @@ class TestDataProcessorValidateParameters:
 
     @patch.object(DataProcessor, "process_data")
     @patch.object(DataProcessor, "load_data")
-    def test_min_overlap_greater_than_sample_duration(
-        self, mock_load_data, mock_process_data
-    ):
+    def test_min_overlap_greater_than_sample_duration(self, mock_load_data, mock_process_data):
         """Test min_overlap > sample_duration raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Min overlap cannot exceed the sample duration."
-        ):
+        with pytest.raises(ValueError, match="Min overlap cannot exceed the sample duration."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -816,9 +794,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_recording_duration_zero(self, mock_load_data):
         """Test recording_duration=0 raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Recording duration must be greater than 0."
-        ):
+        with pytest.raises(ValueError, match="Recording duration must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -828,9 +804,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_recording_duration_negative(self, mock_load_data):
         """Test negative recording_duration raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Recording duration must be greater than 0."
-        ):
+        with pytest.raises(ValueError, match="Recording duration must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -839,7 +813,6 @@ class TestDataProcessorValidateParameters:
 
 
 class TestDataProcessorValidateColumns:
-
     @patch.object(DataProcessor, "process_data")
     @patch.object(DataProcessor, "load_data")
     def test_columns_all_required_present(self, mock_load_data, mock_process_data):
@@ -860,16 +833,12 @@ class TestDataProcessorValidateColumns:
                 },
             )
         except ValueError:
-            pytest.fail(
-                "Unexpected ValueError raised with all required columns present"
-            )
+            pytest.fail("Unexpected ValueError raised with all required columns present")
 
     @patch.object(DataProcessor, "load_data")
     def test_columns_predictions_missing_start_time(self, mock_load_data):
         """Test missing 'Start Time' in columns_predictions raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None prediction columns: Start Time"
-        ):
+        with pytest.raises(ValueError, match="Missing or None prediction columns: Start Time"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -888,9 +857,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_predictions_missing_end_time(self, mock_load_data):
         """Test missing 'End Time' in columns_predictions raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None prediction columns: End Time"
-        ):
+        with pytest.raises(ValueError, match="Missing or None prediction columns: End Time"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -909,9 +876,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_predictions_missing_class(self, mock_load_data):
         """Test missing 'Class' in columns_predictions raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None prediction columns: Class"
-        ):
+        with pytest.raises(ValueError, match="Missing or None prediction columns: Class"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -930,9 +895,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_annotations_missing_start_time(self, mock_load_data):
         """Test missing 'Start Time' in columns_annotations raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None annotation columns: Start Time"
-        ):
+        with pytest.raises(ValueError, match="Missing or None annotation columns: Start Time"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -951,9 +914,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_annotations_missing_end_time(self, mock_load_data):
         """Test missing 'End Time' in columns_annotations raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None annotation columns: End Time"
-        ):
+        with pytest.raises(ValueError, match="Missing or None annotation columns: End Time"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -972,9 +933,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_annotations_missing_class(self, mock_load_data):
         """Test missing 'Class' in columns_annotations raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None annotation columns: Class"
-        ):
+        with pytest.raises(ValueError, match="Missing or None annotation columns: Class"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -993,9 +952,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_predictions_start_time_none(self, mock_load_data):
         """Test 'Start Time' in columns_predictions set to None raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None prediction columns: Start Time"
-        ):
+        with pytest.raises(ValueError, match="Missing or None prediction columns: Start Time"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -1014,9 +971,7 @@ class TestDataProcessorValidateColumns:
     @patch.object(DataProcessor, "load_data")
     def test_columns_annotations_end_time_none(self, mock_load_data):
         """Test 'End Time' in columns_annotations set to None raises ValueError."""
-        with pytest.raises(
-            ValueError, match="Missing or None annotation columns: End Time"
-        ):
+        with pytest.raises(ValueError, match="Missing or None annotation columns: End Time"):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -1070,12 +1025,11 @@ class TestDataProcessorValidateColumns:
 
 
 class TestDataProcessorPrepareDataFrame:
-
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock empty DataFrames for predictions and annotations
@@ -1112,9 +1066,7 @@ class TestDataProcessorPrepareDataFrame:
 
     def test_with_source_file_column(self):
         """Test DataFrame without 'Recording' but with 'source_file'."""
-        df = pd.DataFrame(
-            {"source_file": ["file1.txt", "file2.txt"], "OtherColumn": [1, 2]}
-        )
+        df = pd.DataFrame({"source_file": ["file1.txt", "file2.txt"], "OtherColumn": [1, 2]})
         result_df = self.dp._prepare_dataframe(df.copy(), prediction=False)
         expected_filenames = ["file1", "file2"]
         assert result_df["recording_filename"].tolist() == expected_filenames
@@ -1159,9 +1111,7 @@ class TestDataProcessorPrepareDataFrame:
 
     def test_source_file_with_none_values(self):
         """Test 'source_file' column containing None or NaN."""
-        df = pd.DataFrame(
-            {"source_file": [None, float("nan"), "file.txt"], "OtherColumn": [1, 2, 3]}
-        )
+        df = pd.DataFrame({"source_file": [None, float("nan"), "file.txt"], "OtherColumn": [1, 2, 3]})
         result_df = self.dp._prepare_dataframe(df.copy(), prediction=True)
         expected_filenames = [None, float("nan"), "file"]
         pd.testing.assert_series_equal(
@@ -1179,9 +1129,7 @@ class TestDataProcessorPrepareDataFrame:
 
     def test_complex_paths_in_recording_column(self):
         """Test 'Recording' column with complex paths."""
-        df = pd.DataFrame(
-            {"Recording": ["/a/b/c/d/e.wav", "C:\\folder\\subfolder\\file.wav"]}
-        )
+        df = pd.DataFrame({"Recording": ["/a/b/c/d/e.wav", "C:/folder/subfolder/file.wav"]})
         result_df = self.dp._prepare_dataframe(df.copy(), prediction=True)
         expected_filenames = ["e", "file"]
         assert result_df["recording_filename"].tolist() == expected_filenames
@@ -1201,12 +1149,11 @@ class TestDataProcessorPrepareDataFrame:
 
 
 class TestDataProcessorProcessData:
-
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock empty DataFrames for predictions and annotations
@@ -1224,9 +1171,7 @@ class TestDataProcessorProcessData:
             prediction_directory_path="dummy_pred_path",
             annotation_directory_path="dummy_annot_path",
         )
-        self.dp.process_recording = MagicMock(
-            return_value=pd.DataFrame({"sample_data": [1, 2, 3]})
-        )
+        self.dp.process_recording = MagicMock(return_value=pd.DataFrame({"sample_data": [1, 2, 3]}))
 
     def teardown_method(self):
         """Stop patching."""
@@ -1241,87 +1186,59 @@ class TestDataProcessorProcessData:
 
     def test_single_recording(self):
         """Test with single recording in predictions and annotations."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [1]}
-        )
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [2]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [1]})
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [2]})
         self.dp.process_data()
         assert not self.dp.samples_df.empty
         assert self.dp.process_recording.call_count == 1
 
     def test_multiple_recordings(self):
         """Test with multiple recordings."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1", "rec2"], "OtherColumn": [1, 2]}
-        )
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec1", "rec2"], "OtherColumn": [3, 4]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1", "rec2"], "OtherColumn": [1, 2]})
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec1", "rec2"], "OtherColumn": [3, 4]})
         self.dp.process_data()
         assert not self.dp.samples_df.empty
         assert self.dp.process_recording.call_count == 2
 
     def test_predictions_extra_recordings(self):
         """Test with recordings in predictions not in annotations."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1", "rec2"], "OtherColumn": [1, 2]}
-        )
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [3]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1", "rec2"], "OtherColumn": [1, 2]})
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [3]})
         self.dp.process_data()
         assert self.dp.process_recording.call_count == 2
 
     def test_annotations_extra_recordings(self):
         """Test with recordings in annotations not in predictions."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [1]}
-        )
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec1", "rec2"], "OtherColumn": [3, 4]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [1]})
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec1", "rec2"], "OtherColumn": [3, 4]})
         self.dp.process_data()
         assert self.dp.process_recording.call_count == 2
 
     def test_duplicate_recording_entries(self):
         """Test with duplicate recording filenames."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1", "rec1"], "OtherColumn": [1, 2]}
-        )
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [3]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1", "rec1"], "OtherColumn": [1, 2]})
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [3]})
         self.dp.process_data()
         assert self.dp.process_recording.call_count == 1
 
     def test_missing_recording_filename_in_predictions(self):
         """Test missing 'recording_filename' in predictions."""
         self.dp.predictions_df = pd.DataFrame({"OtherColumn": [1]})
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [2]}
-        )
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [2]})
         with pytest.raises(KeyError):
             self.dp.process_data()
 
     def test_missing_recording_filename_in_annotations(self):
         """Test missing 'recording_filename' in annotations."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [1]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [1]})
         self.dp.annotations_df = pd.DataFrame({"OtherColumn": [2]})
         with pytest.raises(KeyError):
             self.dp.process_data()
 
     def test_no_overlapping_recordings(self):
         """Test with no overlapping recording filenames."""
-        self.dp.predictions_df = pd.DataFrame(
-            {"recording_filename": ["rec1"], "OtherColumn": [1]}
-        )
-        self.dp.annotations_df = pd.DataFrame(
-            {"recording_filename": ["rec2"], "OtherColumn": [2]}
-        )
+        self.dp.predictions_df = pd.DataFrame({"recording_filename": ["rec1"], "OtherColumn": [1]})
+        self.dp.annotations_df = pd.DataFrame({"recording_filename": ["rec2"], "OtherColumn": [2]})
         self.dp.process_data()
         assert self.dp.process_recording.call_count == 2
 
@@ -1345,12 +1262,11 @@ class TestDataProcessorProcessData:
 
 
 class TestDataProcessorProcessRecording:
-
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock empty DataFrames for predictions and annotations
@@ -1379,12 +1295,8 @@ class TestDataProcessorProcessRecording:
 
     def test_valid_predictions_and_annotations(self):
         """Test with valid predictions and annotations."""
-        pred_df = pd.DataFrame(
-            {"Class": ["A", "B"], "Start Time": [0, 5], "End Time": [5, 10]}
-        )
-        annot_df = pd.DataFrame(
-            {"Class": ["A", "C"], "Start Time": [2, 7], "End Time": [7, 12]}
-        )
+        pred_df = pd.DataFrame({"Class": ["A", "B"], "Start Time": [0, 5], "End Time": [5, 10]})
+        annot_df = pd.DataFrame({"Class": ["A", "C"], "Start Time": [2, 7], "End Time": [7, 12]})
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         assert not samples_df.empty
         assert len(samples_df) == 3  # 15 / 5 = 3 samples
@@ -1395,25 +1307,15 @@ class TestDataProcessorProcessRecording:
         annot_df = pd.DataFrame()
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         assert not samples_df.empty
-        assert (
-            (samples_df[[f"{cls}_confidence" for cls in self.dp.classes]] == 0)
-            .all()
-            .all()
-        )
-        assert (
-            (samples_df[[f"{cls}_annotation" for cls in self.dp.classes]] == 0)
-            .all()
-            .all()
-        )
+        assert (samples_df[[f"{cls}_confidence" for cls in self.dp.classes]] == 0).all().all()
+        assert (samples_df[[f"{cls}_annotation" for cls in self.dp.classes]] == 0).all().all()
 
     def test_only_predictions_present(self):
         """Test with only predictions present."""
         pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [0], "End Time": [5]})
         annot_df = pd.DataFrame()
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
-        assert (
-            samples_df["A_confidence"].iloc[0] == 0.0
-        )  # Default confidence since 'Confidence' column missing
+        assert samples_df["A_confidence"].iloc[0] == 0.0  # Default confidence since 'Confidence' column missing
         assert samples_df["A_annotation"].iloc[0] == 0  # No annotations
 
     def test_only_annotations_present(self):
@@ -1455,9 +1357,7 @@ class TestDataProcessorProcessRecording:
         self.dp.sample_duration = 3
         self.dp.min_overlap = 0.1
         pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [1], "End Time": [2]})
-        annot_df = pd.DataFrame(
-            {"Class": ["A"], "Start Time": [1.5], "End Time": [2.5]}
-        )
+        annot_df = pd.DataFrame({"Class": ["A"], "Start Time": [1.5], "End Time": [2.5]})
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         assert len(samples_df) == 5  # 15 / 3 = 5 samples
         # Check if overlaps are correctly calculated
@@ -1468,16 +1368,8 @@ class TestDataProcessorProcessRecording:
         annot_df = pd.DataFrame({"Class": ["D"], "Start Time": [0], "End Time": [5]})
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         # Since 'D' is not in self.classes, it should be skipped
-        assert (
-            (samples_df[[f"{cls}_confidence" for cls in self.dp.classes]] == 0)
-            .all()
-            .all()
-        )
-        assert (
-            (samples_df[[f"{cls}_annotation" for cls in self.dp.classes]] == 0)
-            .all()
-            .all()
-        )
+        assert (samples_df[[f"{cls}_confidence" for cls in self.dp.classes]] == 0).all().all()
+        assert (samples_df[[f"{cls}_annotation" for cls in self.dp.classes]] == 0).all().all()
 
     def test_zero_recording_duration(self):
         """Test with zero recording duration."""
@@ -1493,7 +1385,7 @@ class TestDetermineFileDuration:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1535,9 +1427,7 @@ class TestDetermineFileDuration:
     def test_duration_column_in_predictions(self):
         """Test when 'Duration' column is in predictions DataFrame."""
         self.dp.recording_duration = None
-        pred_df = pd.DataFrame(
-            {"Start Time": [0], "End Time": [50], "Duration": [100.0]}
-        )
+        pred_df = pd.DataFrame({"Start Time": [0], "End Time": [50], "Duration": [100.0]})
         annot_df = pd.DataFrame()
         duration = self.dp.determine_file_duration(pred_df, annot_df)
         assert duration == 100.0
@@ -1546,9 +1436,7 @@ class TestDetermineFileDuration:
         """Test when 'Duration' column is in annotations DataFrame."""
         self.dp.recording_duration = None
         pred_df = pd.DataFrame()
-        annot_df = pd.DataFrame(
-            {"Start Time": [0], "End Time": [50], "Duration": [90.0]}
-        )
+        annot_df = pd.DataFrame({"Start Time": [0], "End Time": [50], "Duration": [90.0]})
         duration = self.dp.determine_file_duration(pred_df, annot_df)
         assert duration == 90.0
 
@@ -1571,12 +1459,8 @@ class TestDetermineFileDuration:
     def test_null_duration_columns(self):
         """Test when 'Duration' columns are present but all null."""
         self.dp.recording_duration = None
-        pred_df = pd.DataFrame(
-            {"Start Time": [10], "End Time": [20], "Duration": [None]}
-        )
-        annot_df = pd.DataFrame(
-            {"Start Time": [30], "End Time": [40], "Duration": [None]}
-        )
+        pred_df = pd.DataFrame({"Start Time": [10], "End Time": [20], "Duration": [None]})
+        annot_df = pd.DataFrame({"Start Time": [30], "End Time": [40], "Duration": [None]})
         duration = self.dp.determine_file_duration(pred_df, annot_df)
         assert duration == 40.0
 
@@ -1600,12 +1484,8 @@ class TestDetermineFileDuration:
     def test_mixed_null_and_non_null_duration_columns(self):
         """Test with mixed null and non-null 'Duration' values."""
         self.dp.recording_duration = None
-        pred_df = pd.DataFrame(
-            {"Start Time": [10], "End Time": [20], "Duration": [None]}
-        )
-        annot_df = pd.DataFrame(
-            {"Start Time": [30], "End Time": [40], "Duration": [50.0]}
-        )
+        pred_df = pd.DataFrame({"Start Time": [10], "End Time": [20], "Duration": [None]})
+        annot_df = pd.DataFrame({"Start Time": [30], "End Time": [40], "Duration": [50.0]})
         duration = self.dp.determine_file_duration(pred_df, annot_df)
         assert duration == 50.0
 
@@ -1615,7 +1495,7 @@ class TestInitializeSamples:
         """Set up a DataProcessor instance for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1686,8 +1566,7 @@ class TestInitializeSamples:
         self.dp.classes = ("A", "B")
         samples_df = self.dp.initialize_samples("rec1", 5)
         assert all(
-            col in samples_df.columns
-            for col in ["A_confidence", "B_confidence", "A_annotation", "B_annotation"]
+            col in samples_df.columns for col in ["A_confidence", "B_confidence", "A_annotation", "B_annotation"]
         )
 
     def test_empty_recording_filename(self):
@@ -1719,7 +1598,7 @@ class TestUpdateSamplesWithPredictions:
         """Set up a DataProcessor instance and samples DataFrame for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1763,45 +1642,38 @@ class TestUpdateSamplesWithPredictions:
 
     def test_single_prediction_overlapping_one_sample(self):
         """Test single prediction overlapping one sample."""
-        pred_df = pd.DataFrame(
-            {"Class": ["A"], "Start Time": [1], "End Time": [4], "Confidence": [0.8]}
-        )
+        target_confidence = 0.6
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [1], "End Time": [4], "Confidence": [target_confidence]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.8
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
 
     def test_single_prediction_overlapping_multiple_samples(self):
         """Test single prediction overlapping multiple samples."""
-        pred_df = pd.DataFrame(
-            {"Class": ["A"], "Start Time": [3], "End Time": [8], "Confidence": [0.6]}
-        )
+        target_confidence = 0.6
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [3], "End Time": [8], "Confidence": [target_confidence]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.6
-        assert self.samples_df.loc[1, "A_confidence"] == 0.6
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
+        assert self.samples_df.loc[1, "A_confidence"] == target_confidence
 
     def test_multiple_predictions_same_sample(self):
         """Test multiple predictions overlapping the same sample for the same class."""
+        target_confidence = 0.7
         pred_df = pd.DataFrame(
             {
                 "Class": ["A", "A"],
                 "Start Time": [1, 1],
                 "End Time": [4, 4],
-                "Confidence": [0.5, 0.7],
+                "Confidence": [0.5, target_confidence],
             }
         )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.7  # Max confidence
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence  # Max confidence
 
     def test_predictions_classes_not_in_self_classes(self):
         """Test predictions with classes not in self.classes."""
-        pred_df = pd.DataFrame(
-            {"Class": ["D"], "Start Time": [0], "End Time": [5], "Confidence": [0.9]}
-        )
+        pred_df = pd.DataFrame({"Class": ["D"], "Start Time": [0], "End Time": [5], "Confidence": [0.9]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert (
-            (self.samples_df[["A_confidence", "B_confidence", "C_confidence"]] == 0.0)
-            .all()
-            .all()
-        )
+        assert (self.samples_df[["A_confidence", "B_confidence", "C_confidence"]] == 0.0).all().all()
 
     def test_predictions_missing_confidence(self):
         """Test predictions missing 'Confidence' column."""
@@ -1818,28 +1690,26 @@ class TestUpdateSamplesWithPredictions:
 
     def test_predictions_with_negative_times(self):
         """Test predictions with negative times."""
-        pred_df = pd.DataFrame(
-            {"Class": ["A"], "Start Time": [-3], "End Time": [2], "Confidence": [0.5]}
-        )
+        target_confidence = 0.5
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [-3], "End Time": [2], "Confidence": [target_confidence]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.5
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
 
     def test_predictions_no_overlap(self):
         """Test predictions that do not overlap any samples."""
-        pred_df = pd.DataFrame(
-            {"Class": ["A"], "Start Time": [15], "End Time": [20], "Confidence": [0.9]}
-        )
+        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [15], "End Time": [20], "Confidence": [0.9]})
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
         assert (self.samples_df["A_confidence"] == 0.0).all()
 
     def test_predictions_with_different_min_overlap(self):
         """Test predictions with different min_overlap values."""
+        target_confidence = 0.8
         pred_df = pd.DataFrame(
             {
                 "Class": ["A"],
                 "Start Time": [4.6],
                 "End Time": [5.1],
-                "Confidence": [0.8],
+                "Confidence": [target_confidence],
             }
         )
         # With min_overlap 0.5, should not overlap
@@ -1850,48 +1720,46 @@ class TestUpdateSamplesWithPredictions:
         # With min_overlap 0.0, should overlap
         self.dp.min_overlap = 0.0
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.8
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence
 
     def test_predictions_overlapping_different_classes(self):
         """Test predictions overlapping different classes."""
+        target_confidence_1 = 0.7
+        target_confidence_2 = 0.9
         pred_df = pd.DataFrame(
             {
                 "Class": ["A", "B"],
                 "Start Time": [1, 6],
                 "End Time": [4, 9],
-                "Confidence": [0.7, 0.9],
+                "Confidence": [target_confidence_1, target_confidence_2],
             }
         )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.7
-        assert self.samples_df.loc[1, "B_confidence"] == 0.9
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence_1
+        assert self.samples_df.loc[1, "B_confidence"] == target_confidence_2
 
     def test_multiple_predictions_overlapping_multiple_samples(self):
         """Test multiple predictions overlapping multiple samples."""
+        target_confidence_1 = 0.5
+        target_confidence_2 = 0.6
         pred_df = pd.DataFrame(
             {
                 "Class": ["A", "A"],
                 "Start Time": [2, 7],
                 "End Time": [6, 12],
-                "Confidence": [0.5, 0.6],
+                "Confidence": [target_confidence_1, target_confidence_2],
             }
         )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.5
-        assert self.samples_df.loc[1, "A_confidence"] == 0.6
-        assert self.samples_df.loc[2, "A_confidence"] == 0.6
+        assert self.samples_df.loc[0, "A_confidence"] == target_confidence_1
+        assert self.samples_df.loc[1, "A_confidence"] == target_confidence_2
+        assert self.samples_df.loc[2, "A_confidence"] == target_confidence_2
 
     def test_empty_predictions_dataframe(self):
         """Test when pred_df is empty."""
-        pred_df = pd.DataFrame(
-            columns=["Class", "Start Time", "End Time", "Confidence"]
-        )
+        pred_df = pd.DataFrame(columns=["Class", "Start Time", "End Time", "Confidence"])
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert (
-            (self.samples_df[["A_confidence", "B_confidence", "C_confidence"]] == 0.0)
-            .all()
-            .all()
-        )
+        assert (self.samples_df[["A_confidence", "B_confidence", "C_confidence"]] == 0.0).all().all()
 
 
 class TestUpdateSamplesWithAnnotations:
@@ -1899,7 +1767,7 @@ class TestUpdateSamplesWithAnnotations:
         """Set up a DataProcessor instance and samples DataFrame for testing."""
         # Start patching
         self.patcher = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
         # Mock the function to return DataFrames with expected columns
@@ -1958,11 +1826,7 @@ class TestUpdateSamplesWithAnnotations:
         """Test annotations with classes not in self.classes."""
         annot_df = pd.DataFrame({"Class": ["D"], "Start Time": [0], "End Time": [5]})
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
-        assert (
-            (self.samples_df[["A_annotation", "B_annotation", "C_annotation"]] == 0)
-            .all()
-            .all()
-        )
+        assert (self.samples_df[["A_annotation", "B_annotation", "C_annotation"]] == 0).all().all()
 
     def test_annotations_with_negative_times(self):
         """Test annotations with negative times."""
@@ -1978,9 +1842,7 @@ class TestUpdateSamplesWithAnnotations:
 
     def test_annotations_with_different_min_overlap(self):
         """Test annotations with different min_overlap values."""
-        annot_df = pd.DataFrame(
-            {"Class": ["A"], "Start Time": [4.6], "End Time": [5.1]}
-        )
+        annot_df = pd.DataFrame({"Class": ["A"], "Start Time": [4.6], "End Time": [5.1]})
         # With min_overlap 0.5, should not overlap
         self.dp.min_overlap = 0.5
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
@@ -1993,17 +1855,13 @@ class TestUpdateSamplesWithAnnotations:
 
     def test_multiple_annotations_same_sample(self):
         """Test multiple annotations overlapping the same sample for the same class."""
-        annot_df = pd.DataFrame(
-            {"Class": ["A", "A"], "Start Time": [1, 2], "End Time": [4, 5]}
-        )
+        annot_df = pd.DataFrame({"Class": ["A", "A"], "Start Time": [1, 2], "End Time": [4, 5]})
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
         assert self.samples_df.loc[0, "A_annotation"] == 1  # Should be set to 1
 
     def test_multiple_annotations_overlapping_multiple_samples(self):
         """Test multiple annotations overlapping multiple samples."""
-        annot_df = pd.DataFrame(
-            {"Class": ["A", "A"], "Start Time": [2, 7], "End Time": [6, 12]}
-        )
+        annot_df = pd.DataFrame({"Class": ["A", "A"], "Start Time": [2, 7], "End Time": [6, 12]})
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
         assert self.samples_df.loc[0, "A_annotation"] == 1
         assert self.samples_df.loc[1, "A_annotation"] == 1
@@ -2013,17 +1871,11 @@ class TestUpdateSamplesWithAnnotations:
         """Test when annot_df is empty."""
         annot_df = pd.DataFrame(columns=["Class", "Start Time", "End Time"])
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
-        assert (
-            (self.samples_df[["A_annotation", "B_annotation", "C_annotation"]] == 0)
-            .all()
-            .all()
-        )
+        assert (self.samples_df[["A_annotation", "B_annotation", "C_annotation"]] == 0).all().all()
 
     def test_annotations_overlapping_different_classes(self):
         """Test annotations overlapping different classes."""
-        annot_df = pd.DataFrame(
-            {"Class": ["A", "B"], "Start Time": [1, 6], "End Time": [4, 9]}
-        )
+        annot_df = pd.DataFrame({"Class": ["A", "B"], "Start Time": [1, 6], "End Time": [4, 9]})
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
         assert self.samples_df.loc[0, "A_annotation"] == 1
         assert self.samples_df.loc[1, "B_annotation"] == 1
@@ -2034,7 +1886,7 @@ class TestCreateTensors:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2049,7 +1901,7 @@ class TestCreateTensors:
         self.mock_read_concat_pred = self.patcher_pred.start()
 
         self.patcher_annot = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2066,6 +1918,8 @@ class TestCreateTensors:
             prediction_directory_path="dummy_path",
             annotation_directory_path="dummy_path",
         )
+
+        self.rng = np.random.default_rng(seed=42)  # For reproducibility
 
     def teardown_method(self):
         """Stop patching."""
@@ -2092,7 +1946,7 @@ class TestCreateTensors:
         self.dp.create_tensors()
         assert self.dp.prediction_tensors.shape == (1, 1)
         assert self.dp.label_tensors.shape == (1, 1)
-        assert self.dp.prediction_tensors[0, 0] == 0.8
+        np.testing.assert_almost_equal(self.dp.prediction_tensors[0, 0], 0.8)
         assert self.dp.label_tensors[0, 0] == 1
 
     def test_multiple_samples_multiple_classes(self):
@@ -2177,7 +2031,7 @@ class TestCreateTensors:
                 "A_annotation": [1],
             }
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="could not convert string to float: 'high'"):
             self.dp.create_tensors()
 
     def test_large_number_of_samples_and_classes(self):
@@ -2188,8 +2042,8 @@ class TestCreateTensors:
         self.dp.classes = classes
         data = {}
         for cls in classes:
-            data[f"{cls}_confidence"] = np.random.rand(num_samples)
-            data[f"{cls}_annotation"] = np.random.randint(0, 2, size=num_samples)
+            data[f"{cls}_confidence"] = self.rng.random(num_samples)
+            data[f"{cls}_annotation"] = self.rng.integers(0, 2, size=num_samples)
         self.dp.samples_df = pd.DataFrame(data)
         self.dp.create_tensors()
         assert self.dp.prediction_tensors.shape == (num_samples, num_classes)
@@ -2201,7 +2055,7 @@ class TestGetColumnName:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2216,7 +2070,7 @@ class TestGetColumnName:
         self.mock_read_concat_pred = self.patcher_pred.start()
 
         self.patcher_annot = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2297,7 +2151,7 @@ class TestGetSampleData:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2312,7 +2166,7 @@ class TestGetSampleData:
         self.mock_read_concat_pred = self.patcher_pred.start()
 
         self.patcher_annot = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
                 {
                     "Class": [],  # Required column
@@ -2329,6 +2183,8 @@ class TestGetSampleData:
             prediction_directory_path="dummy_path",
             annotation_directory_path="dummy_path",
         )
+
+        self.rng = np.random.default_rng(seed=42)  # For reproducibility
 
     def teardown_method(self):
         """Stop patching."""
@@ -2357,10 +2213,11 @@ class TestGetSampleData:
 
     def test_modifying_returned_df_does_not_affect_samples_df(self):
         """Test that modifying returned DataFrame does not affect samples_df."""
-        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]})
+        target_value = 0.8
+        self.dp.samples_df = pd.DataFrame({"A_confidence": [target_value]})
         sample_data = self.dp.get_sample_data()
         sample_data["A_confidence"] = [0.5]
-        assert self.dp.samples_df["A_confidence"][0] == 0.8
+        assert self.dp.samples_df["A_confidence"][0] == target_value
 
     def test_samples_df_with_nan_values(self):
         """Test when samples_df contains NaN values."""
@@ -2378,15 +2235,16 @@ class TestGetSampleData:
     def test_samples_df_large_data(self):
         """Test with a large samples_df."""
         num_samples = 1000
-        self.dp.samples_df = pd.DataFrame({"A_confidence": np.random.rand(num_samples)})
+        self.dp.samples_df = pd.DataFrame({"A_confidence": self.rng.random(num_samples)})
         sample_data = self.dp.get_sample_data()
         pd.testing.assert_frame_equal(sample_data, self.dp.samples_df)
 
     def test_samples_df_with_custom_index(self):
         """Test that index is preserved."""
-        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]}, index=[10])
+        target_index = 10
+        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]}, index=[target_index])
         sample_data = self.dp.get_sample_data()
-        assert sample_data.index[0] == 10
+        assert sample_data.index[0] == target_index
 
     def test_samples_df_with_different_dtypes(self):
         """Test that data types are preserved."""
@@ -2403,10 +2261,11 @@ class TestGetSampleData:
 
     def test_modifications_after_get_sample_data(self):
         """Test that modifications to samples_df after get_sample_data do not affect returned DataFrame."""
-        self.dp.samples_df = pd.DataFrame({"A_confidence": [0.8]})
+        target_value = 0.8
+        self.dp.samples_df = pd.DataFrame({"A_confidence": [target_value]})
         sample_data = self.dp.get_sample_data()
         self.dp.samples_df["A_confidence"] = [0.5]
-        assert sample_data["A_confidence"][0] == 0.8
+        assert sample_data["A_confidence"][0] == target_value
 
     def test_samples_df_with_multiindex(self):
         """Test when samples_df has a MultiIndex."""
@@ -2421,7 +2280,7 @@ class TestGetFilteredTensors:
         """Set up a DataProcessor instance for testing."""
         # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
-            "bapat.preprocessing.data_processor.read_and_concatenate_files_in_directory",
+            "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             side_effect=[
                 pd.DataFrame(
                     {
@@ -2466,6 +2325,8 @@ class TestGetFilteredTensors:
         # Create tensors for the DataProcessor
         self.dp.create_tensors()
 
+        self.rng = np.random.default_rng(123)
+
     def teardown_method(self):
         """Stop patching."""
         self.patcher_pred.stop()
@@ -2481,10 +2342,8 @@ class TestGetFilteredTensors:
 
     def test_selected_classes_not_in_data(self):
         """Test when selected classes are not in data."""
-        with pytest.raises(ValueError):
-            self.dp.get_filtered_tensors(
-                selected_classes=["C"], selected_recordings=["rec1"]
-            )
+        with pytest.raises(ValueError, match="No valid classes selected."):
+            self.dp.get_filtered_tensors(selected_classes=["C"], selected_recordings=["rec1"])
 
     def test_selected_recordings_not_in_data(self):
         """Test when selected recordings are not in data."""
@@ -2497,16 +2356,12 @@ class TestGetFilteredTensors:
 
     def test_empty_selected_classes(self):
         """Test when selected_classes is empty."""
-        with pytest.raises(ValueError):
-            self.dp.get_filtered_tensors(
-                selected_classes=[], selected_recordings=["rec1"]
-            )
+        with pytest.raises(ValueError, match="No valid classes selected."):
+            self.dp.get_filtered_tensors(selected_classes=[], selected_recordings=["rec1"])
 
     def test_empty_selected_recordings(self):
         """Test when selected_recordings is empty."""
-        predictions, labels, classes = self.dp.get_filtered_tensors(
-            selected_classes=["A"], selected_recordings=[]
-        )
+        predictions, labels, classes = self.dp.get_filtered_tensors(selected_classes=["A"], selected_recordings=[])
         assert predictions.shape == (0, 1)
         assert labels.shape == (0, 1)
         assert classes == ("A",)
@@ -2515,9 +2370,7 @@ class TestGetFilteredTensors:
         """Test when samples_df is empty."""
         self.dp.samples_df = pd.DataFrame()
         with pytest.raises(ValueError, match="samples_df is empty."):
-            self.dp.get_filtered_tensors(
-                selected_classes=["A"], selected_recordings=["rec1"]
-            )
+            self.dp.get_filtered_tensors(selected_classes=["A"], selected_recordings=["rec1"])
 
     def test_missing_confidence_or_annotation_columns(self):
         """Test when required columns are missing."""
@@ -2529,9 +2382,7 @@ class TestGetFilteredTensors:
             }
         )
         with pytest.raises(KeyError):
-            self.dp.get_filtered_tensors(
-                selected_classes=["A"], selected_recordings=["rec1"]
-            )
+            self.dp.get_filtered_tensors(selected_classes=["A"], selected_recordings=["rec1"])
 
     def test_nan_values_in_data(self):
         """Test when data contains NaN values."""
@@ -2564,8 +2415,8 @@ class TestGetFilteredTensors:
         self.dp.samples_df = pd.DataFrame(
             {
                 "filename": ["rec1"] * num_samples,
-                "A_confidence": np.random.rand(num_samples),
-                "A_annotation": np.random.randint(0, 2, size=num_samples),
+                "A_confidence": self.rng.random(num_samples),
+                "A_annotation": self.rng.integers(0, 2, size=num_samples),
             }
         )
         predictions, labels, classes = self.dp.get_filtered_tensors(

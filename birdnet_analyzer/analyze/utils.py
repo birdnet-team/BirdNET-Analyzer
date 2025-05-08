@@ -7,13 +7,10 @@ import os
 
 import numpy as np
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.model as model
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import audio, model, utils
 
-#                    0       1      2           3             4              5               6                7           8             9           10         11
-RAVEN_TABLE_HEADER = "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"
+RAVEN_TABLE_HEADER = "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"  # noqa: E501
 RTABLE_HEADER = "filepath,start,end,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity,min_conf,species_list,model\n"
 KALEIDOSCOPE_HEADER = (
     "INDIR,FOLDER,IN FILE,OFFSET,DURATION,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity\n"
@@ -58,10 +55,8 @@ def load_codes():
     Returns:
         A dictionary containing the eBird codes.
     """
-    with open(os.path.join(SCRIPT_DIR, cfg.CODES_FILE), "r") as cfile:
-        codes = json.load(cfile)
-
-    return codes
+    with open(os.path.join(SCRIPT_DIR, cfg.CODES_FILE)) as cfile:
+        return json.load(cfile)
 
 
 def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_path: str, result_path: str):
@@ -83,8 +78,7 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
     # Read native sample rate
     high_freq = audio.get_sample_rate(afile_path) / 2
 
-    if high_freq > int(cfg.SIG_FMAX / cfg.AUDIO_SPEED):
-        high_freq = int(cfg.SIG_FMAX / cfg.AUDIO_SPEED)
+    high_freq = min(high_freq, int(cfg.SIG_FMAX / cfg.AUDIO_SPEED))
 
     high_freq = min(high_freq, int(cfg.BANDPASS_FMAX / cfg.AUDIO_SPEED))
     low_freq = max(cfg.SIG_FMIN, int(cfg.BANDPASS_FMIN / cfg.AUDIO_SPEED))
@@ -98,13 +92,15 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
             selection_id += 1
             label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
             code = cfg.CODES[c[0]] if c[0] in cfg.CODES else c[0]
-            rstring += f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"
+            rstring += f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"  # noqa: E501
 
         # Write result string to file
         out_string += rstring
 
-    # If we don't have any valid predictions, we still need to add a line to the selection table in case we want to combine results
-    # TODO: That's a weird way to do it, but it works for now. It would be better to keep track of file durations during the analysis.
+    # If we don't have any valid predictions, we still need to add a line to the selection table
+    # in case we want to combine results
+    # TODO: That's a weird way to do it, but it works for now. It would be better to keep track
+    # of file durations during the analysis.
     if len(out_string) == len(RAVEN_TABLE_HEADER) and cfg.OUTPUT_PATH is not None:
         selection_id += 1
         out_string += (
@@ -280,7 +276,7 @@ def combine_raven_tables(saved_results: list[str]):
         for rfile in saved_results:
             if not rfile:
                 continue
-            with open(rfile, "r", encoding="utf-8") as rf:
+            with open(rfile, encoding="utf-8") as rf:
                 try:
                     lines = rf.readlines()
 
@@ -305,16 +301,16 @@ def combine_raven_tables(saved_results: list[str]):
                             continue
 
                         # adjust selection id
-                        line = line.split("\t")
-                        line[0] = str(s_id)
+                        line_elements = line.split("\t")
+                        line_elements[0] = str(s_id)
                         s_id += 1
 
                         # adjust time
-                        line[3] = str(float(line[3]) + time_offset)
-                        line[4] = str(float(line[4]) + time_offset)
+                        line_elements[3] = str(float(line_elements[3]) + time_offset)
+                        line_elements[4] = str(float(line_elements[4]) + time_offset)
 
                         # write line
-                        f.write("\t".join(line))
+                        f.write("\t".join(line_elements))
 
                     # adjust time offset
                     time_offset += f_duration
@@ -326,7 +322,7 @@ def combine_raven_tables(saved_results: list[str]):
     listfilesname = cfg.OUTPUT_RAVEN_FILENAME.rsplit(".", 1)[0] + ".list.txt"
 
     with open(os.path.join(cfg.OUTPUT_PATH, listfilesname), "w", encoding="utf-8") as f:
-        f.writelines((f + "\n" for f in audiofiles))
+        f.writelines(f + "\n" for f in audiofiles)
 
 
 def combine_kaleidoscope_files(saved_results: list[str]):
@@ -344,7 +340,7 @@ def combine_kaleidoscope_files(saved_results: list[str]):
         f.write(KALEIDOSCOPE_HEADER)
 
         for rfile in saved_results:
-            with open(rfile, "r", encoding="utf-8") as rf:
+            with open(rfile, encoding="utf-8") as rf:
                 try:
                     lines = rf.readlines()
 
@@ -373,7 +369,7 @@ def combine_csv_files(saved_results: list[str]):
         f.write(CSV_HEADER)
 
         for rfile in saved_results:
-            with open(rfile, "r", encoding="utf-8") as rf:
+            with open(rfile, encoding="utf-8") as rf:
                 try:
                     lines = rf.readlines()
 
@@ -417,14 +413,15 @@ def combine_results(saved_results: list[dict[str, str]]):
         combine_csv_files([f["csv"] for f in saved_results if f])
 
 
-def merge_consecutive_detections(results: dict[str, list], max_consecutive: int = None):
+def merge_consecutive_detections(results: dict[str, list], max_consecutive: int | None = None):
     """Merges consecutive detections of the same species.
     Uses the mean of the top-3 highest scoring predictions as
     confidence score for the merged detection.
 
     Args:
         results: The dictionary with {segment: scores}.
-        max_consecutive: The maximum number of consecutive detections to merge. If None, merge all consecutive detections.
+        max_consecutive: The maximum number of consecutive detections to merge.
+                          If None, merge all consecutive detections.
 
     Returns:
         The dictionary with merged detections.
@@ -517,9 +514,7 @@ def get_raw_audio_from_file(fpath: str, offset, duration):
     )
 
     # Split into raw audio chunks
-    chunks = audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
-
-    return chunks
+    return audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
 
 def predict(samples):
@@ -557,10 +552,7 @@ def get_result_file_names(fpath: str):
 
     rpath = fpath.replace(cfg.INPUT_PATH, "")
 
-    if rpath:
-        rpath = rpath[1:] if rpath[0] in ["/", "\\"] else rpath
-    else:
-        rpath = os.path.basename(fpath)
+    rpath = (rpath[1:] if rpath[0] in ["/", "\\"] else rpath) if rpath else os.path.basename(fpath)
 
     file_shorthand = rpath.rsplit(".", 1)[0]
 
@@ -599,10 +591,9 @@ def analyze_file(item):
 
     result_file_names = get_result_file_names(fpath)
 
-    if cfg.SKIP_EXISTING_RESULTS:
-        if all(os.path.exists(f) for f in result_file_names.values()):
-            print(f"Skipping {fpath} as it has already been analyzed", flush=True)
-            return None  # or return path to combine later? TODO
+    if cfg.SKIP_EXISTING_RESULTS and all(os.path.exists(f) for f in result_file_names.values()):
+        print(f"Skipping {fpath} as it has already been analyzed", flush=True)
+        return None  # or return path to combine later? TODO
 
     # Start time
     start_time = datetime.datetime.now()
@@ -615,7 +606,7 @@ def analyze_file(item):
     print(f"Analyzing {fpath}", flush=True)
 
     try:
-        fileLengthSeconds = int(audio.get_audio_file_length(fpath) / cfg.AUDIO_SPEED)
+        fileLengthSeconds = audio.get_audio_file_length(fpath)
     except Exception as ex:
         # Write error log
         print(f"Error: Cannot analyze audio file {fpath}. File corrupt?\n", flush=True)
@@ -668,7 +659,7 @@ def analyze_file(item):
                     if cfg.TOP_N:
                         p_sorted = p_sorted[: cfg.TOP_N]
 
-                    # TODO hier schon top n oder min conf raussortieren
+                    # TODO: hier schon top n oder min conf raussortieren
                     # Store top 5 results and advance indices
                     results[str(s_start) + "-" + str(s_end)] = p_sorted
 
