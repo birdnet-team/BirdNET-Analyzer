@@ -39,8 +39,23 @@ The database will be created as a folder with the specified name containing two 
 If you want to process the embeddings as files, you can also specify a folder for the file output. If no folder is specified the file output will be omitted.
 The file output will create an individual file for each 3 second audio snippet that is processed, containing the extracted embedding.
 
+The files will be named according to the following pattern: "{original_file_name}_{start}_{end}.birdnet.embeddings.txt".
 
 3. Searching your database
 -------------------------------------------------
 
-- 
+The database can be searched in the GUI in the Search-Section of the Embeddings-Tab.
+To start the search first select the database you want to search in. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.
+
+After that select a file as a query example to find similar sounds in the database.
+You can select the crop mode (#todo link to crop mode explaination) to specify how the example file will be cropped if it is longer than 3 seconds. For the segments crop mode the simliarity measure will be averaged over all segments of the query example.
+
+Further specify the maximum number of results you want to retrieve and the score-function.
+
+The following score functions are available:
+
+- | **Cosine**: ...
+- | **Dot product**: ...
+- | **Euclidean**: ...
+
+Hit the search button to start the search.
