@@ -48,7 +48,7 @@ The database can be searched in the GUI in the Search-Section of the Embeddings-
 To start the search first select the database you want to search in. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.
 
 After that select a file as a query example to find similar sounds in the database.
-You can select the crop mode (#todo link to crop mode explaination) to specify how the example file will be cropped if it is longer than 3 seconds. For the segments crop mode the simliarity measure will be averaged over all segments of the query example.
+You can select the :doc:`crop mode <../implementation-details/crop-modes>` to specify how the example file will be cropped if it is longer than 3 seconds. For the segments crop mode the simliarity measure will be averaged over all segments of the query example.
 
 Further specify the maximum number of results you want to retrieve and the score-function.
 
@@ -66,7 +66,7 @@ You can now use the data for training custom classifiers or for further analysis
 
 
 3.1 About audio speed and bandpass filter in search
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The audio speed and bandpass filter settings that were used for the extraction process will also be applied to the query example and the result-snippets.
 This will also be reflected in the spectrograms and the audio playback.
