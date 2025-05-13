@@ -54,8 +54,32 @@ Further specify the maximum number of results you want to retrieve and the score
 
 The following score functions are available:
 
-- | **Cosine**: ...
-- | **Dot product**: ...
-- | **Euclidean**: ...
+- | **Cosine**: Uses the cosine of the angle between the two embedding vectors. More similar vectors will result in a higher value.
+- | **Dot**: Uses the dot product of the two embedding vectors. As with the cosine measure, more similar vectors will result in a higher value, but longer vectors will also increase the score.
+- | **Euclidean**: Uses the euclidean distance between the two embedding vectors. More similar vectors will result in a lower value.
 
-Hit the search button to start the search.
+Click the start search button to show the results. The results will be displayed over multiple pages.
+For each result a spectrogram of the corresponding audio snippet will be shown and the audio can be played back for reference.
+
+While inspecting the results you can mark them for export. After finishing the selection click the export button and choose a folder to save the results in.
+You can now use the data for training custom classifiers or for further analysis.
+
+
+3.1 About audio speed and bandpass filter in search
+^^^^^^^^^^^^^^^^^^^
+
+The audio speed and bandpass filter settings that were used for the extraction process will also be applied to the query example and the result-snippets.
+This will also be reflected in the spectrograms and the audio playback.
+
+However, the exported audio will always be in the original speed and without any bandpass filter applied.
+This is to ensure that the exported audio retains its original sample rate and also to make using it in the training process more intuitive.
+
+As the processed audio snippets are always 3 seconds long after the audio speed modifier, the exported audio files may be shorter or longer.
+For example with an audio speed modifier of 2, e.g. double speed, the exported audio will only be 1.5 seconds long.
+
+3.2. Search via CLI
+^^^^^^^^^^^^^^^^^^^
+
+Searching the database can also be done via the command line interface, although due to the missing interface a manual inspection and selection of the results is not possible.
+Visit the command line interface documentation for more information on how to use the CLI.
+

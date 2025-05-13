@@ -68,7 +68,7 @@ def search(
         offset = embedding_source.offsets[0] * audio_speed
         duration = cfg.SIG_LENGTH * audio_speed
         sig, rate = audio.open_audio_file(file, offset=offset, duration=duration, sample_rate=None)
-        result_path = os.path.join(output, f"{file[4]:.5f}_{filebasename}_{offset}_{offset + duration}.wav")
+        result_path = os.path.join(output, f"{r.sort_score:.5f}_{filebasename}_{offset}_{offset + duration}.wav")
         audio.save_signal(sig, result_path, rate)
 
 
