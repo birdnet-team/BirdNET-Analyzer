@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import shutil
 import tempfile
@@ -21,9 +22,7 @@ def setup_test_environment():
     os.makedirs(output_dir, exist_ok=True)
 
     # Store original config values
-    original_config = {
-        attr: getattr(cfg, attr) for attr in dir(cfg) if not attr.startswith("_") and not callable(getattr(cfg, attr))
-    }
+    original_config = {attr: getattr(cfg, attr) for attr in dir(cfg) if not attr.startswith("_") and not callable(getattr(cfg, attr))}
 
     yield {
         "test_dir": test_dir,
@@ -38,6 +37,7 @@ def setup_test_environment():
     for attr, value in original_config.items():
         setattr(cfg, attr, value)
 
+
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.embeddings.utils.run")
 def test_embeddings_cli(mock_run_embeddings, mock_ensure_model, setup_test_environment):
@@ -51,4 +51,5 @@ def test_embeddings_cli(mock_run_embeddings, mock_ensure_model, setup_test_envir
     embeddings(**vars(args))
 
     mock_ensure_model.assert_called_once()
-    mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0,  1.0, 0, 15000, 4, 1)
+    threads = min(8, max(1, multiprocessing.cpu_count() // 2))
+    mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 1)
