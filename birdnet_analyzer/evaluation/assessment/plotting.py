@@ -55,7 +55,11 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Fig
     values = metrics_df["Overall"].to_numpy()  # Metric values
 
     # Plot bar chart
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(24, figsize=(10, 6))
+    fig.clear()
+    fig.tight_layout(pad=0)
+    fig.set_dpi(300)
+
     plt.bar(metrics, values, color=colors[: len(metrics)])
 
     # Add titles, labels, and format
@@ -64,7 +68,6 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Fig
     plt.ylabel("Score", fontsize=12)
     plt.xticks(rotation=45, ha="right", fontsize=10)
     plt.grid(axis="y", linestyle="--", alpha=0.7)
-    plt.tight_layout()
 
     return fig
 
@@ -97,7 +100,10 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]) -> plt.F
 
     # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(23, figsize=(10, 6))
+    fig.clear()
+    fig.tight_layout(pad=0)
+    fig.set_dpi(300)
 
     # Loop over each metric and plot it
     for i, metric_name in enumerate(metrics_df.index):
@@ -120,7 +126,6 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]) -> plt.F
     plt.ylabel("Score", fontsize=12)
     plt.legend(loc="lower right")
     plt.grid(True)
-    plt.tight_layout()
 
     return fig
 
@@ -164,7 +169,10 @@ def plot_metrics_across_thresholds(
 
     # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(28, figsize=(10, 6))
+    fig.clear()
+    fig.tight_layout(pad=0)
+    fig.set_dpi(300)
 
     # Plot each metric against thresholds
     for i, metric_name in enumerate(metrics_to_plot):
@@ -188,7 +196,6 @@ def plot_metrics_across_thresholds(
     plt.ylabel("Metric Score", fontsize=12)
     plt.legend(loc="best")
     plt.grid(True)
-    plt.tight_layout()
 
     return fig
 
@@ -244,7 +251,10 @@ def plot_metrics_across_thresholds_per_class(
     n_rows = int(np.ceil(num_classes / n_cols))
 
     # Create subplots
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4), num=22)
+    fig.clear()
+    fig.tight_layout(pad=0)
+    fig.set_dpi(300)
 
     # Flatten axes for easy indexing
     axes = [axes] if num_classes == 1 else axes.flatten()
@@ -284,13 +294,6 @@ def plot_metrics_across_thresholds_per_class(
         ax.set_ylabel("Metric Score", fontsize=10)
         ax.legend(loc="best", fontsize=8)
         ax.grid(True)
-
-    # Hide any unused subplots
-    for j in range(num_classes, len(axes)):
-        fig.delaxes(axes[j])
-
-    # Adjust layout and show
-    plt.tight_layout()
 
     return fig
 
@@ -336,12 +339,12 @@ def plot_confusion_matrices(
             raise ValueError("For binary task, class_names must have exactly two elements.")
 
         # Plot single confusion matrix
-        fig = plt.figure(figsize=(4, 4))
+        fig = plt.figure(26, figsize=(4, 4))
+        fig.clear()
         sns.heatmap(conf_mat, annot=True, fmt=".2f", cmap="Reds", cbar=False)
         plt.title("Confusion Matrix")
         plt.xlabel("Predicted Class")
         plt.ylabel("True Class")
-        plt.tight_layout()
     else:
         # Multilabel or multiclass expects a set of 2x2 matrices
         num_labels = conf_mat.shape[0]
@@ -355,7 +358,9 @@ def plot_confusion_matrices(
         n_rows = int(np.ceil(num_labels / n_cols))
 
         # Create subplots
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2, n_rows * 2))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2, n_rows * 2), num=26)
+        fig.clear()
+        fig.set_dpi(300)
 
         # Flatten axes for easy indexing
         axes = [axes] if num_labels == 1 else axes.flatten()
@@ -369,11 +374,7 @@ def plot_confusion_matrices(
             ax.set_xlabel("Predicted Class")
             ax.set_ylabel("True Class")
 
-        # Hide any unused subplots
-        for j in range(num_labels, len(axes)):
-            fig.delaxes(axes[j])
-
         # Adjust layout and show
-        plt.tight_layout()
+        #plt.tight_layout()
 
     return fig

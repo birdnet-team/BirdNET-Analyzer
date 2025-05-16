@@ -1,5 +1,3 @@
-import base64
-import io
 import os
 import random
 from functools import partial
@@ -55,7 +53,7 @@ def build_review_tab():
         matplotlib.use("agg")
 
         f = plt.figure(fig_num, figsize=(12, 6))
-        f.clf()
+        f.clear()
         f.tight_layout(pad=0)
         f.set_dpi(300)
 
@@ -408,25 +406,6 @@ def build_review_tab():
         def toggle_autoplay(value):
             return gr.Audio(autoplay=value)
 
-        def download_plot(plot, filename=""):
-            from PIL import Image
-
-            imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
-            res = gu._WINDOW.create_file_dialog(
-                gu.webview.SAVE_DIALOG,
-                file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
-                save_filename=filename,
-            )
-
-            if res:
-                if res.endswith(".webp"):
-                    with open(res, "wb") as f:
-                        f.write(imgdata)
-                else:
-                    output_format = res.rsplit(".", 1)[-1].upper()
-                    img = Image.open(io.BytesIO(imgdata))
-                    img.save(res, output_format if output_format in ["PNG", "JPEG"] else "PNG")
-
         autoplay_checkbox.change(toggle_autoplay, inputs=autoplay_checkbox, outputs=review_audio)
 
         review_change_output = [
@@ -447,10 +426,10 @@ def build_review_tab():
         ]
 
         spectrogram_dl_btn.click(
-            partial(download_plot, filename="spectrogram"), show_progress=False, inputs=spectrogram_image
+            partial(gu.download_plot, filename="spectrogram"), show_progress=False, inputs=spectrogram_image
         )
         regression_dl_btn.click(
-            partial(download_plot, filename="regression"), show_progress=False, inputs=species_regression_plot
+            partial(gu.download_plot, filename="regression"), show_progress=False, inputs=species_regression_plot
         )
 
         species_dropdown.change(

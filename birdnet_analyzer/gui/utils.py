@@ -1,4 +1,6 @@
 # ruff: noqa: PLW0603
+import base64
+import io
 import multiprocessing
 import os
 import sys
@@ -196,9 +198,7 @@ def select_directory(collect_files=True, max_files=None, state_key=None):
 
         files = utils.collect_audio_files(dir_name, max_files=max_files)
 
-        return dir_name, [
-            [os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files
-        ]
+        return dir_name, [[os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files]
 
     return dir_name if dir_name else None
 
@@ -417,9 +417,7 @@ def locale():
         The dropdown element.
     """
     label_files = os.listdir(ORIGINAL_TRANSLATED_LABELS_PATH)
-    options = ["EN"] + [
-        label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files
-    ]
+    options = ["EN"] + [label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files]
 
     return gr.Dropdown(
         options,
@@ -460,18 +458,12 @@ def species_list_coordinates(show_map=False):
 
         map_plot = gr.Plot(plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map)
 
-        lat_number.change(
-            plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False
-        )
-        lon_number.change(
-            plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False
-        )
+        lat_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False)
+        lon_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False)
 
     with gr.Group():
         with gr.Row():
-            yearlong_checkbox = gr.Checkbox(
-                True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label")
-            )
+            yearlong_checkbox = gr.Checkbox(True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label"))
             week_number = gr.Slider(
                 minimum=1,
                 maximum=48,
@@ -509,9 +501,7 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
         The selected file or None of the dialog was canceled.
     """
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    file = _WINDOW.create_file_dialog(
-        webview.SAVE_DIALOG, file_types=filetypes, directory=initial_selection, save_filename=default_filename
-    )
+    file = _WINDOW.create_file_dialog(webview.SAVE_DIALOG, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
 
     if file:
         if state_key:
@@ -608,19 +598,13 @@ def species_lists(opened=True):
         )
 
         with gr.Column(visible=False) as position_row:
-            lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = (
-                species_list_coordinates()
-            )
+            lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = species_list_coordinates()
 
-        species_file_input = gr.File(
-            file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label")
-        )
+        species_file_input = gr.File(file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label"))
         empty_col = gr.Column()
 
         with gr.Column(visible=False) as custom_classifier_selector:
-            classifier_selection_button = gr.Button(
-                loc.localize("species-list-custom-classifier-selection-button-label")
-            )
+            classifier_selection_button = gr.Button(loc.localize("species-list-custom-classifier-selection-button-label"))
             classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False)
             selected_classifier_state = gr.State()
 
@@ -663,6 +647,26 @@ def species_lists(opened=True):
         )
 
 
+def download_plot(plot, filename=""):
+    from PIL import Image
+
+    imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
+    res = _WINDOW.create_file_dialog(
+        webview.SAVE_DIALOG,
+        file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
+        save_filename=filename,
+    )
+
+    if res:
+        if res.endswith(".webp"):
+            with open(res, "wb") as f:
+                f.write(imgdata)
+        else:
+            output_format = res.rsplit(".", 1)[-1].upper()
+            img = Image.open(io.BytesIO(imgdata))
+            img.save(res, output_format if output_format in ["PNG", "JPEG"] else "PNG")
+
+
 def _get_network_shortcuts():
     """
     Retrieves a list of network shortcut paths from the user's Network Shortcuts folder.
@@ -696,9 +700,7 @@ def _get_network_shortcuts():
                     try:
                         # https://learn.microsoft.com/de-de/windows/win32/shell/links
                         # CLSID_ShellLink: Class ID for Shell Link object
-                        shell_link = pythoncom.CoCreateInstance(
-                            shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink
-                        )
+                        shell_link = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink)
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
                         # Query IPersistFile interface used to
