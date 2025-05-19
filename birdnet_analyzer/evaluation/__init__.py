@@ -61,14 +61,10 @@ def process_data(
 
     # Determine directory and file paths for annotations and predictions
     annotation_dir, annotation_file = (
-        (os.path.dirname(annotation_path), os.path.basename(annotation_path))
-        if os.path.isfile(annotation_path)
-        else (annotation_path, None)
+        (os.path.dirname(annotation_path), os.path.basename(annotation_path)) if os.path.isfile(annotation_path) else (annotation_path, None)
     )
     prediction_dir, prediction_file = (
-        (os.path.dirname(prediction_path), os.path.basename(prediction_path))
-        if os.path.isfile(prediction_path)
-        else (prediction_path, None)
+        (os.path.dirname(prediction_path), os.path.basename(prediction_path)) if os.path.isfile(prediction_path) else (prediction_path, None)
     )
 
     # Initialize the DataProcessor to handle and prepare data
@@ -120,6 +116,8 @@ def main():
     """
     Entry point for the script. Parses command-line arguments and orchestrates the performance assessment pipeline.
     """
+    import matplotlib.pyplot as plt
+
     # Set up argument parsing
     parser = argparse.ArgumentParser(description="Performance Assessor Core Script")
     parser.add_argument("--annotation_path", required=True, help="Path to annotation file or folder")
@@ -171,8 +169,6 @@ def main():
     if args.plot_metrics:
         pa.plot_metrics(predictions, labels, per_class_metrics=args.class_wise)
         if args.output_dir:
-            import matplotlib.pyplot as plt
-
             plt.savefig(os.path.join(args.output_dir, "metrics_plot.png"))
         else:
             plt.show()
@@ -180,8 +176,6 @@ def main():
     if args.plot_confusion_matrix:
         pa.plot_confusion_matrix(predictions, labels)
         if args.output_dir:
-            import matplotlib.pyplot as plt
-
             plt.savefig(os.path.join(args.output_dir, "confusion_matrix.png"))
         else:
             plt.show()
@@ -189,8 +183,6 @@ def main():
     if args.plot_metrics_all_thresholds:
         pa.plot_metrics_all_thresholds(predictions, labels, per_class_metrics=args.class_wise)
         if args.output_dir:
-            import matplotlib.pyplot as plt
-
             plt.savefig(os.path.join(args.output_dir, "metrics_all_thresholds.png"))
         else:
             plt.show()

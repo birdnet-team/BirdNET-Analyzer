@@ -15,6 +15,8 @@ from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
 from birdnet_analyzer.evaluation.assessment import metrics, plotting
 
+MATPLOTLIB_CONFUSION_MATRIX_FIGURE_NUM = "performance-tab-confusion-matrix-plot"
+
 
 class PerformanceAssessor:
     """
@@ -346,10 +348,10 @@ class PerformanceAssessor:
 
             # Plot the confusion matrix
             disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
-            fig, ax = plt.subplots(num=25, figsize=(6, 6))
-            #fig.clear()
-            #fig.tight_layout()
-            #fig.set_dpi(300)
+            fig, ax = plt.subplots(num=MATPLOTLIB_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6))
+            # fig.clear()
+            fig.tight_layout()
+            fig.set_dpi(300)
             disp.plot(cmap="Reds", ax=ax, colorbar=False, values_format=".2f")
             ax.set_title("Confusion Matrix")
 

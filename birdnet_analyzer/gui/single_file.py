@@ -7,6 +7,8 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import audio, utils
 
+MATPLOTLIB_FIGURE_NUM = "single-file-tab-spectrogram-plot"
+
 
 @gu.gui_runtime_error_handler
 def run_single_file_analysis(
@@ -102,9 +104,7 @@ def build_single_analysis_tab():
         audio_input = gr.Audio(type="filepath", label=loc.localize("single-audio-label"), sources=["upload"])
 
         with gr.Group():
-            spectogram_output = gr.Plot(
-                label=loc.localize("review-tab-spectrogram-plot-label"), visible=False, show_label=False
-            )
+            spectogram_output = gr.Plot(label=loc.localize("review-tab-spectrogram-plot-label"), visible=False, show_label=False)
             generate_spectrogram_cb = gr.Checkbox(
                 value=True,
                 label=loc.localize("single-tab-spectrogram-checkbox-label"),
@@ -138,17 +138,13 @@ def build_single_analysis_tab():
         ) = gu.species_lists(False)
         locale_radio = gu.locale()
 
-        single_file_analyze = gr.Button(
-            loc.localize("analyze-start-button-label"), variant="huggingface", interactive=False
-        )
+        single_file_analyze = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface", interactive=False)
 
         with gr.Row(visible=False) as action_row:
             table_download_button = gr.Button(
                 loc.localize("single-tab-download-button-label"),
             )
-            segment_audio = gr.Audio(
-                autoplay=True, type="numpy", show_download_button=True, show_label=False, editable=False, visible=False
-            )
+            segment_audio = gr.Audio(autoplay=True, type="numpy", show_download_button=True, show_label=False, editable=False, visible=False)
 
         output_dataframe = gr.Dataframe(
             type="pandas",
@@ -170,7 +166,7 @@ def build_single_analysis_tab():
                     return (
                         i["path"],
                         gr.Audio(label=os.path.basename(i["path"])),
-                        gr.Plot(visible=True, value=utils.spectrogram_from_file(i["path"], fig_size=(20, 4)))
+                        gr.Plot(visible=True, value=utils.spectrogram_from_file(i["path"], fig_size=(20, 4), fig_num=MATPLOTLIB_FIGURE_NUM))
                         if generate_spectrogram
                         else gr.Plot(visible=False),
                         gr.Button(interactive=True),
@@ -183,9 +179,7 @@ def build_single_analysis_tab():
         def try_generate_spectrogram(audio_path, generate_spectrogram):
             if audio_path and generate_spectrogram:
                 try:
-                    return gr.Plot(
-                        visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20, 4))
-                    )
+                    return gr.Plot(visible=True, value=utils.spectrogram_from_file(audio_path["path"], fig_size=(20, 4), fig_num=MATPLOTLIB_FIGURE_NUM))
                 except Exception as e:
                     raise gr.Error(loc.localize("single-tab-generate-spectrogram-error")) from e
             else:
@@ -255,9 +249,7 @@ def build_single_analysis_tab():
                 )
 
         output_dataframe.select(get_selected_audio, inputs=audio_path_state, outputs=segment_audio)
-        single_file_analyze.click(
-            run_single_file_analysis, inputs=inputs, outputs=[output_dataframe, action_row, table_path_state]
-        )
+        single_file_analyze.click(run_single_file_analysis, inputs=inputs, outputs=[output_dataframe, action_row, table_path_state])
         table_download_button.click(download_table, inputs=table_path_state)
 
     return lat_number, lon_number, map_plot

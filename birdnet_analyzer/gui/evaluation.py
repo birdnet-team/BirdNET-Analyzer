@@ -3,7 +3,6 @@ import os
 import shutil
 import tempfile
 import typing
-from functools import partial
 
 import gradio as gr
 import matplotlib.pyplot as plt
