@@ -11,7 +11,7 @@ import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, model, utils
 
 RAVEN_TABLE_HEADER = (
-    "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"  # noqa: E501
+    "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"
 )
 KALEIDOSCOPE_HEADER = "INDIR,FOLDER,IN FILE,OFFSET,DURATION,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity\n"
 CSV_HEADER = "Start (s),End (s),Scientific name,Common name,Confidence,File\n"
@@ -92,7 +92,7 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
             label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
             code = cfg.CODES[c[0]] if c[0] in cfg.CODES else c[0]
             rstring += (
-                f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"  # noqa: E501
+                f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"
             )
 
         # Write result string to file
