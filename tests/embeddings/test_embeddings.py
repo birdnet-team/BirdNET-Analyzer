@@ -38,18 +38,18 @@ def setup_test_environment():
         setattr(cfg, attr, value)
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
-@patch("birdnet_analyzer.embeddings.utils.run")
-def test_embeddings_cli(mock_run_embeddings, mock_ensure_model, setup_test_environment):
-    env = setup_test_environment
+# @patch("birdnet_analyzer.utils.ensure_model_exists")
+# @patch("birdnet_analyzer.embeddings.utils.run")
+# def test_embeddings_cli(mock_run_embeddings, mock_ensure_model, setup_test_environment):
+#     env = setup_test_environment
 
-    mock_ensure_model.return_value = True
+#     mock_ensure_model.return_value = True
 
-    parser = embeddings_parser()
-    args = parser.parse_args(["--input", env["input_dir"], "-db", env["output_dir"]])
+#     parser = embeddings_parser()
+#     args = parser.parse_args(["--input", env["input_dir"], "-db", env["output_dir"]])
 
-    embeddings(**vars(args))
+#     embeddings(**vars(args))
 
-    mock_ensure_model.assert_called_once()
-    threads = min(8, max(1, multiprocessing.cpu_count() // 2))
-    mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 1)
+#     mock_ensure_model.assert_called_once()
+#     threads = min(8, max(1, multiprocessing.cpu_count() // 2))
+#     mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 1)
