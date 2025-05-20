@@ -32,6 +32,7 @@ if not cfg.MODEL_PATH.endswith(".tflite"):
 INTERPRETER: tflite.Interpreter = None
 C_INTERPRETER: tflite.Interpreter = None
 M_INTERPRETER: tflite.Interpreter = None
+OUTPUT_DETAILS = None
 PBMODEL = None
 C_PBMODEL = None
 EMPTY_CLASS_EXCEPTION_REF = None
@@ -509,26 +510,28 @@ def load_model(class_output=True):
     global INTERPRETER
     global INPUT_LAYER_INDEX
     global OUTPUT_LAYER_INDEX
+    global OUTPUT_DETAILS
 
     # Do we have to load the tflite or protobuf model?
     if cfg.MODEL_PATH.endswith(".tflite"):
-        # Load TFLite model and allocate tensors.
-        INTERPRETER = tflite.Interpreter(
-            model_path=os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), num_threads=cfg.TFLITE_THREADS
-        )
-        INTERPRETER.allocate_tensors()
+        if not INTERPRETER:
+            # Load TFLite model and allocate tensors.
+            INTERPRETER = tflite.Interpreter(
+                model_path=os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), num_threads=cfg.TFLITE_THREADS
+            )
+            INTERPRETER.allocate_tensors()
 
-        # Get input and output tensors.
-        input_details = INTERPRETER.get_input_details()
-        output_details = INTERPRETER.get_output_details()
+            # Get input and output tensors.
+            input_details = INTERPRETER.get_input_details()
+            OUTPUT_DETAILS = INTERPRETER.get_output_details()
 
-        # Get input tensor index
-        INPUT_LAYER_INDEX = input_details[0]["index"]
+            # Get input tensor index
+            INPUT_LAYER_INDEX = input_details[0]["index"]
 
         # Get classification output or feature embeddings
-        OUTPUT_LAYER_INDEX = output_details[0]["index"] if class_output else output_details[0]["index"] - 1
+        OUTPUT_LAYER_INDEX = OUTPUT_DETAILS[0]["index"] if class_output else OUTPUT_DETAILS[0]["index"] - 1
 
-    else:
+    elif not PBMODEL:
         # Load protobuf model
         # Note: This will throw a bunch of warnings about custom gradients
         # which we will ignore until TF lets us block them
@@ -1141,9 +1144,7 @@ def predict(sample):
     if cfg.CUSTOM_CLASSIFIER is not None:
         return predict_with_custom_classifier(sample)
 
-    # Does interpreter or keras model exist?
-    if INTERPRETER is None and PBMODEL is None:
-        load_model()
+    load_model()
 
     if PBMODEL is None:
         # Reshape input tensor
@@ -1197,9 +1198,8 @@ def embeddings(sample):
     Returns:
         The embeddings.
     """
-    # Does interpreter exist?
-    if INTERPRETER is None:
-        load_model(False)
+
+    load_model(False)
 
     # Reshape input tensor
     INTERPRETER.resize_tensor_input(INPUT_LAYER_INDEX, [len(sample), *sample[0].shape])
