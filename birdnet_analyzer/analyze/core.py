@@ -26,6 +26,7 @@ def analyze(
     merge_consecutive: int = 1,
     threads: int = 8,
     locale: str = "en",
+    additional_columns: list[str] | None = None,
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
@@ -53,6 +54,7 @@ def analyze(
         merge_consecutive (int, optional): Merge consecutive detections within this time window in seconds. Defaults to 1.
         threads (int, optional): Number of CPU threads to use for analysis. Defaults to 8.
         locale (str, optional): Locale for species names and output. Defaults to "en".
+        additional_columns (list[str] | None, optional): Additional columns to include in the output. Defaults to None.
     Returns:
         None
     Raises:
@@ -95,6 +97,7 @@ def analyze(
         skip_existing_results=skip_existing_results,
         threads=threads,
         labels_file=cfg.LABELS_FILE,
+        additional_columns=additional_columns,
     )
 
     print(f"Found {len(cfg.FILE_LIST)} files to analyze")
@@ -150,6 +153,7 @@ def _set_params(
     merge_consecutive,
     threads,
     labels_file=None,
+    additional_columns=None,
 ):
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.utils import load_codes
@@ -172,6 +176,7 @@ def _set_params(
     cfg.RESULT_TYPES = rtype
     cfg.COMBINE_RESULTS = combine_results
     cfg.BATCH_SIZE = bs
+    cfg.ADDITIONAL_COLUMNS = additional_columns
 
     if not output:
         if os.path.isfile(cfg.INPUT_PATH):
