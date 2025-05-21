@@ -279,7 +279,7 @@ def _build_extract_tab():
                     gr.Number(interactive=True),
                 )
 
-            return None, None, gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
+            return None, gr.Textbox(visible=False), gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
 
         select_db_directory_btn.click(
             select_directory_and_update_tb,
