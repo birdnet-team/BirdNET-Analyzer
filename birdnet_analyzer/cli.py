@@ -80,10 +80,9 @@ def bandpass_args():
 
     return p
 
-
-def species_args():
+def species_list_args():
     """
-    Creates an argument parser for species-related arguments.
+    Creates an argument parser for species-list arguments.
     Returns:
         argparse.ArgumentParser: The argument parser with the following arguments:
             --lat (float): Recording location latitude. Set -1 to ignore. Default is -1.
@@ -105,16 +104,32 @@ def species_args():
         help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.",
     )
     p.add_argument(
-        "--slist",
-        help='Path to species list file or folder. If folder is provided, species list needs to be named "species_list.txt". If lat and lon are provided, this list will be ignored.',
-    )
-    p.add_argument(
         "--sf_thresh",
         type=lambda a: max(0.0001, min(0.99, float(a))),
         default=cfg.LOCATION_FILTER_THRESHOLD,
         help="Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].",
     )
+    return p
 
+def species_args():
+    """
+    Creates an argument parser for species-related arguments including the species-list arguments.
+    Returns:
+        argparse.ArgumentParser: The argument parser with the following arguments:
+            --lat (float): Recording location latitude. Set -1 to ignore. Default is -1.
+            --lon (float): Recording location longitude. Set -1 to ignore. Default is -1.
+            --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
+                          Set -1 for year-round species list. Default is -1.
+            --sf_thresh (float): Minimum species occurrence frequency threshold for location filter. Values in [0.01, 0.99].
+                                 Defaults to cfg.LOCATION_FILTER_THRESHOLD.
+            --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
+                           "species_list.txt". If lat and lon are provided, this list will be ignored.
+    """
+    p = species_list_args()
+    p.add_argument(
+        "--slist",
+        help='Path to species list file or folder. If folder is provided, species list needs to be named "species_list.txt". If lat and lon are provided, this list will be ignored.',
+    )
     return p
 
 
@@ -555,7 +570,7 @@ def species_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[species_args()],
+        parents=[species_list_args()],
     )
     parser.add_argument(
         "output",
