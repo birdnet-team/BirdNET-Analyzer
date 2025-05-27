@@ -25,6 +25,7 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     Args:
         item: (filepath, config)
     """
+
     # Get file path and restore cfg
     fpath: str = item[0]
     cfg.set_config(item[1])
@@ -124,7 +125,44 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
         db.commit()
 
 
-def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize):
+def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB):
+    """Creates a file output for the database.
+
+    Args:
+        output_path: Path to the output file.
+        db: Database object.
+    """
+    # Check if output path exists
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    # Get all embeddings
+    embedding_ids = db.get_embedding_ids()
+
+    # Write embeddings to file
+    for embedding_id in embedding_ids:
+        embedding = db.get_embedding(embedding_id)
+        source = db.get_embedding_source(embedding_id)
+
+        # Get start and end time
+        start, end = source.offsets
+
+        source_id = source.source_id.rsplit(".", 1)[0]
+
+        filename = f"{source_id}_{start}_{end}.birdnet.embeddings.txt"
+
+        # Get the common prefix between the output path and the filename
+        common_prefix = os.path.commonpath([output_path, os.path.dirname(filename)])
+        relative_filename = os.path.relpath(filename, common_prefix)
+        target_path = os.path.join(output_path, relative_filename)
+
+        # Ensure the target directory exists
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+        # Write embedding values to a text file
+        with open(target_path, "w") as f:
+            f.write(",".join(map(str, embedding.tolist())))
+
+def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
     ### Make sure to comment out appropriately if you are not using args. ###
 
     # Set input and output path
@@ -175,5 +213,8 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
     else:
         with Pool(cfg.CPU_THREADS) as p:
             tqdm(p.imap(partial(analyze_file, db=db), flist))
+
+    if file_output is not None and file_output != "":
+        create_file_output(file_output, db)
 
     db.db.close()

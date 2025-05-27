@@ -11,6 +11,7 @@ Welcome to the BirdNET-Analyzer documentation! This guide provides detailed info
    usage
    models
    best-practices
+   implementation-details
    faq
    showroom
    birdnetr

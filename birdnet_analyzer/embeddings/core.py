@@ -8,6 +8,7 @@ def embeddings(
     fmax: int = 15000,
     threads: int = 8,
     batch_size: int = 1,
+    file_output: str | None = None,
 ):
     """
     Generates embeddings for audio files using the BirdNET-Analyzer.
@@ -46,7 +47,7 @@ def embeddings(
     from birdnet_analyzer.utils import ensure_model_exists
 
     ensure_model_exists()
-    run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batch_size)
+    run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
 
 
 def get_database(db_path: str):
