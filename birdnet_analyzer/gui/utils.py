@@ -10,27 +10,8 @@ import gradio as gr
 import webview
 
 import birdnet_analyzer.config as cfg
-from birdnet_analyzer import utils
-
-if utils.FROZEN:
-    # divert stdout & stderr to logs.txt file since we have no console when deployed
-    userdir = Path.home()
-
-    if sys.platform == "win32":
-        userdir /= "AppData/Roaming"
-    elif sys.platform == "linux":
-        userdir /= ".local/share"
-    elif sys.platform == "darwin":
-        userdir /= "Library/Application Support"
-
-    APPDIR = userdir / "BirdNET-Analyzer-GUI"
-
-    APPDIR.mkdir(parents=True, exist_ok=True)
-
-    sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")  # noqa: SIM115
-    cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
-
 import birdnet_analyzer.gui.localization as loc
+from birdnet_analyzer import utils
 from birdnet_analyzer.gui import settings
 
 loc.load_local_state()
@@ -41,11 +22,11 @@ _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
-_WINDOW: webview.Window = None
+_WINDOW: webview.Window | None = None
 _URL = ""
 
 
-def gui_runtime_error_handler(f: callable):
+def gui_runtime_error_handler(f):
     """
     A decorator function to handle errors during the execution of a callable.
 
@@ -196,9 +177,7 @@ def select_directory(collect_files=True, max_files=None, state_key=None):
 
         files = utils.collect_audio_files(dir_name, max_files=max_files)
 
-        return dir_name, [
-            [os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files
-        ]
+        return dir_name, [[os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files]
 
     return dir_name if dir_name else None
 
@@ -417,9 +396,7 @@ def locale():
         The dropdown element.
     """
     label_files = os.listdir(ORIGINAL_TRANSLATED_LABELS_PATH)
-    options = ["EN"] + [
-        label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files
-    ]
+    options = ["EN"] + [label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files]
 
     return gr.Dropdown(
         options,
@@ -460,18 +437,12 @@ def species_list_coordinates(show_map=False):
 
         map_plot = gr.Plot(plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map)
 
-        lat_number.change(
-            plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False
-        )
-        lon_number.change(
-            plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False
-        )
+        lat_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False)
+        lon_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False)
 
     with gr.Group():
         with gr.Row():
-            yearlong_checkbox = gr.Checkbox(
-                True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label")
-            )
+            yearlong_checkbox = gr.Checkbox(True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label"))
             week_number = gr.Slider(
                 minimum=1,
                 maximum=48,
@@ -509,9 +480,7 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
         The selected file or None of the dialog was canceled.
     """
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    file = _WINDOW.create_file_dialog(
-        webview.SAVE_DIALOG, file_types=filetypes, directory=initial_selection, save_filename=default_filename
-    )
+    file = _WINDOW.create_file_dialog(webview.SAVE_DIALOG, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
 
     if file:
         if state_key:
@@ -608,19 +577,13 @@ def species_lists(opened=True):
         )
 
         with gr.Column(visible=False) as position_row:
-            lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = (
-                species_list_coordinates()
-            )
+            lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = species_list_coordinates()
 
-        species_file_input = gr.File(
-            file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label")
-        )
+        species_file_input = gr.File(file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label"))
         empty_col = gr.Column()
 
         with gr.Column(visible=False) as custom_classifier_selector:
-            classifier_selection_button = gr.Button(
-                loc.localize("species-list-custom-classifier-selection-button-label")
-            )
+            classifier_selection_button = gr.Button(loc.localize("species-list-custom-classifier-selection-button-label"))
             classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False)
             selected_classifier_state = gr.State()
 
@@ -696,9 +659,7 @@ def _get_network_shortcuts():
                     try:
                         # https://learn.microsoft.com/de-de/windows/win32/shell/links
                         # CLSID_ShellLink: Class ID for Shell Link object
-                        shell_link = pythoncom.CoCreateInstance(
-                            shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink
-                        )
+                        shell_link = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink)
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
                         # Query IPersistFile interface used to
@@ -771,12 +732,18 @@ def open_window(builder: list[Callable] | Callable):
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
+    i18n = gr.I18n(
+        en={"greeting": "Hello, welcome to my app!", "submit": "Submit"},
+        es={"greeting": "¡Hola, bienvenido a mi aplicación!", "submit": "Enviar"},
+        fr={"greeting": "Bonjour, bienvenue dans mon application!", "submit": "Soumettre"},
+    )
     _URL = demo.queue(api_open=False).launch(
         prevent_thread_lock=True,
         quiet=True,
         show_api=False,
         enable_monitoring=False,
         allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
+        i18n=i18n,
     )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(

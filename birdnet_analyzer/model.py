@@ -141,8 +141,8 @@ def mixup(x, y, augmentation_ratio=0.25, alpha=0.2):
         # Mark the sample as already mixed up
         mixed_up_indices.append(index)
 
-    del mixed_x
-    del mixed_y
+        del mixed_x
+        del mixed_y
 
     return x, y
 
@@ -296,7 +296,7 @@ def random_multilabel_split(x, y, val_ratio=0.2):
     return x_train, y_train, x_val, y_val
 
 
-def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply: callable, size=2):
+def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply, size=2):
     """
     Upsamples the minority class in the dataset using the specified apply function.
     Parameters:

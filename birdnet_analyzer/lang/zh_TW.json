@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "前 N 個物種",
     "inference-settings-use-top-n-checkbox-info": "挑選依信賴分數排序的前 N 個物種",
     "inference-settings-use-top-n-checkbox-label": "使用前 N 個物種",
+    "multi-tab-additional-columns-checkbox-info": "將額外欄位加入輸出中。「開始（秒）」、「結束（秒）」、「學名」、「常見名稱」、「信心度」、「檔案」已包含在內。",
+    "multi-tab-additional-columns-checkbox-label": "CSV 額外欄位",
     "multi-tab-batchsize-number-info": "在同一時間分析的音檔數量",
     "multi-tab-batchsize-number-label": "批次量",
     "multi-tab-input-selection-button-label": "選擇音檔資料夾(遞迴)",

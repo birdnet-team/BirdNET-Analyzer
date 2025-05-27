@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "Топ N видов",
     "inference-settings-use-top-n-checkbox-info": "Выбирает N лучших видов, отсортированных по степени достоверности.",
     "inference-settings-use-top-n-checkbox-label": "Использовать N лучших видов",
+    "multi-tab-additional-columns-checkbox-info": "Добавляет дополнительные столбцы в вывод. \"Начало (с)\", \"Конец (с)\", \"Научное название\", \"Общее название\", \"Уверенность\", \"Файл\" уже включены.",
+    "multi-tab-additional-columns-checkbox-label": "Дополнительные столбцы для CSV",
     "multi-tab-batchsize-number-info": "Количество образцов для одновременной обработки.",
     "multi-tab-batchsize-number-label": "Размер пакета",
     "multi-tab-input-selection-button-label": "Выберите входной каталог (рекурсивный)",

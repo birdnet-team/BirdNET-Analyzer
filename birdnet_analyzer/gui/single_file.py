@@ -65,6 +65,7 @@ def run_single_file_analysis(
         custom_classifier_file,
         "csv",
         None,
+        False,
         locale if locale else "en",
         1,
         4,

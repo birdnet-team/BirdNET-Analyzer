@@ -114,7 +114,7 @@ USE_NOISE: bool = False
 # 'audacity' denotes a TXT file with the same format as Audacity timeline labels
 # 'csv' denotes a generic CSV file with start, end, species and confidence.
 RESULT_TYPES: set[str] | list[str] = {"table"}
-ADDITIONAL_COLUMNS: list[str] = None
+ADDITIONAL_COLUMNS: list[str] | None = None
 OUTPUT_RAVEN_FILENAME: str = "BirdNET_SelectionTable.txt"  # this is for combined Raven selection tables only
 # OUTPUT_RTABLE_FILENAME: str = "BirdNET_RTable.csv"
 OUTPUT_KALEIDOSCOPE_FILENAME: str = "BirdNET_Kaleidoscope.csv"
@@ -227,7 +227,7 @@ FILE_STORAGE_PATH: str = ""
 # Path to custom trained classifier
 # If None, no custom classifier will be used
 # Make sure to set the LABELS_FILE above accordingly
-CUSTOM_CLASSIFIER = None
+CUSTOM_CLASSIFIER: str | None = None
 
 ######################
 # Get and set config #

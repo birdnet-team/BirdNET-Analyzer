@@ -4,6 +4,7 @@ import datetime
 import json
 import operator
 import os
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -395,7 +396,7 @@ def combine_csv_files(saved_results: list[str]):
         f.write(out_string)
 
 
-def combine_results(saved_results: list[dict[str, str]]):
+def combine_results(saved_results: Sequence[dict[str, str]| None]):
     """
     Combines various types of result files based on the configuration settings.
     This function checks the types of results specified in the configuration
@@ -574,7 +575,7 @@ def get_result_file_names(fpath: str):
     return result_names
 
 
-def analyze_file(item):
+def analyze_file(item) -> dict[str, str] | None:
     """
     Analyzes an audio file and generates prediction results.
 

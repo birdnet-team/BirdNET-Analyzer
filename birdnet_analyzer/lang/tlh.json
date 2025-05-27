@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "N top Segh",
     "inference-settings-use-top-n-checkbox-info": "povmeH mI' lISbogh N top Segh wIv.",
     "inference-settings-use-top-n-checkbox-label": "N top Segh yIlo'",
+    "multi-tab-additional-columns-checkbox-info": "De' chu' mIwDaq chel. \"tagh (s)\", \"Dor (s)\", \"Sarmaq pong\", \"pop pong\", \"voQSIp\", \"chovnatlh\" already tu'.",
+    "multi-tab-additional-columns-checkbox-label": "CSV mey chu'",
     "multi-tab-batchsize-number-info": "wavmey chu'law'.",
     "multi-tab-batchsize-number-label": "batch qechmey",
     "multi-tab-input-selection-button-label": "wav Segh lo'",
