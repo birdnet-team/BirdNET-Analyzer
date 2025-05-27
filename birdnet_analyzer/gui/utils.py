@@ -732,18 +732,12 @@ def open_window(builder: list[Callable] | Callable):
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
-    i18n = gr.I18n(
-        en={"greeting": "Hello, welcome to my app!", "submit": "Submit"},
-        es={"greeting": "¡Hola, bienvenido a mi aplicación!", "submit": "Enviar"},
-        fr={"greeting": "Bonjour, bienvenue dans mon application!", "submit": "Soumettre"},
-    )
     _URL = demo.queue(api_open=False).launch(
         prevent_thread_lock=True,
         quiet=True,
         show_api=False,
         enable_monitoring=False,
         allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
-        i18n=i18n,
     )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
