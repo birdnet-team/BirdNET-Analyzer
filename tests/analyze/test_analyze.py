@@ -1,6 +1,8 @@
+import csv
 import os
 import shutil
 import tempfile
+
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -311,3 +313,49 @@ def test_analyze_with_slow_down(mock_ensure_model, setup_test_environment):
             assert np.isclose(start, index * 0.6), "Start time does not match expected value"
             assert np.isclose(end, (index + 1) * 0.6), "End time does not match expected value"
 
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environment):
+    """Test analyzing with additional columns."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(
+        soundscape_path,
+        env["output_dir"],
+        top_n=1,
+        min_conf=0,
+        additional_columns=["lat", "lon", "week", "model", "overlap", "sensitivity", "species_list", "min_conf"],
+        lat=42.5,
+        lon=-76.45,
+        week=20,
+        rtype=["csv"],
+    )
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.results.csv")
+    assert os.path.exists(output_file)
+
+    with open(output_file) as f:
+        reader = csv.DictReader(f)
+        headers = reader.fieldnames
+        assert "lat" in headers, "Latitude column not found in output"
+        assert "lon" in headers, "Longitude column not found in output"
+        assert "week" in headers, "Week column not found in output"
+        assert "model" in headers, "Model column not found in output"
+        assert "overlap" in headers, "Overlap column not found in output"
+        assert "sensitivity" in headers, "Sensitivity column not found in output"
+        assert "species_list" in headers, "Species list column not found in output"
+        assert "min_conf" in headers, "Min confidence column not found in output"
+
+        for row in reader:
+            assert float(row["lat"]) == 42.5, "Latitude value does not match expected value"
+            assert float(row["lon"]) == -76.45, "Longitude value does not match expected value"
+            assert int(row["week"]) == 20, "Week value does not match expected value"
+            assert row["model"] == os.path.basename(cfg.MODEL_PATH), "Model value does not match expected value"
+            assert float(row["overlap"]) == cfg.SIG_OVERLAP, "Overlap value does not match expected value"
+            assert float(row["sensitivity"]) == cfg.SIGMOID_SENSITIVITY, "Sensitivity value does not match expected value"
+            assert row["species_list"] == "", "Species list value does not match expected value"
+            assert float(row["min_conf"]) == 0, "Min confidence value does not match expected value"
