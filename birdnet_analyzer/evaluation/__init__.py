@@ -9,6 +9,7 @@ for columns, class mappings, and filtering based on selected classes or recordin
 import argparse
 import json
 import os
+from collections.abc import Sequence
 
 from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     PerformanceAssessor,
@@ -25,7 +26,7 @@ def process_data(
     recording_duration: float | None = None,
     columns_annotations: dict[str, str] | None = None,
     columns_predictions: dict[str, str] | None = None,
-    selected_classes: list[str] | None = None,
+    selected_classes: Sequence[str] | None = None,
     selected_recordings: list[str] | None = None,
     metrics_list: tuple[str, ...] = ("accuracy", "precision", "recall"),
     threshold: float = 0.1,

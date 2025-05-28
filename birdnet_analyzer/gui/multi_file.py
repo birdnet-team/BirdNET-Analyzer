@@ -1,4 +1,4 @@
- # ruff: noqa: I001
+# ruff: noqa: I001
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
@@ -11,7 +11,16 @@ OUTPUT_TYPE_MAP = {
     "CSV": "csv",
     "Kaleidoscope": "kaleidoscope",
 }
-
+ADDITIONAL_COLUMNS_MAP = {
+    "Latitude": "lat",
+    "Longitude": "lon",
+    "Week": "week",
+    "Overlap": "overlap",
+    "Sensitivity": "sensitivity",
+    "Minimum confidence": "min_conf",
+    "Species list file": "species_list",
+    "Model file": "model",
+}
 
 @gu.gui_runtime_error_handler
 def run_batch_analysis(
@@ -34,6 +43,7 @@ def run_batch_analysis(
     sf_thresh,
     custom_classifier_file,
     output_type,
+    additional_columns,
     combine_tables,
     locale,
     batch_size,
@@ -75,6 +85,7 @@ def run_batch_analysis(
         sf_thresh,
         custom_classifier_file,
         output_type,
+        additional_columns,
         combine_tables,
         locale if locale else "en",
         batch_size if batch_size and batch_size > 0 else 1,
@@ -113,9 +124,7 @@ def build_multi_analysis_tab():
 
                     return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]]]
 
-                select_directory_btn.click(
-                    select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress=True
-                )
+                select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress=True)
 
             with gr.Column():
                 select_out_directory_btn = gr.Button(loc.localize("multi-tab-output-selection-button-label"))
@@ -165,6 +174,12 @@ def build_multi_analysis_tab():
                 value="table",
                 label=loc.localize("multi-tab-output-radio-label"),
                 info=loc.localize("multi-tab-output-radio-info"),
+            )
+            additional_columns_ = gr.CheckboxGroup(
+                list(ADDITIONAL_COLUMNS_MAP.items()),
+                visible=False,
+                label=loc.localize("multi-tab-additional-columns-checkbox-label"),
+                info=loc.localize("multi-tab-additional-columns-checkbox-info"),
             )
 
             with gr.Row():
@@ -228,6 +243,7 @@ def build_multi_analysis_tab():
             sf_thresh_number,
             selected_classifier_state,
             output_type_radio,
+            additional_columns_,
             combine_tables_checkbox,
             locale_radio,
             batch_size_number,
@@ -236,7 +252,11 @@ def build_multi_analysis_tab():
             skip_existing_checkbox,
         ]
 
+        def show_additional_columns(values):
+            return gr.update(visible="csv" in values)
+
         start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
+        output_type_radio.change(show_additional_columns, inputs=output_type_radio, outputs=additional_columns_)
 
     return lat_number, lon_number, map_plot
 

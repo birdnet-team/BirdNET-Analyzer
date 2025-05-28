@@ -12,27 +12,8 @@ import gradio as gr
 import webview
 
 import birdnet_analyzer.config as cfg
-from birdnet_analyzer import utils
-
-if utils.FROZEN:
-    # divert stdout & stderr to logs.txt file since we have no console when deployed
-    userdir = Path.home()
-
-    if sys.platform == "win32":
-        userdir /= "AppData/Roaming"
-    elif sys.platform == "linux":
-        userdir /= ".local/share"
-    elif sys.platform == "darwin":
-        userdir /= "Library/Application Support"
-
-    APPDIR = userdir / "BirdNET-Analyzer-GUI"
-
-    APPDIR.mkdir(parents=True, exist_ok=True)
-
-    sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")  # noqa: SIM115
-    cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
-
 import birdnet_analyzer.gui.localization as loc
+from birdnet_analyzer import utils
 from birdnet_analyzer.gui import settings
 
 loc.load_local_state()
@@ -43,11 +24,11 @@ _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
-_WINDOW: webview.Window = None
+_WINDOW: webview.Window | None = None
 _URL = ""
 
 
-def gui_runtime_error_handler(f: callable):
+def gui_runtime_error_handler(f):
     """
     A decorator function to handle errors during the execution of a callable.
 

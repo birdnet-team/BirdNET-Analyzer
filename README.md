@@ -22,7 +22,7 @@
 
 </div>
 
-This repo contains BirdNET models and scripts for processing large amounts of audio data or single audio files.
+This repo contains BirdNET scripts for processing large amounts of audio data or single audio files.
 This is the most advanced version of BirdNET for acoustic analyses and we will keep this repository up-to-date with new models and improved interfaces to enable scientists with no CS background to run the analysis.
 
 Feel free to use BirdNET for your acoustic analyses and research.
@@ -47,6 +47,7 @@ You can access documentation for this project [here](https://birdnet-team.github
 ## Download
 
 You can download installers for Windows and macOS from the [releases page](https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest).
+Models can be found on [Zenodo](https://zenodo.org/records/15050749).
 
 ## About
 

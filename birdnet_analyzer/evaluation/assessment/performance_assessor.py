@@ -202,7 +202,7 @@ class PerformanceAssessor:
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
-    ) -> None:
+    ):
         """
         Plot performance metrics for the given predictions and labels.
 
@@ -228,7 +228,7 @@ class PerformanceAssessor:
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
-    ) -> None:
+    ):
         """
         Plot performance metrics across thresholds for the given predictions and labels.
 
@@ -310,7 +310,7 @@ class PerformanceAssessor:
         self,
         predictions: np.ndarray,
         labels: np.ndarray,
-    ) -> None:
+    ):
         """
         Plot confusion matrices for each class using scikit-learn's ConfusionMatrixDisplay.
 
