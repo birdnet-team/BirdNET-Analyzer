@@ -85,7 +85,7 @@ packages = [
 
 [tool.setuptools.package-data]
 birdnet_analyzer = [
-    "eBird_taxonomy_codes_2021E.json",
+    "eBird_taxonomy_codes_2024E.json",
     "lang/*",
     "labels/**/*",
     "gui/assets/**/*",
