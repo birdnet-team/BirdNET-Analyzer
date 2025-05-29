@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "N parasta lajia",
     "inference-settings-use-top-n-checkbox-info": "Valitsee N parasta lajia luotettavuuden perusteella.",
     "inference-settings-use-top-n-checkbox-label": "Käytä N parasta lajia",
+    "multi-tab-additional-columns-checkbox-info": "Lisää tulosteeseen lisäsarakkeita. \"Aloitus (s)\", \"Lopetus (s)\", \"Tieteellinen nimi\", \"Yleisnimi\", \"Luottamus\", \"Tiedosto\" sisältyvät jo.",
+    "multi-tab-additional-columns-checkbox-label": "Lisäsarakkeet CSV:lle",
     "multi-tab-batchsize-number-info": "Kerralla käsiteltävien näytteiden määrä.",
     "multi-tab-batchsize-number-label": "Eräkoko",
     "multi-tab-input-selection-button-label": "Valitse syötehakemisto (rekursiivinen)",

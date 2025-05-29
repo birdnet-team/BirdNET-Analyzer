@@ -21,7 +21,7 @@ import pandas as pd
 import seaborn as sns
 
 
-def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Figure:
+def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
     """
     Plots a bar chart for overall performance metrics.
 
@@ -69,7 +69,7 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Fig
     return fig
 
 
-def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]) -> plt.Figure:
+def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
     """
     Plots metric values per class, with each metric represented by a distinct color and line.
 
@@ -130,7 +130,7 @@ def plot_metrics_across_thresholds(
     metric_values_dict: dict[str, np.ndarray],
     metrics_to_plot: list[str],
     colors: list[str],
-) -> plt.Figure:
+):
     """
     Plots metrics across different thresholds.
 
@@ -199,7 +199,7 @@ def plot_metrics_across_thresholds_per_class(
     metrics_to_plot: list[str],
     class_names: list[str],
     colors: list[str],
-) -> plt.Figure:
+):
     """
     Plots metrics across different thresholds per class.
 
@@ -265,10 +265,7 @@ def plot_metrics_across_thresholds_per_class(
                 raise KeyError(f"Metric '{metric_name}' not found for class '{class_name}'.")
             metric_values = metric_values_dict[metric_name]
             if len(metric_values) != len(thresholds):
-                raise ValueError(
-                    f"Length of metric '{metric_name}' values for class '{class_name}' "
-                    + "does not match length of thresholds."
-                )
+                raise ValueError(f"Length of metric '{metric_name}' values for class '{class_name}' " + "does not match length of thresholds.")
             ax.plot(
                 thresholds,
                 metric_values,
@@ -299,7 +296,7 @@ def plot_confusion_matrices(
     conf_mat: np.ndarray,
     task: Literal["binary", "multiclass", "multilabel"],
     class_names: list[str],
-) -> plt.Figure:
+):
     """
     Plots confusion matrices for each class in a single figure with multiple subplots.
 

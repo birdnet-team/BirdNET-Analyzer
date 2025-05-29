@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "Top N espécies",
     "inference-settings-use-top-n-checkbox-info": "Seleciona as N espécies principais classificadas por pontuação de confiança.",
     "inference-settings-use-top-n-checkbox-label": "Usar as N espécies principais",
+    "multi-tab-additional-columns-checkbox-info": "Adiciona colunas adicionais à saída. \"Início (s)\", \"Fim (s)\", \"Nome científico\", \"Nome comum\", \"Confiança\", \"Arquivo\" já estão incluídos.",
+    "multi-tab-additional-columns-checkbox-label": "Colunas adicionais para CSV",
     "multi-tab-batchsize-number-info": "Número de amostras a serem processadas ao mesmo tempo.",
     "multi-tab-batchsize-number-label": "Tamanho do lote (Batch size)",
     "multi-tab-input-selection-button-label": "Selecione o diretório de entrada (recursivo)",

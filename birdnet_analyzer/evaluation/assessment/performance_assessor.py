@@ -121,10 +121,7 @@ class PerformanceAssessor:
         if predictions.ndim != 2:
             raise ValueError("predictions and labels must be 2-dimensional arrays.")
         if predictions.shape[1] != self.num_classes:
-            raise ValueError(
-                f"The number of columns in predictions ({predictions.shape[1]}) "
-                + f"must match num_classes ({self.num_classes})."
-            )
+            raise ValueError(f"The number of columns in predictions ({predictions.shape[1]}) " + f"must match num_classes ({self.num_classes}).")
 
         # Determine the averaging method for metrics
         if per_class_metrics and self.num_classes == 1:
@@ -192,11 +189,7 @@ class PerformanceAssessor:
                 metrics_results["Accuracy"] = np.atleast_1d(result)
 
         # Define column names for the DataFrame
-        columns = (
-            (self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)])
-            if per_class_metrics
-            else ["Overall"]
-        )
+        columns = (self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)]) if per_class_metrics else ["Overall"]
 
         # Create a DataFrame to organize metric results
         metrics_data = {key: np.atleast_1d(value) for key, value in metrics_results.items()}
@@ -207,7 +200,7 @@ class PerformanceAssessor:
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
-    ) -> None:
+    ):
         """
         Plot performance metrics for the given predictions and labels.
 
@@ -226,18 +219,14 @@ class PerformanceAssessor:
         metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics)
 
         # Choose the plotting method based on whether per-class metrics are required
-        return (
-            plotting.plot_metrics_per_class(metrics_df, self.colors)
-            if per_class_metrics
-            else plotting.plot_overall_metrics(metrics_df, self.colors)
-        )
+        return plotting.plot_metrics_per_class(metrics_df, self.colors) if per_class_metrics else plotting.plot_overall_metrics(metrics_df, self.colors)
 
     def plot_metrics_all_thresholds(
         self,
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
-    ) -> None:
+    ):
         """
         Plot performance metrics across thresholds for the given predictions and labels.
 
@@ -266,9 +255,7 @@ class PerformanceAssessor:
             class_names = list(self.classes) if self.classes else [f"Class {i}" for i in range(self.num_classes)]
 
             # Initialize a dictionary to store metric values per class
-            metric_values_dict_per_class = {
-                class_name: {metric: [] for metric in metrics_to_plot} for class_name in class_names
-            }
+            metric_values_dict_per_class = {class_name: {metric: [] for metric in metrics_to_plot} for class_name in class_names}
 
             # Compute metrics for each threshold
             for thresh in thresholds:
@@ -321,7 +308,7 @@ class PerformanceAssessor:
         self,
         predictions: np.ndarray,
         labels: np.ndarray,
-    ) -> None:
+    ):
         """
         Plot confusion matrices for each class using scikit-learn's ConfusionMatrixDisplay.
 
@@ -346,10 +333,7 @@ class PerformanceAssessor:
         if predictions.ndim != 2:
             raise ValueError("predictions and labels must be 2-dimensional arrays.")
         if predictions.shape[1] != self.num_classes:
-            raise ValueError(
-                f"The number of columns in predictions ({predictions.shape[1]}) "
-                + f"must match num_classes ({self.num_classes})."
-            )
+            raise ValueError(f"The number of columns in predictions ({predictions.shape[1]}) " + f"must match num_classes ({self.num_classes}).")
 
         if self.task == "binary":
             # Binarize predictions using the threshold

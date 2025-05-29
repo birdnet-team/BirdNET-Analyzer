@@ -20,9 +20,11 @@
 [![GitHub release](https://img.shields.io/github/v/release/birdnet-team/BirdNET-Analyzer)](https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest)
 [![PyPI - Version](https://img.shields.io/pypi/v/birdnet_analyzer?logo=pypi)](https://pypi.org/project/birdnet-analyzer/)
 
+[![Sponsor](https://img.shields.io/badge/Support%20our%20work-8A2BE2?logo=data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4=)](https://give.birds.cornell.edu/page/132162/donate/1)
+
 </div>
 
-This repo contains BirdNET models and scripts for processing large amounts of audio data or single audio files.
+This repo contains BirdNET scripts for processing large amounts of audio data or single audio files.
 This is the most advanced version of BirdNET for acoustic analyses and we will keep this repository up-to-date with new models and improved interfaces to enable scientists with no CS background to run the analysis.
 
 Feel free to use BirdNET for your acoustic analyses and research.
@@ -47,6 +49,7 @@ You can access documentation for this project [here](https://birdnet-team.github
 ## Download
 
 You can download installers for Windows and macOS from the [releases page](https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest).
+Models can be found on [Zenodo](https://zenodo.org/records/15050749).
 
 ## About
 
