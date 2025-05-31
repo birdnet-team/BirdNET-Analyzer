@@ -1609,6 +1609,7 @@ Coryphistera alaudina_Ševolika pećarka
 Coryphospingus cucullatus_Crvena krunasta zeba
 Coryphospingus pileatus_Siva krunasta zeba
 Corythaeola cristata_Veliki plavi turako
+Corythaixoides concolor_Sivi turako
 Corythaixoides leucogaster_White-bellied Go-away-bird
 Corythopis delalandi_Južni koritopis
 Corythopis torquatus_Prstenasti koritopis
@@ -1668,7 +1669,6 @@ Crax rubra_Veliki hoko
 Creagrus furcatus_Rašljorepi galeb
 Creatophora cinerea_Resasti čvorak
 Crex crex_Prdavac
-Crinifer concolor_Sivi turako
 Crinifer piscator_Zapadni turako bananaš
 Criniger barbatus_Zapadni bradati grinbul
 Criniger calurus_Riđorepi grinbul
