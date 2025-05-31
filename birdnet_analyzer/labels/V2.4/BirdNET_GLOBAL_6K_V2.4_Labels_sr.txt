@@ -8,15 +8,15 @@ Acanthis cabaret_Mala brezova juričica
 Acanthis flammea_Brezova juričica
 Acanthis hornemanni_Polarna juričica
 Acanthisitta chloris_Carić puškar
-Acanthiza apicalis_Inland Thornbill
-Acanthiza chrysorrhoa_Yellow-rumped Thornbill
+Acanthiza apicalis_Australijska trnokljunka
+Acanthiza chrysorrhoa_Žutoleđa trnokljunka
 Acanthiza ewingii_Tasmanijska trnokljunka
 Acanthiza inornata_Zapadna trnokljunka
 Acanthiza lineata_Prugasta trnokljunka
 Acanthiza nana_Žuta trnokljunka
 Acanthiza pusilla_Smeđa trnokljunka
 Acanthiza reguloides_Žutotrba trnokljunka
-Acanthiza uropygialis_Chestnut-rumped Thornbill
+Acanthiza uropygialis_Kestenjastoleđa trnokljunka
 Acanthorhynchus superciliosus_Zapadni tankokljuni medojed
 Acanthorhynchus tenuirostris_Istočni tankokljuni medojed
 Accipiter badius_Kobac šikra
@@ -48,7 +48,7 @@ Acridotheres ginginianus_Siva mina
 Acridotheres grandis_Velika mina
 Acridotheres javanicus_Javanska mina
 Acridotheres tristis_Smeđa mina
-Acris crepitans_Northern Cricket Frog
+Acris crepitans_Velika ćubasta muharka
 Acris gryllus_Southern Cricket Frog
 Acrobatornis fonsecai_Pink-legged Graveteiro
 Acrocephalus agricola_Stepski trstenjak
@@ -110,12 +110,12 @@ Aethia pusilla_Patuljasta njorčica
 Aethia pygmaea_Brkata njorčica
 Aethopyga christinae_Račvorepa sunčica
 Aethopyga gouldiae_Guldova sunčica
-Aethopyga ignicauda_Fire-tailed Sunbird
+Aethopyga ignicauda_Vatrorepa sunčica
 Aethopyga nipalensis_Green-tailed Sunbird
 Aethopyga saturata_Crnogrla sunčica
-Aethopyga siparaja_Crimson Sunbird
-Aethopyga temminckii_Temminck's Sunbird
-Aethopyga vigorsii_Vigors's Sunbird
+Aethopyga siparaja_Grimizna sunčica
+Aethopyga temminckii_Teminkova sunčica
+Aethopyga vigorsii_Vigorsova sunčica
 Agapornis canus_Sivoglavi agapornis
 Agapornis fischeri_Fišerov agapornis
 Agapornis personatus_Personata agapornis (crnoglavi)
@@ -194,7 +194,7 @@ Amaurospiza moesta_Crno-plavi zrnojed
 Amazilia luciae_Honduraski smaragdni kolibri
 Amazilia rutila_Cimetasti amazilija kolibri
 Amazilia tzacatl_Riđorepi amazilija kolibri
-Amazilia yucatanensis_Buff-bellied Hummingbird
+Amazilia yucatanensis_Riđotrbi amazilija kolibri
 Amazilis amazilia_Obični amazilija kolibri
 Amazona aestiva_Plavočeli amazonac
 Amazona agilis_Crnokljuni amazonac
@@ -243,12 +243,12 @@ Ampelion rubrocristatus_Kotinga sa crvenom ćubom
 Ampelion rufaxilla_Kotinga sa kestenjastom ćubom
 Ampelornis griseiceps_Gray-headed Antbird
 Amphispiza bilineata_Crnogrli strnad
-Amphispizopsis quinquestriata_Five-striped Sparrow
-Anabacerthia amaurotis_White-browed Foliage-gleaner
+Amphispizopsis quinquestriata_Petoprugi strnad
+Anabacerthia amaurotis_Beloobrvasta krošnjarka
 Anabacerthia lichtensteini_Ochre-breasted Foliage-gleaner
-Anabacerthia ruficaudata_Rufous-tailed Foliage-gleaner
+Anabacerthia ruficaudata_Riđorepa krošnjarka
 Anabacerthia striaticollis_Montane Foliage-gleaner
-Anabacerthia variegaticeps_Scaly-throated Foliage-gleaner
+Anabacerthia variegaticeps_Ljuskasta krošnjarka
 Anabazenops dorsalis_Tamnolika krošnjarka
 Anabazenops fuscus_Belovrata krošnjarka
 Anairetes alpinus_Garava seničarka
@@ -294,7 +294,7 @@ Anhima cornuta_Rogata kreštalica
 Anhinga anhinga_Američka zmijovrata
 Anhinga melanogaster_Azijska zmijovrata
 Anhinga novaehollandiae_Australazijska zmijovrata
-Anisognathus igniventris_Scarlet-bellied Mountain Tanager
+Anisognathus igniventris_Skerletnotrba planinska tangara
 Anisognathus lacrymosus_Lacrimose Mountain Tanager
 Anisognathus somptuosus_Plavokrila planinska tangara
 Anodorhynchus hyacinthinus_Velika plava ara
@@ -326,7 +326,7 @@ Anthochaera paradoxa_Resasti medojed sa žutim resama
 Anthochaera phrygia_Kraljevski resasti medojed
 Anthornis melanura_Medojed zvonar
 Anthoscopus minutus_Južna senica vuga
-Anthoscopus musculus_Mouse-colored Penduline-Tit
+Anthoscopus musculus_Bleda senica vuga
 Anthracoceros albirostris_Belokljuni kljunorožac
 Anthracoceros coronatus_Malabarski crno-beli kljunorožac
 Anthracoceros malayanus_Crni kljunorožac
@@ -401,7 +401,7 @@ Apaloderma narina_Narina trogon
 Apaloderma vittatum_Bar-tailed Trogon
 Aphanotriccus audax_Crnokljuna muharka
 Aphanotriccus capitalis_Muharka zagasitih grudi
-Aphelocephala leucopsis_Southern Whiteface
+Aphelocephala leucopsis_Južna kratkokljunka
 Aphelocoma californica_Kalifornijska žbunjarska kreja
 Aphelocoma coerulescens_Floridska žbunjarska kreja
 Aphelocoma ultramarina_Vulkanska kreja
@@ -504,19 +504,19 @@ Arremon brunneinucha_Chestnut-capped Brushfinch
 Arremon castaneiceps_Olive Finch
 Arremon costaricensis_Kostarikanski aremon strnad
 Arremon crassirostris_Sooty-faced Finch
-Arremon flavirostris_Saffron-billed Sparrow
+Arremon flavirostris_Šafranasti aremon strnad
 Arremon franciscanus_Sao Francisco Sparrow
 Arremon perijanus_Perija Brushfinch
 Arremon schlegeli_Zlatokrili aremon strnad
 Arremon semitorquatus_Half-collared Sparrow
 Arremon taciturnus_Pectoral Sparrow
 Arremon torquatus_Beloobrvasti aremon strnad
-Arremon virenticeps_Green-striped Brushfinch
+Arremon virenticeps_Zelenoobrvasti aremon strnad
 Arremonops chloronotus_Zelenoleđi strnad
 Arremonops conirostris_Crnoprugi strnad
 Arremonops rufivirgatus_Maslinasti strnad
 Arremonops tocuyensis_Tokujo strnad
-Arses telescopthalmus_Frilled Monarch
+Arses telescopthalmus_Ćubasta monarh muharica
 Artamus cinereus_Crnolika šumska lasta
 Artamus cyanopterus_Tamna šumska lasta
 Artamus fuscus_Pepeljasta šumska lasta
@@ -612,16 +612,16 @@ Aulacorhynchus coeruleicinctis_Blue-banded Toucanet
 Aulacorhynchus derbianus_Chestnut-tipped Toucanet
 Aulacorhynchus haematopygus_Crimson-rumped Toucanet
 Aulacorhynchus prasinus_Severni smaragdni tukanet
-Aulacorhynchus sulcatus_Groove-billed Toucanet
+Aulacorhynchus sulcatus_Plavoliki zeleni tukanet
 Auriparus flaviceps_Verdin senica
 Automolus exsertus_Chiriqui Foliage-gleaner
-Automolus infuscatus_Olive-backed Foliage-gleaner
-Automolus leucophthalmus_White-eyed Foliage-gleaner
-Automolus melanopezus_Brown-rumped Foliage-gleaner
-Automolus ochrolaemus_Ochre-throated Foliage-gleaner
-Automolus paraensis_Para Foliage-gleaner
-Automolus rufipileatus_Chestnut-crowned Foliage-gleaner
-Automolus subulatus_Eastern Woodhaunter
+Automolus infuscatus_Maslinastoleđa krošnjarka
+Automolus leucophthalmus_Belooka krošnjarka
+Automolus melanopezus_Smeđoleđa krošnjarka
+Automolus ochrolaemus_Okerogrla krošnjarka
+Automolus paraensis_Istočna maslinastoleđa krošnjarka
+Automolus rufipileatus_Kestenjastokruna krošnjarka
+Automolus subulatus_Istočna krošnjarka
 Aviceda jerdoni_Džerdonova baza
 Aviceda leuphotes_Crna baza
 Aviceda subcristata_Pacifička baza
@@ -644,7 +644,7 @@ Bambusicola fytchii_Planinska bambusova jarebica
 Bambusicola sonorivox_Tajvanska bambusova jarebica
 Bambusicola thoracicus_Kineska bambusova jarebica
 Bangsia aureocincta_Gold-ringed Tanager
-Bangsia edwardsi_Moss-backed Tanager
+Bangsia edwardsi_Zelenoleđa tangara
 Bangsia melanochlamys_Black-and-gold Tanager
 Barnardius zonarius_Kragnasti papagaj
 Bartramia longicauda_Crnokrili sprudnik
@@ -659,9 +659,9 @@ Basileuterus melanotis_Kostarikanska cvrkutarka
 Basileuterus rufifrons_Rufous-capped Warbler
 Basileuterus trifasciatus_Tropojasna cvrkutarka
 Basileuterus tristriatus_Troprugasta cvrkutarka
-Basilinna leucotis_White-eared Hummingbird
+Basilinna leucotis_Belouhi kolibri
 Batara cinerea_Džinovski mravlji svračak
-Bathmocercus rufus_Black-faced Rufous-Warbler
+Bathmocercus rufus_Crnolika riđa grmuša
 Batis capensis_Kapski batis
 Batis erlangeri_Zapadni crnoglavi batis
 Batis mixta_Kratkorepi batis
@@ -846,7 +846,7 @@ Calcarius pictus_Smitova strnadica ostrugašica
 Calendulauda africanoides_Fawn-colored Lark
 Calendulauda albescens_Ševa iz Karua
 Calendulauda alopex_Foxy Lark
-Calendulauda poecilosterna_Pink-breasted Lark
+Calendulauda poecilosterna_Ružogrla ševa
 Calendulauda sabota_Sabota ševa
 Calicalicus madagascariensis_Crvenorepa vanga
 Calidris acuminata_Sibirska crnogruda sprutka
@@ -1118,11 +1118,11 @@ Certhia himalayana_Himalajski puzić
 Certhia hodgsoni_Hodžsonov puzić
 Certhia manipurensis_Hjumov puzić
 Certhiasomus stictolaemus_Puzavica sa pegom na grlu
-Certhiaxis cinnamomeus_Yellow-chinned Spinetail
-Certhiaxis mustelinus_Red-and-white Spinetail
+Certhiaxis cinnamomeus_Žutobrada strunorepka
+Certhiaxis mustelinus_Crveno-bela strunorepka
 Certhilauda chuana_Bocvanska ševa
 Certhilauda semitorquata_Istočna dugokljuna ševa
-Certhilauda subcoronata_Karoo Long-billed Lark
+Certhilauda subcoronata_Dugokljuna ševa iz Karua
 Certhionyx variegatus_Crno-beli medojed
 Ceryle rudis_Vodomar šarac
 Cettia brunnifrons_Svilorepi cvrčić sivih bokova
@@ -1559,8 +1559,8 @@ Coracina lineata_Barred Cuckooshrike
 Coracina longicauda_Hooded Cuckooshrike
 Coracina macei_Veliki kukavičji svračak
 Coracina novaehollandiae_Crnoliki kukavičji svračak
-Coracina papuensis_White-bellied Cuckooshrike
-Coracina pectoralis_White-breasted Cuckooshrike
+Coracina papuensis_Belotrbi kukavičji svračak
+Coracina pectoralis_Belogrudi kukavičji svračak
 Coracina striata_Kukavičji svračak prugastog trbuha
 Coracopsis nigra_Mali vaza papagaj
 Coracopsis vasa_Veliki vaza papagaj
@@ -1609,7 +1609,7 @@ Coryphistera alaudina_Ševolika pećarka
 Coryphospingus cucullatus_Crvena krunasta zeba
 Coryphospingus pileatus_Siva krunasta zeba
 Corythaeola cristata_Veliki plavi turako
-Corythaixoides concolor_Gray Go-away-bird
+Corythaixoides concolor_Sivi turako
 Corythaixoides leucogaster_White-bellied Go-away-bird
 Corythopis delalandi_Južni koritopis
 Corythopis torquatus_Prstenasti koritopis
@@ -1691,7 +1691,7 @@ Crotophaga ani_Glatkokljuni ani
 Crotophaga major_Veliki ani
 Crotophaga sulcirostris_Kanalokljuni ani
 Crypsirina temia_Širokorepa šumska svraka
-Cryptillas victorini_Victorin's Warbler
+Cryptillas victorini_Viktorinova grmuša
 Cryptoleucopteryx plumbea_Olovnosivi jastreb
 Cryptopezus nattereri_Mravlja pita tačkastih grudi
 Cryptopipo holochlora_Zeleni manakin
@@ -1781,7 +1781,7 @@ Cyanolyca armillata_Kreja sa crnom ogrlicom
 Cyanolyca cucullata_Plavoglava kreja
 Cyanolyca mirabilis_Belogrla kreja
 Cyanolyca nanus_Patuljasta kreja
-Cyanolyca pulchra_Beautiful Jay
+Cyanolyca pulchra_Kolumbijska ukrašena kreja
 Cyanolyca pumilo_Crnogrla kreja
 Cyanolyca turcosa_Tirkizna kreja
 Cyanolyca viridicyanus_Kreja sa belom ogrlicom
@@ -1816,13 +1816,13 @@ Cyornis omissus_Sulawesi Blue Flycatcher
 Cyornis pallidipes_Belotrba plava muharica
 Cyornis poliogenys_Svetlobrada plava muharica
 Cyornis rubeculoides_Plavogrla plava muharica
-Cyornis rufigastra_Mangrove Blue Flycatcher
-Cyornis sumatrensis_Indochinese Blue Flycatcher
+Cyornis rufigastra_Mangrovska plava muharica
+Cyornis sumatrensis_Indokineska plava muharica
 Cyornis superbus_Borneanska plava muharica
 Cyornis tickelliae_Tikelova plava muharica
 Cyornis turcosus_Malezijska plava muharica
 Cyornis umbratilis_Gray-chested Jungle Flycatcher
-Cyornis unicolor_Pale Blue Flycatcher
+Cyornis unicolor_Svetloplava muharica
 Cyornis whitei_Brdska plava muharica
 Cyphorhinus arada_Carić svirač
 Cyphorhinus phaeocephalus_Carić pevač
@@ -1899,22 +1899,22 @@ Dicaeum agile_Debelokljuna cvetarka
 Dicaeum australe_Red-keeled Flowerpecker
 Dicaeum chrysorrheum_Yellow-vented Flowerpecker
 Dicaeum concolor_Nilgiri Flowerpecker
-Dicaeum cruentatum_Scarlet-backed Flowerpecker
+Dicaeum cruentatum_Skerletnoleđa cvetarka
 Dicaeum erythrorhynchos_Bledokljuna cvetarka
 Dicaeum hirundinaceum_Cvetarka imelašica
-Dicaeum ignipectus_Fire-breasted Flowerpecker
-Dicaeum minullum_Plain Flowerpecker
+Dicaeum ignipectus_Plamenogruda cvetarka
+Dicaeum minullum_Smeđa cvetarka
 Dicaeum pygmaeum_Mala cvetarka
-Dicaeum trigonostigma_Orange-bellied Flowerpecker
-Dicaeum tristrami_Mottled Flowerpecker
-Dichrozona cincta_Banded Antbird
+Dicaeum trigonostigma_Narandžastotrba cvetarka
+Dicaeum tristrami_Pirgava cvetarka
+Dichrozona cincta_Šarena mravarka
 Dicrurus adsimilis_Račvorepi drongo
 Dicrurus aeneus_Bronzani drongo
 Dicrurus andamanensis_Andamanski drongo
 Dicrurus annectens_Vranokljuni drongo
 Dicrurus atripennis_Sjajni drongo
 Dicrurus balicassius_Balicassiao
-Dicrurus bracteatus_Spangled Drongo
+Dicrurus bracteatus_Širokorepi drongo
 Dicrurus caerulescens_Belotrbi drongo
 Dicrurus divaricatus_Glossy-backed Drongo
 Dicrurus forficatus_Ćubasti drongo
@@ -2031,7 +2031,7 @@ Ducula zoeae_Zoin imperijalni golub
 Dulus dominicus_Palmarka
 Dumetella carolinensis_Siva mačkulja
 Dumetia atriceps_Dark-fronted Babbler
-Dumetia hyperythra_Tawny-bellied Babbler
+Dumetia hyperythra_Rumenotrba brbljuša
 Dysithamnus leucostictus_Drozdoliki batarito
 Dysithamnus mentalis_Jednobojni batarito
 Dysithamnus occidentalis_Dvobojni batarito
@@ -2056,21 +2056,21 @@ Elachura formosa_Pegava elahura
 Elaenia albiceps_Beloćuba elenija
 Elaenia brachyptera_Coopmans's Elaenia
 Elaenia chiriquensis_Mala elenija
-Elaenia cristata_Plain-crested Elaenia
-Elaenia fallax_Greater Antillean Elaenia
+Elaenia cristata_Ćubasta elenija
+Elaenia fallax_Elenija sa Velikih Antila
 Elaenia flavogaster_Žutotrba elenija
 Elaenia frantzii_Planinska elenija
-Elaenia gigas_Mottle-backed Elaenia
+Elaenia gigas_Pirgava elenija
 Elaenia martinica_Karipska elenija
 Elaenia mesoleuca_Olivaceous Elaenia
-Elaenia obscura_Highland Elaenia
+Elaenia obscura_Andska planinska elenija
 Elaenia olivina_Elenija iz Tepuija
-Elaenia pallatangae_Sierran Elaenia
+Elaenia pallatangae_Sijerska elenija
 Elaenia parvirostris_Sitnokljuna elenija
 Elaenia ruficeps_Rufous-crowned Elaenia
 Elaenia sordida_Small-headed Elaenia
 Elaenia spectabilis_Velika elenija
-Elaenia strepera_Slaty Elaenia
+Elaenia strepera_Škriljasta elenija
 Elanoides forficatus_Lastorepa lunja
 Elanus caeruleus_Bela lunja
 Elanus leucurus_Belorepa lunja
@@ -2612,7 +2612,7 @@ Guttera pucherani_Istočna ćubasta biserka
 Gygis alba_Bela čigra
 Gymnasio nudipes_Portorikanski američki ćuk
 Gymnobucco bonapartei_Gray-throated Barbet
-Gymnobucco calvus_Naked-faced Barbet
+Gymnobucco calvus_Gololiki barbet
 Gymnocichla nudiceps_Bare-crowned Antbird
 Gymnomystax mexicanus_Vugoliki kos
 Gymnomyza brunneirostris_Džinovski medojed sa ostrva Viti Levu
@@ -2673,7 +2673,7 @@ Haliastur sphenurus_Zviždeća lunja
 Hapalocrex flaviventer_Maskirani barski petlić
 Hapalopsittaca amazonina_Rđastoliki papagaj
 Hapalopsittaca fuertesi_Indigo papagaj
-Hapaloptila castanea_White-faced Nunbird
+Hapaloptila castanea_Beloliki nona puf
 Haplophaedia aureliae_Zelenkasti gaćasti kolibri
 Haplospiza unicolor_Jednobojna zeba
 Harpactes ardens_Filipinski trogon
@@ -2871,7 +2871,7 @@ Hylorchilus sumichrasti_Sumichrast's Wren
 Hymenops perspicillatus_Naočarasta tiranka
 Hypargos niveoguttatus_Crvena kapljičasta astrilda
 Hypergerus atriceps_Oriole Warbler
-Hypnelus ruficollis_Russet-throated Puffbird
+Hypnelus ruficollis_Riđogrli puf
 Hypocnemis cantator_Guianan Warbling-Antbird
 Hypocnemis flavescens_Imeri Warbling-Antbird
 Hypocnemis hypoxantha_Žutoobrvasta mravarka
@@ -3346,9 +3346,9 @@ Macropygia phasianella_Smeđi kukavičji golub
 Macropygia ruficeps_Mali kukavičji golub
 Macropygia tenuirostris_Filipinski kukavičji golub
 Macropygia unchall_Prugasti kukavičji golub
-Macrosphenus concolor_Gray Longbill
-Macrosphenus flavicans_Yellow Longbill
-Macrosphenus kempi_Kemp's Longbill
+Macrosphenus concolor_Siva dugokljuna grmuša
+Macrosphenus flavicans_Žutotrba dugokljuna grmuša
+Macrosphenus kempi_Kempova dugokljuna grmuša
 Magumma parva_Anianiau
 Malacocincla abbotti_Abbott's Babbler
 Malacocincla sepiaria_Horsfildova brbljuša
@@ -3357,13 +3357,13 @@ Malacopteron affine_Brbljuša sa čađavom kapicom
 Malacopteron cinereum_Scaly-crowned Babbler
 Malacopteron magnirostre_Moustached Babbler
 Malacopteron magnum_Rufous-crowned Babbler
-Malacoptila fulvogularis_Puf sa crnim prugama
-Malacoptila fusca_White-chested Puffbird
+Malacoptila fulvogularis_Crnoprugi puf
+Malacoptila fusca_Belogrudi puf
 Malacoptila mystacalis_Maskirani puf
-Malacoptila panamensis_Puf belih obraza
-Malacoptila rufa_Rufous-necked Puffbird
-Malacoptila semicincta_Semicollared Puffbird
-Malacoptila striata_Crescent-chested Puffbird
+Malacoptila panamensis_Beloliki puf
+Malacoptila rufa_Riđovrati puf
+Malacoptila semicincta_Poluogrličasti puf
+Malacoptila striata_Polumesečasti puf
 Malacorhynchus membranaceus_Zebrasta plovka kašikara
 Malcorus pectoralis_Rufous-eared Warbler
 Malia grata_Malija
@@ -3568,7 +3568,7 @@ Microcerculus ustulatus_Flutist Wren
 Microeca fascinans_Džeki vinter
 Microeca flavigaster_Zlatna lažna muharica
 Microhierax fringillarius_Crnoboki patuljasti soko
-Micromonacha lanceolata_Lanceolated Monklet
+Micromonacha lanceolata_Lancetasta nonula
 Micronisus gabar_Jastreb gabar
 Micropsitta finschii_Finšov mikropsita papagaj
 Micropternus brachyurus_Kratkorepi crveni detlić
@@ -3894,15 +3894,15 @@ Nephelomyias pulcher_Jarka muharka
 Nesillas lantzii_Polupustinjska nesilas grmuša
 Nesillas typica_Malagaška nesilas grmuša
 Nesoenas mayeri_Ružičasti golub
-Nesoptilotis flavicollis_Yellow-throated Honeyeater
-Nesoptilotis leucotis_White-eared Honeyeater
+Nesoptilotis flavicollis_Žutogrli medojed
+Nesoptilotis leucotis_Belouhi medojed
 Nesospingus speculiferus_Portorikanska tangara
 Nestor meridionalis_Novozelandski kaka papagaj
 Netta rufina_Prevez
 Nettapus coromandelianus_Indomalajska patuljasta guska
 Newtonia amphichroa_Dark Newtonia
 Newtonia archboldi_Archbold's Newtonia
-Newtonia brunneicauda_Common Newtonia
+Newtonia brunneicauda_Obična grmušolika vanga
 Nicator chloris_Zapadni nikator
 Nicator gularis_Istočni nikator
 Nicator vireo_Žutogrli nikator
@@ -3926,16 +3926,16 @@ Nisaetus cirrhatus_Raznobojni jastrebasti orao/ćubasti jastrebasti orao
 Nisaetus nanus_Volesov jastrebasti orao
 Nisaetus nipalensis_Planinski jastrebasti orao
 Noise_Noise
-Nonnula brunnea_Brown Nunlet
-Nonnula frontalis_Gray-cheeked Nunlet
-Nonnula rubecula_Nonula puf rđastih grudi
-Nonnula ruficapilla_Rufous-capped Nunlet
+Nonnula brunnea_Smeđa nonula
+Nonnula frontalis_Sivolika nonula
+Nonnula rubecula_Riđogruda nonula
+Nonnula ruficapilla_Riđokapa nonula
 Northiella haematogaster_Crvenotrbi papagaj psefotus
 Notharchus hyperrhynchus_White-necked Puffbird
-Notharchus macrorhynchos_Guianan Puffbird
-Notharchus ordii_Brown-banded Puffbird
+Notharchus macrorhynchos_Gvajanski puf
+Notharchus ordii_Smeđotraki puf
 Notharchus pectoralis_Crnogrudi puf
-Notharchus swainsoni_Buff-bellied Puffbird
+Notharchus swainsoni_Žutotrbi puf
 Notharchus tectus_Crno-beli puf
 Nothocercus bonapartei_Planinski tinamu
 Nothocercus julius_Žutogrudi tinamu
@@ -3978,11 +3978,11 @@ Nyctiprogne leucopyga_Trakorepi leganj
 Nyctyornis amictus_Crvenobrada pčelarica
 Nyctyornis athertoni_Plavobrada pčelarica
 Nymphicus hollandicus_Nimfa papagaj (divlji)
-Nystalus chacuru_White-eared Puffbird
-Nystalus maculatus_Spot-backed Puffbird
-Nystalus obamai_Western Striolated-Puffbird
-Nystalus radiatus_Barred Puffbird
-Nystalus striolatus_Eastern Striolated-Puffbird
+Nystalus chacuru_Belouhi puf
+Nystalus maculatus_Žuti pirgavi puf
+Nystalus obamai_Zapadni prugasti puf
+Nystalus radiatus_Riđi pirgavi puf
+Nystalus striolatus_Istočni prugasti puf
 Ochetorhynchus andaecola_Kamenjarski puzić sa tla
 Ochetorhynchus melanurus_Kamenjarska čilija
 Ochetorhynchus phoenicurus_Prugastorepi puzić sa tla
@@ -5604,7 +5604,7 @@ Spermophaga haematina_Crvenogruda kleštokljuna zeba
 Sphecotheres vieilloti_Australazijska smokvarica
 Spheniscus demersus_Magarasti pingvin
 Spheniscus magellanicus_Magelanov pingvin
-Sphenoeacus afer_Cape Grassbird
+Sphenoeacus afer_Kapska grmušarka
 Sphenopsis frontalis_Oleaginous Hemispingus
 Sphenopsis melanotis_Crnouhi hemispingus
 Sphyrapicus nuchalis_Red-naped Sapsucker
@@ -5691,7 +5691,7 @@ Stachyris nigricollis_Crnogrla brbljuša
 Stachyris poliocephala_Sivoglava brbljuša
 Stachyris strialata_Spot-necked Babbler
 Stachyris thoracica_White-bibbed Babbler
-Stactolaema leucotis_White-eared Barbet
+Stactolaema leucotis_Belouhi barbet
 Stactolaema olivacea_Green Barbet
 Stagonopleura bella_Plamenorepa amadina
 Staphida torqueola_Indokineska juhina
@@ -6036,7 +6036,7 @@ Threnetes leucurus_Trenetes kolibri svetlog repa
 Threnetes ruckeri_Trenetes kolibri sa trakastim repom
 Threskiornis melanocephalus_Azijski sveti ibis
 Threskiornis molucca_Australijski ibis
-Thripadectes flammulatus_Flammulated Treehunter
+Thripadectes flammulatus_Plamena krošnjarka
 Thripadectes holostictus_Striped Treehunter
 Thripadectes ignobilis_Uniform Treehunter
 Thripadectes melanorhynchus_Black-billed Treehunter
@@ -6093,7 +6093,7 @@ Todus multicolor_Kubanski todi
 Todus subulatus_Širokokljuni todi
 Todus todus_Jamajkanski todi
 Tolmomyias assimilis_Muharka sa žutim ivicama krila
-Tolmomyias flaviventris_Ochre-lored Flatbill
+Tolmomyias flaviventris_Istočna maslinasta pljosnokljuna muharka
 Tolmomyias poliocephalus_Sivokruna muharka
 Tolmomyias sulphurescens_Sumporasta pljosnokljuna muharka
 Tolmomyias traylori_Orange-eyed Flatbill
@@ -6164,13 +6164,13 @@ Tringa totanus_Crvenonogi sprudnik
 Trochalopteron affine_Crnoliki drozd smejač
 Trochalopteron chrysopterum_Asamski drozd smejač
 Trochalopteron elliotii_Eliotov drozd smejač
-Trochalopteron erythrocephalum_Chestnut-crowned Laughingthrush
+Trochalopteron erythrocephalum_Kestenjastokruni drozd smejač
 Trochalopteron henrici_Prince Henry's Laughingthrush
 Trochalopteron imbricatum_Butanski drozd smejač
 Trochalopteron lineatum_Prugasti drozd smejač
-Trochalopteron melanostigma_Silver-eared Laughingthrush
+Trochalopteron melanostigma_Srebrouhi drozd smejač
 Trochalopteron milnei_Crvenorepi drozd smejač
-Trochalopteron morrisonianum_White-whiskered Laughingthrush
+Trochalopteron morrisonianum_Belobrki drozd smejač
 Trochalopteron peninsulae_Malajski drozd smejač
 Trochalopteron squamatum_Plavokrili drozd smejač
 Trochalopteron subunicolor_Scaly Laughingthrush
@@ -6293,7 +6293,7 @@ Turtur afer_Plavopegi šumski golubić
 Turtur brehmeri_Plavoglavi šumski golubić
 Turtur chalcospilos_Zelenopegi šumski golubić
 Turtur tympanistria_Šumski golubić timpanista
-Tylas eduardi_Tylas Vanga
+Tylas eduardi_Vugolika vanga
 Tympanuchus cupido_Velika prerijska koka
 Tympanuchus pallidicinctus_Mala prerijska koka
 Tympanuchus phasianellus_Oštrorepi tetreb
@@ -6339,7 +6339,7 @@ Uromyias agraphia_Južna obrvasta seničarka
 Uropsalis lyra_Lirorepi leganj
 Uropsalis segmentata_Lastorepi leganj
 Uropsila leucogastra_Belotrbi carić
-Urosphena pallidipes_Pale-footed Bush Warbler
+Urosphena pallidipes_Svetlonoga kratkorepa grmuša
 Urosphena squameiceps_Azijska kratkorepa grmuša
 Urosphena subulata_Timorska kratkorepa grmuša
 Urosphena whiteheadi_Borneanska kratkorepa grmuša
@@ -6382,7 +6382,7 @@ Vireo crassirostris_Debelokljuni zelenić
 Vireo flavifrons_Žutogrli zelenić
 Vireo flavoviridis_Žućkastozeleni zelenić
 Vireo gilvus_Zelenić pevač
-Vireo gracilirostris_Noronha Vireo
+Vireo gracilirostris_Zelenić sa ostrva Fernando de Noronja
 Vireo griseus_Belooki zelenić
 Vireo gundlachii_Kubanski zelenić
 Vireo huttoni_Hrastov zelenić
@@ -6405,13 +6405,13 @@ Vireolanius leucotis_Vireosvračak škriljaste glave
 Vireolanius melitophrys_Vireosvračak smeđih bokova
 Vireolanius pulchellus_Zeleni vireosvračak
 Volatinia jacarina_Jakarina strnadica
-Wetmorethraupis sterrhopteron_Orange-throated Tanager
+Wetmorethraupis sterrhopteron_Narandžastogrla tangara
 Willisornis poecilinotus_Mravarka ljuskastih leđa
 Willisornis vidua_Mravarka sa reke Šingu
 Xanthocephalus xanthocephalus_Crna žutoglavka
 Xanthomixis zosterops_Naočarasta tetraka
-Xanthopsar flavus_Saffron-cowled Blackbird
-Xanthotis macleayanus_Macleay's Honeyeater
+Xanthopsar flavus_Urugvajska žutoglavka
+Xanthotis macleayanus_Meklijev medojed
 Xema sabini_Lastorepi galeb
 Xenerpestes singularis_Južna grmušasta pećarka
 Xenodacnis parina_Senicoliki daknis
@@ -6422,7 +6422,7 @@ Xenopirostris polleni_Polenova vanga
 Xenops minutus_Obični ksenops
 Xenops rutilans_Prugasti ksenops
 Xenops tenuirostris_Ravnokljuni ksenops
-Xenopsaris albinucha_White-naped Xenopsaris
+Xenopsaris albinucha_Crnoglava muharičasta kotinga
 Xenospiza baileyi_Strnad sa Sijera Madre
 Xenotriccus callizonus_Belted Flycatcher
 Xenotriccus mexicanus_Pileated Flycatcher
@@ -6446,8 +6446,8 @@ Xiphorhynchus susurrans_Kakao puzavica
 Xiphorhynchus triangularis_Puzavica maslinastih leđa
 Xolmis irupero_Bela monhita
 Yuhina brunneiceps_Tajvanska juhina
-Yuhina flavicollis_Whiskered Yuhina
-Yuhina gularis_Stripe-throated Yuhina
+Yuhina flavicollis_Brkata juhina
+Yuhina gularis_Prugastogrla juhina
 Yuhina nigrimenta_Crnobrada juhina
 Yuhina occipitalis_Rufous-vented Yuhina
 Yungipicus canicapillus_Veliki oštrokrili detlić
@@ -6483,7 +6483,7 @@ Zimmerius cinereicapilla_Red-billed Tyrannulet
 Zimmerius gracilipes_Slender-footed Tyrannulet
 Zimmerius parvus_Mistletoe Tyrannulet
 Zimmerius vilissimus_Guatemalan Tyrannulet
-Zimmerius villarejoi_Mishana Tyrannulet
+Zimmerius villarejoi_Tirančica iz oblasti Mišana u Peruu
 Zimmerius viridiflavus_Peruvian Tyrannulet
 Zonotrichia albicollis_Belogrli strnad
 Zonotrichia atricapilla_Zlatokruni strnad
@@ -6508,15 +6508,15 @@ Zosterops eurycricotus_Belooka sa Kilimandžara
 Zosterops everetti_Everetova belooka
 Zosterops flavifrons_Žutočela belooka
 Zosterops flavilateralis_Kenijska belooka
-Zosterops japonicus_Warbling White-eye
+Zosterops japonicus_Japanska belooka
 Zosterops lateralis_Srebrooka
 Zosterops luteus_Australijska žuta belooka
 Zosterops maderaspatanus_Madagaskarska belooka
 Zosterops mauritianus_Siva belooka sa Mauricijusa
 Zosterops metcalfii_Žutogrla belooka
-Zosterops meyeni_Lowland White-eye
+Zosterops meyeni_Ravničarska filipinska belooka
 Zosterops pallidus_Belooka sa reke Oranje
 Zosterops palpebrosus_Indijska belooka
-Zosterops senegalensis_Northern Yellow White-eye
+Zosterops senegalensis_Senegalska žuta belooka
 Zosterops simplex_Obična belooka
 Zosterops virens_Kapska belooka
