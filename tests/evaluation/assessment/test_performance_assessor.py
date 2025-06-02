@@ -495,7 +495,7 @@ class TestPerformanceAssessorPlotConfusionMatrix:
         Test plot_confusion_matrix with valid predictions and labels.
         """
         num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
+        assessor = PerformanceAssessor(num_classes=num_classes, task="binary", classes=("Class",))
         predictions = self.rng.random((100, 1))
         labels = self.rng.integers(0, 2, size=(100, 1))
         assessor.plot_confusion_matrix(predictions, labels)
