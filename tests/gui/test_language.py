@@ -23,4 +23,12 @@ def test_language_keys():
                 assert v, f"Value for key {k} in {language_file} is empty."
                 key_collection[k].append(language_file.stem)
 
-    assert all(len(files) == len(language_files) for files in key_collection.values()), "Not all keys are present in all language files."
+    missing_keys = []
+    for key, files in key_collection.items():
+        if len(files) != len(language_files):
+            missing_in = [f.stem for f in language_files if f.stem not in files]
+            missing_keys.append((key, missing_in))
+    assert not missing_keys, (
+        "Not all keys are present in all language files.\n" +
+        "\n".join(f"Key '{key}' missing in: {', '.join(missing_in)}" for key, missing_in in missing_keys)
+    )
