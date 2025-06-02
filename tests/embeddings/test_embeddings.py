@@ -38,9 +38,9 @@ def setup_test_environment():
         setattr(cfg, attr, value)
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.embeddings.utils.run")
-def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_embeddings_cli(mock_ensure_model: MagicMock, mock_run_embeddings: MagicMock, setup_test_environment):
     env = setup_test_environment
 
     mock_ensure_model.return_value = True
