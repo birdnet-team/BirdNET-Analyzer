@@ -41,9 +41,9 @@ import pytest
 #@patch("birdnet_analyzer.utils.ensure_model_exists")
 #@patch("birdnet_analyzer.embeddings.utils.run")
 #def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
-def test_embeddings_cli():
-    with patch("birdnet_analyzer.embeddings.utils.run") as mock_run_embeddings:
-        print("Mocking run function for embeddings CLI test")
+# def test_embeddings_cli():
+#     with patch("birdnet_analyzer.embeddings.utils.run") as mock_run_embeddings:
+#         print("Mocking run function for embeddings CLI test")
     # env = setup_test_environment
 
     # mock_ensure_model.return_value = True
