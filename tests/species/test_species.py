@@ -37,7 +37,6 @@ def setup_test_environment():
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.species.utils.run")
-@patch("birdnet_analyzer.embeddings.utils.run")
 def test_embeddings_cli(mock_run_species, mock_ensure_model, setup_test_environment):
     env = setup_test_environment
 
