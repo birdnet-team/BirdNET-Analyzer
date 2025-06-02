@@ -336,6 +336,9 @@ def plot_confusion_matrices(
         if conf_mat.shape != (2, 2):
             raise ValueError("For binary task, conf_mat must be of shape (2, 2).")
 
+        if len(class_names) != 2:
+            raise ValueError("For binary task, class_names must have exactly two elements.")
+
         disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
         fig, ax = plt.subplots(num=MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6))
 
