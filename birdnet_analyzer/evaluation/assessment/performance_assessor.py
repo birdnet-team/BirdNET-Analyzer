@@ -353,6 +353,7 @@ class PerformanceAssessor:
             # Compute confusion matrices for each class
             conf_mats = []
             class_names = self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)]
+
             for i in range(self.num_classes):
                 conf_mat = confusion_matrix(y_true[:, i], y_pred[:, i], normalize="true")
                 conf_mat = np.round(conf_mat, 2)
