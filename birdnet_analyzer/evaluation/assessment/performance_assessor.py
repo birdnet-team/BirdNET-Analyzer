@@ -8,14 +8,11 @@ as well as utilities for generating related plots.
 
 from typing import Literal
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from sklearn.metrics import confusion_matrix
 
 from birdnet_analyzer.evaluation.assessment import metrics, plotting
-
-MATPLOTLIB_CONFUSION_MATRIX_FIGURE_NUM = "performance-tab-confusion-matrix-plot"
 
 
 class PerformanceAssessor:
@@ -346,16 +343,7 @@ class PerformanceAssessor:
             conf_mat = confusion_matrix(y_true, y_pred, normalize="true")
             conf_mat = np.round(conf_mat, 2)
 
-            # Plot the confusion matrix
-            disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
-            fig, ax = plt.subplots(num=MATPLOTLIB_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6))
-            # fig.clear()
-            fig.tight_layout()
-            fig.set_dpi(300)
-            disp.plot(cmap="Reds", ax=ax, colorbar=False, values_format=".2f")
-            ax.set_title("Confusion Matrix")
-
-            return fig
+            return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)
 
         if self.task == "multilabel":
             # Binarize predictions for multilabel classification
@@ -370,30 +358,6 @@ class PerformanceAssessor:
                 conf_mat = np.round(conf_mat, 2)
                 conf_mats.append(conf_mat)
 
-            # Determine grid size for subplots
-            num_matrices = self.num_classes
-            n_cols = int(np.ceil(np.sqrt(num_matrices)))
-            n_rows = int(np.ceil(num_matrices / n_cols))
-
-            # Create subplots for each confusion matrix
-            fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), num=30)
-            fig.set_dpi(300)
-            axes = axes.flatten()
-
-            # Plot each confusion matrix
-            for idx, (conf_mat, class_name) in enumerate(zip(conf_mats, class_names, strict=True)):
-                disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
-                disp.plot(cmap="Reds", ax=axes[idx], colorbar=False, values_format=".2f")
-                axes[idx].set_title(f"{class_name}")
-                axes[idx].set_xlabel("Predicted class")
-                axes[idx].set_ylabel("True class")
-
-            # Remove unused subplot axes
-            for ax in axes[num_matrices:]:
-                fig.delaxes(ax)
-
-            plt.tight_layout()
-
-            return fig
+            return plotting.plot_confusion_matrices(np.array(conf_mats), self.task, class_names)
 
         raise ValueError(f"Unsupported task type: {self.task}")

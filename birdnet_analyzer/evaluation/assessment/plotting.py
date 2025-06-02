@@ -18,7 +18,14 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+from sklearn.metrics import ConfusionMatrixDisplay
+
+MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM = "performance-tab-binary-confusion-matrix-plot"
+MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM = "performance-tab-multiclass-confusion-matrix-plot"
+MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM = "performance-tab-overall-metrics-plot"
+MATPLOTLIB_PER_CLASS_METRICS_FIGURE_NUM = "performance-tab-per-class-metrics-plot"
+MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_FIGURE_NUM = "performance-tab-metrics-across-thresholds-plot"
+MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM = "performance-tab-metrics-across-thresholds-per-class-plot"
 
 
 def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
@@ -55,7 +62,7 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
     values = metrics_df["Overall"].to_numpy()  # Metric values
 
     # Plot bar chart
-    fig = plt.figure(24, figsize=(10, 6))
+    fig = plt.figure(MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
@@ -100,7 +107,7 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
 
     # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
-    fig = plt.figure(23, figsize=(10, 6))
+    fig = plt.figure(MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
@@ -169,7 +176,7 @@ def plot_metrics_across_thresholds(
 
     # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
-    fig = plt.figure(28, figsize=(10, 6))
+    fig = plt.figure(MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
@@ -251,7 +258,7 @@ def plot_metrics_across_thresholds_per_class(
     n_rows = int(np.ceil(num_classes / n_cols))
 
     # Create subplots
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4), num=22)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4), num=MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM)
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
@@ -323,7 +330,7 @@ def plot_confusion_matrices(
         raise ValueError("conf_mat is empty.")
     if not isinstance(task, str) or task not in ["binary", "multiclass", "multilabel"]:
         raise ValueError("Invalid task. Expected 'binary', 'multiclass', or 'multilabel'.")
-    if not isinstance(class_names, list):
+    if not isinstance(class_names, list | tuple):
         raise TypeError("class_names must be a list.")
     if len(class_names) == 0:
         raise ValueError("class_names list is empty.")
@@ -335,43 +342,44 @@ def plot_confusion_matrices(
         if len(class_names) != 2:
             raise ValueError("For binary task, class_names must have exactly two elements.")
 
-        # Plot single confusion matrix
-        fig = plt.figure(26, figsize=(4, 4))
-        fig.clear()
-        sns.heatmap(conf_mat, annot=True, fmt=".2f", cmap="Reds", cbar=False)
-        plt.title("Confusion Matrix")
-        plt.xlabel("Predicted Class")
-        plt.ylabel("True Class")
+        disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
+        fig, ax = plt.subplots(num=MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6))
+
+        fig.tight_layout()
+        fig.set_dpi(300)
+        disp.plot(cmap="Reds", ax=ax, colorbar=False, values_format=".2f")
+        ax.set_title("Confusion Matrix")
     else:
         # Multilabel or multiclass expects a set of 2x2 matrices
-        num_labels = conf_mat.shape[0]
+        num_labels = len(conf_mat)
+
         if conf_mat.shape[1:] != (2, 2):
             raise ValueError("For multilabel or multiclass task, conf_mat must have shape (num_labels, 2, 2).")
         if len(class_names) != num_labels:
             raise ValueError("Length of class_names must match number of labels in conf_mat.")
 
         # Determine grid size for subplots
-        n_cols = int(np.ceil(np.sqrt(num_labels)))
-        n_rows = int(np.ceil(num_labels / n_cols))
+        num_matrices = conf_mat.shape[0]
+        n_cols = int(np.ceil(np.sqrt(num_matrices)))
+        n_rows = int(np.ceil(num_matrices / n_cols))
 
-        # Create subplots
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2, n_rows * 2), num=26)
-        fig.clear()
+        # Create subplots for each confusion matrix
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), num=MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM)
         fig.set_dpi(300)
+        axes = axes.flatten() if hasattr(axes, "flatten") else [axes]
 
-        # Flatten axes for easy indexing
-        axes = [axes] if num_labels == 1 else axes.flatten()
+        # Plot each confusion matrix
+        for idx, (cf, class_name) in enumerate(zip(conf_mat, class_names, strict=True)):
+            disp = ConfusionMatrixDisplay(confusion_matrix=cf, display_labels=["Negative", "Positive"])
+            disp.plot(cmap="Reds", ax=axes[idx], colorbar=False, values_format=".2f")
+            axes[idx].set_title(f"{class_name}")
+            axes[idx].set_xlabel("Predicted class")
+            axes[idx].set_ylabel("True class")
 
-        # Plot each class's confusion matrix
-        for i in range(num_labels):
-            cm = conf_mat[i]
-            ax = axes[i]
-            sns.heatmap(cm, annot=True, fmt=".2f", cmap="Reds", cbar=False, ax=ax)
-            ax.set_title(f"{class_names[i]}")
-            ax.set_xlabel("Predicted Class")
-            ax.set_ylabel("True Class")
+        # Remove unused subplot axes
+        for ax in axes[num_matrices:]:
+            fig.delaxes(ax)
 
-        # Adjust layout and show
-        #plt.tight_layout()
+        plt.tight_layout()
 
     return fig

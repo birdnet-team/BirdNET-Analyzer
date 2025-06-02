@@ -28,7 +28,6 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "seaborn"
 ]
 
 [project.optional-dependencies]
