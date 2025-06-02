@@ -117,6 +117,7 @@
     "eval-tab-upload-mapping-file-label": "Lataa kartoitustiedosto",
     "eval-tab-warning-error-reading-file": "Virhe luettaessa tiedostoa",
     "footer-help": "Dokumentaatio ja tuki osoitteessa",
+    "footer-support": "Tue työtämme",
     "inference-settings-accordion-label": "Päättelyasetukset",
     "inference-settings-audio-speed-slider-info": "Negatiiviset arvot hidastavat, positiiviset nopeuttavat. Huomaa, että äänen nopeuden muokkaus tulisi käyttää myös koulutuksen aikana ollakseen tehokas tässä.",
     "inference-settings-audio-speed-slider-label": "Äänen nopeuden muutos",

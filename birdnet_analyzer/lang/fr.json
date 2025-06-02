@@ -117,6 +117,7 @@
     "eval-tab-upload-mapping-file-label": "Téléverser le fichier de correspondance",
     "eval-tab-warning-error-reading-file": "Erreur lors de la lecture du fichier",
     "footer-help": "Pour de la documentation, visiter",
+    "footer-support": "Soutenez notre travail",
     "inference-settings-accordion-label": "Paramètres d'inférence",
     "inference-settings-audio-speed-slider-info": "Les valeurs négatives ralentissent, les valeurs positives accélèrent. Notez que la modification de la vitesse audio doit également être utilisée pendant l'entraînement pour être efficace ici.",
     "inference-settings-audio-speed-slider-label": "Modification de la vitesse audio",

@@ -56,10 +56,9 @@ def spectrogram_from_file(path, fig_num=None, fig_size=None, offset=0, duration=
     """
     from birdnet_analyzer import audio
 
-    # s, sr = librosa.load(path, offset=offset, duration=duration)
     s, sr = audio.open_audio_file(path, offset=offset, duration=duration, fmin=fmin, fmax=fmax, speed=speed)
 
-    return spectrogram_from_audio(s, sr, fig_num, fig_size)
+    return spectrogram_from_audio(s, sr, fig_num=fig_num, fig_size=fig_size)
 
 
 def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None):
@@ -149,7 +148,7 @@ def collect_all_files(path: str, filetypes: list[str], pattern: str = ""):
     return sorted(files)
 
 
-def read_lines(path: str):
+def read_lines(path: str | Path):
     """Reads the lines into a list.
 
     Opens the file and reads its contents into a list.

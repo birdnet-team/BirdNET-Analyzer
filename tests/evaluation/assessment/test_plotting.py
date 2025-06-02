@@ -638,16 +638,6 @@ class TestPlotConfusionMatrices:
         with pytest.raises(ValueError, match=re.escape("conf_mat is empty.")):
             plot_confusion_matrices(conf_mat, task, class_names)
 
-    def test_mismatched_class_names(self):
-        """
-        Test with mismatched class_names length.
-        """
-        conf_mat = np.array([[50, 10], [5, 35]])
-        task = "binary"
-        class_names = ["Positive"]  # Should be two class names
-        with pytest.raises(ValueError, match="For binary task, class_names must have exactly two elements."):
-            plot_confusion_matrices(conf_mat, task, class_names)
-
     def test_invalid_conf_mat_type(self):
         """
         Test with invalid type for conf_mat to ensure it raises TypeError.

@@ -117,6 +117,7 @@
     "eval-tab-upload-mapping-file-label": "Ladda upp mappningsfil",
     "eval-tab-warning-error-reading-file": "Fel vid läsning av fil",
     "footer-help": "För dokumentation och support besök",
+    "footer-support": "Stöd vårt arbete",
     "inference-settings-accordion-label": "Inferensinställningar",
     "inference-settings-audio-speed-slider-info": "Negativa värden saktar ner, positiva värden ökar hastigheten. Observera att ljudhastighetsmodifiering också bör användas under träning för att vara effektiv här.",
     "inference-settings-audio-speed-slider-label": "Ljudhastighetsmodifiering",

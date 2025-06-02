@@ -117,6 +117,7 @@
     "eval-tab-upload-mapping-file-label": "上傳映射文件",
     "eval-tab-warning-error-reading-file": "讀取文件出錯",
     "footer-help": "參考檔案以及尋求協助",
+    "footer-support": "支持我們的工作",
     "inference-settings-accordion-label": "參數設定",
     "inference-settings-audio-speed-slider-info": "負值減慢，正值加快。請注意，音頻速度修改也應在訓練期間使用，以便在此處有效。",
     "inference-settings-audio-speed-slider-label": "音頻速度修改",

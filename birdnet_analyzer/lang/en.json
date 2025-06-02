@@ -117,6 +117,7 @@
     "eval-tab-upload-mapping-file-label": "Upload mapping file",
     "eval-tab-warning-error-reading-file": "Error reading file",
     "footer-help": "For docs and support visit",
+    "footer-support": "Support Our Work",
     "inference-settings-accordion-label": "Inference settings",
     "inference-settings-audio-speed-slider-info": "Negative values slow down, positive values speed up. Note that audio speed modification should also be used during training in order to be effective here.",
     "inference-settings-audio-speed-slider-label": "Audio speed modification",
