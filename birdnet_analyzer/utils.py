@@ -149,7 +149,7 @@ def collect_all_files(path: str, filetypes: list[str], pattern: str = ""):
     return sorted(files)
 
 
-def read_lines(path: str):
+def read_lines(path: str | Path):
     """Reads the lines into a list.
 
     Opens the file and reads its contents into a list.
