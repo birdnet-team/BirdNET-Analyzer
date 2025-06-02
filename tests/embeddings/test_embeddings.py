@@ -22,7 +22,7 @@ def setup_test_environment():
     os.makedirs(output_dir, exist_ok=True)
 
     # Store original config values
-    # original_config = {attr: getattr(cfg, attr) for attr in dir(cfg) if not attr.startswith("_") and not callable(getattr(cfg, attr))}
+    original_config = {attr: getattr(cfg, attr) for attr in dir(cfg) if not attr.startswith("_") and not callable(getattr(cfg, attr))}
 
     yield {
         "test_dir": test_dir,
@@ -34,8 +34,8 @@ def setup_test_environment():
     shutil.rmtree(test_dir)
 
     # Restore original config
-    # for attr, value in original_config.items():
-    #     setattr(cfg, attr, value)
+    for attr, value in original_config.items():
+        setattr(cfg, attr, value)
 
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
