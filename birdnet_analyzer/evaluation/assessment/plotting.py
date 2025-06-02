@@ -351,15 +351,14 @@ def plot_confusion_matrices(
         ax.set_title("Confusion Matrix")
     else:
         # Multilabel or multiclass expects a set of 2x2 matrices
-        num_labels = len(conf_mat)
+        num_matrices = conf_mat.shape[0]
 
         if conf_mat.shape[1:] != (2, 2):
             raise ValueError("For multilabel or multiclass task, conf_mat must have shape (num_labels, 2, 2).")
-        if len(class_names) != num_labels:
+        if len(class_names) != num_matrices:
             raise ValueError("Length of class_names must match number of labels in conf_mat.")
 
         # Determine grid size for subplots
-        num_matrices = conf_mat.shape[0]
         n_cols = int(np.ceil(np.sqrt(num_matrices)))
         n_rows = int(np.ceil(num_matrices / n_cols))
 
