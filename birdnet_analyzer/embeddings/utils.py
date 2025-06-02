@@ -214,7 +214,7 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         with Pool(cfg.CPU_THREADS) as p:
             tqdm(p.imap(partial(analyze_file, db=db), flist))
 
-    if file_output is not None and file_output != "":
+    if file_output:
         create_file_output(file_output, db)
 
     db.db.close()
