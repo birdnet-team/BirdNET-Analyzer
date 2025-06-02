@@ -136,6 +136,8 @@
     "inference-settings-top-n-number-label": "Top N species",
     "inference-settings-use-top-n-checkbox-info": "Picks the top N species sorted by confidence score.",
     "inference-settings-use-top-n-checkbox-label": "Use top N species",
+    "multi-tab-additional-columns-checkbox-info": "Adds additional columns to the output. \"Start (s)\", \"End (s)\", \"Scientific name\", \"Common name\", \"Confidence\", \"File\" are already included.",
+    "multi-tab-additional-columns-checkbox-label": "Additional columns for CSV",
     "multi-tab-batchsize-number-info": "Number of samples to process at the same time.",
     "multi-tab-batchsize-number-label": "Batch size",
     "multi-tab-input-selection-button-label": "Select input directory (recursive)",

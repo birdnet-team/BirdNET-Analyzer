@@ -22,4 +22,9 @@ def main():
     except Exception:
         pass
 
+    if "additional_columns" in args and args.additional_columns and "csv" not in args.rtype:
+        import warnings
+
+        warnings.warn("The --additional_columns argument is only valid for CSV output. It will be ignored.", stacklevel=1)
+
     analyze(**vars(args))

@@ -136,6 +136,8 @@
     "inference-settings-top-n-number-label": "Top N Arten",
     "inference-settings-use-top-n-checkbox-info": "Wählt die obersten N Arten aus, sortiert nach Konfidenz.",
     "inference-settings-use-top-n-checkbox-label": "Oberste N Arten verwenden",
+    "multi-tab-additional-columns-checkbox-info": "Fügt zusätzliche Spalten zur Ausgabe hinzu. \"Start (s)\", \"End (s)\", \"Scientific name\", \"Common name\", \"Confidence\", \"File\" sind bereits enthalten.",
+    "multi-tab-additional-columns-checkbox-label": "Zusätzliche Spalten für CSV",
     "multi-tab-batchsize-number-info": "Anzahl der gleichzeitig zu verarbeitenden Proben.",
     "multi-tab-batchsize-number-label": "Batch-Größe",
     "multi-tab-input-selection-button-label": "Eingabeverzeichnis auswählen (rekursiv)",

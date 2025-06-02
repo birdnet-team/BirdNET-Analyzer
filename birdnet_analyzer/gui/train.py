@@ -9,6 +9,7 @@ import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
+from birdnet_analyzer.gui.settings import APPDIR
 
 _GRID_MAX_HEIGHT = 240
 
@@ -198,16 +199,14 @@ def start_training(
 
     def trial_progression(trial):
         if progress is not None:
-            progress(
-                (trial, autotune_trials), total=autotune_trials, unit="trials", desc=loc.localize("progress-autotune")
-            )
+            progress((trial, autotune_trials), total=autotune_trials, unit="trials", desc=loc.localize("progress-autotune"))
 
     try:
         history_result = train_model(
             on_epoch_end=epoch_progression,
             on_trial_result=trial_progression,
             on_data_load_end=data_load_progression,
-            autotune_directory=gu.APPDIR if utils.FROZEN else "autotune",
+            autotune_directory=APPDIR if utils.FROZEN else "autotune",
         )
 
         # Unpack history and metrics
@@ -315,9 +314,7 @@ def build_train_tab():
                 info=loc.localize("training-tab-cache-mode-radio-info"),
             )
             with gr.Column(visible=False) as new_cache_file_row:
-                select_cache_file_directory_btn = gr.Button(
-                    loc.localize("training-tab-cache-select-directory-button-label")
-                )
+                select_cache_file_directory_btn = gr.Button(loc.localize("training-tab-cache-select-directory-button-label"))
 
                 with gr.Column():
                     cache_file_name = gr.Textbox(
@@ -426,9 +423,7 @@ def build_train_tab():
 
             def on_crop_select(new_crop_mode):
                 # Make overlap slider visible for both "segments" and "smart" crop modes
-                return gr.Number(
-                    visible=new_crop_mode in ["segments", "smart"], interactive=new_crop_mode in ["segments", "smart"]
-                )
+                return gr.Number(visible=new_crop_mode in ["segments", "smart"], interactive=new_crop_mode in ["segments", "smart"])
 
             crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
 
@@ -576,9 +571,7 @@ def build_train_tab():
         def on_focal_loss_change(value):
             return gr.Row(visible=value)
 
-        use_focal_loss.change(
-            on_focal_loss_change, inputs=use_focal_loss, outputs=focal_loss_params, show_progress=False
-        )
+        use_focal_loss.change(on_focal_loss_change, inputs=use_focal_loss, outputs=focal_loss_params, show_progress=False)
 
         def on_autotune_change(value):
             return (
@@ -610,9 +603,7 @@ def build_train_tab():
             visible=False,
             label="Model Performance Metrics (Default Threshold 0.5)",
         )
-        start_training_button = gr.Button(
-            loc.localize("training-tab-start-training-button-label"), variant="huggingface"
-        )
+        start_training_button = gr.Button(loc.localize("training-tab-start-training-button-label"), variant="huggingface")
 
         def train_and_show_metrics(*args):
             history, metrics = start_training(*args)

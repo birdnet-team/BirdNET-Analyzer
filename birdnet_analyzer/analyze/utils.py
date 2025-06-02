@@ -4,17 +4,17 @@ import datetime
 import json
 import operator
 import os
+from collections.abc import Sequence
 
 import numpy as np
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, model, utils
 
-RAVEN_TABLE_HEADER = "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"  # noqa: E501
-RTABLE_HEADER = "filepath,start,end,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity,min_conf,species_list,model\n"
-KALEIDOSCOPE_HEADER = (
-    "INDIR,FOLDER,IN FILE,OFFSET,DURATION,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity\n"
+RAVEN_TABLE_HEADER = (
+    "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"
 )
+KALEIDOSCOPE_HEADER = "INDIR,FOLDER,IN FILE,OFFSET,DURATION,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity\n"
 CSV_HEADER = "Start (s),End (s),Scientific name,Common name,Confidence,File\n"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -92,7 +92,9 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
             selection_id += 1
             label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
             code = cfg.CODES[c[0]] if c[0] in cfg.CODES else c[0]
-            rstring += f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"  # noqa: E501
+            rstring += (
+                f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"
+            )
 
         # Write result string to file
         out_string += rstring
@@ -103,9 +105,7 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
     # of file durations during the analysis.
     if len(out_string) == len(RAVEN_TABLE_HEADER) and cfg.OUTPUT_PATH is not None:
         selection_id += 1
-        out_string += (
-            f"{selection_id}\tSpectrogram 1\t1\t0\t3\t{low_freq}\t{high_freq}\tnocall\tnocall\t1.0\t{afile_path}\t0\n"
-        )
+        out_string += f"{selection_id}\tSpectrogram 1\t1\t0\t3\t{low_freq}\t{high_freq}\tnocall\tnocall\t1.0\t{afile_path}\t0\n"
 
     utils.save_result_file(result_path, out_string)
 
@@ -202,7 +202,18 @@ def generate_csv(timestamps: list[str], result: dict[str, list], afile_path: str
     Returns:
         None
     """
+    from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS_MAP
+
     out_string = CSV_HEADER
+    columns_map = {}
+
+    if cfg.ADDITIONAL_COLUMNS:
+        for col in cfg.ADDITIONAL_COLUMNS:
+            if col in POSSIBLE_ADDITIONAL_COLUMNS_MAP:
+                columns_map[col] = POSSIBLE_ADDITIONAL_COLUMNS_MAP[col]()
+
+        if columns_map:
+            out_string = out_string[:-1] + "," + ",".join(columns_map) + "\n"
 
     for timestamp in timestamps:
         rstring = ""
@@ -210,7 +221,12 @@ def generate_csv(timestamps: list[str], result: dict[str, list], afile_path: str
         for c in result[timestamp]:
             start, end = timestamp.split("-", 1)
             label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
-            rstring += f"{start},{end},{label.split('_', 1)[0]},{label.split('_', 1)[-1]},{c[1]:.4f},{afile_path}\n"
+            rstring += f"{start},{end},{label.split('_', 1)[0]},{label.split('_', 1)[-1]},{c[1]:.4f},{afile_path}"
+
+            if columns_map:
+                rstring += "," + ",".join(str(val) for val in columns_map.values())
+
+            rstring += "\n"
 
         # Write result string to file
         out_string += rstring
@@ -364,29 +380,23 @@ def combine_csv_files(saved_results: list[str]):
     Args:
         saved_results (list[str]): A list of file paths to the CSV files to be combined.
     """
-    # Combine all files
-    with open(os.path.join(cfg.OUTPUT_PATH, cfg.OUTPUT_CSV_FILENAME), "w", encoding="utf-8") as f:
-        f.write(CSV_HEADER)
+    out_string = ""
 
-        for rfile in saved_results:
+    for rfile in saved_results:
+        try:
             with open(rfile, encoding="utf-8") as rf:
-                try:
-                    lines = rf.readlines()
+                lines = rf.readlines()
+                out_string += "".join(lines[1:] if out_string else lines)
 
-                    # make sure it's a selection table
-                    if "Start (s)" not in lines[0] or "Confidence" not in lines[0]:
-                        continue
+        except Exception as ex:
+            print(f"Error: Cannot combine results from {rfile}.\n", flush=True)
+            utils.write_error_log(ex)
 
-                    # skip header and add to file
-                    for line in lines[1:]:
-                        f.write(line)
-
-                except Exception as ex:
-                    print(f"Error: Cannot combine results from {rfile}.\n", flush=True)
-                    utils.write_error_log(ex)
+    with open(os.path.join(cfg.OUTPUT_PATH, cfg.OUTPUT_CSV_FILENAME), "w", encoding="utf-8") as f:
+        f.write(out_string)
 
 
-def combine_results(saved_results: list[dict[str, str]]):
+def combine_results(saved_results: Sequence[dict[str, str]| None]):
     """
     Combines various types of result files based on the configuration settings.
     This function checks the types of results specified in the configuration
@@ -402,9 +412,6 @@ def combine_results(saved_results: list[dict[str, str]]):
     """
     if "table" in cfg.RESULT_TYPES:
         combine_raven_tables([f["table"] for f in saved_results if f])
-
-    # if "r" in cfg.RESULT_TYPES:
-    #     combine_rtable_files([f["r"] for f in saved_results if f])
 
     if "kaleidoscope" in cfg.RESULT_TYPES:
         combine_kaleidoscope_files([f["kaleidoscope"] for f in saved_results if f])
@@ -509,9 +516,7 @@ def get_raw_audio_from_file(fpath: str, offset, duration):
         The signal split into a list of chunks.
     """
     # Open file
-    sig, rate = audio.open_audio_file(
-        fpath, cfg.SAMPLE_RATE, offset, duration, cfg.BANDPASS_FMIN, cfg.BANDPASS_FMAX, cfg.AUDIO_SPEED
-    )
+    sig, rate = audio.open_audio_file(fpath, cfg.SAMPLE_RATE, offset, duration, cfg.BANDPASS_FMIN, cfg.BANDPASS_FMAX, cfg.AUDIO_SPEED)
 
     # Split into raw audio chunks
     return audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
@@ -563,16 +568,14 @@ def get_result_file_names(fpath: str):
     # if "r" in cfg.RESULT_TYPES:
     #     result_names["r"] = os.path.join(cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.r.csv")
     if "kaleidoscope" in cfg.RESULT_TYPES:
-        result_names["kaleidoscope"] = os.path.join(
-            cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.kaleidoscope.csv"
-        )
+        result_names["kaleidoscope"] = os.path.join(cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.kaleidoscope.csv")
     if "csv" in cfg.RESULT_TYPES:
         result_names["csv"] = os.path.join(cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.csv")
 
     return result_names
 
 
-def analyze_file(item):
+def analyze_file(item) -> dict[str, str] | None:
     """
     Analyzes an audio file and generates prediction results.
 
@@ -649,8 +652,7 @@ def analyze_file(item):
                     p_labels = [
                         p
                         for p in zip(cfg.LABELS, pred, strict=True)
-                        if (cfg.TOP_N or p[1] >= cfg.MIN_CONFIDENCE)
-                        and (not cfg.SPECIES_LIST or p[0] in cfg.SPECIES_LIST)
+                        if (cfg.TOP_N or p[1] >= cfg.MIN_CONFIDENCE) and (not cfg.SPECIES_LIST or p[0] in cfg.SPECIES_LIST)
                     ]
 
                     # Sort by score

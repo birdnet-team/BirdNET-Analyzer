@@ -65,6 +65,7 @@ def run_single_file_analysis(
         custom_classifier_file,
         "csv",
         None,
+        False,
         locale if locale else "en",
         1,
         4,
@@ -248,11 +249,15 @@ def build_single_analysis_tab():
         def download_table(filepath):
             if filepath:
                 ext = os.path.splitext(filepath)[1]
-                gu.save_file_dialog(
+                file_location = gu.save_file_dialog(
                     state_key="single-file-table",
                     default_filename=os.path.basename(filepath),
                     filetypes=(f"{ext[1:]} (*{ext})",),
                 )
+
+                if file_location:
+                    with open(filepath, "rb") as src, open(file_location, "wb") as dst:
+                        dst.write(src.read())
 
         output_dataframe.select(get_selected_audio, inputs=audio_path_state, outputs=segment_audio)
         single_file_analyze.click(

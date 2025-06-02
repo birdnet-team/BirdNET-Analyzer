@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "De N bästa arterna",
     "inference-settings-use-top-n-checkbox-info": "Väljer de N bästa arterna sorterade efter konfidensvärde.",
     "inference-settings-use-top-n-checkbox-label": "Använd de N bästa arterna",
+    "multi-tab-additional-columns-checkbox-info": "Lägger till ytterligare kolumner i utdata. \"Start (s)\", \"Slut (s)\", \"Vetenskapligt namn\", \"Allmänt namn\", \"Förtroende\", \"Fil\" ingår redan.",
+    "multi-tab-additional-columns-checkbox-label": "Ytterligare kolumner för CSV",
     "multi-tab-batchsize-number-info": "Antal prover att bearbeta samtidigt.",
     "multi-tab-batchsize-number-label": "Batchstorlek",
     "multi-tab-input-selection-button-label": "Välj indatakatalog (rekursiv)",
