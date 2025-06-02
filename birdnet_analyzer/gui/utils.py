@@ -207,8 +207,11 @@ def build_footer():
         <div>Model version: {cfg.MODEL_VERSION}</div>
     </div>
     <div>K. Lisa Yang Center for Conservation Bioacoustics<br>Chemnitz University of Technology</div>
-    <div>{loc.localize("footer-help")}:<br><a href='https://birdnet.cornell.edu/analyzer'
-            target='_blank'>birdnet.cornell.edu/analyzer</a></div>
+    <div>{loc.localize("footer-help")}:&nbsp;<a href='https://birdnet.cornell.edu/analyzer'
+            target='_blank'>birdnet.cornell.edu/analyzer</a>
+            <br><a href='https://give.birds.cornell.edu/page/132162/donate/1' target='_blank'>{loc.localize("footer-support")}</a>
+    </div>
+
 </div>"""
         )
 

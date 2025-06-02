@@ -113,6 +113,7 @@
     "eval-tab-upload-mapping-file-label": "Загрузить файл сопоставления",
     "eval-tab-warning-error-reading-file": "Ошибка чтения файла",
     "footer-help": "Для получения документации и поддержки посетите",
+    "footer-support": "Поддержите нашу работу",
     "inference-settings-accordion-label": "Настройки вывода",
     "inference-settings-audio-speed-slider-info": "Отрицательные значения замедляют, положительные значения ускоряют. Обратите внимание, что изменение скорости аудио также должно использоваться во время обучения, чтобы быть эффективным здесь.",
     "inference-settings-audio-speed-slider-label": "Изменение скорости аудио",

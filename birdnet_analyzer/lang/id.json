@@ -113,6 +113,7 @@
     "eval-tab-upload-mapping-file-label": "Unggah file pemetaan",
     "eval-tab-warning-error-reading-file": "Error saat membaca file",
     "footer-help": "Untuk dokumen dan dukungan kunjungi",
+    "footer-support": "Dukung Pekerjaan Kami",
     "inference-settings-accordion-label": "Pengaturan inferensi",
     "inference-settings-audio-speed-slider-info": "Nilai negatif memperlambat, nilai positif mempercepat. Perhatikan bahwa modifikasi kecepatan audio juga harus digunakan selama pelatihan agar efektif di sini.",
     "inference-settings-audio-speed-slider-label": "Modifikasi kecepatan audio",

@@ -113,6 +113,7 @@
     "eval-tab-upload-mapping-file-label": "Carregar arquivo de mapeamento",
     "eval-tab-warning-error-reading-file": "Erro ao ler arquivo",
     "footer-help": "Para documentos e suporte visite",
+    "footer-support": "Apoie nosso trabalho",
     "inference-settings-accordion-label": "Configurações de inferência",
     "inference-settings-audio-speed-slider-info": "Valores negativos desaceleram, valores positivos aceleram. Observe que a modificação da velocidade do áudio também deve ser usada durante o treinamento para ser eficaz aqui.",
     "inference-settings-audio-speed-slider-label": "Modificação da velocidade do áudio",
