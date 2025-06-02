@@ -407,8 +407,6 @@ def embeddings_parser():
     parser.add_argument(
         "--file_output",
         dest="file_output",
-        required=False,
-        default=None,
     )
 
     return parser
