@@ -39,7 +39,7 @@ def setup_test_environment():
 
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
-@patch("birdnet_analyzer.embeddings.utils.run")
+#@patch("birdnet_analyzer.embeddings.utils.run", sentinel.attribute)
 def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
     pass
     # env = setup_test_environment
