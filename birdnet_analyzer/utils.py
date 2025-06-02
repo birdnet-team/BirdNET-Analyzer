@@ -12,7 +12,7 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 
-def runtime_error_handler(f: callable):
+def runtime_error_handler(f):
     """Decorator to catch runtime errors and write them to the error log.
 
     Args:

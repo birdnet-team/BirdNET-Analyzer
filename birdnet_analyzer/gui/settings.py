@@ -1,15 +1,36 @@
 import json
 import os
+import sys
 from pathlib import Path
 
-import birdnet_analyzer.gui.utils as gu
+import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
+
+if utils.FROZEN:
+    # divert stdout & stderr to logs.txt file since we have no console when deployed
+    userdir = Path.home()
+
+    if sys.platform == "win32":
+        userdir /= "AppData/Roaming"
+    elif sys.platform == "linux":
+        userdir /= ".local/share"
+    elif sys.platform == "darwin":
+        userdir /= "Library/Application Support"
+
+    APPDIR = userdir / "BirdNET-Analyzer-GUI"
+
+    APPDIR.mkdir(parents=True, exist_ok=True)
+
+    sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")  # noqa: SIM115
+    cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
+else:
+    APPDIR = ""
 
 FALLBACK_LANGUAGE = "en"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-GUI_SETTINGS_PATH = os.path.join(gu.APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json")
+GUI_SETTINGS_PATH = os.path.join(APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
-STATE_SETTINGS_PATH = os.path.join(gu.APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json")
+STATE_SETTINGS_PATH = os.path.join(APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json")
 
 
 def get_state_dict() -> dict:
@@ -35,7 +56,7 @@ def get_state_dict() -> dict:
             return {}
 
 
-def get_state(key: str, default=None) -> str:
+def get_state(key: str, default=None):
     """
     Retrieves the value associated with the given key from the state dictionary.
 

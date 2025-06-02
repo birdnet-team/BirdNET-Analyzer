@@ -132,6 +132,8 @@
     "inference-settings-top-n-number-label": "Top N spesies",
     "inference-settings-use-top-n-checkbox-info": "Memilih N spesies teratas yang diurutkan berdasarkan skor kepercayaan.",
     "inference-settings-use-top-n-checkbox-label": "Gunakan top N spesies",
+    "multi-tab-additional-columns-checkbox-info": "Menambahkan kolom tambahan ke output. \"Mulai (d)\", \"Akhir (d)\", \"Nama ilmiah\", \"Nama umum\", \"Keyakinan\", \"Berkas\" sudah termasuk.",
+    "multi-tab-additional-columns-checkbox-label": "Kolom tambahan untuk CSV",
     "multi-tab-batchsize-number-info": "Jumlah sampel yang diproses sekaligus.",
     "multi-tab-batchsize-number-label": "Ukuran batch",
     "multi-tab-input-selection-button-label": "Pilih direktori input (rekursif)",

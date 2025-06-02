@@ -54,6 +54,7 @@ def run_analysis(
     sf_thresh: float,
     custom_classifier_file,
     output_types: str,
+    additional_columns: list[str] | None,
     combine_tables: bool,
     locale: str,
     batch_size: int,
@@ -84,6 +85,7 @@ def run_analysis(
         sf_thresh: The threshold for the predicted species list.
         custom_classifier_file: Custom classifier to be used.
         output_type: The type of result to be generated.
+        additional_columns: Additional columns to be added to the result.
         output_filename: The filename for the combined output.
         locale: The translation to be used.
         batch_size: The number of samples in a batch.
@@ -129,6 +131,7 @@ def run_analysis(
         slist=slist,
         top_n=top_n if use_top_n else None,
         output=output_path,
+        additional_columns=additional_columns,
     )
 
     if species_list_choice == gu._CUSTOM_CLASSIFIER:

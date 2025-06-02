@@ -565,7 +565,7 @@ class DataProcessor:
         self,
         selected_classes: list[str] | None = None,
         selected_recordings: list[str] | None = None,
-    ) -> tuple[np.ndarray, np.ndarray, tuple[str]]:
+    ) -> tuple[np.ndarray, np.ndarray, tuple[str, ...]]:
         """
         Filters the prediction and label tensors based on selected classes and recordings.
 

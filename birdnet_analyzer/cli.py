@@ -31,7 +31,7 @@ ASCII_LOGO = r"""
                                                  **=====        
                                                ***+==           
                                               ****+             
-""" # noqa: W291
+"""  # noqa: W291
 
 
 def io_args():
@@ -324,6 +324,7 @@ def analyzer_parser():
     Returns:
         argparse.ArgumentParser: Configured argument parser for the BirdNET Analyzer CLI.
     """
+    from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS_MAP
     parents = [
         io_args(),
         bandpass_args(),
@@ -352,6 +353,14 @@ def analyzer_parser():
         choices=["table", "audacity", "kaleidoscope", "csv"],
         nargs="+",
         help="Specifies output format. Values in `['table', 'audacity',  'kaleidoscope', 'csv']`.",
+        action=UniqueSetAction,
+    )
+    parser.add_argument(
+        "--additional_columns",
+        choices=POSSIBLE_ADDITIONAL_COLUMNS_MAP.keys(),
+        nargs="+",
+        help="Additional columns to include in the output, only applied to the csv output format. "
+        + f"Values in [{','.join(POSSIBLE_ADDITIONAL_COLUMNS_MAP.keys())}].",
         action=UniqueSetAction,
     )
     parser.add_argument(
@@ -513,9 +522,7 @@ def segments_parser():
     )
     parser.add_argument("audio_input", metavar="INPUT", help="Path to folder containing audio files.")
     parser.add_argument("-r", "--results", help="Path to folder containing result files. Defaults to the `input` path.")
-    parser.add_argument(
-        "-o", "--output", help="Output folder path for extracted segments. Defaults to the `input` path."
-    )
+    parser.add_argument("-o", "--output", help="Output folder path for extracted segments. Defaults to the `input` path.")
     parser.add_argument(
         "--max_segments",
         type=lambda a: max(1, int(a)),
@@ -550,9 +557,7 @@ def server_parser():
     parser.add_argument("-p", "--port", type=int, default=8080, help="Port of API endpoint server.")
     parser.add_argument(
         "--spath",
-        default="uploads/"
-        if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true"
-        else os.path.join(SCRIPT_DIR, "uploads"),
+        default="uploads/" if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true" else os.path.join(SCRIPT_DIR, "uploads"),
         help="Path to folder where uploaded files should be stored.",
     )
 
@@ -618,9 +623,7 @@ def train_parser():
         metavar="INPUT",
         help="Path to training data folder. Subfolder names are used as labels.",
     )
-    parser.add_argument(
-        "--test_data", help="Path to test data folder. If not specified, a random validation split will be used."
-    )
+    parser.add_argument("--test_data", help="Path to test data folder. If not specified, a random validation split will be used.")
     parser.add_argument(
         "--crop_mode",
         default=cfg.SAMPLE_CROP_MODE,
