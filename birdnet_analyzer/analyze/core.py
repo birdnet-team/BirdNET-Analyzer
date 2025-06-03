@@ -166,7 +166,7 @@ def _set_params(
     cfg.LOCATION_FILTER_THRESHOLD = sf_thresh
     cfg.TOP_N = top_n
     cfg.MERGE_CONSECUTIVE = merge_consecutive
-    cfg.INPUT_PATH = audio_input
+    cfg.INPUT_PATH = audio_input.replace("/", os.sep)
     cfg.MIN_CONFIDENCE = min_conf
     cfg.SIGMOID_SENSITIVITY = sensitivity
     cfg.SIG_OVERLAP = overlap

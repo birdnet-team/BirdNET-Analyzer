@@ -80,7 +80,7 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
 
     high_freq = min(high_freq, int(cfg.SIG_FMAX / cfg.AUDIO_SPEED))
 
-    high_freq = min(high_freq, int(cfg.BANDPASS_FMAX / cfg.AUDIO_SPEED))
+    high_freq = int(min(high_freq, int(cfg.BANDPASS_FMAX / cfg.AUDIO_SPEED)))
     low_freq = max(cfg.SIG_FMIN, int(cfg.BANDPASS_FMIN / cfg.AUDIO_SPEED))
 
     # Extract valid predictions for every timestamp
