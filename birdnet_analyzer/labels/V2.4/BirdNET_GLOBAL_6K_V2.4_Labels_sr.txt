@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Patuljasta plavočela ara
 Diuca diuca_Diuk zeba
 Dives dives_Melodični američki kos
 Dives warczewiczi_Žbunjački američki kos
-Dog_Dog
+Dog_Pas
 Dolichonyx oryzivorus_Bobolink
 Donacobius atricapilla_Donakobijus
 Donacospiza albifrons_Dugorepa tršćarska zeba
