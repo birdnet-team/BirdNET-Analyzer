@@ -26,23 +26,65 @@ jobs:
     # Optional: Add basic test to verify the image works
     - name: Test Docker image
       run: |
-        docker run -v $PWD/birdnet_analyzer/example:/audio birdnet:local-test -m birdnet_analyzer.analyze --i /audio --o /audio --slist /audio
-        
-        # Verify output file content
-        expected_header="Selection	View	Channel	Begin Time (s)	End Time (s)	Low Freq (Hz)	High Freq (Hz)	Common Name	Species Code	Confidence	Begin Path	File Offset (s)"
-        expected_first_line="1	Spectrogram 1	1	0	3.0	0	15000	Black-capped Chickadee	bkcchi	0.8141	/audio/soundscape.wav	0"
-        
-        actual_header=$(head -n 1 birdnet_analyzer/example/soundscape.BirdNET.selection.table.txt)
-        actual_first_line=$(head -n 2 birdnet_analyzer/example/soundscape.BirdNET.selection.table.txt | tail -n 1)
-        
-        if [ "$actual_header" != "$expected_header" ] || [ "$actual_first_line" != "$expected_first_line" ]
-        then
-            echo "Output file content does not match expected content"
-            echo "Expected header: $expected_header"
-            echo "Actual header: $actual_header"
-            echo "Expected first line: $expected_first_line"
-            echo "Actual first line: $actual_first_line"
-            exit 1
-        else
+        docker run -v "$PWD/birdnet_analyzer/example:/input" -v "$PWD/birdnet_analyzer/example:/output" birdnet:local-test -m birdnet_analyzer.analyze -o /output --slist /input .
+
+        actual_file="$PWD/birdnet_analyzer/example/soundscapewav.BirdNET.selection.table.txt"
+
+        # Define expected values as arrays
+        expected_header_columns=("Selection" "View" "Channel" "Begin Time (s)" "End Time (s)" "Low Freq (Hz)" "High Freq (Hz)" "Common Name" "Species Code" "Confidence" "Begin Path" "File Offset (s)")
+        expected_first_row_columns=("1" "Spectrogram 1" "1" "0.0" "3.0" "0" "15000" "Black-capped Chickadee" "bkcchi" "0.8141" "./soundscape.wav" "0.0")
+
+        # Read actual values into arrays
+        IFS=$'\t' read -r -a actual_header_columns < <(head -n 1 "$actual_file")
+        IFS=$'\t' read -r -a actual_first_row_columns < <(head -n 2 "$actual_file" | tail -n 1)
+
+        # Trim whitespace from each value
+        trim_array() {
+            local arr_name=$1
+            local length=$(eval "echo \${#${arr_name}[@]}")
+            for ((i=0; i<length; i++)); do
+                eval "${arr_name}[$i]=\$(echo \${${arr_name}[$i]} | xargs)"
+            done
+        }
+
+        trim_array actual_header_columns
+        trim_array actual_first_row_columns
+
+
+        # Compare two arrays
+        compare_arrays() {
+            local label=$1
+            shift
+            local -a actual=("${!1}")
+            local -a expected=("${!2}")
+
+            if [ "${#actual[@]}" -ne "${#expected[@]}" ]; then
+                echo "$label column count mismatch: ${#actual[@]} vs ${#expected[@]}"
+                return 1
+            fi
+
+            local mismatch=0
+            for i in "${!expected[@]}"; do
+                if [ "${actual[$i]}" != "${expected[$i]}" ]; then
+                    echo "$label mismatch at column $((i+1)):"
+                    echo "  Expected: '${expected[$i]}'"
+                    echo "  Actual:   '${actual[$i]}'"
+                    mismatch=1
+                fi
+            done
+
+            return $mismatch
+        }
+
+        # Compare headers and first row
+        compare_arrays "Header" actual_header_columns[@] expected_header_columns[@]
+        header_ok=$?
+
+        compare_arrays "First data row" actual_first_row_columns[@] expected_first_row_columns[@]
+        first_row_ok=$?
+
+        if [ $header_ok -eq 0 ] && [ $first_row_ok -eq 0 ]; then
             echo "test received expected output file contents"
+        else
+            exit 1
         fi
