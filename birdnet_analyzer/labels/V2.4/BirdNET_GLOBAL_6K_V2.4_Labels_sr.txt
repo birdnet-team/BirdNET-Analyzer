@@ -1220,8 +1220,8 @@ Chloris spinoides_Himalajska zelentarka
 Chloroceryle aenea_Američki patuljasti vodomar
 Chloroceryle amazona_Amazonski vodomar
 Chloroceryle americana_Američki zeleni vodomar
-Chloroceryle inda_Green-and-rufous Kingfisher
-Chlorochrysa phoenicotis_Glistening-green Tanager
+Chloroceryle inda_Zeleno-riđi vodomar
+Chlorochrysa phoenicotis_Bleštavozelena tangara
 Chlorocichla flaviventris_Žutotrbi grinbul
 Chlorocichla laetissima_Veseli grinbul
 Chlorocichla simplex_Smeđi belogrli grinbul
@@ -1329,7 +1329,7 @@ Cincloramphus cruralis_Ševoliki australijski cvrčić
 Cincloramphus macrurus_Papuanski cvrčić travar
 Cincloramphus mathewsi_Riđi australijski cvrčić
 Cincloramphus timoriensis_Žućkasti cvrčić travar
-Cinclosoma ajax_Painted Quail-thrush
+Cinclosoma ajax_Ukrašeni prepeličasti drozd
 Cinclosoma castaneothorax_Prepeličasti drozd kestenjastog trbuha
 Cinclosoma punctatum_Pegavi prepeličasti drozd
 Cinclus cinclus_Vodenkos
@@ -1345,7 +1345,7 @@ Cinnyris asiaticus_Ljubičasta sunčica
 Cinnyris bifasciatus_Ljubičastogruda sunčica
 Cinnyris chalybeus_Južna prsluk sunčica
 Cinnyris chloropygius_Zelenotrba prsluk sunčica
-Cinnyris coccinigastrus_Splendid Sunbird
+Cinnyris coccinigastrus_Zapadnoafrička sjajna prsluk sunčica
 Cinnyris cupreus_Bakarna sunčica
 Cinnyris erythrocercus_Dugorepa crvenogruda sunčica
 Cinnyris fuscus_Tamna sunčica
@@ -1468,7 +1468,7 @@ Colibri coruscans_Plavouhi kolibri
 Colibri cyanotus_Mali ljubičastouhi kolibri
 Colibri delphinae_Smeđi ljubičastouhi kolibri
 Colibri serrirostris_Belotrbi ljubičastouhi kolibri
-Colibri thalassinus_Mexican Violetear
+Colibri thalassinus_Meksički ljubičastouhi kolibri
 Colinus cristatus_Ćubasta kolinus prepelica
 Colinus nigrogularis_Crnogrla kolinus prepelica
 Colinus virginianus_Virdžinijska prepelica
@@ -1565,7 +1565,7 @@ Coracina striata_Kukavičji svračak prugastog trbuha
 Coracopsis nigra_Mali vaza papagaj
 Coracopsis vasa_Veliki vaza papagaj
 Coragyps atratus_Američki crni lešinar
-Corapipo altera_White-ruffed Manakin
+Corapipo altera_Panamski belogrli manakin
 Corapipo gutturalis_Belogrli manakin
 Corcorax melanorhamphos_Belokrila čavka
 Cormobates leucophaea_Belogrli puzić
@@ -1610,7 +1610,7 @@ Coryphospingus cucullatus_Crvena krunasta zeba
 Coryphospingus pileatus_Siva krunasta zeba
 Corythaeola cristata_Veliki plavi turako
 Corythaixoides concolor_Sivi turako
-Corythaixoides leucogaster_White-bellied Go-away-bird
+Corythaixoides leucogaster_Belotrbi turako
 Corythopis delalandi_Južni koritopis
 Corythopis torquatus_Prstenasti koritopis
 Corythornis cristatus_Malahitski vodomar
@@ -1675,7 +1675,7 @@ Criniger calurus_Riđorepi grinbul
 Criniger chloronotus_Istočni bradati grinbul
 Crithagra albogularis_Belogrli kanarinac
 Crithagra atrogularis_Angolski kanarinac
-Crithagra buchanani_Southern Grosbeak-Canary
+Crithagra buchanani_Južni krupnokljuni kanarinac
 Crithagra dorsostriata_Belotrbi kanarinac
 Crithagra flaviventris_Žutotrbi kanarinac
 Crithagra gularis_Streaky-headed Seedeater
@@ -1723,10 +1723,10 @@ Cuculus poliocephalus_Mala kukavica
 Cuculus rochii_Madagaskarska kukavica
 Cuculus saturatus_Himalajska kukavica
 Cuculus solitarius_Crvenogruda kukavica
-Culicicapa ceylonensis_Gray-headed Canary-Flycatcher
-Culicicapa helianthea_Citrine Canary-Flycatcher
+Culicicapa ceylonensis_Sivoglava kanarinska muharica
+Culicicapa helianthea_Žuta kanarinska muharica
 Culicivora caudacuta_Oštrorepa tiranka
-Curaeus curaeus_Austral Blackbird
+Curaeus curaeus_Patagonska ikterida
 Curruca boehmi_Bemova grmuša
 Curruca communis_Obična grmuša
 Curruca conspicillata_Zapadna grmuša
@@ -1951,7 +1951,7 @@ Dog_Pas
 Dolichonyx oryzivorus_Bobolink
 Donacobius atricapilla_Donakobijus
 Donacospiza albifrons_Dugorepa tršćarska zeba
-Doryfera ludovicae_Green-fronted Lancebill
+Doryfera ludovicae_Zeleni lancetastokljuni kolibri
 Drepanis coccinea_Jivi
 Drepanornis albertisi_Crnokljuna srpokljuna rajska ptica
 Dromas ardeola_Krabojed
