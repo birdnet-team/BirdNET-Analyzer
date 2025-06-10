@@ -29,7 +29,7 @@ function init() {
                 .then(response => {
                     const current_version = document.getElementById("current-version").textContent;
                     const response_object = JSON.parse(response);
-                    const latest_version = response_object.tag_name;
+                    let latest_version = response_object.tag_name;
 
                     if (latest_version.startsWith("v")) {
                         latest_version = latest_version.slice(1);
