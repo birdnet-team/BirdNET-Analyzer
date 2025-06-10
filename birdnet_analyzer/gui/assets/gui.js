@@ -29,11 +29,7 @@ function init() {
                 .then(response => {
                     const current_version = document.getElementById("current-version").textContent;
                     const response_object = JSON.parse(response);
-                    let latest_version = response_object.tag_name;
-
-                    if (latest_version.startsWith("v")) {
-                        latest_version = latest_version.slice(1);
-                    }
+                    const latest_version = response_object.tag_name.replace(/^v/, '');
 
                     if (current_version !== latest_version) {
                         const updateNotification = document.getElementById("update-available");
