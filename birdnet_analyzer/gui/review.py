@@ -403,12 +403,12 @@ def build_review_tab():
             regression_dl_btn,
         ]
 
-        spectrogram_dl_btn.click(partial(gu.download_plot, filename="spectrogram"), show_progress=False, inputs=spectrogram_image)
-        regression_dl_btn.click(partial(gu.download_plot, filename="regression"), show_progress=False, inputs=species_regression_plot)
+        spectrogram_dl_btn.click(partial(gu.download_plot, filename="spectrogram"), show_progress="hidden", inputs=spectrogram_image)
+        regression_dl_btn.click(partial(gu.download_plot, filename="regression"), show_progress="hidden", inputs=species_regression_plot)
 
         species_dropdown.change(
             select_subdir,
-            show_progress=True,
+            show_progress="full",
             inputs=[species_dropdown, review_state],
             outputs=review_change_output,
         )
@@ -432,7 +432,7 @@ def build_review_tab():
             partial(next_review, target_dir=POSITIVE_LABEL_DIR),
             inputs=review_state,
             outputs=review_btn_output,
-            show_progress=True,
+            show_progress="full",
             show_progress_on=review_audio,
         )
 
@@ -440,7 +440,7 @@ def build_review_tab():
             partial(next_review, target_dir=NEGATIVE_LABEL_DIR),
             inputs=review_state,
             outputs=review_btn_output,
-            show_progress=True,
+            show_progress="full",
             show_progress_on=review_audio,
         )
 
@@ -448,7 +448,7 @@ def build_review_tab():
             next_review,
             inputs=review_state,
             outputs=review_btn_output,
-            show_progress=True,
+            show_progress="full",
             show_progress_on=review_audio,
         )
 
@@ -456,7 +456,7 @@ def build_review_tab():
             undo_review,
             inputs=review_state,
             outputs=review_btn_output,
-            show_progress=True,
+            show_progress="full",
             show_progress_on=review_audio,
         )
 
@@ -464,7 +464,7 @@ def build_review_tab():
             start_review,
             inputs=review_state,
             outputs=review_change_output,
-            show_progress=True,
+            show_progress="full",
         )
 
 

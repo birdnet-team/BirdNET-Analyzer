@@ -96,7 +96,7 @@ def build_segments_tab():
             select_audio_directory_btn.click(
                 partial(select_directory_to_state_and_tb, state_key="segments-audio-dir"),
                 outputs=[selected_audio_directory_tb, audio_directory_state],
-                show_progress=False,
+                show_progress="hidden",
             )
 
         with gr.Row():
@@ -111,7 +111,7 @@ def build_segments_tab():
             select_result_directory_btn.click(
                 partial(select_directory_to_state_and_tb, state_key="segments-result-dir"),
                 outputs=[result_directory_state, selected_result_directory_tb],
-                show_progress=False,
+                show_progress="hidden",
             )
 
         with gr.Row():
@@ -124,7 +124,7 @@ def build_segments_tab():
             select_output_directory_btn.click(
                 partial(select_directory_to_state_and_tb, state_key="segments-output-dir"),
                 outputs=[selected_output_directory_tb, output_directory_state],
-                show_progress=False,
+                show_progress="hidden",
             )
 
         min_conf_slider = gr.Slider(

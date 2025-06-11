@@ -752,14 +752,14 @@ def build_evaluation_tab():
             get_selection_func("eval-annotations-dir", update_annotation_columns),
             outputs=[annotation_files_state, annotation_directory_input, annotation_group]
             + [annotation_columns[label] for label in ["Start Time", "End Time", "Class", "Recording", "Duration"]],
-            show_progress=True,
+            show_progress="full",
         )
 
         prediction_select_directory_btn.click(
             get_selection_func("eval-predictions-dir", update_prediction_columns),
             outputs=[prediction_files_state, prediction_directory_input, prediction_group]
             + [prediction_columns[label] for label in ["Start Time", "End Time", "Class", "Confidence", "Recording", "Duration"]],
-            show_progress=True,
+            show_progress="full",
         )
 
         def toggle_after_selection(annotation_files, prediction_files):

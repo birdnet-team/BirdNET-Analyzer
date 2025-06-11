@@ -251,7 +251,7 @@ def build_train_tab():
                 select_directory_btn.click(
                     partial(select_subdirectories, state_key="train-data-dir"),
                     outputs=[input_directory_state, directory_input],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
                 select_test_directory_btn = gr.Button(loc.localize("training-tab-test-data-selection-button-label"))
@@ -263,7 +263,7 @@ def build_train_tab():
                 select_test_directory_btn.click(
                     partial(select_subdirectories, state_key="test-data-dir"),
                     outputs=[test_data_dir_state, test_directory_input],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
             with gr.Column():
@@ -298,7 +298,7 @@ def build_train_tab():
                 select_classifier_directory_btn.click(
                     select_directory_and_update_tb,
                     outputs=[output_directory_state, classifier_name, output_format],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
         with gr.Row():
@@ -337,7 +337,7 @@ def build_train_tab():
                 select_cache_file_directory_btn.click(
                     select_directory_and_update,
                     outputs=[cache_file_state, cache_file_name],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
             with gr.Column(visible=False) as load_cache_file_row:
@@ -355,7 +355,7 @@ def build_train_tab():
                 selected_cache_file_btn.click(
                     on_cache_file_selection_click,
                     outputs=[cache_file_state, cache_file_input],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
             def on_cache_mode_change(value):
@@ -443,7 +443,7 @@ def build_train_tab():
                     crop_mode,
                     crop_overlap,
                 ],
-                show_progress=False,
+                show_progress="hidden",
             )
 
         autotune_cb = gr.Checkbox(
@@ -571,7 +571,7 @@ def build_train_tab():
         def on_focal_loss_change(value):
             return gr.Row(visible=value)
 
-        use_focal_loss.change(on_focal_loss_change, inputs=use_focal_loss, outputs=focal_loss_params, show_progress=False)
+        use_focal_loss.change(on_focal_loss_change, inputs=use_focal_loss, outputs=focal_loss_params, show_progress="hidden")
 
         def on_autotune_change(value):
             return (
@@ -584,7 +584,7 @@ def build_train_tab():
             on_autotune_change,
             inputs=autotune_cb,
             outputs=[custom_params, autotune_params, focal_loss_params],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         model_save_mode = gr.Radio(

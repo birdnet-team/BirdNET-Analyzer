@@ -124,7 +124,7 @@ def build_multi_analysis_tab():
 
                     return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]]]
 
-                select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress=True)
+                select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress="full")
 
             with gr.Column():
                 select_out_directory_btn = gr.Button(loc.localize("multi-tab-output-selection-button-label"))
@@ -141,7 +141,7 @@ def build_multi_analysis_tab():
                 select_out_directory_btn.click(
                     select_directory_wrapper,
                     outputs=[output_directory_predict_state, selected_out_textbox],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
         (
