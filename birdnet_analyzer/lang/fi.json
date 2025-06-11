@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "Määritä viikko, jolloin äänitys tehtiin, käyttäen yksinkertaistettua järjestelmää, jossa jokainen kuukausi on jaettu neljään viikkoon. Valitse arvo väliltä 1-48.",
     "species-list-coordinates-week-slider-label": "Viikko",
     "species-list-coordinates-yearlong-checkbox-label": "Ympärivuotinen",
-    "species-list-custom-classifier-no-labelfile-warning": "Label-tiedostoa muodossa <customclassifier>_Labels.txt ei löytynyt.",
+    "species-list-custom-classifier-no-labelfile-warning": "Label-tiedostoa muodossa &lt;customclassifier&gt;_Labels.txt ei löytynyt.",
     "species-list-custom-classifier-selection-button-label": "Valitse luokittelija",
     "species-list-custom-list-file-label": "Tiedosto",
     "species-list-radio-info": "Suodata lajit, jotka näytetään tuloksissa.",

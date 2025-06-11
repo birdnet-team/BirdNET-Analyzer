@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "選擇音檔的錄音時間(一年中的第幾周)，注意這裡簡化每個月有四周，因此數值必須介於 1 到 48",
     "species-list-coordinates-week-slider-label": "週",
     "species-list-coordinates-yearlong-checkbox-label": "全年",
-    "species-list-custom-classifier-no-labelfile-warning": "未找到格式為 <customclassifier>_Labels.txt 的標籤檔案。",
+    "species-list-custom-classifier-no-labelfile-warning": "未找到格式為 &lt;customclassifier&gt;_Labels.txt 的標籤檔案。",
     "species-list-custom-classifier-selection-button-label": "選擇分類器",
     "species-list-custom-list-file-label": "檔案",
     "species-list-radio-info": "結果的表單只會保留物種清單以內的物種",

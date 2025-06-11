@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "Tentukan minggu dalam tahun saat perekaman dilakukan, menggunakan sistem sederhana di mana setiap bulan dibagi menjadi empat minggu. Pilih nilai dari 1 hingga 48.",
     "species-list-coordinates-week-slider-label": "Minggu",
     "species-list-coordinates-yearlong-checkbox-label": "Sepanjang tahun",
-    "species-list-custom-classifier-no-labelfile-warning": "Tidak ditemukan file label dengan format <customclassifier>_Labels.txt.",
+    "species-list-custom-classifier-no-labelfile-warning": "Tidak ditemukan file label dengan format &lt;customclassifier&gt;_Labels.txt.",
     "species-list-custom-classifier-selection-button-label": "Pilih klasifikator",
     "species-list-custom-list-file-label": "File",
     "species-list-radio-info": "Saring spesies yang termasuk dalam hasil output.",

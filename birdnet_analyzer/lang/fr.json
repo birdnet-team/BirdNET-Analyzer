@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "Spécifiez la semaine de l'année où l'enregistrement a été effectué, en utilisant un système simplifié où chaque mois est divisé en quatre semaines. Choisissez une valeur de 1 à 48.",
     "species-list-coordinates-week-slider-label": "Semaine",
     "species-list-coordinates-yearlong-checkbox-label": "Toute l'année",
-    "species-list-custom-classifier-no-labelfile-warning": "Aucun fichier de labels trouvé au format <customclassifier>_Labels.txt.",
+    "species-list-custom-classifier-no-labelfile-warning": "Aucun fichier de labels trouvé au format &lt;customclassifier&gt;_Labels.txt.",
     "species-list-custom-classifier-selection-button-label": "Sélectionner un classificateur",
     "species-list-custom-list-file-label": "Fichier",
     "species-list-radio-info": "Filtrer les espèces qui sont incluses dans le résultat.",

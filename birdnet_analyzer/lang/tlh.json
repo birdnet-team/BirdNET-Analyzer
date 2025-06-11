@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "pIH lang Segh chu' Hogh 1-48.",
     "species-list-coordinates-week-slider-label": "Hogh",
     "species-list-coordinates-yearlong-checkbox-label": "DIS",
-    "species-list-custom-classifier-no-labelfile-warning": "<customclassifier>_Labels.txt chen pongwIj tu'be'.",
+    "species-list-custom-classifier-no-labelfile-warning": "&lt;customclassifier&gt;_Labels.txt chen pongwIj tu'be'.",
     "species-list-custom-classifier-selection-button-label": "wIv tu'law'",
     "species-list-custom-list-file-label": "wav",
     "species-list-radio-info": "wav Seghmey chu'.",

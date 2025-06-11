@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "Ange vilken vecka på året inspelningen gjordes, med ett förenklat system där varje månad är indelad i fyra veckor. Välj ett värde från 1 till 48.",
     "species-list-coordinates-week-slider-label": "Vecka",
     "species-list-coordinates-yearlong-checkbox-label": "Året runt",
-    "species-list-custom-classifier-no-labelfile-warning": "Ingen etikettfil hittades i formatet <customclassifier>_Labels.txt.",
+    "species-list-custom-classifier-no-labelfile-warning": "Ingen etikettfil hittades i formatet &lt;customclassifier&gt;_Labels.txt.",
     "species-list-custom-classifier-selection-button-label": "Välj klassificerare",
     "species-list-custom-list-file-label": "Fil",
     "species-list-radio-info": "Filtrera arter som ingår i resultatet.",

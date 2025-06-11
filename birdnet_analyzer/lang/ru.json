@@ -240,7 +240,7 @@
     "species-list-coordinates-week-slider-info": "Укажите неделю года, когда была сделана запись, используя упрощенную систему, где каждый месяц делится на четыре недели. Выберите значение от 1 до 48.",
     "species-list-coordinates-week-slider-label": "Неделя",
     "species-list-coordinates-yearlong-checkbox-label": "Круглый год",
-    "species-list-custom-classifier-no-labelfile-warning": "Файл меток в формате <customclassifier>_Labels.txt не найден.",
+    "species-list-custom-classifier-no-labelfile-warning": "Файл меток в формате &lt;customclassifier&gt;_Labels.txt не найден.",
     "species-list-custom-classifier-selection-button-label": "Выбрать классификатор",
     "species-list-custom-list-file-label": "Файл",
     "species-list-radio-info": "Фильтр видов, включаемых в выходные данные.",
