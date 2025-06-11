@@ -596,15 +596,22 @@ def species_lists(opened=True):
             def on_custom_classifier_selection_click():
                 file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
 
-                if file:
-                    labels = os.path.splitext(file)[0] + "_Labels.txt"
+                if not file:
+                    return None, None
 
-                    if not os.path.isfile(labels):
-                        labels = file.replace("Model_FP32.tflite", "Labels.txt")
+                base_name = os.path.splitext(file)[0]
+                labels = base_name + "_Labels.txt"
 
-                    return file, gr.File(value=[file, labels], visible=True)
+                if not os.path.isfile(labels):
+                    labels = file.replace("Model_FP32.tflite", "Labels.txt")
 
-                return None, None
+                    if not file.endswith("Model_FP32.tflite") or not os.path.isfile(labels):
+                        warning_msg = os.path.basename(labels) + " " + loc.localize("species-list-custom-classifier-selection-warning")
+                        gr.Warning(warning_msg)
+
+                        return file, gr.File(value=[file], visible=True)
+
+                return file, gr.File(value=[file, labels], visible=True)
 
             classifier_selection_button.click(
                 on_custom_classifier_selection_click,

@@ -207,7 +207,11 @@ def _set_params(
             if not os.path.isfile(cfg.LABELS_FILE):
                 cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
 
-            cfg.LABELS = read_lines(cfg.LABELS_FILE)
+            if not custom_classifier.endswith("Model_FP32.tflite") or not os.path.isfile(cfg.LABELS_FILE):
+                cfg.LABELS_FILE = None
+                cfg.LABELS = None
+            else:
+                cfg.LABELS = read_lines(cfg.LABELS_FILE)
         else:
             cfg.APPLY_SIGMOID = False
             # our output format
@@ -236,10 +240,13 @@ def _set_params(
             cfg.SPECIES_LIST_FILE = None
             cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
 
-    lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
+    if cfg.LABELS_FILE:
+        lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
 
-    if locale not in ["en"] and os.path.isfile(lfile):
-        cfg.TRANSLATED_LABELS = read_lines(lfile)
+        if locale not in ["en"] and os.path.isfile(lfile):
+            cfg.TRANSLATED_LABELS = read_lines(lfile)
+        else:
+            cfg.TRANSLATED_LABELS = cfg.LABELS
     else:
         cfg.TRANSLATED_LABELS = cfg.LABELS
 
