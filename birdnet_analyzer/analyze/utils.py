@@ -602,7 +602,7 @@ def analyze_file(item) -> dict[str, str] | None:
     start_time = datetime.datetime.now()
     offset = 0
     duration = int(cfg.FILE_SPLITTING_DURATION / cfg.AUDIO_SPEED)
-    start, end = 0, cfg.SIG_LENGTH
+    start, end = 0, cfg.SIG_LENGTH * cfg.AUDIO_SPEED
     results = {}
 
     # Status
@@ -627,11 +627,11 @@ def analyze_file(item) -> dict[str, str] | None:
             for chunk_index, chunk in enumerate(chunks):
                 # Add to batch
                 samples.append(chunk)
-                timestamps.append([round(start * cfg.AUDIO_SPEED, 1), round(end * cfg.AUDIO_SPEED, 1)])
+                timestamps.append([round(start, 1), round(end, 1)])
 
                 # Advance start and end
-                start += cfg.SIG_LENGTH - cfg.SIG_OVERLAP
-                end = start + cfg.SIG_LENGTH
+                start += (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED
+                end = min(start + cfg.SIG_LENGTH * cfg.AUDIO_SPEED, fileLengthSeconds)
 
                 # Check if batch is full or last chunk
                 if len(samples) < cfg.BATCH_SIZE and chunk_index < len(chunks) - 1:
