@@ -52,7 +52,7 @@ def build_species_tab():
             select_directory_and_update_tb,
             inputs=classifier_name,
             outputs=[output_directory_state, classifier_name],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = (

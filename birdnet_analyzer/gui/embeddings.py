@@ -180,7 +180,7 @@ def _build_extract_tab():
             select_audio_directory_btn.click(
                 partial(select_directory_to_state_and_tb, state_key="embeddings-input-dir"),
                 outputs=[selected_audio_directory_tb, input_directory_state],
-                show_progress=False,
+                show_progress="hidden",
             )
 
         with gr.Row():
@@ -285,7 +285,7 @@ def _build_extract_tab():
             select_directory_and_update_tb,
             inputs=[db_name_tb],
             outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         with gr.Accordion(loc.localize("embedding-file-output-accordion-label"), open=False):
@@ -339,7 +339,7 @@ def _build_extract_tab():
             check_settings,
             inputs=[db_directory_state, db_name_tb],
             outputs=[audio_speed_slider, fmin_number, fmax_number],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         progress_plot = gr.Plot()
@@ -609,7 +609,7 @@ def _build_search_tab():
             select_query_btn,
             query_sample_tb,
         ],
-        show_progress=False,
+        show_progress="hidden",
     )
 
     search_btn.click(

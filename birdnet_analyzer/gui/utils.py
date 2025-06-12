@@ -281,9 +281,9 @@ def build_settings():
 
             return ""
 
-        languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress=False)
-        theme_radio.input(on_theme_change, inputs=theme_radio, show_progress=False)
-        settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress=False)
+        languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress="hidden")
+        theme_radio.input(on_theme_change, inputs=theme_radio, show_progress="hidden")
+        settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
 
 def sample_sliders(opened=True):
@@ -326,7 +326,7 @@ def sample_sliders(opened=True):
                 lambda use_top_n: (gr.Number(visible=use_top_n), gr.Slider(visible=not use_top_n)),
                 inputs=use_top_n_checkbox,
                 outputs=[top_n_input, confidence_slider],
-                show_progress=False,
+                show_progress="hidden",
             )
 
             with gr.Row():
@@ -443,8 +443,8 @@ def species_list_coordinates(show_map=False):
 
         map_plot = gr.Plot(plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map)
 
-        lat_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False)
-        lon_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False)
+        lat_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress="hidden")
+        lon_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress="hidden")
 
     with gr.Group():
         with gr.Row():
@@ -471,7 +471,7 @@ def species_list_coordinates(show_map=False):
     def on_change(use_yearlong):
         return gr.Slider(interactive=(not use_yearlong))
 
-    yearlong_checkbox.change(on_change, inputs=yearlong_checkbox, outputs=week_number, show_progress=False)
+    yearlong_checkbox.change(on_change, inputs=yearlong_checkbox, outputs=week_number, show_progress="hidden")
 
     return lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot
 
@@ -492,7 +492,7 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
         if state_key:
             settings.set_state(state_key, os.path.dirname(file))
 
-        return file
+        return str(file)
 
     return None
 
@@ -596,27 +596,33 @@ def species_lists(opened=True):
             def on_custom_classifier_selection_click():
                 file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
 
-                if file:
-                    labels = os.path.splitext(file)[0] + "_Labels.txt"
+                if not file:
+                    return None, None
 
-                    if not os.path.isfile(labels):
-                        labels = file.replace("Model_FP32.tflite", "Labels.txt")
+                base_name = os.path.splitext(file)[0]
+                labels = base_name + "_Labels.txt"
 
-                    return file, gr.File(value=[file, labels], visible=True)
+                if not os.path.isfile(labels):
+                    labels = file.replace("Model_FP32.tflite", "Labels.txt")
 
-                return None, None
+                    if not file.endswith("Model_FP32.tflite") or not os.path.isfile(labels):
+                        gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
+
+                        return file, gr.File(value=[file], visible=True)
+
+                return file, gr.File(value=[file, labels], visible=True)
 
             classifier_selection_button.click(
                 on_custom_classifier_selection_click,
                 outputs=[selected_classifier_state, classifier_file_input],
-                show_progress=False,
+                show_progress="hidden",
             )
 
         species_list_radio.change(
             show_species_choice,
             inputs=[species_list_radio],
             outputs=[position_row, species_file_input, custom_classifier_selector, empty_col],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         return (

@@ -90,7 +90,7 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
 
         for c in result[timestamp]:
             selection_id += 1
-            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
+            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])] if cfg.TRANSLATED_LABELS else c[0]
             code = cfg.CODES[c[0]] if c[0] in cfg.CODES else c[0]
             rstring += (
                 f"{selection_id}\tSpectrogram 1\t1\t{start}\t{end}\t{low_freq}\t{high_freq}\t{label.split('_', 1)[-1]}\t{code}\t{c[1]:.4f}\t{afile_path}\t{start}\n"
@@ -130,7 +130,7 @@ def generate_audacity(timestamps: list[str], result: dict[str, list], result_pat
         rstring = ""
 
         for c in result[timestamp]:
-            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
+            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])] if cfg.TRANSLATED_LABELS else c[0]
             ts = timestamp.replace("-", "\t")
             lbl = label.replace("_", ", ")
             rstring += f"{ts}\t{lbl}\t{c[1]:.4f}\n"
@@ -165,7 +165,7 @@ def generate_kaleidoscope(timestamps: list[str], result: dict[str, list], afile_
         start, end = timestamp.split("-", 1)
 
         for c in result[timestamp]:
-            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
+            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])] if cfg.TRANSLATED_LABELS else c[0]
             rstring += "{},{},{},{},{},{},{},{:.4f},{:.4f},{:.4f},{},{},{}\n".format(
                 parent_folder.rstrip("/"),
                 folder_name,
@@ -220,7 +220,7 @@ def generate_csv(timestamps: list[str], result: dict[str, list], afile_path: str
 
         for c in result[timestamp]:
             start, end = timestamp.split("-", 1)
-            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])]
+            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])] if cfg.TRANSLATED_LABELS else c[0]
             rstring += f"{start},{end},{label.split('_', 1)[0]},{label.split('_', 1)[-1]},{c[1]:.4f},{afile_path}"
 
             if columns_map:
@@ -647,6 +647,9 @@ def analyze_file(item) -> dict[str, str] | None:
 
                     # Get prediction
                     pred = p[i]
+
+                    if not cfg.LABELS:
+                        cfg.LABELS = [f"Species-{i}_Species-{i}" for i in range(len(pred))]
 
                     # Assign scores to labels
                     p_labels = [
