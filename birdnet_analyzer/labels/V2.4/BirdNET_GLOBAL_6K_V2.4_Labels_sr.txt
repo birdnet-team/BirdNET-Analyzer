@@ -561,7 +561,7 @@ Asthenes sclateri_Puna Canastero
 Asthenes urubambensis_Line-fronted Canastero
 Asthenes virgata_Junin Canastero
 Asthenes wyatti_Šarenoleđi kanastero
-Atalotriccus pilaris_Pale-eyed Pygmy-Tyrant
+Atalotriccus pilaris_Svetlooka patuljasta tirančica
 Atelornis crossleyi_Riđoglava modrovrana sa tla
 Atelornis pittoides_Pitolika modrovrana sa tla
 Athene blewitti_Šumska kukumavka
@@ -605,16 +605,16 @@ Attila phoenicurus_Riđorepi atila
 Attila rufus_Atila sa sivom kapuljačom
 Attila spadiceus_Atila žutog nadrepka
 Attila torridus_Oker atila
-Augastes lumachella_Hooded Visorbearer
-Augastes scutatus_Hyacinth Visorbearer
+Augastes lumachella_Zulufasti kolibri
+Augastes scutatus_Zumbul kolibri
 Aulacorhynchus albivitta_Južni smaragdni tukanet
-Aulacorhynchus coeruleicinctis_Blue-banded Toucanet
-Aulacorhynchus derbianus_Chestnut-tipped Toucanet
-Aulacorhynchus haematopygus_Crimson-rumped Toucanet
+Aulacorhynchus coeruleicinctis_Plavotrbi tukanet
+Aulacorhynchus derbianus_Crnokljuni zeleni tukanet
+Aulacorhynchus haematopygus_Crvenoleđi tukanet
 Aulacorhynchus prasinus_Severni smaragdni tukanet
 Aulacorhynchus sulcatus_Plavoliki zeleni tukanet
 Auriparus flaviceps_Verdin senica
-Automolus exsertus_Chiriqui Foliage-gleaner
+Automolus exsertus_Panamska žutogrla krošnjarka
 Automolus infuscatus_Maslinastoleđa krošnjarka
 Automolus leucophthalmus_Belooka krošnjarka
 Automolus melanopezus_Smeđoleđa krošnjarka
@@ -645,7 +645,7 @@ Bambusicola sonorivox_Tajvanska bambusova jarebica
 Bambusicola thoracicus_Kineska bambusova jarebica
 Bangsia aureocincta_Gold-ringed Tanager
 Bangsia edwardsi_Zelenoleđa tangara
-Bangsia melanochlamys_Black-and-gold Tanager
+Bangsia melanochlamys_Crno-zlatna tangara
 Barnardius zonarius_Kragnasti papagaj
 Bartramia longicauda_Crnokrili sprudnik
 Baryphthengus martii_Riđi momot
@@ -717,7 +717,7 @@ Brachypteryx leucophris_Mali kratkokrili crvendać
 Brachypteryx montana_Javanski kratkokrili crvendać
 Brachyramphus marmoratus_Mramorasta njorčica
 Bradornis microrhynchus_Bledosiva muharica
-Bradypterus baboecala_Little Rush Warbler
+Bradypterus baboecala_Mali afrički cvrčić
 Bradypterus barratti_Beretov afrički cvrčić
 Bradypterus brunneus_Smeđi mekorepi cvrčić
 Bradypterus carpalis_White-winged Swamp Warbler
@@ -742,16 +742,16 @@ Bubalornis niger_Crvenokljuna bivolja tkalja
 Bubo africanus_Pegava buljina
 Bubo bengalensis_Bengalska buljina
 Bubo bubo_Buljina
-Bubo coromandus_Dusky Eagle-Owl
-Bubo lacteus_Verreaux's Eagle-Owl
-Bubo nipalensis_Spot-bellied Eagle-Owl
+Bubo coromandus_Tamna buljina
+Bubo lacteus_Veroova buljina
+Bubo nipalensis_Pegava crnooka buljina
 Bubo scandiacus_Snežna sova
-Bubo sumatranus_Barred Eagle-Owl
+Bubo sumatranus_Sumatranska crnooka buljina
 Bubo virginianus_Američka buljina
 Bubulcus ibis_Čaplja govedarka
 Bucanetes githagineus_Zeba trubačica
 Buccanodon duchaillui_Žutopegi barbet
-Bucco capensis_Collared Puffbird
+Bucco capensis_Ogrličasti puf
 Bucco macrodactylus_Puf sa kestenjastom kapicom
 Bucco tamatia_Pegavi puf
 Bucephala albeola_Beloglava patka dupljašica
