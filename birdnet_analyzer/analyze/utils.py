@@ -600,9 +600,8 @@ def analyze_file(item) -> dict[str, str] | None:
 
     # Start time
     start_time = datetime.datetime.now()
-    offset = 0
     duration = int(cfg.FILE_SPLITTING_DURATION / cfg.AUDIO_SPEED)
-    start, end = 0, cfg.SIG_LENGTH
+    start, end = 0, cfg.SIG_LENGTH * cfg.AUDIO_SPEED
     results = {}
 
     # Status
@@ -619,19 +618,19 @@ def analyze_file(item) -> dict[str, str] | None:
 
     # Process each chunk
     try:
-        while offset < fileLengthSeconds:
-            chunks = get_raw_audio_from_file(fpath, offset, duration)
+        while start < fileLengthSeconds:
+            chunks = get_raw_audio_from_file(fpath, start, duration)
             samples = []
             timestamps = []
 
             for chunk_index, chunk in enumerate(chunks):
                 # Add to batch
                 samples.append(chunk)
-                timestamps.append([round(start * cfg.AUDIO_SPEED, 1), round(end * cfg.AUDIO_SPEED, 1)])
+                timestamps.append([round(start, 1), round(end, 1)])
 
                 # Advance start and end
-                start += cfg.SIG_LENGTH - cfg.SIG_OVERLAP
-                end = start + cfg.SIG_LENGTH
+                start += (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED
+                end = min(start + cfg.SIG_LENGTH * cfg.AUDIO_SPEED, fileLengthSeconds)
 
                 # Check if batch is full or last chunk
                 if len(samples) < cfg.BATCH_SIZE and chunk_index < len(chunks) - 1:
@@ -671,7 +670,6 @@ def analyze_file(item) -> dict[str, str] | None:
                 # Clear batch
                 samples = []
                 timestamps = []
-            offset = offset + duration
 
     except Exception as ex:
         # Write error log
