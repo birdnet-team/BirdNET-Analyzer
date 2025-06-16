@@ -160,20 +160,20 @@ def _set_params(
     from birdnet_analyzer.species.utils import get_species_list
     from birdnet_analyzer.utils import collect_audio_files, read_lines
 
+    if not isinstance(overlap, int | float):
+        raise ValueError("Overlap must be a numeric value.")
+
     if overlap < 0:
         raise ValueError("Overlap must be a non-negative value.")
 
     if overlap >= cfg.SIG_LENGTH:
         raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
 
-    if not isinstance(overlap, int | float):
-        raise ValueError("Overlap must be a numeric value.")
+    if not isinstance(audio_speed, int | float):
+        raise ValueError("Audio speed must be a numeric value.")
 
     if audio_speed <= 0:
         raise ValueError("Audio speed must be a positive value.")
-
-    if not isinstance(audio_speed, int | float):
-        raise ValueError("Audio speed must be a numeric value.")
 
     cfg.CODES = load_codes()
     cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)

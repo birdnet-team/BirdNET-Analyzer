@@ -4,7 +4,6 @@ import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pytest
 
 import birdnet_analyzer.config as cfg
