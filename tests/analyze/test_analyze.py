@@ -255,9 +255,9 @@ def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set
     _, kwargs = mock_set_params.call_args
     assert kwargs["slist"] == species_list
 
-
-def test_analyze_with_speed_up(setup_test_environment):
-    """Test analyzing with speed up."""
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_negative_speed(setup_test_environment):
+    """Test analyzing with negative speed."""
     env = setup_test_environment
 
     soundscape_path = "birdnet_analyzer/example/soundscape.wav"
@@ -265,81 +265,12 @@ def test_analyze_with_speed_up(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=5.0, top_n=1, min_conf=0)
+    with pytest.raises(ValueError, match="Audio speed must be a positive value."):
+        analyze(soundscape_path, env["output_dir"], audio_speed=-1.0, top_n=1, min_conf=0)
 
-    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
-    assert os.path.exists(output_file)
-
-    with open(output_file) as f:
-        lines = f.readlines()[1:]
-        assert len(lines) == 8, "Number of predicted segments does not match"
-
-        for index, line in enumerate(lines):
-            parts = line.strip().split("\t")
-            start = float(parts[3])
-            end = float(parts[4])
-            assert np.isclose(start, index * 15), "Start time does not match expected value"
-            assert np.isclose(end, (index + 1) * 15), "End time does not match expected value"
-
-
-def test_analyze_with_speed_up_10_and_overlap_1(setup_test_environment):
-    """Test analyzing with speed up."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-    audio_speed = 10.0
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
-    # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=1)
-    expected_start_timestamps = list(range(0, 120, 20))
-    expected_end_timestamps = [*list(range(30, 121, 20)), 120]
-
-    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
-    assert os.path.exists(output_file)
-
-    with open(output_file) as f:
-        lines = f.readlines()[1:]
-
-        for expected_start, expected_end, line in zip(expected_start_timestamps, expected_end_timestamps, lines, strict=True):
-            parts = line.strip().split("\t")
-            actual_start = float(parts[3])
-            actual_end = float(parts[4])
-            assert float(actual_start) == expected_start, "Start time does not match expected value"
-            assert float(actual_end) == expected_end, "End time does not match expected value"
-
-
-def test_analyze_with_speed_up_10_and_overlap_2(setup_test_environment):
-    """Test analyzing with speed up."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-    audio_speed = 10.0
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
-    # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=2)
-    expected_start_timestamps = list(range(0, 120, 10))
-    expected_end_timestamps = [*list(range(30, 121, 10)), 120, 120]
-
-    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
-    assert os.path.exists(output_file)
-
-    with open(output_file) as f:
-        lines = f.readlines()[1:]
-
-        for expected_start, expected_end, line in zip(expected_start_timestamps, expected_end_timestamps, lines, strict=True):
-            parts = line.strip().split("\t")
-            actual_start = float(parts[3])
-            actual_end = float(parts[4])
-            assert float(actual_start) == expected_start, "Start time does not match expected value"
-            assert float(actual_end) == expected_end, "End time does not match expected value"
-
-
-def test_analyze_with_slow_down(setup_test_environment):
-    """Test analyzing with speed up."""
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_zero_speed(setup_test_environment):
+    """Test analyzing with zero speed."""
     env = setup_test_environment
 
     soundscape_path = "birdnet_analyzer/example/soundscape.wav"
@@ -347,25 +278,12 @@ def test_analyze_with_slow_down(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=0.2, top_n=1, min_conf=0)
+    with pytest.raises(ValueError, match="Audio speed must be a positive value."):
+        analyze(soundscape_path, env["output_dir"], audio_speed=0.0, top_n=1, min_conf=0)
 
-    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
-    assert os.path.exists(output_file)
-
-    with open(output_file) as f:
-        lines = f.readlines()[1:]
-        assert len(lines) == 200, "Number of predicted segments does not match"
-
-        for index, line in enumerate(lines):
-            parts = line.strip().split("\t")
-            start = float(parts[3])
-            end = float(parts[4])
-            assert np.isclose(start, index * 0.6), "Start time does not match expected value"
-            assert np.isclose(end, (index + 1) * 0.6), "End time does not match expected value"
-
-
-def test_analyze_with_slow_down_and_overlap_1(setup_test_environment):
-    """Test analyzing with speed up."""
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_invalid_audio_speed(setup_test_environment):
+    """Test analyzing with invalid audio speed."""
     env = setup_test_environment
 
     soundscape_path = "birdnet_analyzer/example/soundscape.wav"
@@ -373,13 +291,75 @@ def test_analyze_with_slow_down_and_overlap_1(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=0.1, top_n=1, overlap=1)
+    with pytest.raises(ValueError, match="Audio speed must be a numeric value."):
+        analyze(soundscape_path, env["output_dir"], audio_speed="fast", top_n=1, min_conf=0)
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_negative_overlap(setup_test_environment):
+    """Test analyzing with invalid overlap."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    with pytest.raises(ValueError, match="Overlap must be a non-negative value."):
+        analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=-1)
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_invalid_overlap(setup_test_environment):
+    """Test analyzing with invalid overlap."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    with pytest.raises(ValueError, match="Overlap must be a numeric value."):
+        analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap="high")
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_too_high_overlap(setup_test_environment):
+    """Test analyzing with too high overlap."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    with pytest.raises(ValueError, match=f"Overlap must be less than {cfg.SIG_LENGTH} seconds."):
+        analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
+
+@pytest.mark.parametrize(
+    ("audio_speed", "overlap"),
+    [(10, 1), (5, 2), (5, 0), (0.1, 1), (0.2, 0)],
+)
+def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, overlap):
+    """Test analyzing with speed up."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+    file_length = 120
+    step_size = round(3 * audio_speed - overlap * audio_speed, 1)
+    expected_start_timestamps = [e / 10 for e in range(0, int(file_length * 10), int(step_size * 10))]
+    expected_end_timestamps = [e / 10 for e in range(int(3 * audio_speed * 10), int(file_length) * 10 + 1, int(step_size * 10))]
+
+    while len(expected_end_timestamps) < len(expected_start_timestamps):
+        if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
+            expected_end_timestamps.append(file_length)
+        else:
+            expected_start_timestamps.pop()
+
+    # Call function under test
+    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=overlap)
 
     output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
     assert os.path.exists(output_file)
-
-    expected_start_timestamps = [e / 10 for e in range(0, 1200, 2)]
-    expected_end_timestamps = [e / 10 for e in range(3, 1200, 2)] + [120.0]
 
     with open(output_file) as f:
         lines = f.readlines()[1:]
