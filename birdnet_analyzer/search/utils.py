@@ -50,7 +50,6 @@ def get_query_embedding(queryfile_path):
         sig_splits = audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
     samples = sig_splits
-    data = np.array(samples, dtype="float32")
 
     return model.embeddings(data)
 

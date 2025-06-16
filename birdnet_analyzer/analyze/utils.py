@@ -541,6 +541,9 @@ def iterate_audio_chunks(fpath: str, embeddings: bool = False):
         samples = []
         timestamps = []
 
+        if not chunks:
+            break
+
         for chunk_index, chunk in enumerate(chunks):
             # Add to batch
             samples.append(chunk)
@@ -555,7 +558,7 @@ def iterate_audio_chunks(fpath: str, embeddings: bool = False):
                 continue
 
             # Predict
-            p = model.embeddings(np.array(samples, dtype="float32")) if embeddings else predict(samples)
+            p = model.embeddings(samples) if embeddings else predict(samples)
 
             # Add to results
             for i in range(len(samples)):
