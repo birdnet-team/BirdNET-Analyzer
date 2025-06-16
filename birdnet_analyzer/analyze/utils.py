@@ -396,7 +396,7 @@ def combine_csv_files(saved_results: list[str]):
         f.write(out_string)
 
 
-def combine_results(saved_results: Sequence[dict[str, str]| None]):
+def combine_results(saved_results: Sequence[dict[str, str] | None]):
     """
     Combines various types of result files based on the configuration settings.
     This function checks the types of results specified in the configuration
@@ -522,6 +522,53 @@ def get_raw_audio_from_file(fpath: str, offset, duration):
     return audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
 
+def iterate_audio_chunks(fpath: str, embeddings: bool = False):
+    """Iterates over audio chunks from a file.
+
+    Args:
+        fpath: Path to the audio file.
+        offset: Offset in seconds to start reading the file.
+
+    Yields:
+        Chunks of audio data.
+    """
+    fileLengthSeconds = audio.get_audio_file_length(fpath)
+    start, end = 0, cfg.SIG_LENGTH * cfg.AUDIO_SPEED
+    duration = int(cfg.FILE_SPLITTING_DURATION / cfg.AUDIO_SPEED)
+
+    while start < fileLengthSeconds and not np.isclose(start, fileLengthSeconds):
+        chunks = get_raw_audio_from_file(fpath, start, duration)
+        samples = []
+        timestamps = []
+
+        for chunk_index, chunk in enumerate(chunks):
+            # Add to batch
+            samples.append(chunk)
+            timestamps.append([round(start, 1), round(end, 1)])
+
+            # Advance start and end
+            start += (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED
+            end = min(start + cfg.SIG_LENGTH * cfg.AUDIO_SPEED, fileLengthSeconds)
+
+            # Check if batch is full or last chunk
+            if len(samples) < cfg.BATCH_SIZE and chunk_index < len(chunks) - 1:
+                continue
+
+            # Predict
+            p = model.embeddings(np.array(samples, dtype="float32")) if embeddings else predict(samples)
+
+            # Add to results
+            for i in range(len(samples)):
+                # Get timestamp
+                s_start, s_end = timestamps[i]
+
+                yield s_start, s_end, p[i]
+
+            # Clear batch
+            samples = []
+            timestamps = []
+
+
 def predict(samples):
     """Predicts the classes for the given samples.
 
@@ -600,76 +647,31 @@ def analyze_file(item) -> dict[str, str] | None:
 
     # Start time
     start_time = datetime.datetime.now()
-    duration = int(cfg.FILE_SPLITTING_DURATION / cfg.AUDIO_SPEED)
-    start, end = 0, cfg.SIG_LENGTH * cfg.AUDIO_SPEED
     results = {}
 
     # Status
     print(f"Analyzing {fpath}", flush=True)
 
-    try:
-        fileLengthSeconds = audio.get_audio_file_length(fpath)
-    except Exception as ex:
-        # Write error log
-        print(f"Error: Cannot analyze audio file {fpath}. File corrupt?\n", flush=True)
-        utils.write_error_log(ex)
-
-        return None
-
     # Process each chunk
     try:
-        while start < fileLengthSeconds and not np.isclose(start, fileLengthSeconds):
-            chunks = get_raw_audio_from_file(fpath, start, duration)
-            samples = []
-            timestamps = []
+        for s_start, s_end, pred in iterate_audio_chunks(fpath):
+            if not cfg.LABELS:
+                cfg.LABELS = [f"Species-{i}_Species-{i}" for i in range(len(pred))]
 
-            for chunk_index, chunk in enumerate(chunks):
-                # Add to batch
-                samples.append(chunk)
-                timestamps.append([round(start, 1), round(end, 1)])
+            # Assign scores to labels
+            p_labels = [
+                p for p in zip(cfg.LABELS, pred, strict=True) if (cfg.TOP_N or p[1] >= cfg.MIN_CONFIDENCE) and (not cfg.SPECIES_LIST or p[0] in cfg.SPECIES_LIST)
+            ]
 
-                # Advance start and end
-                start += (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED
-                end = min(start + cfg.SIG_LENGTH * cfg.AUDIO_SPEED, fileLengthSeconds)
+            # Sort by score
+            p_sorted = sorted(p_labels, key=operator.itemgetter(1), reverse=True)
 
-                # Check if batch is full or last chunk
-                if len(samples) < cfg.BATCH_SIZE and chunk_index < len(chunks) - 1:
-                    continue
+            if cfg.TOP_N:
+                p_sorted = p_sorted[: cfg.TOP_N]
 
-                # Predict
-                p = predict(samples)
-
-                # Add to results
-                for i in range(len(samples)):
-                    # Get timestamp
-                    s_start, s_end = timestamps[i]
-
-                    # Get prediction
-                    pred = p[i]
-
-                    if not cfg.LABELS:
-                        cfg.LABELS = [f"Species-{i}_Species-{i}" for i in range(len(pred))]
-
-                    # Assign scores to labels
-                    p_labels = [
-                        p
-                        for p in zip(cfg.LABELS, pred, strict=True)
-                        if (cfg.TOP_N or p[1] >= cfg.MIN_CONFIDENCE) and (not cfg.SPECIES_LIST or p[0] in cfg.SPECIES_LIST)
-                    ]
-
-                    # Sort by score
-                    p_sorted = sorted(p_labels, key=operator.itemgetter(1), reverse=True)
-
-                    if cfg.TOP_N:
-                        p_sorted = p_sorted[: cfg.TOP_N]
-
-                    # TODO: hier schon top n oder min conf raussortieren
-                    # Store top 5 results and advance indices
-                    results[str(s_start) + "-" + str(s_end)] = p_sorted
-
-                # Clear batch
-                samples = []
-                timestamps = []
+            # TODO: hier schon top n oder min conf raussortieren
+            # Store top 5 results and advance indices
+            results[str(s_start) + "-" + str(s_end)] = p_sorted
 
     except Exception as ex:
         # Write error log

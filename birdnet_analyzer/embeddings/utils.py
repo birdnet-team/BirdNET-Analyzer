@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, model, utils
-from birdnet_analyzer.analyze.utils import get_raw_audio_from_file
+from birdnet_analyzer.analyze.utils import iterate_audio_chunks
 from birdnet_analyzer.embeddings.core import get_database
 
 DATASET_NAME: str = "birdnet_analyzer_dataset"
@@ -52,53 +52,17 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
 
     # Process each chunk
     try:
-        while offset < fileLengthSeconds:
-            chunks = get_raw_audio_from_file(fpath, offset, duration)
-            start, end = offset, cfg.SIG_LENGTH + offset
-            samples = []
-            timestamps = []
+        for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
+            # Check if embedding already exists
+            existing_embedding = db.get_embeddings_by_source(DATASET_NAME, source_id, np.array([s_start, s_end]))
 
-            for c in range(len(chunks)):
-                # Add to batch
-                samples.append(chunks[c])
-                timestamps.append([start, end])
+            if existing_embedding.size == 0:
+                # Store embeddings
+                embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, source_id, np.array([s_start, s_end]))
 
-                # Advance start and end
-                start += cfg.SIG_LENGTH - cfg.SIG_OVERLAP
-                end = start + cfg.SIG_LENGTH
-
-                # Check if batch is full or last chunk
-                if len(samples) < cfg.BATCH_SIZE and c < len(chunks) - 1:
-                    continue
-
-                # Prepare sample and pass through model
-                data = np.array(samples, dtype="float32")
-                e = model.embeddings(data)
-
-                # Add to results
-                for i in range(len(samples)):
-                    # Get timestamp
-                    s_start, s_end = timestamps[i]
-
-                    # Check if embedding already exists
-                    existing_embedding = db.get_embeddings_by_source(DATASET_NAME, source_id, np.array([s_start, s_end]))
-
-                    if existing_embedding.size == 0:
-                        # Get prediction
-                        embeddings = e[i]
-
-                        # Store embeddings
-                        embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, source_id, np.array([s_start, s_end]))
-
-                        # Insert into database
-                        db.insert_embedding(embeddings, embeddings_source)
-                        db.commit()
-
-                # Reset batch
-                samples = []
-                timestamps = []
-
-            offset = offset + duration
+                # Insert into database
+                db.insert_embedding(embeddings, embeddings_source)
+                db.commit()
 
     except Exception as ex:
         # Write error log
@@ -161,6 +125,7 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
         # Write embedding values to a text file
         with open(target_path, "w") as f:
             f.write(",".join(map(str, embedding.tolist())))
+
 
 def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
     ### Make sure to comment out appropriately if you are not using args. ###
