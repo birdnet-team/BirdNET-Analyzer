@@ -12,7 +12,7 @@ from perch_hoplite.db import sqlite_usearch_impl
 from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
-from birdnet_analyzer import audio, model, utils
+from birdnet_analyzer import utils
 from birdnet_analyzer.analyze.utils import iterate_audio_chunks
 from birdnet_analyzer.embeddings.core import get_database
 
@@ -29,18 +29,6 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
     # Get file path and restore cfg
     fpath: str = item[0]
     cfg.set_config(item[1])
-
-    offset = 0
-    duration = cfg.FILE_SPLITTING_DURATION
-
-    try:
-        fileLengthSeconds = int(audio.get_audio_file_length(fpath))
-    except Exception as ex:
-        # Write error log
-        print(f"Error: Cannot analyze audio file {fpath}. File corrupt?\n", flush=True)
-        utils.write_error_log(ex)
-
-        return
 
     # Start time
     start_time = datetime.datetime.now()
