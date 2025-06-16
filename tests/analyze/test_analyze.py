@@ -364,6 +364,34 @@ def test_analyze_with_slow_down(setup_test_environment):
             assert np.isclose(end, (index + 1) * 0.6), "End time does not match expected value"
 
 
+def test_analyze_with_slow_down_and_overlap_1(setup_test_environment):
+    """Test analyzing with speed up."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(soundscape_path, env["output_dir"], audio_speed=0.1, top_n=1, overlap=1)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+
+    expected_start_timestamps = [e / 10 for e in range(0, 1200, 2)]
+    expected_end_timestamps = [e / 10 for e in range(3, 1200, 2)] + [120.0]
+
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+
+        for expected_start, expected_end, line in zip(expected_start_timestamps, expected_end_timestamps, lines, strict=True):
+            parts = line.strip().split("\t")
+            actual_start = float(parts[3])
+            actual_end = float(parts[4])
+            assert float(actual_start) == expected_start, "Start time does not match expected value"
+            assert float(actual_end) == expected_end, "End time does not match expected value"
+
+
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environment):
     """Test analyzing with additional columns."""
