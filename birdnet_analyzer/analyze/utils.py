@@ -618,7 +618,7 @@ def analyze_file(item) -> dict[str, str] | None:
 
     # Process each chunk
     try:
-        while start < fileLengthSeconds:
+        while start < fileLengthSeconds and not np.isclose(start, fileLengthSeconds):
             chunks = get_raw_audio_from_file(fpath, start, duration)
             samples = []
             timestamps = []
