@@ -49,9 +49,7 @@ def get_query_embedding(queryfile_path):
     else:
         sig_splits = audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
-    samples = sig_splits
-
-    return model.embeddings(data)
+    return model.embeddings(sig_splits)
 
 
 def get_search_results(
