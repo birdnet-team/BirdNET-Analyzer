@@ -45,7 +45,7 @@ gui = [
 embeddings = ["perch-hoplite"]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
-tests = ["pytest"]
+tests = ["pytest", "pytest-timeout"]
 dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff"]
 
 [project.scripts]
@@ -93,6 +93,7 @@ birdnet_analyzer = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["birdnet_analyzer"]
+timeout = 120
 
 [tool.ruff]
 exclude = ["conf.py"]
