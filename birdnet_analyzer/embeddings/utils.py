@@ -102,10 +102,13 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
 
         filename = f"{source_id}_{start}_{end}.birdnet.embeddings.txt"
 
-        # Get the common prefix between the output path and the filename
-        common_prefix = os.path.commonpath([output_path, os.path.dirname(filename)])
-        relative_filename = os.path.relpath(filename, common_prefix)
-        target_path = os.path.join(output_path, relative_filename)
+        if not os.path.isabs(filename) and os.path.isabs(output_path):
+            target_path = os.path.join(output_path, filename)
+        else:
+            # Get the common prefix between the output path and the filename
+            common_prefix = os.path.commonpath([output_path, os.path.dirname(filename)])
+            relative_filename = os.path.relpath(filename, common_prefix)
+            target_path = os.path.join(output_path, relative_filename)
 
         # Ensure the target directory exists
         os.makedirs(os.path.dirname(target_path), exist_ok=True)

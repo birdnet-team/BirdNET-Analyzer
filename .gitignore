@@ -35,7 +35,7 @@ checkpoints/custom/
 
 # Example output
 /birdnet_analyzer/example/**/*
-!/birdnet_analyzer/example/soundscape.wav
+!/birdnet_analyzer/example/soundscape/soundscape.wav
 !/birdnet_analyzer/example/species_list.txt
 
 # Logs

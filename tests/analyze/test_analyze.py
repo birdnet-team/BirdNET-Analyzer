@@ -259,7 +259,7 @@ def test_analyze_with_negative_speed(setup_test_environment):
     """Test analyzing with negative speed."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -272,7 +272,7 @@ def test_analyze_with_zero_speed(setup_test_environment):
     """Test analyzing with zero speed."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -285,7 +285,7 @@ def test_analyze_with_invalid_audio_speed(setup_test_environment):
     """Test analyzing with invalid audio speed."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -298,7 +298,7 @@ def test_analyze_with_negative_overlap(setup_test_environment):
     """Test analyzing with invalid overlap."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -311,7 +311,7 @@ def test_analyze_with_invalid_overlap(setup_test_environment):
     """Test analyzing with invalid overlap."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -324,7 +324,7 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     """Test analyzing with too high overlap."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
@@ -340,7 +340,7 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
     """Test analyzing with speed up."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
     file_length = 120
@@ -376,7 +376,7 @@ def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environme
     """Test analyzing with additional columns."""
     env = setup_test_environment
 
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    soundscape_path = "birdnet_analyzer/example/soundscape/soundscape.wav"
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
