@@ -459,8 +459,8 @@ def _build_search_tab():
                                         index = i + page * PAGE_SIZE
                                         embedding_source = db.get_embedding_source(r.embedding_id)
                                         file = embedding_source.source_id
-                                        offset = embedding_source.offsets[0] * settings["AUDIO_SPEED"]
-                                        duration = 3 * settings["AUDIO_SPEED"]
+                                        offset = embedding_source.offsets[0]
+                                        duration = cfg.SIG_LENGTH * settings["AUDIO_SPEED"]
                                         spec = utils.spectrogram_from_file(
                                             file,
                                             offset=offset,

@@ -456,7 +456,7 @@ def search_parser():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents)
     parser.add_argument("-q", "--queryfile", help="Path to the query file.")
     parser.add_argument("-o", "--output", help="Path to the output folder.")
-    parser.add_argument("--n_results", default=10, help="Number of results to return.")
+    parser.add_argument("--n_results", default=10, type=int, help="Number of results to return.")
 
     # TODO: use choice argument.
     parser.add_argument(
