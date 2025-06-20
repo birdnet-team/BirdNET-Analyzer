@@ -100,7 +100,7 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
 
         source_id = source.source_id.rsplit(".", 1)[0]
 
-        filename = f"{source_id}_{start}_{end}.birdnet.embeddings.txt"
+        filename = f"{source_id}_{start!s}_{end!s}.birdnet.embeddings.txt"
 
         if not os.path.isabs(filename) and os.path.isabs(output_path):
             target_path = os.path.join(output_path, filename)

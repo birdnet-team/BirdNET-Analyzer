@@ -87,3 +87,17 @@ def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, au
     db = get_database(db_path)
     assert db is not None, "Database should be created successfully"
     assert db.count_embeddings() == len(expected_start_timestamps), "Number of embeddings should match expected count"
+
+    embedding_ids = db.get_embedding_ids()
+    assert len(embedding_ids) == len(expected_start_timestamps), "Number of embeddings should match expected count"
+
+    for embedding_id in embedding_ids:
+        source = db.get_embedding_source(embedding_id)
+        start, end = source.offsets
+        start = round(float(start), 1)
+        end = round(float(end), 1)
+        assert start in expected_start_timestamps, f"Start time mismatch for start timestamp {start}"
+        assert end == expected_end_timestamps[expected_start_timestamps.index(start)]
+
+        assert os.path.exists(os.path.join(file_output_dir, input_dir, f"soundscape_{start}_{end}.birdnet.embeddings.txt"))
+
