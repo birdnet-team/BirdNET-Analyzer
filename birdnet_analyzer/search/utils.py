@@ -76,7 +76,7 @@ def get_search_results(
         raise ValueError("Invalid score function. Choose 'cosine', 'euclidean' or 'dot'.")
 
     db_embeddings_count = db.count_embeddings()
-    n_results = min(n_results, db_embeddings_count - 1)
+    n_results = min(n_results, db_embeddings_count - 1) # TODO: This is needed as hoplite throws an error if the whole database is to be queried.
     scores_by_embedding_id = {}
 
     for embedding in query_embeddings:
