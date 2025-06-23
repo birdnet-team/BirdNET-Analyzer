@@ -545,13 +545,12 @@ def iterate_audio_chunks(fpath: str, embeddings: bool = False):
             break
 
         for chunk_index, chunk in enumerate(chunks):
+            t_start = start + (chunk_index * (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED)
+            end = min(t_start + cfg.SIG_LENGTH * cfg.AUDIO_SPEED, fileLengthSeconds)
+
             # Add to batch
             samples.append(chunk)
-            timestamps.append([round(start, 1), round(end, 1)])
-
-            # Advance start and end
-            start += (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED
-            end = min(start + cfg.SIG_LENGTH * cfg.AUDIO_SPEED, fileLengthSeconds)
+            timestamps.append([round(t_start, 2), round(end, 2)])
 
             # Check if batch is full or last chunk
             if len(samples) < cfg.BATCH_SIZE and chunk_index < len(chunks) - 1:
@@ -570,6 +569,8 @@ def iterate_audio_chunks(fpath: str, embeddings: bool = False):
             # Clear batch
             samples = []
             timestamps = []
+
+        start += len(chunks) * (cfg.SIG_LENGTH - cfg.SIG_OVERLAP) * cfg.AUDIO_SPEED
 
 
 def predict(samples):
