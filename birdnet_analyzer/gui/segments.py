@@ -16,11 +16,13 @@ def extract_segments_wrapper(entry):
 
 @gu.gui_runtime_error_handler
 def _extract_segments(
-    audio_dir, result_dir, output_dir, min_conf, num_seq, audio_speed, seq_length, threads, progress=gr.Progress()
+    audio_dir, result_dir, output_dir, min_conf, max_conf, num_seq, audio_speed, seq_length, threads, progress=gr.Progress()
 ):
     from birdnet_analyzer.segments.utils import parse_files, parse_folders
 
     gu.validate(audio_dir, loc.localize("validation-no-audio-directory-selected"))
+
+    gu.validate(max_conf > min_conf, loc.localize("validation-max-confidence-lower-than-min-confidence"))
 
     if not result_dir:
         result_dir = audio_dir
@@ -42,6 +44,9 @@ def _extract_segments(
 
     # Set confidence threshold
     cfg.MIN_CONFIDENCE = max(0.01, min(0.99, min_conf))
+
+    # Set maximum confidence threshold
+    cfg.MAX_CONFIDENCE = max(0.01, min(1.0, max_conf))
 
     # Parse file list and make list of segments
     cfg.FILE_LIST = parse_files(cfg.FILE_LIST, max(1, int(num_seq)))
@@ -135,6 +140,14 @@ def build_segments_tab():
             label=loc.localize("segments-tab-min-confidence-slider-label"),
             info=loc.localize("segments-tab-min-confidence-slider-info"),
         )
+        max_conf_slider = gr.Slider(
+            minimum=0.1,
+            maximum=1.0,
+            step=0.01,
+            value=cfg.MAX_CONFIDENCE,
+            label=loc.localize("segments-tab-max-confidence-slider-label"),
+            info=loc.localize("segments-tab-max-confidence-slider-info"),
+        )
         num_seq_number = gr.Number(
             100,
             label=loc.localize("segments-tab-max-seq-number-label"),
@@ -178,6 +191,7 @@ def build_segments_tab():
                 result_directory_state,
                 output_directory_state,
                 min_conf_slider,
+                max_conf_slider,
                 num_seq_number,
                 audio_speed_slider,
                 seq_length_number,

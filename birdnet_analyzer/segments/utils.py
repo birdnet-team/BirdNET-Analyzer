@@ -107,7 +107,7 @@ def parse_folders(apath: str, rpath: str, allowed_result_filetypes: tuple[str] =
     return flist
 
 
-def parse_files(flist: list[dict], max_segments=100):
+def parse_files(flist: list[dict], max_segments=100, collection_mode = "random") -> list[tuple[str, list]]:
     """
     Parses a list of files to extract and organize bird call segments by species.
 
@@ -160,7 +160,11 @@ def parse_files(flist: list[dict], max_segments=100):
 
     # Shuffle segments for each species and limit to max_segments
     for s in species_segments:
-        RNG.shuffle(species_segments[s])
+        if collection_mode == "random":
+            RNG.shuffle(species_segments[s])
+        elif collection_mode == "confidence":
+            species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
+
         species_segments[s] = species_segments[s][:max_segments]
 
     # Make dict of segments per audio file
@@ -241,7 +245,7 @@ def find_segments_from_combined(rfile: str) -> list[dict]:
             afile = d[header_mapping["File"]].replace("/", os.sep).replace("\\", os.sep)
 
         # Check if confidence is high enough and label is not "nocall"
-        if confidence >= cfg.MIN_CONFIDENCE and species.lower() != "nocall" and afile:
+        if confidence >= cfg.MIN_CONFIDENCE and confidence <= cfg.MAX_CONFIDENCE and species.lower() != "nocall" and afile:
             segments.append({"audio": afile, "start": start, "end": end, "species": species, "confidence": confidence})
 
     return segments
@@ -304,7 +308,7 @@ def find_segments(afile: str, rfile: str):
             confidence = float(d[header_mapping["Confidence"]])
 
         # Check if confidence is high enough and label is not "nocall"
-        if confidence >= cfg.MIN_CONFIDENCE and species.lower() != "nocall":
+        if confidence >= cfg.MIN_CONFIDENCE and confidence <= cfg.MAX_CONFIDENCE and species.lower() != "nocall":
             segments.append({"audio": afile, "start": start, "end": end, "species": species, "confidence": confidence})
 
     return segments
