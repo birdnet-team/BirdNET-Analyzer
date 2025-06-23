@@ -365,8 +365,7 @@ def combine_kaleidoscope_files(saved_results: list[str]):
                         continue
 
                     # skip header and add to file
-                    for line in lines[1:]:
-                        f.write(line)
+                    f.writelines(lines[1:])
 
                 except Exception as ex:
                     print(f"Error: Cannot combine results from {rfile}.\n", flush=True)
