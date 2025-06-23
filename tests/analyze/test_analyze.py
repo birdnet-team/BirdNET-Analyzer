@@ -354,7 +354,7 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
     precision = 100
     step_size = round((3 - overlap) * audio_speed, precision // 10)
     expected_start_timestamps = [e / precision for e in range(0, int(file_length * precision), int(step_size * precision))]
-    expected_end_timestamps = [e / precision for e in range(int(round(3 * audio_speed * precision)), int(file_length * precision) + 1, int(step_size * precision))]
+    expected_end_timestamps = [e / precision for e in range(round(3 * audio_speed * precision), int(file_length * precision) + 1, int(step_size * precision))]
 
     while len(expected_end_timestamps) < len(expected_start_timestamps):
         if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
