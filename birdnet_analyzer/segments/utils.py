@@ -167,29 +167,40 @@ def parse_files(flist: list[dict], max_segments=100, collection_mode = "random")
             species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
             species_segments[s] = species_segments[s][:max_segments]
         elif collection_mode == "balanced":
-            species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
-            bin_threshholds = np.linspace(cfg.MIN_CONFIDENCE, cfg.MAX_CONFIDENCE, num=cfg.BALANCED_COLLECTION_BINS)
+            # Calculate confidence bins betwenn min and max confidence
             confidence_bins = []
-
+            bin_threshholds = np.linspace(cfg.MIN_CONFIDENCE, cfg.MAX_CONFIDENCE, num=cfg.BALANCED_COLLECTION_BINS)
             for i in range(len(bin_threshholds)):
                 if i == 0:
                     confidence_bins.append((0, bin_threshholds[i]))
                 else:
                     confidence_bins.append((bin_threshholds[i-1], bin_threshholds[i]))
 
+            # initialize segments by bin
             max_segments_per_bin = max_segments // len(confidence_bins)
             segments_by_bin = {confidence_bin: [] for confidence_bin in confidence_bins}
+
+            # sort segments by confidence
+            species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
+
+            # Sort segments into bins
             for seg in species_segments[s]:
                 for confidence_bin in confidence_bins:
-                    if seg["confidence"] >= confidence_bin[0] and seg["confidence"] < confidence_bin[1]:
-                        if len(segments_by_bin[confidence_bin]) < max_segments_per_bin:
-                            segments_by_bin[confidence_bin].append(seg)
-                        else:
-                            break
-            species_segments[s] = []
-            for bin_segments in segments_by_bin.values():
-                species_segments[s].extend(bin_segments)
+                    if seg["confidence"] >= confidence_bin[1]:
+                        continue # skip to next bin if confidence is too high
+                    if seg["confidence"] >= confidence_bin[0]:
+                        segments_by_bin[confidence_bin].append(seg)
 
+            species_segments[s] = []
+
+            # Add segments from each bin to species_segments
+            for bin_segments in segments_by_bin.values():
+                # Select random segments when too many segments in bin
+                if len(bin_segments) > max_segments_per_bin:
+                    RNG.shuffle(bin_segments)
+                    species_segments[s].extend(bin_segments[:max_segments_per_bin])
+                else:
+                    species_segments[s].extend(bin_segments)
 
     # Make dict of segments per audio file
     segments: dict[str, list] = {}
