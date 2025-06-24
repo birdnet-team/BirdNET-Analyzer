@@ -162,10 +162,34 @@ def parse_files(flist: list[dict], max_segments=100, collection_mode = "random")
     for s in species_segments:
         if collection_mode == "random":
             RNG.shuffle(species_segments[s])
+            species_segments[s] = species_segments[s][:max_segments]
         elif collection_mode == "confidence":
             species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
+            species_segments[s] = species_segments[s][:max_segments]
+        elif collection_mode == "balanced":
+            species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
+            bin_threshholds = np.linspace(cfg.MIN_CONFIDENCE, cfg.MAX_CONFIDENCE, num=cfg.BALANCED_COLLECTION_BINS)
+            confidence_bins = []
 
-        species_segments[s] = species_segments[s][:max_segments]
+            for i in range(len(bin_threshholds)):
+                if i == 0:
+                    confidence_bins.append((0, bin_threshholds[i]))
+                else:
+                    confidence_bins.append((bin_threshholds[i-1], bin_threshholds[i]))
+
+            max_segments_per_bin = max_segments // len(confidence_bins)
+            segments_by_bin = {confidence_bin: [] for confidence_bin in confidence_bins}
+            for seg in species_segments[s]:
+                for confidence_bin in confidence_bins:
+                    if seg["confidence"] >= confidence_bin[0] and seg["confidence"] < confidence_bin[1]:
+                        if len(segments_by_bin[confidence_bin]) < max_segments_per_bin:
+                            segments_by_bin[confidence_bin].append(seg)
+                        else:
+                            break
+            species_segments[s] = []
+            for bin_segments in segments_by_bin.values():
+                species_segments[s].extend(bin_segments)
+
 
     # Make dict of segments per audio file
     segments: dict[str, list] = {}
@@ -368,7 +392,7 @@ def extract_segments(item: tuple[tuple[str, list[dict]], float, dict[str]]):
                 os.makedirs(outpath, exist_ok=True)
 
                 # Save segment
-                seg_name = "{:.3f}_{}_{}_{:.1f}s_{:.1f}s.wav".format(
+                seg_name = "{:.3f}_{}_{}_{:.2f}s_{:.2f}s.wav".format(
                     seg["confidence"],
                     seg_cnt,
                     seg["audio"].rsplit(os.sep, 1)[-1].rsplit(".", 1)[0],

@@ -551,9 +551,17 @@ def segments_parser():
     parser.add_argument(
         "--collection_mode",
         default=cfg.SEGMENTS_COLLECTION_MODE,
-        choices=["random", "confidence"],
+        choices=["random", "confidence", "balanced"],
         help="Collection mode for selecting the segments. Can be 'random' or 'confidence'.",
     )
+
+    parser.add_argument(
+        "--n_bins",
+        type=lambda a: max(2, int(a)),
+        default=10,
+        help="Number of bins to use for the balanced collection mode",
+    )
+
 
     return parser
 

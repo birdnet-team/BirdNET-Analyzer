@@ -96,6 +96,9 @@ MAX_CONFIDENCE: float = 1.0
 # How segments are selected from the result files.
 SEGMENTS_COLLECTION_MODE: str = "random"
 
+# Number of bins for the balanced collection mode
+BALANCED_COLLECTION_BINS: int = 10
+
 # Number of consecutive detections for one species to merge into one
 # If set to 1 or 0, no merging will be done
 # If set to None, all detections will be included

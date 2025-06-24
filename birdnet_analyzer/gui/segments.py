@@ -16,7 +16,7 @@ def extract_segments_wrapper(entry):
 
 @gu.gui_runtime_error_handler
 def _extract_segments(
-    audio_dir, result_dir, output_dir, min_conf, max_conf, num_seq, audio_speed, seq_length, threads, progress=gr.Progress()
+    audio_dir, result_dir, output_dir, min_conf, max_conf, num_seq, audio_speed, seq_length, threads, collection_mode, progress=gr.Progress()
 ):
     from birdnet_analyzer.segments.utils import parse_files, parse_folders
 
@@ -49,7 +49,7 @@ def _extract_segments(
     cfg.MAX_CONFIDENCE = max(0.01, min(1.0, max_conf))
 
     # Parse file list and make list of segments
-    cfg.FILE_LIST = parse_files(cfg.FILE_LIST, max(1, int(num_seq)))
+    cfg.FILE_LIST = parse_files(cfg.FILE_LIST, max(1, int(num_seq)), collection_mode)
 
     # Audio speed
     cfg.AUDIO_SPEED = max(0.1, 1.0 / (audio_speed * -1)) if audio_speed < 0 else max(1.0, float(audio_speed))
@@ -132,48 +132,73 @@ def build_segments_tab():
                 show_progress="hidden",
             )
 
-        min_conf_slider = gr.Slider(
-            minimum=0.1,
-            maximum=0.99,
-            step=0.01,
-            value=cfg.MIN_CONFIDENCE,
-            label=loc.localize("segments-tab-min-confidence-slider-label"),
-            info=loc.localize("segments-tab-min-confidence-slider-info"),
-        )
-        max_conf_slider = gr.Slider(
-            minimum=0.1,
-            maximum=1.0,
-            step=0.01,
-            value=cfg.MAX_CONFIDENCE,
-            label=loc.localize("segments-tab-max-confidence-slider-label"),
-            info=loc.localize("segments-tab-max-confidence-slider-info"),
-        )
-        num_seq_number = gr.Number(
-            100,
-            label=loc.localize("segments-tab-max-seq-number-label"),
-            info=loc.localize("segments-tab-max-seq-number-info"),
-            minimum=1,
-        )
-        audio_speed_slider = gr.Slider(
-            minimum=-10,
-            maximum=10,
-            value=cfg.AUDIO_SPEED,
-            step=1,
-            label=loc.localize("inference-settings-audio-speed-slider-label"),
-            info=loc.localize("inference-settings-audio-speed-slider-info"),
-        )
-        seq_length_number = gr.Number(
-            cfg.SIG_LENGTH,
-            label=loc.localize("segments-tab-seq-length-number-label"),
-            info=loc.localize("segments-tab-seq-length-number-info"),
-            minimum=0.1,
-        )
-        threads_number = gr.Number(
-            4,
-            label=loc.localize("segments-tab-threads-number-label"),
-            info=loc.localize("segments-tab-threads-number-info"),
-            minimum=1,
-        )
+        with gr.Group():
+            with gr.Row():
+                min_conf_slider = gr.Slider(
+                    minimum=0.1,
+                    maximum=0.99,
+                    step=0.01,
+                    value=cfg.MIN_CONFIDENCE,
+                    label=loc.localize("segments-tab-min-confidence-slider-label"),
+                    info=loc.localize("segments-tab-min-confidence-slider-info"),
+                )
+                max_conf_slider = gr.Slider(
+                    minimum=0.1,
+                    maximum=1.0,
+                    step=0.01,
+                    value=cfg.MAX_CONFIDENCE,
+                    label=loc.localize("segments-tab-max-confidence-slider-label"),
+                    info=loc.localize("segments-tab-max-confidence-slider-info"),
+                )
+
+            with gr.Row():
+                collection_mode_radio = gr.Radio(
+                    choices=[
+                            (loc.localize("segments-tab-collection-mode-radio-option-random"), "random"),
+                            (loc.localize("segments-tab-collection-mode-radio-option-confidence"), "confidence"),
+                            (loc.localize("segments-tab-collection-mode-radio-option-balanced"), "balanced"),
+                        ],
+                    value=cfg.SEGMENTS_COLLECTION_MODE,
+                    label=loc.localize("segments-tab-collection-mode-label"),
+                    info=loc.localize("segments-tab-collection-mode-info"),
+                    interactive=True,
+                )
+
+                num_bins = gr.Number(
+                    cfg.BALANCED_COLLECTION_BINS,
+                    label=loc.localize("segments-tab-n-bins-label"),
+                    info=loc.localize("segments-tab-n-bins-info"),
+                    minimum=2,
+                    step=1,
+                    visible=False,
+                    interactive=True)
+
+            num_seq_number = gr.Number(
+                100,
+                label=loc.localize("segments-tab-max-seq-number-label"),
+                info=loc.localize("segments-tab-max-seq-number-info"),
+                minimum=1,
+            )
+            audio_speed_slider = gr.Slider(
+                minimum=-10,
+                maximum=10,
+                value=cfg.AUDIO_SPEED,
+                step=1,
+                label=loc.localize("inference-settings-audio-speed-slider-label"),
+                info=loc.localize("inference-settings-audio-speed-slider-info"),
+            )
+            seq_length_number = gr.Number(
+                cfg.SIG_LENGTH,
+                label=loc.localize("segments-tab-seq-length-number-label"),
+                info=loc.localize("segments-tab-seq-length-number-info"),
+                minimum=0.1,
+            )
+            threads_number = gr.Number(
+                4,
+                label=loc.localize("segments-tab-threads-number-label"),
+                info=loc.localize("segments-tab-threads-number-info"),
+                minimum=1,
+            )
 
         extract_segments_btn = gr.Button(loc.localize("segments-tab-extract-button-label"), variant="huggingface")
 
@@ -196,10 +221,19 @@ def build_segments_tab():
                 audio_speed_slider,
                 seq_length_number,
                 threads_number,
+                collection_mode_radio
             ],
             outputs=result_grid,
         )
 
+        def on_collection_mode_change(collection_mode):
+            return gr.Number(visible=collection_mode == "balanced")
+
+        collection_mode_radio.change(
+            on_collection_mode_change,
+            inputs=collection_mode_radio,
+            outputs=num_bins,
+        )
 
 if __name__ == "__main__":
     gu.open_window(build_segments_tab)

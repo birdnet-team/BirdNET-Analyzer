@@ -13,6 +13,7 @@ def segments(
     seg_length: float = 3.0,
     threads: int = 1,
     collection_mode:  Literal["random", "confidence"] = "random",
+    n_bins: int = 10,
 ):
     """
     Processes audio files to extract segments based on detection results.
@@ -32,6 +33,11 @@ def segments(
         seg_length (float, optional): Length of each audio segment in seconds. Defaults to 3.0.
         threads (int, optional): Number of CPU threads to use for parallel processing.
             Defaults to 1.
+        collection_mode (Literal["random", "confidence"], optional): Mode for collecting segments.
+            random: Collects segments randomly from the detections.
+            confidence: Collects the segments with highest confidence.
+            balanced: Collects segments with a balanced distribution of confidence levels.
+        n_bins (int, optional): Number of bins for confidence distribution when using the "balanced" collection mode.
     Returns:
         None
     Notes:
@@ -69,6 +75,9 @@ def segments(
 
     # Set maximum confidence threshold
     cfg.MAX_CONFIDENCE = max_conf
+
+    # Set the number of bins for balanced collection mode
+    cfg.BALANCED_COLLECTION_BINS = n_bins
 
     # Parse file list and make list of segments
     cfg.FILE_LIST = parse_files(cfg.FILE_LIST, max_segments, collection_mode)
