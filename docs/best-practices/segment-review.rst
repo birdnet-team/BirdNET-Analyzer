@@ -18,7 +18,7 @@ Prepare Audio and Result Files
 ------------------------------
 
 The BirdNET Analyzer uses the batch analysis result tables, such as the output formats "table", "kaleidoscope" or "csv".
-To collect run the batch analysis either in the graphical user interface (GUI) or :ref:`command line <cli-docs>`, which automatically creates the result files.
+To obtain batch analysis result tables, run the analysis via the GUI or the :ref:`command line <cli-docs>`, which automatically generates the result files.
 
 .. warning::
 
