@@ -63,6 +63,7 @@ def _load_audio_file(f, label_vector, config):
         # Load audio
         sig, rate = audio.open_audio_file(
             f,
+            sample_rate=cfg.SAMPLE_RATE,
             duration=cfg.SIG_LENGTH if cfg.SAMPLE_CROP_MODE == "first" else None,
             fmin=cfg.BANDPASS_FMIN,
             fmax=cfg.BANDPASS_FMAX,
@@ -136,7 +137,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     train_folders = sorted(utils.list_subdirectories(cfg.TRAIN_DATA_PATH))
 
     # Read all individual labels from the folder names
-    labels = []
+    labels: list[str] = []
 
     for folder in train_folders:
         labels_in_folder = folder.split(",")

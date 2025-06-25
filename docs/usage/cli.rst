@@ -10,7 +10,7 @@ birdnet_analyzer.analyze
    :ref: birdnet_analyzer.cli.analyzer_parser
    :prog: birdnet_analyzer.analyze
 
-   Run ``analyzer.py`` to analyze an audio file.
+   Run ``birdnet_analyzer.analyze`` to analyze an audio file or a directory containing audio files.
    You need to set paths for the audio file and selection table output. Here is an example:
 
    .. code:: bash
