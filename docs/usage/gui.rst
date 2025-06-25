@@ -28,7 +28,7 @@ This can help you to choose an appropriate cut-off threshold for your specific u
 
 General workflow:
 
-1. Use the **Segments** tab in the GUI or the :ref:`segments.py <cli-segments>` script to extract short audio segments for species detections.
+1. Use the **Segments** tab in the GUI or the :ref:`birdnet_analyzer.segments <cli-segments>` script to extract short audio segments for species detections.
 2. Open the **Review** tab in the GUI and select the parent directory containing the directories for all the species you want to review.
 3. Review the segments and manually check "positive" if the segment does contain target species or "negative" if it does not.
 
