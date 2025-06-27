@@ -872,8 +872,7 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
 
     # Save labels
     with open(model_path.replace(".tflite", "_Labels.txt"), "w", encoding="utf-8") as f:
-        for label in labels:
-            f.write(label + "\n")
+        f.writelines(label + "\n" for label in labels)
 
     save_model_params(model_path.replace(".tflite", "_Params.csv"))
 

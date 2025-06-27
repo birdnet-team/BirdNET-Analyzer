@@ -70,5 +70,4 @@ def run(output_path, lat, lon, week, threshold, sortby):
 
     # Save species list
     with open(cfg.OUTPUT_PATH, "w") as f:
-        for s in species_list:
-            f.write(s + "\n")
+        f.writelines(s + "\n" for s in species_list)

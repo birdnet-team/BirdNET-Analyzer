@@ -379,7 +379,7 @@ def build_evaluation_tab():
 
                 if folder:
                     files = get_selection_tables(folder)
-                    files_to_display = files[:100] + [["..."]] if len(files) > 100 else files
+                    files_to_display = [*files[:100], ["..."]] if len(files) > 100 else files
                     return [files, files_to_display, gr.update(visible=True), *on_select(files)]
 
                 return ["", [[loc.localize("eval-tab-no-files-found")]]]

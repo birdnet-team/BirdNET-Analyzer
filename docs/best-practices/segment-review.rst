@@ -1,7 +1,8 @@
 Segment Review
-=================================
+==============
 
-Get started by listening to this AI-generated summary of segments review:
+This document provides a quick overview of the segment review process in BirdNET-Analyzer, which is essential for validating species detection results.
+You can also listen to an AI-generated summary of this guide in the audio player below.
 
 .. raw:: html
 
@@ -13,64 +14,97 @@ Get started by listening to this AI-generated summary of segments review:
 | 
 | `Source: Google NotebookLM`
 
-1. Prepare Audio and Result Files
----------------------------------
+Prepare Audio and Result Files
+------------------------------
 
-- | **Collect Audio Recordings and Corresponding BirdNET Result Files**: Organize them into separate folders.
-- | **Result File Formats**: BirdNET-Analyzer typically produces result files with extensions ".BirdNET.txt" or ".BirdNET.csv". It can process various result file formats, including "table", "kaleidoscope", "csv", and "audacity".
-- | **Understanding Confidence Values**: Note that BirdNET confidence values are not probabilities and are not directly transferable between different species or recording conditions.
+The BirdNET Analyzer uses the batch analysis result tables, such as the output formats "table", "kaleidoscope" or "csv".
+To obtain batch analysis result tables, run the analysis via the GUI or the :ref:`command line <cli-docs>`, which automatically generates the result files.
 
-2. Using the "Segments" Function in the GUI or Command Line
------------------------------------------------------------
+.. warning::
 
-- | **Segments Function**: BirdNET provides the "segments" function to create a collection of species-specific predictions that exceed a user-defined confidence value. This function is available in the graphical user interface (GUI) under the "segments" tab or via the "segments.py" script in the command line.
-- | **GUI Usage**: In the GUI, you can select audio, result, and output directories. You can also set additional parameters such as the minimum confidence value, the maximum number of segments per species, the audio speed, and the segment length.
+    The output format "audacity" is not supported for the segments tool since it is missing certain columns. Use "table", "kaleidoscope", or "csv" formats instead.
 
-3. Setting Parameters
----------------------
+Using the "Segments" Tool in the GUI or Command Line
+-----------------------------------------------------
 
-- | **Minimum Confidence (min_conf)**: Set a minimum confidence value for predictions to be considered. Note that this value may vary by species. It is recommended to determine the threshold by reviewing precision and recall.
-- | **Maximum Number of Segments (num_seq)**: Specify how many segments per species should be extracted.
-- | **Audio Speed (audio_speed)**: Adjust the playback speed. Extracted segments will be saved with the adjusted speed (e.g., to listen to ultrsonic calls).
-- | **Segment Length (seq_length)**: Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.
+The BirdNET Analyzer provides the "segments" tool to extract short audio segments from the result files and place them into separate species-specific folders.
+This tool is available in the graphical user interface (GUI) under the "segments" tab or via the :ref:`birdnet_analyzer.segments <cli-segments>` script in the command line.
 
-4. Extracting Segments
-----------------------
+Setting Parameters
+------------------
 
-- | **Start the Extraction Process**: After setting all parameters, start the extraction process. BirdNET will create subfolders for each identified species and save audio clips of the corresponding recordings.
-- | **Progress Display**: The progress of the process will be displayed.
+The GUI and command line tool allow you to set various parameters to customize the segment extraction process:
 
-5. Reviewing Results
---------------------
+* **Minimum Confidence** (``min_conf``): Set a minimum confidence value for predictions to be considered. It is recommended to determine the threshold by reviewing precision and recall.
+* **Maximum Number of Segments** (``num_seq``): Specify how many segments per species should be extracted.
+* **Audio Speed** (``audio_speed``): Adjust the playback speed. Extracted segments will be saved with the adjusted speed (e.g., to listen to ultrasonic calls).
+* **Segment Length** (``seq_length``): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.
 
-- | **Manual Review of Audio Segments**: The resulting audio segments can be manually reviewed to assess the accuracy of the predictions. It is important to note that BirdNET confidence values are not probabilities but a measure of the algorithm's prediction reliability.
-- | **Systematic Review**: It is recommended to start with the highest confidence scores and work down to the lower scores.
-- | **File Naming**: Files are named with confidence values, allowing for sorting by values.
+.. note::
 
-6. Using the Review Tab in the GUI
+    The desired minimum confidence value can be different for each species.
+
+Extracting Segments
+-------------------
+
+After setting all parameters, start the extraction process. BirdNET will create subfolders for each identified species and save audio clips of the corresponding recordings.
+The progress of the process will be displayed.
+The resulting audio segments will be saved in the following format:
+
+.. code-block::
+
+    {c}_{i}_{fname}_{start}s_{end}s.wav
+
+where:
+
+* ``{c}``: confidence value of the prediction (e.g., 0.835)
+* ``{i}``: index of the segment inside the file
+* ``{fname}``: name of the original audio file without the extension
+* ``{start}``: start time of the segment inside the file in seconds
+* ``{end}``: end time of the segment inside the file in seconds
+
+
+Using the Review Tab in the GUI
 ----------------------------------
 
-- | **Review Tab Overview**: The review tab in the GUI allows you to systematically review and label the extracted segments. It provides tools for visualizing spectrograms, listening to audio segments, and categorizing them as positive or negative detections.
-- | **Collect Segments**: Use the review tab to collect segments from the specified directory. You can shuffle the segments for a randomized review process.
-- | **Create Log Plot**: The review tab can generate a logistic regression plot to visualize the relationship between confidence values and the likelihood of correct detections.
-- **Review Process**:
+The resulting audio segments can be manually reviewed to assess the accuracy of the predictions.
+It is important to note that BirdNET *confidence values are not probabilities* but a measure of the algorithm's prediction reliability.
+We recommended to start with the highest confidence scores and work down to the lower scores.
 
-  - | **Select Directory**: Choose the directory containing the segments to be reviewed.
-  - | **Species Dropdown**: Select the species to review from the dropdown menu.
-  - | **File Count Matrix**: View the count of files to be reviewed, positive detections, and negative detections.
-  - | **Spectrogram and Audio**: Visualize the spectrogram and listen to the audio segment.
-  - | **Label Segments**: Use the buttons to label segments as positive or negative detections. You can also use the left and right arrow keys to assign labels.
-  - | **Undo**: Undo the last action if needed.
-  - | **Download Plots**: Download the spectrogram and regression plots for further analysis.
+The review tab in the GUI allows you to systematically review and label the extracted segments.
+It provides tools for visualizing spectrograms, listening to audio segments, and categorizing them as positive or negative detections.
+The review tab can generate a logistic regression plot to visualize the relationship between confidence values and the likelihood of correct detections.
 
-7. Alternative Approaches
--------------------------
+In the GUI select the "Review" tab and select the segments directory you want to review.
+You can now either select the parent directory containing all the different species subfolders or a specific species subfolder to review.
+If you select the parent directory, the GUI will automatically select the first species subfolder, but you can switch between species via a dropdown menu.
+
+Depending on your selection the segments will be shuffled or sorted by confidence value.
+Each segment will be displayed with an audio player and its spectrogram.
+After listening to a segment, you can either mark it as a positive detection (if you hear the species) or a negative detection (if you do not hear the species).
+The BirdNET Analyzer will create two directories: one for positive detections and one for negative detections, and move the marked segments accordingly.
+The "Undo" button allows you to revert the last action if needed.
+
+.. note::
+
+    You can also use the up (positive) and down (negative) arrow keys to assign labels. The left arrow key will undo the last action and the right arrow key will skip to the next segment without labeling it.
+
+With the number of segments reviewed, the GUI will also display a logistic regression plot.
+This plot shows the relationship between the confidence values and the likelihood of correct detections.
+All of the plots including the spectrogram can be downloaded as PNG files for further analysis or documentation.
+
+.. note::
+
+    The review tab can be used on any directory containing audio files, not just those created by the segments tool. This allows you to review any set of audio files, including those from other sources.
+
+Alternative Approaches
+----------------------
 
 - | **Raven Pro**: BirdNET result tables can be imported into Raven Pro and reviewed using the selection review function.
 - | **Converting Confidence Values to Probabilities**: Another approach is converting confidence values to probabilities using logistic regression in R. However, this still requires manual evaluation of predictions.
 
-8. Important Notes
-------------------
+Important Notes
+---------------
 
 - | **Non-Transferability of Confidence Values**: BirdNET confidence values are not easily transferable between species.
 - | **Audio Quality**: The accuracy of results heavily depends on the quality of audio recordings, such as sample rate and microphone quality.

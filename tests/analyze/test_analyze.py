@@ -254,6 +254,7 @@ def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set
     _, kwargs = mock_set_params.call_args
     assert kwargs["slist"] == species_list
 
+
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_negative_speed(setup_test_environment):
     """Test analyzing with negative speed."""
@@ -266,6 +267,7 @@ def test_analyze_with_negative_speed(setup_test_environment):
     # Call function under test
     with pytest.raises(ValueError, match="Audio speed must be a positive value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=-1.0, top_n=1, min_conf=0)
+
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_zero_speed(setup_test_environment):
@@ -280,6 +282,7 @@ def test_analyze_with_zero_speed(setup_test_environment):
     with pytest.raises(ValueError, match="Audio speed must be a positive value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=0.0, top_n=1, min_conf=0)
 
+
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_invalid_audio_speed(setup_test_environment):
     """Test analyzing with invalid audio speed."""
@@ -292,6 +295,7 @@ def test_analyze_with_invalid_audio_speed(setup_test_environment):
     # Call function under test
     with pytest.raises(ValueError, match="Audio speed must be a numeric value."):
         analyze(soundscape_path, env["output_dir"], audio_speed="fast", top_n=1, min_conf=0)
+
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_negative_overlap(setup_test_environment):
@@ -306,6 +310,7 @@ def test_analyze_with_negative_overlap(setup_test_environment):
     with pytest.raises(ValueError, match="Overlap must be a non-negative value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=-1)
 
+
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_invalid_overlap(setup_test_environment):
     """Test analyzing with invalid overlap."""
@@ -318,6 +323,7 @@ def test_analyze_with_invalid_overlap(setup_test_environment):
     # Call function under test
     with pytest.raises(ValueError, match="Overlap must be a numeric value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap="high")
+
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_too_high_overlap(setup_test_environment):
@@ -332,9 +338,10 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     with pytest.raises(ValueError, match=f"Overlap must be less than {cfg.SIG_LENGTH} seconds."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
 
+
 @pytest.mark.parametrize(
     ("audio_speed", "overlap"),
-    [(10, 1), (5, 2), (5, 0), (0.1, 1), (0.2, 0)],
+    [(10, 1), (5, 2), (5, 0), (0.1, 1), (0.2, 0), (0.3, 0.7)],
 )
 def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, overlap):
     """Test analyzing with speed up."""
@@ -344,9 +351,10 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
     file_length = 120
-    step_size = round(3 * audio_speed - overlap * audio_speed, 1)
-    expected_start_timestamps = [e / 10 for e in range(0, int(file_length * 10), int(step_size * 10))]
-    expected_end_timestamps = [e / 10 for e in range(int(3 * audio_speed * 10), int(file_length) * 10 + 1, int(step_size * 10))]
+    precision = 100
+    step_size = round((3 - overlap) * audio_speed, precision // 10)
+    expected_start_timestamps = [e / precision for e in range(0, int(file_length * precision), int(step_size * precision))]
+    expected_end_timestamps = [e / precision for e in range(round(3 * audio_speed * precision), int(file_length * precision) + 1, int(step_size * precision))]
 
     while len(expected_end_timestamps) < len(expected_start_timestamps):
         if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
