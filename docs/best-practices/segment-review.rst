@@ -35,14 +35,17 @@ Setting Parameters
 
 The GUI and command line tool allow you to set various parameters to customize the segment extraction process:
 
-* **Minimum Confidence** (``min_conf``): Set a minimum confidence value for predictions to be considered. It is recommended to determine the threshold by reviewing precision and recall.
+* **Minimum Confidence** (``min_conf``): Set a minimum confidence value for predictions to be considered.
+* **Maximum Confidence** (``max_conf``): Set a maximum confidence value for predictions to be considered.
 * **Maximum Number of Segments** (``num_seq``): Specify how many segments per species should be extracted.
 * **Audio Speed** (``audio_speed``): Adjust the playback speed. Extracted segments will be saved with the adjusted speed (e.g., to listen to ultrasonic calls).
 * **Segment Length** (``seq_length``): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.
-
-.. note::
-
-    The desired minimum confidence value can be different for each species.
+* **Segment Collection Mode** (``collection_mode``): Choose how segments are selected. Following options are available:
+    
+    * **random**: Select segments randomly.
+    * **confidence**: Select segments based on confidence values, starting with the highest confidence scores.
+    * **balanced**: Select segments equally distributed across confidence values.
+    * :doc:`More details on segment collection modes <../implementation-details/segment-collection-mode>`
 
 Extracting Segments
 -------------------
