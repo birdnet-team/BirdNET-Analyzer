@@ -541,6 +541,28 @@ def segments_parser():
         help="Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.",
     )
 
+    parser.add_argument(
+        "--max_conf",
+        default=cfg.MAX_CONFIDENCE,
+        type=lambda a: max(0.00001, min(1.0, float(a))),
+        help="Maximum confidence threshold. Values in [0.00001, 1.0].",
+    )
+
+    parser.add_argument(
+        "--collection_mode",
+        default=cfg.SEGMENTS_COLLECTION_MODE,
+        choices=["random", "confidence", "balanced"],
+        help="Collection mode for selecting the segments. Can be 'random' or 'confidence'.",
+    )
+
+    parser.add_argument(
+        "--n_bins",
+        type=lambda a: max(2, int(a)),
+        default=10,
+        help="Number of bins to use for the balanced collection mode",
+    )
+
+
     return parser
 
 

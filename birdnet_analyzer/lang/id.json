@@ -196,6 +196,15 @@
     "segments-tab-max-seq-number-label": "Jumlah maksimum segmen",
     "segments-tab-min-confidence-slider-info": "Pilih hanya segmen dengan kepercayaan di atas ambang batas ini.",
     "segments-tab-min-confidence-slider-label": "Kepercayaan minimum",
+    "segments-tab-max-confidence-slider-info": "Pilih hanya segmen dengan kepercayaan di bawah ambang batas ini.",
+    "segments-tab-max-confidence-slider-label": "Kepercayaan maksimum",
+    "segments-tab-collection-mode-label": "Mode koleksi",
+    "segments-tab-collection-mode-info": "Menentukan bagaimana segmen dipilih dari file hasil.",
+    "segments-tab-n-bins-label": "Jumlah bin kepercayaan",
+    "segments-tab-n-bins-info": "Mengatur jumlah bin kepercayaan untuk mode koleksi seimbang.",
+    "segments-tab-collection-mode-radio-option-random": "acak",
+    "segments-tab-collection-mode-radio-option-confidence": "kepercayaan",
+    "segments-tab-collection-mode-radio-option-balanced": "seimbang",
     "segments-tab-output-selection-button-label": "Pilih output direktori",
     "segments-tab-output-selection-textbox-placeholder": "Sama dengan direktori audio jika tidak dipilih",
     "segments-tab-result-dataframe-column-execution-header": "Eksekusi",
@@ -339,5 +348,6 @@
     "validation-no-valid-frequency": "Silakan masukkan frekuensi yang valid dalam",
     "validation-no-valid-learning-rate": "Silakan masukkan laju pembelajaran yang valid.",
     "validation-non-event-samples-required-in-binary-classification": "Sampel non-pertanyaan diperlukan untuk klasifikasi biner",
-    "validation-only-repeat-upsampling-for-multi-label": "Hanya 'repeat-upsampling' yang tersedia untuk 'multi-label'"
+    "validation-only-repeat-upsampling-for-multi-label": "Hanya 'repeat-upsampling' yang tersedia untuk 'multi-label'",
+    "validation-max-confidence-lower-than-min-confidence": "Kepercayaan maksimum harus lebih besar dari kepercayaan minimum"
 }
