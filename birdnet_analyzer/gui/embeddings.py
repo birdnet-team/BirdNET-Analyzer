@@ -212,6 +212,7 @@ def _build_extract_tab():
                     minimum=1,
                     interactive=True,
                 )
+
                 threads_number = gr.Number(
                     precision=1,
                     label=loc.localize("embedding-settings-threads-number-label"),
@@ -219,6 +220,7 @@ def _build_extract_tab():
                     info=loc.localize("embedding-settings-threads-number-info"),
                     minimum=1,
                     interactive=True,
+                    visible=False, # Threads are currently not used as its not compatible with
                 )
 
             with gr.Row():
