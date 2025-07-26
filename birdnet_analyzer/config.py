@@ -82,7 +82,7 @@ CPU_THREADS: int = 8
 TFLITE_THREADS: int = 1
 
 # False will output logits, True will convert to sigmoid activations
-APPLY_SIGMOID: bool = True
+APPLY_SIGMOID: bool = False # <--- modified to run a custom classifier (WildMonV3) without Sigmoid
 SIGMOID_SENSITIVITY: float = 1.0
 
 # Minimum confidence score to include in selection table
