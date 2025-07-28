@@ -222,7 +222,7 @@ def _set_params(
             if not os.path.isfile(cfg.LABELS_FILE):
                 cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
 
-            if not custom_classifier.endswith("Model_FP32.tflite") or not os.path.isfile(cfg.LABELS_FILE):
+            if not os.path.isfile(cfg.LABELS_FILE):
                 cfg.LABELS_FILE = None
                 cfg.LABELS = None
             else:
