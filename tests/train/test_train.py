@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+from random import randint
 from unittest.mock import patch
 
 import librosa
@@ -12,7 +13,6 @@ from birdnet_analyzer.analyze.core import analyze
 from birdnet_analyzer.cli import train_parser
 from birdnet_analyzer.train.core import train
 
-from random import randint
 
 @pytest.fixture
 def setup_test_environment():
