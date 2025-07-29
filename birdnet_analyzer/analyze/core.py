@@ -219,10 +219,10 @@ def _set_params(
         if custom_classifier.endswith(".tflite"):
             cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
 
-            if not os.path.isfile(cfg.LABELS_FILE):
+            if not os.path.isfile(cfg.LABELS_FILE): # if the label file is not found, an old birdnet model might be used
                 cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
 
-            if not os.path.isfile(cfg.LABELS_FILE):
+            if not os.path.isfile(cfg.LABELS_FILE): # if the label file is still not found, dont use labels
                 cfg.LABELS_FILE = None
                 cfg.LABELS = None
             else:

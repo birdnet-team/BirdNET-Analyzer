@@ -3,12 +3,16 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
+import librosa
 import pytest
+import soundfile as sf
 
 import birdnet_analyzer.config as cfg
+from birdnet_analyzer.analyze.core import analyze
 from birdnet_analyzer.cli import train_parser
 from birdnet_analyzer.train.core import train
 
+from random import randint
 
 @pytest.fixture
 def setup_test_environment():
@@ -20,7 +24,7 @@ def setup_test_environment():
     os.makedirs(input_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
 
-    classifier_output = os.path.join(output_dir, "classifier_output")
+    classifier_output = os.path.join(output_dir, "classifier_output", "custom_classifier.tflite")
 
     # Store original config values
     original_config = {
@@ -55,3 +59,38 @@ def test_train_cli(mock_train_model, mock_ensure_model, setup_test_environment):
 
     mock_ensure_model.assert_called_once()
     mock_train_model.assert_called_once_with()
+
+def test_training(setup_test_environment):
+    """Test the training process and prediction with dummy data."""
+    env = setup_test_environment
+
+    dummy_classes = ["Dummy A", "Dummy B"]
+    subfolders = dummy_classes.copy()
+    subfolders.append("Background")
+
+    for sub in subfolders:
+        subfolder_path = os.path.join(env["input_dir"], sub)
+        os.makedirs(subfolder_path, exist_ok=True)
+        # Create dummy files in each subfolder
+        for i in range(10):
+            file_path = os.path.join(subfolder_path, f"audio_{i}.wav")
+            with open(file_path, "wb") as f:
+                audio = librosa.tone(randint(20, 20000), length=3.0, sr=44100)
+                sf.write(f, audio, 44100, format="WAV")
+
+    train(env["input_dir"], env["classifier_output"])
+
+    assert os.path.isfile(env["classifier_output"]), "Classifier output file was not created."
+    assert os.path.exists(env["classifier_output"].replace(".tflite", "_Labels.txt")), "Labels file was not created."
+    assert os.path.exists(env["classifier_output"].replace(".tflite", "_Params.csv")), "Params file was not created."
+    assert os.path.exists(env["classifier_output"].replace(".tflite", ".tflite_sample_counts.csv")), "Params file was not created."
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    analyze(soundscape_path, env["output_dir"], top_n=1, classifier=env["classifier_output"])
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        for line in lines:
+            parts = line.strip().split("\t")
+            assert parts[7] in dummy_classes, f"Detected class {parts[7]} not in expected classes {dummy_classes}"

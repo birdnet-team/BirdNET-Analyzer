@@ -605,10 +605,10 @@ def species_lists(opened=True):
                 if not os.path.isfile(labels):
                     labels = file.replace("Model_FP32.tflite", "Labels.txt")
 
-                    if not file.endswith("Model_FP32.tflite") or not os.path.isfile(labels):
-                        gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
+                if not os.path.isfile(labels):
+                    gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
 
-                        return file, gr.File(value=[file], visible=True)
+                    return file, gr.File(value=[file], visible=True)
 
                 return file, gr.File(value=[file, labels], visible=True)
 
