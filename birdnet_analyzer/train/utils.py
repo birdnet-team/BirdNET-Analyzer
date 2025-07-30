@@ -60,6 +60,8 @@ def _load_audio_file(f, label_vector, config):
 
     # Try to load the audio file
     try:
+        print("\tLoading file:", f, flush=True)
+
         # Load audio
         sig, rate = audio.open_audio_file(
             f,
