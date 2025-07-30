@@ -1,12 +1,9 @@
 import os
 import shutil
 import tempfile
-from random import randint
 from unittest.mock import patch
 
-import librosa
 import pytest
-import soundfile as sf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer.analyze.core import analyze
