@@ -785,7 +785,7 @@ def train_linear_classifier(
     optimizer_cls = keras.optimizers.legacy.Adam if sys.platform == "darwin" else keras.optimizers.Adam
 
     def _focal_loss(y_true, y_pred):
-        return focal_loss(y_true, y_pred, gamma=cfg.FOCAL_LOSS_GAMMA, alpha=cfg.FOCAL_LOSS_ALPHA)
+        return focal_loss(y_true, y_pred, gamma=focal_loss_gamma, alpha=focal_loss_alpha)
 
     # Choose the loss function based on config
     loss_function = _focal_loss if train_with_focal_loss else custom_loss
