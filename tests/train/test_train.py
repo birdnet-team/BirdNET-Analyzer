@@ -64,22 +64,15 @@ def test_train_cli(mock_train_model, mock_ensure_model, setup_test_environment):
 def test_training(setup_test_environment):
     """Test the training process and prediction with dummy data."""
     env = setup_test_environment
+    training_data_input = "tests/data/training"
 
-    dummy_classes = ["Dummy A", "Dummy B"]
-    subfolders = dummy_classes.copy()
-    subfolders.append("Background")
+    # Read class names from subfolders in the input directory, filtering out background classes
+    dummy_classes = [
+        d for d in os.listdir(training_data_input)
+        if os.path.isdir(os.path.join(training_data_input, d)) and d.lower() not in cfg.NON_EVENT_CLASSES
+    ]
 
-    for sub in subfolders:
-        subfolder_path = os.path.join(env["input_dir"], sub)
-        os.makedirs(subfolder_path, exist_ok=True)
-        # Create dummy files in each subfolder
-        for i in range(10):
-            file_path = os.path.join(subfolder_path, f"audio_{i}.wav")
-            with open(file_path, "wb") as f:
-                audio = librosa.tone(randint(20, 20000), length=3.0, sr=44100)
-                sf.write(f, audio, 44100, format="WAV")
-
-    train(env["input_dir"], env["classifier_output"])
+    train(training_data_input, env["classifier_output"])
 
     assert os.path.isfile(env["classifier_output"]), "Classifier output file was not created."
     assert os.path.exists(env["classifier_output"].replace(".tflite", "_Labels.txt")), "Labels file was not created."
