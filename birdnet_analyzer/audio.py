@@ -27,6 +27,9 @@ def open_audio_file(path: str, sample_rate=48000, offset=0.0, duration=None, fmi
     Returns:
         Returns the audio time series and the sampling rate.
     """
+
+    print(f"Opening audio file: {path}", flush=True)
+
     # Open file with librosa (uses ffmpeg or libav)
     if speed == 1.0:
         sig, rate = librosa.load(
@@ -40,6 +43,9 @@ def open_audio_file(path: str, sample_rate=48000, offset=0.0, duration=None, fmi
         # Resample with "fake" sample rate
         sig = librosa.resample(sig, orig_sr=int(rate * speed), target_sr=sample_rate, res_type="kaiser_fast")
         rate = sample_rate
+
+
+    print(f"File opened: {path}", flush=True)
 
     # Bandpass filter
     if fmin is not None and fmax is not None:
