@@ -4,9 +4,11 @@ import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 import birdnet_analyzer.config as cfg
+from birdnet_analyzer import model
 from birdnet_analyzer.cli import embeddings_parser
 from birdnet_analyzer.embeddings.core import embeddings
 
@@ -53,3 +55,16 @@ def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: Magic
     mock_ensure_model.assert_called_once()
     threads = min(8, max(1, multiprocessing.cpu_count() // 2))
     mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 1, None)
+
+
+def test_model_embeddings_function_returns_expected_shape():
+    # Create a dummy sample (e.g., 1D numpy array of audio data)
+    sample = np.zeros(144000).astype(np.float32)
+    # Reshape the sample to (1, 144000) as expected by the model
+    sample = sample.reshape(1, 144000)
+    # Call the embeddings function
+    result = model.embeddings(sample)
+
+    # Check that result is a numpy array and has expected shape (depends on model, e.g., (1, embedding_dim))
+    assert isinstance(result, np.ndarray)
+    assert result.ndim == 2
