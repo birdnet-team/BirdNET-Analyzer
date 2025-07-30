@@ -1198,16 +1198,22 @@ def embeddings(sample):
         The embeddings.
     """
 
+    print("Embeddings: Loading model...", flush=True)
+
     load_model(False)
 
     sample = np.array(sample, dtype="float32")
 
+
+    print("Reshaping input Tensor...", flush=True)
     # Reshape input tensor
     INTERPRETER.resize_tensor_input(INPUT_LAYER_INDEX, [len(sample), *sample[0].shape])
     INTERPRETER.allocate_tensors()
 
+    print("Extracting feature embeddings...", flush=True)
     # Extract feature embeddings
     INTERPRETER.set_tensor(INPUT_LAYER_INDEX, sample)
     INTERPRETER.invoke()
 
+    print("Returning result...", flush=True)
     return INTERPRETER.get_tensor(OUTPUT_LAYER_INDEX)
