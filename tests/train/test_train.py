@@ -60,7 +60,7 @@ def test_train_cli(mock_train_model, mock_ensure_model, setup_test_environment):
     mock_ensure_model.assert_called_once()
     mock_train_model.assert_called_once_with()
 
-@pytest.mark.timeout(6000)  # Increase timeout for training
+@pytest.mark.timeout(600)  # Increase timeout for training
 def test_training(setup_test_environment):
     """Test the training process and prediction with dummy data."""
     env = setup_test_environment
@@ -79,7 +79,7 @@ def test_training(setup_test_environment):
                 audio = librosa.tone(randint(20, 20000), length=3.0, sr=44100)
                 sf.write(f, audio, 44100, format="WAV")
 
-    train(env["input_dir"], env["classifier_output"], threads=1)
+    train(env["input_dir"], env["classifier_output"])
 
     assert os.path.isfile(env["classifier_output"]), "Classifier output file was not created."
     assert os.path.exists(env["classifier_output"].replace(".tflite", "_Labels.txt")), "Labels file was not created."
