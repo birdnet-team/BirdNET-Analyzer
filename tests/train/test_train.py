@@ -79,7 +79,7 @@ def test_training(setup_test_environment):
                 audio = librosa.tone(randint(20, 20000), length=3.0, sr=44100)
                 sf.write(f, audio, 44100, format="WAV")
 
-    train(env["input_dir"], env["classifier_output"])
+    train(env["input_dir"], env["classifier_output"], threads=1)
 
     assert os.path.isfile(env["classifier_output"]), "Classifier output file was not created."
     assert os.path.exists(env["classifier_output"].replace(".tflite", "_Labels.txt")), "Labels file was not created."
