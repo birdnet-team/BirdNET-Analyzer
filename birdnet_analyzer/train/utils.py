@@ -79,6 +79,8 @@ def _load_audio_file(f, label_vector, config):
         print(f"\t {e}", flush=True)
         return np.array([]), np.array([])
 
+    print("Cropping audio file...", flush=True)
+
     # Crop training samples
     if cfg.SAMPLE_CROP_MODE == "center":
         sig_splits = [audio.crop_center(sig, rate, cfg.SIG_LENGTH)]
@@ -90,6 +92,9 @@ def _load_audio_file(f, label_vector, config):
     else:
         sig_splits = audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
+
+    print("Extracting segments...", flush=True)
+
     # Get feature embeddings
     batch_size = 1  # turns out that batch size 1 is the fastest, probably because of having to resize the model input when the number of samples in a batch changes
     for i in range(0, len(sig_splits), batch_size):
@@ -100,6 +105,8 @@ def _load_audio_file(f, label_vector, config):
         # Add to training data
         x_train.extend(embeddings)
         y_train.extend(batch_label)
+
+    print(f"Loaded {len(x_train)} samples from {f}", flush=True)
 
     return x_train, y_train
 
