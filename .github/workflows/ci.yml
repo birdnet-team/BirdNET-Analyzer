@@ -37,4 +37,4 @@ jobs:
         run: |
           python -m pip install .[tests]
           python -m birdnet_analyzer.utils
-          python -m pytest -s tests/analyze/ tests/train/
+          python -m pytest -s tests/embeddings/ tests/train/
