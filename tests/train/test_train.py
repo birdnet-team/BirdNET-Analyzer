@@ -58,7 +58,7 @@ def test_train_cli(mock_train_model, mock_ensure_model, setup_test_environment):
     mock_ensure_model.assert_called_once()
     mock_train_model.assert_called_once_with()
 
-@pytest.mark.timeout(600)  # Increase timeout for training
+@pytest.mark.timeout(400)  # Increase timeout for training, 400s should be sufficient, win is by far the slowest
 def test_training(setup_test_environment):
     """Test the training process and prediction with dummy data."""
     env = setup_test_environment
