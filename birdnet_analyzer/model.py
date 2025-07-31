@@ -1197,7 +1197,6 @@ def embeddings(sample):
     Returns:
         The embeddings.
     """
-
     load_model(False)
 
     sample = np.array(sample, dtype="float32")
