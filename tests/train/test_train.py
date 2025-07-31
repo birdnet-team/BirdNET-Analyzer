@@ -18,8 +18,9 @@ def setup_test_environment():
     input_dir = os.path.join(test_dir, "input")
     output_dir = os.path.join(test_dir, "output")
 
-    os.makedirs(input_dir, exist_ok=True)
-    os.makedirs(output_dir, exist_ok=True)
+    # Directory should not exist, so no exist_ok=True
+    os.makedirs(input_dir)
+    os.makedirs(output_dir)
 
     classifier_output = os.path.join(output_dir, "classifier_output", "custom_classifier.tflite")
 
