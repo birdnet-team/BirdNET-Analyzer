@@ -426,3 +426,62 @@ def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environme
             assert float(row["sensitivity"]) == cfg.SIGMOID_SENSITIVITY, "Sensitivity value does not match expected value"
             assert row["species_list"] == "", "Species list value does not match expected value"
             assert float(row["min_conf"]) == 0, "Min confidence value does not match expected value"
+
+def test_sensitivity(setup_test_environment):
+    """Test sensitivity setting."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(soundscape_path, env["output_dir"], top_n=1)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+
+    normal_sensitivity_result = {}
+    low_sensitivity_result = {}
+    high_sensitivity_result = {}
+
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        for line in lines:
+            parts = line.strip().split("\t")
+            start = float(parts[3])
+            end = float(parts[4])
+            confidence = float(parts[9])
+            normal_sensitivity_result[(start, end)] = confidence
+
+    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=0.75)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        for line in lines:
+            parts = line.strip().split("\t")
+            start = float(parts[3])
+            end = float(parts[4])
+            confidence = float(parts[9])
+            low_sensitivity_result[(start, end)] = confidence
+
+    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=1.25)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        for line in lines:
+            parts = line.strip().split("\t")
+            start = float(parts[3])
+            end = float(parts[4])
+            confidence = float(parts[9])
+            high_sensitivity_result[(start, end)] = confidence
+
+    for key in normal_sensitivity_result:
+        assert key in low_sensitivity_result, "Low sensitivity result missing key from normal sensitivity result"
+        assert key in high_sensitivity_result, "High sensitivity result missing key from normal sensitivity result"
+        assert low_sensitivity_result[key] <= normal_sensitivity_result[key], "Low sensitivity confidence should be less than or equal to normal sensitivity"
+        assert high_sensitivity_result[key] >= normal_sensitivity_result[key], "High sensitivity confidence should be greater than or equal to normal sensitivity"
