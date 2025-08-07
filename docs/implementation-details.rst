@@ -5,3 +5,4 @@ Implementation details
    :maxdepth: 1
 
    implementation-details/crop-modes
+   implementation-details/sensitivity
