@@ -4,6 +4,7 @@ import io
 import multiprocessing
 import os
 import sys
+import warnings
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
@@ -16,6 +17,7 @@ import birdnet_analyzer.gui.localization as loc
 from birdnet_analyzer import utils
 from birdnet_analyzer.gui import settings
 
+warnings.filterwarnings("ignore")
 loc.load_local_state()
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))

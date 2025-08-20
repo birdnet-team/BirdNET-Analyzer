@@ -22,6 +22,7 @@ ADDITIONAL_COLUMNS_MAP = {
     "Model file": "model",
 }
 
+
 @gu.gui_runtime_error_handler
 def run_batch_analysis(
     output_path,
@@ -64,7 +65,7 @@ def run_batch_analysis(
     if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
-    return run_analysis(
+    results = run_analysis(
         None,
         output_path,
         use_top_n,
@@ -95,6 +96,8 @@ def run_batch_analysis(
         True,
         progress,
     )
+
+    return [path for path, successful in results if not successful]
 
 
 def build_multi_analysis_tab():
@@ -219,7 +222,6 @@ def build_multi_analysis_tab():
         result_grid = gr.Matrix(
             headers=[
                 loc.localize("multi-tab-result-dataframe-column-file-header"),
-                loc.localize("multi-tab-result-dataframe-column-execution-header"),
             ],
         )
 
