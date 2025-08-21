@@ -1,9 +1,9 @@
 """Module used to extract embeddings for samples."""
 
 import datetime
+import multiprocessing as mp
 import os
-from functools import partial
-from multiprocessing import Pool
+import time
 
 import numpy as np
 from ml_collections import ConfigDict
@@ -17,6 +17,36 @@ from birdnet_analyzer.analyze.utils import iterate_audio_chunks
 from birdnet_analyzer.embeddings.core import get_database
 
 DATASET_NAME: str = "birdnet_analyzer_dataset"
+
+
+def analyze_file2(item):
+    """Extracts the embeddings for a file.
+
+    Args:
+        item: (filepath, config)
+    """
+
+    # Get file path and restore cfg
+    fpath: str = item[0]
+    cfg.set_config(item[1])
+
+    # Start time
+    # start_time = datetime.datetime.now()
+
+    # Status
+    # print(f"Analyzing {fpath}", flush=True)
+
+    # Process each chunk
+    try:
+        for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
+            yield fpath, s_start, s_end, embeddings
+    except Exception as ex:
+        # Write error log
+        # print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
+        utils.write_error_log(ex)
+
+    # delta_time = (datetime.datetime.now() - start_time).total_seconds()
+    # print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
 
 
 def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
@@ -114,6 +144,48 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
             f.write(",".join(map(str, embedding.tolist())))
 
 
+def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
+    batchsize = 512
+    batch = 0
+
+    db = get_database(database)
+    check_database_settings(db)
+
+    with tqdm(total=num_files, desc="Files processed") as pbar:
+        while True:
+            if not q.empty():
+                fpath, s_start, s_end, embeddings = q.get()
+                pbar.update(1)
+
+                if fpath == stop_at:
+                    db.commit()
+                    db.db.close()
+                    break
+
+                # Check if embedding already exists
+                existing_embedding = db.get_embeddings_by_source(DATASET_NAME, fpath, np.array([s_start, s_end]))
+
+                if existing_embedding.size == 0:
+                    batch += 1
+                    # Store embeddings
+                    embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, fpath, np.array([s_start, s_end]))
+
+                    # Insert into database
+                    db.insert_embedding(embeddings, embeddings_source)
+                    db.thread_split()
+
+                if batch >= batchsize:
+                    db.commit()
+                    batch = 0
+            else:
+                time.sleep(0.1)
+
+
+def producer(q: mp.Queue, file):
+    for res in analyze_file2(file):
+        q.put(res)
+
+
 def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
     ### Make sure to comment out appropriately if you are not using args. ###
 
@@ -144,8 +216,6 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         cfg.CPU_THREADS = 1
         cfg.TFLITE_THREADS = max(1, int(threads))
 
-    cfg.CPU_THREADS = 1  # TODO: with the current implementation, we can't use more than 1 thread
-
     # Set batch size
     cfg.BATCH_SIZE = max(1, int(batchsize))
 
@@ -155,18 +225,35 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
     # have its own config. USE LINUX!
     flist = [(f, cfg.get_config()) for f in cfg.FILE_LIST]
 
-    db = get_database(database)
-    check_database_settings(db)
+    if database:
+        queue = mp.Manager().Queue(maxsize=10_000)
 
-    # Analyze files
-    if cfg.CPU_THREADS < 2:
-        for entry in tqdm(flist):
-            analyze_file(entry, db)
-    else:
-        with Pool(cfg.CPU_THREADS) as p:
-            tqdm(p.imap(partial(analyze_file, db=db), flist))
+        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, len(flist)))
+        consumer_process.start()
 
-    if file_output:
-        create_file_output(file_output, db)
+        with mp.Pool(processes=cfg.CPU_THREADS) as pool:
+            for f in flist:
+                pool.apply_async(producer, args=(queue, f))
 
-    db.db.close()
+            pool.close()
+            pool.join()
+
+        queue.put(("STOP", 0, 0, None))
+        consumer_process.join()
+    elif file_output:
+        with mp.Pool(processes=cfg.CPU_THREADS) as pool:
+            for f in flist:
+                pool.apply_async(analyze_file2, args=(f,)).get()
+
+    # # Analyze files
+    # if cfg.CPU_THREADS < 2:
+    #     for entry in tqdm(flist):
+    #         analyze_file(entry, db)
+    # else:
+    #     with mp.Pool(cfg.CPU_THREADS) as p:
+    #         tqdm(p.imap(partial(analyze_file, db=db), flist))
+
+    # if file_output:
+    #     create_file_output(file_output, db)
+
+    # db.db.close()
