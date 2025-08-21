@@ -147,6 +147,7 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
 def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
     batchsize = 512
     batch = 0
+    processed_files = set()
 
     db = get_database(database)
     check_database_settings(db)
@@ -155,7 +156,9 @@ def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
         while True:
             if not q.empty():
                 fpath, s_start, s_end, embeddings = q.get()
-                pbar.update(1)
+                if fpath not in processed_files:
+                    processed_files.add(fpath)
+                    pbar.update(1)
 
                 if fpath == stop_at:
                     db.commit()
@@ -226,20 +229,42 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
     flist = [(f, cfg.get_config()) for f in cfg.FILE_LIST]
 
     if database:
-        queue = mp.Manager().Queue(maxsize=10_000)
+        ##### V1 working 
+        # queue = mp.Manager().Queue(maxsize=10_000)
 
+        # consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, len(flist)))
+        # consumer_process.start()
+
+        # with mp.Pool(processes=cfg.CPU_THREADS) as pool:
+        #     for f in flist:
+        #         pool.apply_async(producer, args=(queue, f))
+
+        #     pool.close()
+        #     pool.join()
+
+        # queue.put(("STOP", 0, 0, None))
+        # consumer_process.join()
+
+
+
+        ##### V2
+        queue = mp.Queue(maxsize=10_000)
         consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, len(flist)))
         consumer_process.start()
 
-        with mp.Pool(processes=cfg.CPU_THREADS) as pool:
-            for f in flist:
-                pool.apply_async(producer, args=(queue, f))
+        producers = []
 
-            pool.close()
-            pool.join()
+        for f in flist:
+            p = mp.Process(target=producer, args=(queue, f))
+            p.start()
+            producers.append(p)
+
+        for p in producers:
+            p.join()
 
         queue.put(("STOP", 0, 0, None))
         consumer_process.join()
+
     elif file_output:
         with mp.Pool(processes=cfg.CPU_THREADS) as pool:
             for f in flist:
