@@ -194,7 +194,16 @@
     "segments-tab-max-seq-number-info": "Maximale Anzahl von zufällig extrahierten Segmenten pro Art.",
     "segments-tab-max-seq-number-label": "Maximale Anzahl von Segmenten",
     "segments-tab-min-confidence-slider-info": "Wählt nur Segmente mit einem Wert über diesem Schwellenwert aus.",
-    "segments-tab-min-confidence-slider-label": "Konfidenz-Schwellenwert",
+    "segments-tab-min-confidence-slider-label": "Minimaler Konfidenz-Schwellenwert",
+    "segments-tab-max-confidence-slider-info": "Wählt nur Segmente mit einem Wert unter diesem Schwellenwert aus.",
+    "segments-tab-max-confidence-slider-label": "Maximaler Konfidenz-Schwellenwert",
+    "segments-tab-collection-mode-label": "Sammelmodus",
+    "segments-tab-collection-mode-info": "Gibt an wie die Segmente aus den Ergebnisdateien ausgewählt werden.",
+    "segments-tab-n-bins-label": "Anzahl der Konfidenz-Behälter",
+    "segments-tab-n-bins-info": "Setzt die Anzahl der Konfidenz-Behälter für den ausgeglichenen Sammelmodus.",
+    "segments-tab-collection-mode-radio-option-random": "zufällig",
+    "segments-tab-collection-mode-radio-option-confidence": "nach Konfidenz",
+    "segments-tab-collection-mode-radio-option-balanced": "ausgeglichen",
     "segments-tab-output-selection-button-label": "Wählen Sie das Ausgabeverzeichnis",
     "segments-tab-output-selection-textbox-placeholder": "Gleich wie das Audioverzeichnis, wenn nicht ausgewählt",
     "segments-tab-result-dataframe-column-execution-header": "Ausführung",
@@ -338,5 +347,6 @@
     "validation-no-valid-frequency": "Bitte geben Sie eine gültige Frequenz an",
     "validation-no-valid-learning-rate": "Bitte geben Sie eine gültige Lernrate an.",
     "validation-non-event-samples-required-in-binary-classification": "Für binäre Klassifikation müssen Hintergrundsamples vorhanden sein.",
-    "validation-only-repeat-upsampling-for-multi-label": "Mit Multi-Label Beispielen kann nur 'wiederholen' als Upsampling-Modus verwendet werden."
+    "validation-only-repeat-upsampling-for-multi-label": "Mit Multi-Label Beispielen kann nur 'wiederholen' als Upsampling-Modus verwendet werden.",
+    "validation-max-confidence-lower-than-min-confidence": "Maximaler Konfidenz-Schwellwert muss größer sein als der minimale Schwellwert."
 }

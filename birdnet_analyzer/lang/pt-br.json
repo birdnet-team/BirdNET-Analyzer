@@ -195,6 +195,15 @@
     "segments-tab-max-seq-number-label": "Número máximo de segmentos",
     "segments-tab-min-confidence-slider-info": "Selecione apenas segmentos com nível de confiança acima deste limite.",
     "segments-tab-min-confidence-slider-label": "Nível mínimo de confiança",
+    "segments-tab-max-confidence-slider-info": "Selecione apenas segmentos com nível de confiança abaixo deste limite.",
+    "segments-tab-max-confidence-slider-label": "Confiança máxima",
+    "segments-tab-collection-mode-label": "Modo de coleta",
+    "segments-tab-collection-mode-info": "Determina como os segmentos são selecionados a partir dos arquivos de resultados.",
+    "segments-tab-n-bins-label": "Número de intervalos de confiança",
+    "segments-tab-n-bins-info": "Define o número de intervalos de confiança para o modo de coleta balanceado.",
+    "segments-tab-collection-mode-radio-option-random": "aleatório",
+    "segments-tab-collection-mode-radio-option-confidence": "confiança",
+    "segments-tab-collection-mode-radio-option-balanced": "balanceado",
     "segments-tab-output-selection-button-label": "Selecione o diretório de saída",
     "segments-tab-output-selection-textbox-placeholder": "Se não selecionado, o mesmo diretório de áudios será utilizado",
     "segments-tab-result-dataframe-column-execution-header": "Execução",
@@ -338,5 +347,6 @@
     "validation-no-valid-frequency": "Adicionar uma frequência válida em",
     "validation-no-valid-learning-rate": "Adicionar uma taxa de amostragem válida.",
     "validation-non-event-samples-required-in-binary-classification": "Amostras sem eventos são necessárias para classificação binária",
-    "validation-only-repeat-upsampling-for-multi-label": "Somente repetição de upsampling está disponível para vários rótulos"
+    "validation-only-repeat-upsampling-for-multi-label": "Somente repetição de upsampling está disponível para vários rótulos",
+    "validation-max-confidence-lower-than-min-confidence": "A confiança máxima deve ser maior que a confiança mínima"
 }

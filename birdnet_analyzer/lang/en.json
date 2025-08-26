@@ -195,6 +195,15 @@
     "segments-tab-max-seq-number-label": "Maximum number of segments",
     "segments-tab-min-confidence-slider-info": "Select only segments with a confidence above this threshold.",
     "segments-tab-min-confidence-slider-label": "Minimum confidence",
+    "segments-tab-max-confidence-slider-info": "Select only segments with a confidence below this threshold.",
+    "segments-tab-max-confidence-slider-label": "Maximum confidence",
+    "segments-tab-collection-mode-label": "Collection mode",
+    "segments-tab-collection-mode-info": "Determines how segments are selected from the result files.",
+    "segments-tab-n-bins-label": "Number of confidence bins",
+    "segments-tab-n-bins-info": "Sets the number of confidence bins for the balanced collection mode.",
+    "segments-tab-collection-mode-radio-option-random": "random",
+    "segments-tab-collection-mode-radio-option-confidence": "confidence",
+    "segments-tab-collection-mode-radio-option-balanced": "balanced",
     "segments-tab-output-selection-button-label": "Select output directory",
     "segments-tab-output-selection-textbox-placeholder": "Same as audio directory if not selected",
     "segments-tab-result-dataframe-column-execution-header": "Execution",
@@ -338,5 +347,6 @@
     "validation-no-valid-frequency": "Please enter a valid frequency in",
     "validation-no-valid-learning-rate": "Please enter a valid learning rate.",
     "validation-non-event-samples-required-in-binary-classification": "Non-event samples are required for binary classification",
-    "validation-only-repeat-upsampling-for-multi-label": "Only repeat-upsampling is available for multi-label"
+    "validation-only-repeat-upsampling-for-multi-label": "Only repeat-upsampling is available for multi-label",
+    "validation-max-confidence-lower-than-min-confidence": "Maximum confidence must be greater than minimum confidence"
 }

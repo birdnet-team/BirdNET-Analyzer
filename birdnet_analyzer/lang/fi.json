@@ -195,6 +195,15 @@
     "segments-tab-max-seq-number-label": "Segmenttien enimmäismäärä",
     "segments-tab-min-confidence-slider-info": "Valitse vain segmentit, joiden luotettavuus on tätä raja-arvoa korkeampi.",
     "segments-tab-min-confidence-slider-label": "Vähimmäisluotettavuus",
+    "segments-tab-max-confidence-slider-info": "Valitse vain segmentit, joiden luotettavuus on tätä raja-arvoa alhaisempi.",
+    "segments-tab-max-confidence-slider-label": "Enimmäisluotettavuus",
+    "segments-tab-collection-mode-label": "Keräystila",
+    "segments-tab-collection-mode-info": "Määrittää, miten segmentit valitaan tulostiedostoista.",
+    "segments-tab-n-bins-label": "Luotettavuusluokkien määrä",
+    "segments-tab-n-bins-info": "Asettaa luotettavuusluokkien määrän tasapainotetussa keräystilassa.",
+    "segments-tab-collection-mode-radio-option-random": "satunnainen",
+    "segments-tab-collection-mode-radio-option-confidence": "luotettavuus",
+    "segments-tab-collection-mode-radio-option-balanced": "tasapainotettu",
     "segments-tab-output-selection-button-label": "Valitse tulostehakemisto",
     "segments-tab-output-selection-textbox-placeholder": "Sama kuin äänihakemisto, jos ei valittu",
     "segments-tab-result-dataframe-column-execution-header": "Suoritus",
@@ -338,5 +347,6 @@
     "validation-no-valid-frequency": "Anna kelvollinen taajuus",
     "validation-no-valid-learning-rate": "Anna kelvollinen oppimistahti.",
     "validation-non-event-samples-required-in-binary-classification": "Binääriluokittelussa vaaditaan ei-tapahtuma-näytteitä",
-    "validation-only-repeat-upsampling-for-multi-label": "Moninimiöisessä luokittelussa vain 'toista'-ylösnäytteistys on käytettävissä"
+    "validation-only-repeat-upsampling-for-multi-label": "Moninimiöisessä luokittelussa vain 'toista'-ylösnäytteistys on käytettävissä",
+    "validation-max-confidence-lower-than-min-confidence": "Enimmäisluotettavuuden on oltava suurempi kuin vähimmäisluotettavuus" 
 }
