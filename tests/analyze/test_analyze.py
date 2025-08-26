@@ -473,3 +473,43 @@ def test_sensitivity(setup_test_environment):
         assert key in high_sensitivity_result, "High sensitivity result missing key from normal sensitivity result"
         assert low_sensitivity_result[key] <= normal_sensitivity_result[key], "Low sensitivity confidence should be less than or equal to normal sensitivity"
         assert high_sensitivity_result[key] >= normal_sensitivity_result[key], "High sensitivity confidence should be greater than or equal to normal sensitivity"
+
+
+
+def test_species_list_filter(setup_test_environment):
+    """Test species list filtering."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    slist_path = "tests/data/analyze/test_species_list.txt"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    analyze(soundscape_path, env["output_dir"], top_n=1, slist=slist_path)
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        for line in lines:
+            parts = line.strip().split("\t")
+            species = parts[7]
+            assert species in ["Blue Jay", "Black-capped Chickadee", "House Finch"], "Species not in expected list"
+
+def test_empty_species_list(setup_test_environment):
+    """Test species list filtering."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+    slist_path = "tests/data/analyze/empty_species_list.txt"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    analyze(soundscape_path, env["output_dir"], top_n=1, slist=slist_path)
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file)
+
+    # This needs to be updated if we decide to throw an error when an empty species list is passed.
+    with open(output_file) as f:
+        lines = f.readlines()[1:]
+        assert len(lines) == 40, "Output should not be filtered with empty species list"
