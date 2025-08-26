@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "Spécifiez le nom du jeu de données",
     "embeddings-tab-dataset-label": "Jeu de données",
     "embeddings-tab-db-info": "Le nom de la base de données",
+    "embeddings-tab-file-output-checkbox-label": "Enable file output",
     "embeddings-tab-file-output-directory-textbox-label": "Répertoire de sortie de fichier",
     "embeddings-tab-file-output-directory-textbox-placeholder": "Si non sélectionné, la sortie de fichier sera omise.",
     "embeddings-tab-finish-info": "Extraction des incorporations terminée vers :",

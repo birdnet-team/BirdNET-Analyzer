@@ -42,11 +42,12 @@ def run_embeddings_with_tqdm_tracking(
     db_directory,
     db_name,
     overlap,
-    threads,
     batch_size,
+    threads,
     audio_speed,
     fmin,
     fmax,
+    enable_file_output,
     file_output,
     progress=gr.Progress(track_tqdm=True),
 ):
@@ -60,7 +61,7 @@ def run_embeddings_with_tqdm_tracking(
         audio_speed,
         fmin,
         fmax,
-        file_output,
+        file_output if enable_file_output else None,
         progress,
     )
 
@@ -171,27 +172,46 @@ def _build_extract_tab():
         input_directory_state = gr.State()
         db_directory_state = gr.State()
 
-        def select_directory_to_state_and_tb(state_key):
-            return (gu.select_directory(collect_files=False, state_key=state_key),) * 2
+        def select_directory_to_state_and_tb(current, state_key=None):
+            path = gu.select_directory(collect_files=False, state_key=state_key) or current or None
+            return path, path
 
-        with gr.Row():
+        with gr.Group(), gr.Row(equal_height=True):
             select_audio_directory_btn = gr.Button(loc.localize("embeddings-tab-select-input-directory-button-label"))
-            selected_audio_directory_tb = gr.Textbox(show_label=False, interactive=False)
+            selected_audio_directory_tb = gr.Textbox(show_label=False, interactive=False, scale=2)
             select_audio_directory_btn.click(
                 partial(select_directory_to_state_and_tb, state_key="embeddings-input-dir"),
+                inputs=[input_directory_state],
                 outputs=[selected_audio_directory_tb, input_directory_state],
                 show_progress="hidden",
             )
 
-        with gr.Row():
+        with gr.Group(), gr.Row(equal_height=True):
             select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
+            db_name_tb = gr.Textbox("embeddings_database", visible=False, interactive=True, info=loc.localize("embeddings-tab-db-info"), scale=2)
 
-        with gr.Row():
-            db_name_tb = gr.Textbox(
-                "embeddings_database",
-                visible=False,
-                interactive=True,
-                info=loc.localize("embeddings-tab-db-info"),
+        with gr.Row(visible=False, equal_height=True) as file_output_row:
+            file_output_cb = gr.Checkbox(label=loc.localize("embeddings-tab-file-output-checkbox-label"), value=False, interactive=True)
+            with gr.Group():
+                select_file_output_directory_btn = gr.Button(loc.localize("embeddings-select-file-output-directory-button-label"), visible=False)
+                file_output_tb = gr.Textbox(
+                    value=None,
+                    placeholder=loc.localize("embeddings-tab-file-output-directory-textbox-placeholder"),
+                    interactive=False,
+                    label=loc.localize("embeddings-tab-file-output-directory-textbox-label"),
+                    visible=False,
+                )
+
+            def on_cb_click(status, current, db_dir):
+                if not current:
+                    return gr.update(visible=status), gr.update(visible=status, value=os.path.join(db_dir, "embedding_files"))
+                return gr.update(visible=status), gr.update(visible=status)
+
+            file_output_cb.change(
+                fn=on_cb_click,
+                inputs=[file_output_cb, file_output_tb, db_directory_state],
+                outputs=[select_file_output_directory_btn, file_output_tb],
+                show_progress="hidden",
             )
 
         with gr.Accordion(loc.localize("embedding-settings-accordion-label"), open=False):
@@ -220,7 +240,6 @@ def _build_extract_tab():
                     info=loc.localize("embedding-settings-threads-number-info"),
                     minimum=1,
                     interactive=True,
-                    visible=False, # Threads are currently not used as its not compatible with
                 )
 
             with gr.Row():
@@ -248,8 +267,8 @@ def _build_extract_tab():
                     interactive=True,
                 )
 
-        def select_directory_and_update_tb(db_name):
-            dir_name = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
+        def select_directory_and_update_tb(db_name, current_state):
+            dir_name: str = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
 
             if dir_name:
                 db_path = os.path.join(dir_name, db_name)
@@ -267,6 +286,7 @@ def _build_extract_tab():
                             gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
                             gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
                             gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
+                            gr.update(visible=True),
                         )
                     except KeyError:
                         pass
@@ -279,40 +299,28 @@ def _build_extract_tab():
                     gr.Slider(interactive=True),
                     gr.Number(interactive=True),
                     gr.Number(interactive=True),
+                    gr.update(visible=True),
                 )
 
-            return None, gr.Textbox(visible=False), gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
+            value = current_state or None
+
+            return value, gr.update(visible=bool(value)), gr.update(), gr.update(), gr.update(), gr.update()
 
         select_db_directory_btn.click(
             select_directory_and_update_tb,
-            inputs=[db_name_tb],
-            outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number],
+            inputs=[db_name_tb, db_directory_state],
+            outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number, file_output_row],
             show_progress="hidden",
         )
 
-        with gr.Accordion(loc.localize("embedding-file-output-accordion-label"), open=False):
-            with gr.Row():
-                select_file_output_directory_btn = gr.Button(loc.localize("embeddings-select-file-output-directory-button-label"))
-
-            with gr.Row():
-                file_output_tb = gr.Textbox(
-                    value=None,
-                    placeholder=loc.localize("embeddings-tab-file-output-directory-textbox-placeholder"),
-                    interactive=True,
-                    label=loc.localize("embeddings-tab-file-output-directory-textbox-label"),
-                )
-
-        def select_file_output_directory_and_update_tb():
+        def select_file_output_directory_and_update_tb(current):
             dir_name = gu.select_directory(state_key="embeddings-file-output-dir", collect_files=False)
 
-            if dir_name:
-                return dir_name
-
-            return None
+            return dir_name or current
 
         select_file_output_directory_btn.click(
             select_file_output_directory_and_update_tb,
-            inputs=[],
+            inputs=[file_output_tb],
             outputs=[file_output_tb],
         )
 
@@ -359,6 +367,7 @@ def _build_extract_tab():
                 audio_speed_slider,
                 fmin_number,
                 fmax_number,
+                file_output_cb,
                 file_output_tb,
             ],
             outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
@@ -511,9 +520,7 @@ def _build_search_tab():
                         prev_btn.click(prev_page, inputs=[page_state], outputs=[page_state])
                         next_btn.click(next_page, inputs=[page_state], outputs=[page_state])
 
-                export_btn = gr.Button(
-                    loc.localize("embeddings-search-export-button-label"), variant="huggingface", interactive=False
-                )
+                export_btn = gr.Button(loc.localize("embeddings-search-export-button-label"), variant="huggingface", interactive=False)
 
     def on_db_selection_click():
         folder = gu.select_folder(state_key="embeddings_search_db")

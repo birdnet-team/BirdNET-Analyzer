@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "Määritä tietoaineiston nimi",
     "embeddings-tab-dataset-label": "Tietoaineisto",
     "embeddings-tab-db-info": "Tietokannan nimi",
+    "embeddings-tab-file-output-checkbox-label": "Enable file output",
     "embeddings-tab-file-output-directory-textbox-label": "Tiedostotulosteen hakemisto",
     "embeddings-tab-file-output-directory-textbox-placeholder": "Jos ei valittu, tiedostotulostetta ei luoda.",
     "embeddings-tab-finish-info": "Upotukset poimittu kohteeseen:",

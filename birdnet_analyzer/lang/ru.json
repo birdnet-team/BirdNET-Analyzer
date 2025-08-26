@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "Укажите имя набора данных",
     "embeddings-tab-dataset-label": "Набор данных",
     "embeddings-tab-db-info": "Имя базы данных",
+    "embeddings-tab-file-output-checkbox-label": "Включить вывод файла",
     "embeddings-tab-file-output-directory-textbox-label": "Каталог вывода файлов",
     "embeddings-tab-file-output-directory-textbox-placeholder": "Если не выбрано, вывод файлов будет пропущен.",
     "embeddings-tab-finish-info": "Извлечение embeddings завершено. Сохранено в:",

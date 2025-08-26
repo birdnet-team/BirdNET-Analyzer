@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "指定數據集名稱",
     "embeddings-tab-dataset-label": "數據集",
     "embeddings-tab-db-info": "資料庫名稱",
+    "embeddings-tab-file-output-checkbox-label": "Dateiausgabe aktivieren",
     "embeddings-tab-file-output-directory-textbox-label": "檔案輸出資料夾",
     "embeddings-tab-file-output-directory-textbox-placeholder": "若無選擇，將不進行檔案輸出。",
     "embeddings-tab-finish-info": "已完成嵌入提取至：",

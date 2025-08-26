@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "Specify the dataset name",
     "embeddings-tab-dataset-label": "Dataset",
     "embeddings-tab-db-info": "The name of the database",
+    "embeddings-tab-file-output-checkbox-label": "Enable file output",
     "embeddings-tab-file-output-directory-textbox-label": "File output directory",
     "embeddings-tab-file-output-directory-textbox-placeholder": "If not selected, file output will be omitted.",
     "embeddings-tab-finish-info": "Finished extracting embeddings to:",

@@ -1,6 +1,5 @@
 """Module used to extract embeddings for samples."""
 
-import datetime
 import multiprocessing as mp
 import os
 import time
@@ -17,8 +16,10 @@ from birdnet_analyzer.analyze.utils import iterate_audio_chunks
 from birdnet_analyzer.embeddings.core import get_database
 
 DATASET_NAME: str = "birdnet_analyzer_dataset"
+COMMIT_BS_SIZE = 512
 
-def analyze_file4(items):
+
+def analyze_file(items):
     """Extracts the embeddings for a file.
 
     Args:
@@ -31,129 +32,16 @@ def analyze_file4(items):
         fpath: str = item[0]
         cfg.set_config(item[1])
 
-        # Start time
-        # start_time = datetime.datetime.now()
-
-        # Status
-        # print(f"Analyzing {fpath}", flush=True)
-
         # Process each chunk
         try:
             for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
                 results.append((fpath, s_start, s_end, embeddings))
         except Exception as ex:
             # Write error log
-            # print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
+            print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
             utils.write_error_log(ex)
 
-        # delta_time = (datetime.datetime.now() - start_time).total_seconds()
-        # print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
-
     return results
-
-def analyze_file3(item):
-    """Extracts the embeddings for a file.
-
-    Args:
-        item: (filepath, config)
-    """
-
-    # Get file path and restore cfg
-    fpath: str = item[0]
-    cfg.set_config(item[1])
-
-    # Start time
-    # start_time = datetime.datetime.now()
-
-    # Status
-    # print(f"Analyzing {fpath}", flush=True)
-
-    # Process each chunk
-    results = []
-    try:
-        for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
-            results.append((fpath, s_start, s_end, embeddings))
-    except Exception as ex:
-        # Write error log
-        # print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
-        utils.write_error_log(ex)
-
-    # delta_time = (datetime.datetime.now() - start_time).total_seconds()
-    # print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
-
-    return results
-
-def analyze_file2(item):
-    """Extracts the embeddings for a file.
-
-    Args:
-        item: (filepath, config)
-    """
-
-    # Get file path and restore cfg
-    fpath: str = item[0]
-    cfg.set_config(item[1])
-
-    # Start time
-    # start_time = datetime.datetime.now()
-
-    # Status
-    # print(f"Analyzing {fpath}", flush=True)
-
-    # Process each chunk
-    try:
-        for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
-            yield fpath, s_start, s_end, embeddings
-    except Exception as ex:
-        # Write error log
-        # print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
-        utils.write_error_log(ex)
-
-    # delta_time = (datetime.datetime.now() - start_time).total_seconds()
-    # print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
-
-
-def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
-    """Extracts the embeddings for a file.
-
-    Args:
-        item: (filepath, config)
-    """
-
-    # Get file path and restore cfg
-    fpath: str = item[0]
-    cfg.set_config(item[1])
-
-    # Start time
-    start_time = datetime.datetime.now()
-
-    # Status
-    print(f"Analyzing {fpath}", flush=True)
-
-    source_id = fpath
-
-    # Process each chunk
-    try:
-        for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
-            # Check if embedding already exists
-            existing_embedding = db.get_embeddings_by_source(DATASET_NAME, source_id, np.array([s_start, s_end]))
-
-            if existing_embedding.size == 0:
-                # Store embeddings
-                embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, source_id, np.array([s_start, s_end]))
-
-                # Insert into database
-                db.insert_embedding(embeddings, embeddings_source)
-        db.commit()
-    except Exception as ex:
-        # Write error log
-        print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
-        utils.write_error_log(ex)
-
-        return
-
-    delta_time = (datetime.datetime.now() - start_time).total_seconds()
-    print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
 
 
 def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
@@ -170,13 +58,16 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
         db.commit()
 
 
-def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB):
+def create_file_output(output_path: str, database: str):
     """Creates a file output for the database.
 
     Args:
         output_path: Path to the output file.
         db: Database object.
     """
+
+    db = get_database(database)
+
     # Check if output path exists
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -207,8 +98,25 @@ def create_file_output(output_path: str, db: sqlite_usearch_impl.SQLiteUsearchDB
         with open(target_path, "w") as f:
             f.write(",".join(map(str, embedding.tolist())))
 
-def consumer2(q: mp.Queue, stop_at, database: str, num_files: int):
-    batchsize = 512
+
+def consume_embedding(fpath, s_start, s_end, embeddings, db: sqlite_usearch_impl.SQLiteUsearchDB):
+    # Check if embedding already exists
+    existing_embedding = db.get_embeddings_by_source(DATASET_NAME, fpath, np.array([s_start, s_end]))
+
+    if existing_embedding.size == 0:
+        # Store embeddings
+        embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, fpath, np.array([s_start, s_end]))
+
+        # Insert into database
+        db.insert_embedding(embeddings, embeddings_source)
+
+        return True
+
+    return False
+
+
+def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
+    batchsize = COMMIT_BS_SIZE
     batch = 0
     processed_files = set()
 
@@ -224,8 +132,6 @@ def consumer2(q: mp.Queue, stop_at, database: str, num_files: int):
 
                 for fpath, s_start, s_end, embeddings in results:
                     if fpath == stop_at:
-                        db.commit()
-                        db.db.close()
                         break_signal = False
                         break
 
@@ -233,17 +139,8 @@ def consumer2(q: mp.Queue, stop_at, database: str, num_files: int):
                         processed_files.add(fpath)
                         pbar.update(1)
 
-                    # Check if embedding already exists
-                    existing_embedding = db.get_embeddings_by_source(DATASET_NAME, fpath, np.array([s_start, s_end]))
-
-                    if existing_embedding.size == 0:
+                    if consume_embedding(fpath, s_start, s_end, embeddings, db):
                         batch += 1
-                        # Store embeddings
-                        embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, fpath, np.array([s_start, s_end]))
-
-                        # Insert into database
-                        db.insert_embedding(embeddings, embeddings_source)
-                        db.thread_split()
 
                     if batch >= batchsize:
                         db.commit()
@@ -251,49 +148,8 @@ def consumer2(q: mp.Queue, stop_at, database: str, num_files: int):
             else:
                 time.sleep(0.1)
 
-def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
-    batchsize = 512
-    batch = 0
-    processed_files = set()
-
-    db = get_database(database)
-    check_database_settings(db)
-
-    with tqdm(total=num_files, desc="Files processed") as pbar:
-        while True:
-            if not q.empty():
-                fpath, s_start, s_end, embeddings = q.get()
-                if fpath not in processed_files:
-                    processed_files.add(fpath)
-                    pbar.update(1)
-
-                if fpath == stop_at:
-                    db.commit()
-                    db.db.close()
-                    break
-
-                # Check if embedding already exists
-                existing_embedding = db.get_embeddings_by_source(DATASET_NAME, fpath, np.array([s_start, s_end]))
-
-                if existing_embedding.size == 0:
-                    batch += 1
-                    # Store embeddings
-                    embeddings_source = hoplite.EmbeddingSource(DATASET_NAME, fpath, np.array([s_start, s_end]))
-
-                    # Insert into database
-                    db.insert_embedding(embeddings, embeddings_source)
-                    db.thread_split()
-
-                if batch >= batchsize:
-                    db.commit()
-                    batch = 0
-            else:
-                time.sleep(0.1)
-
-
-def producer(q: mp.Queue, file):
-    for res in analyze_file2(file):
-        q.put(res)
+    db.commit()
+    db.db.close()
 
 
 def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
@@ -335,71 +191,39 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
     # have its own config. USE LINUX!
     flist = [(f, cfg.get_config()) for f in cfg.FILE_LIST]
 
-    if database:
-        ##### V1 working
-        bversion = os.environ.get("BVERSION")
+    if cfg.CPU_THREADS < 2:
+        # Force single core
+        batchsize = COMMIT_BS_SIZE
+        batch = 0
+        db = get_database(database)
+        check_database_settings(db)
 
-        with open("/tmp/embeddings_bench_check.txt", "+a") as f:
-            f.write(bversion+"\n")
+        for entry in tqdm(flist, desc="Files processed"):
+            for fpath, s_start, s_end, embeddings in analyze_file(entry):
+                if consume_embedding(fpath, s_start, s_end, embeddings, db):
+                    batch += 1
 
-        if bversion == "V1":
-            queue = mp.Manager().Queue(maxsize=10_000)
-            consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, len(flist)))
-            consumer_process.start()
+                if batch >= batchsize:
+                    db.commit()
+                    batch = 0
 
-            with mp.Pool(processes=cfg.CPU_THREADS) as pool:
-                for f in flist:
-                    pool.apply_async(producer, args=(queue, f))
+        db.commit()
+        db.db.close()
+    else:
+        chunksize = 2
+        queue = mp.Queue(maxsize=10_000)
+        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, len(flist)))
+        consumer_process.start()
 
-                pool.close()
-                pool.join()
+        # One less process for the pool, because we use one extra for the consumer
+        with mp.Pool(processes=cfg.CPU_THREADS - 1) as pool:
+            delta = chunksize
+            # Instead of chunk_size arg, manual splitting, because this reduces the overhead for the iterable.
+            for res in pool.imap_unordered(analyze_file, [flist[i : i + delta] for i in range(0, len(flist), delta)], chunksize=1):
+                queue.put(res)
 
-            queue.put(("STOP", 0, 0, None))
-            consumer_process.join()
+        queue.put([("STOP", 0, 0, None)])
+        consumer_process.join()
 
-        ##### V2
-        elif bversion == "V2":
-            chunksize = int(os.environ.get("CHUNKSIZE"))
-            queue = mp.Queue(maxsize=10_000)
-            consumer_process = mp.Process(target=consumer2, args=(queue, "STOP", database, len(flist)))
-            consumer_process.start()
-
-            with mp.Pool(processes=cfg.CPU_THREADS) as pool:
-                for res in pool.imap_unordered(analyze_file3, flist, chunksize=chunksize):
-                    queue.put(res)
-
-            queue.put([("STOP", 0, 0, None)])
-            consumer_process.join()
-
-        ##### V3
-        elif bversion == "V3":
-            chunksize = int(os.environ.get("CHUNKSIZE"))
-            queue = mp.Queue(maxsize=10_000)
-            consumer_process = mp.Process(target=consumer2, args=(queue, "STOP", database, len(flist)))
-            consumer_process.start()
-
-            with mp.Pool(processes=cfg.CPU_THREADS) as pool:
-                delta = chunksize
-                for res in pool.imap_unordered(analyze_file4, [flist[i:i+delta] for i in range(0, len(flist), delta)], chunksize=1):
-                    queue.put(res)
-
-            queue.put([("STOP", 0, 0, None)])
-            consumer_process.join()
-
-    elif file_output:
-        with mp.Pool(processes=cfg.CPU_THREADS) as pool:
-            for f in flist:
-                pool.apply_async(analyze_file2, args=(f,)).get()
-
-    # # Analyze files
-    # if cfg.CPU_THREADS < 2:
-    #     for entry in tqdm(flist):
-    #         analyze_file(entry, db)
-    # else:
-    #     with mp.Pool(cfg.CPU_THREADS) as p:
-    #         tqdm(p.imap(partial(analyze_file, db=db), flist))
-
-    # if file_output:
-    #     create_file_output(file_output, db)
-
-    # db.db.close()
+    if file_output:
+        create_file_output(file_output, database)
