@@ -12,7 +12,7 @@ def segments(
     audio_speed: float = 1.0,
     seg_length: float = 3.0,
     threads: int = 1,
-    collection_mode:  Literal["random", "confidence"] = "random",
+    collection_mode:  Literal["random", "confidence", "balanced"] = "random",
     n_bins: int = 10,
 ):
     """
