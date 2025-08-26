@@ -1,21 +1,21 @@
 # ruff: noqa: PLW0603
 """Contains functions to use the BirdNET models."""
 
+import logging
 import os
 import sys
 import warnings
 
+import absl.logging
 import numpy as np
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
 
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-
-
+absl.logging.set_verbosity(absl.logging.ERROR)
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 warnings.filterwarnings("ignore")
 
 # Import TFLite from runtime or Tensorflow;
@@ -29,6 +29,7 @@ except ModuleNotFoundError:
 if not cfg.MODEL_PATH.endswith(".tflite"):
     from tensorflow import keras
 
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER: tflite.Interpreter = None
 C_INTERPRETER: tflite.Interpreter = None
 M_INTERPRETER: tflite.Interpreter = None
@@ -36,6 +37,15 @@ OUTPUT_DETAILS = None
 PBMODEL = None
 C_PBMODEL = None
 EMPTY_CLASS_EXCEPTION_REF = None
+
+
+def _load_interpreter(mpath, threads):
+    return tflite.Interpreter(
+        model_path=mpath,
+        num_threads=threads,
+        # XNNPACK disabled, because it does not support variable inputsize anyway (ie batchsize)
+        experimental_op_resolver_type=tflite.experimental.OpResolverType.BUILTIN_WITHOUT_DEFAULT_DELEGATES,
+    )
 
 
 def get_empty_class_exception():
@@ -361,11 +371,7 @@ def upsampling(x: np.ndarray, y: np.ndarray, ratio=0.5, mode="repeat"):
     rng = np.random.default_rng(cfg.RANDOM_SEED)
 
     # Determine min number of samples
-    min_samples = (
-        int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio)
-        if cfg.BINARY_CLASSIFICATION
-        else int(np.max(y.sum(axis=0)) * ratio)
-    )
+    min_samples = int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio) if cfg.BINARY_CLASSIFICATION else int(np.max(y.sum(axis=0)) * ratio)
 
     x_temp = []
     y_temp = []
@@ -516,9 +522,7 @@ def load_model(class_output=True):
     if cfg.MODEL_PATH.endswith(".tflite"):
         if not INTERPRETER:
             # Load TFLite model and allocate tensors.
-            INTERPRETER = tflite.Interpreter(
-                model_path=os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), num_threads=cfg.TFLITE_THREADS
-            )
+            INTERPRETER = _load_interpreter(os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), cfg.TFLITE_THREADS)
             INTERPRETER.allocate_tensors()
 
             # Get input and output tensors.
@@ -553,7 +557,7 @@ def load_custom_classifier():
 
     if cfg.CUSTOM_CLASSIFIER.endswith(".tflite"):
         # Load TFLite model and allocate tensors.
-        C_INTERPRETER = tflite.Interpreter(model_path=cfg.CUSTOM_CLASSIFIER, num_threads=cfg.TFLITE_THREADS)
+        C_INTERPRETER = _load_interpreter(cfg.CUSTOM_CLASSIFIER, cfg.TFLITE_THREADS)
         C_INTERPRETER.allocate_tensors()
 
         # Get input and output tensors.
@@ -585,9 +589,7 @@ def load_meta_model():
     global M_OUTPUT_LAYER_INDEX
 
     # Load TFLite model and allocate tensors.
-    M_INTERPRETER = tflite.Interpreter(
-        model_path=os.path.join(SCRIPT_DIR, cfg.MDATA_MODEL_PATH), num_threads=cfg.TFLITE_THREADS
-    )
+    M_INTERPRETER = _load_interpreter(os.path.join(SCRIPT_DIR, cfg.MDATA_MODEL_PATH), cfg.TFLITE_THREADS)
     M_INTERPRETER.allocate_tensors()
 
     # Get input and output tensors.
@@ -633,11 +635,7 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
             model.add(keras.layers.Dropout(dropout))
 
         # Add a hidden layer with L2 regularization
-        model.add(
-            keras.layers.Dense(
-                hidden_units, activation="relu", kernel_regularizer=regularizer, kernel_initializer="he_normal"
-            )
-        )
+        model.add(keras.layers.Dense(hidden_units, activation="relu", kernel_regularizer=regularizer, kernel_initializer="he_normal"))
 
         # Add another batch normalization after the hidden layer
         model.add(keras.layers.BatchNormalization())
@@ -785,7 +783,7 @@ def train_linear_classifier(
     optimizer_cls = keras.optimizers.legacy.Adam if sys.platform == "darwin" else keras.optimizers.Adam
 
     def _focal_loss(y_true, y_pred):
-        return focal_loss(y_true, y_pred, gamma=cfg.FOCAL_LOSS_GAMMA, alpha=cfg.FOCAL_LOSS_ALPHA)
+        return focal_loss(y_true, y_pred, gamma=focal_loss_gamma, alpha=focal_loss_alpha)
 
     # Choose the loss function based on config
     loss_function = _focal_loss if train_with_focal_loss else custom_loss
@@ -813,9 +811,7 @@ def train_linear_classifier(
     )
 
     # Train model
-    history = classifier.fit(
-        x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), callbacks=callbacks
-    )
+    history = classifier.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), callbacks=callbacks)
 
     return classifier, history
 

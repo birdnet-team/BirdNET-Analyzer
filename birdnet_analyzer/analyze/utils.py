@@ -208,8 +208,8 @@ def generate_csv(timestamps: list[str], result: dict[str, list], afile_path: str
     columns_map = {}
 
     if cfg.ADDITIONAL_COLUMNS:
-        for col in cfg.ADDITIONAL_COLUMNS:
-            if col in POSSIBLE_ADDITIONAL_COLUMNS_MAP:
+        for col in POSSIBLE_ADDITIONAL_COLUMNS_MAP:
+            if col in cfg.ADDITIONAL_COLUMNS:
                 columns_map[col] = POSSIBLE_ADDITIONAL_COLUMNS_MAP[col]()
 
         if columns_map:

@@ -6,3 +6,4 @@ Implementation details
 
    implementation-details/crop-modes
    implementation-details/segment-collection-mode
+   implementation-details/sensitivity
