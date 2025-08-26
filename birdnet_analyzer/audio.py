@@ -27,6 +27,7 @@ def open_audio_file(path: str, sample_rate=48000, offset=0.0, duration=None, fmi
     Returns:
         Returns the audio time series and the sampling rate.
     """
+
     # Open file with librosa (uses ffmpeg or libav)
     if speed == 1.0:
         sig, rate = librosa.load(
