@@ -58,6 +58,36 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
         db.commit()
 
 
+def create_csv_output(output_path: str, database: str):
+    """Creates a CSV output for the database.
+
+    Args:
+        output_path: Path to the output file.
+        db: Database object.
+    """
+
+    db = get_database(database)
+    parent_dir = os.path.dirname(output_path)
+
+    if not os.path.exists(parent_dir):
+        os.makedirs(parent_dir)
+
+    embedding_ids = db.get_embedding_ids()
+
+    csv_content = "file_path,start,end,embedding\n"
+
+    for embedding_id in embedding_ids:
+        embedding = db.get_embedding(embedding_id)
+        source = db.get_embedding_source(embedding_id)
+
+        start, end = source.offsets
+
+        csv_content += f'{source.source_id},{start},{end},"{",".join(map(str, embedding.tolist()))}"\n'
+
+    with open(output_path, "w") as f:
+        f.write(csv_content)
+
+
 def create_file_output(output_path: str, database: str):
     """Creates a file output for the database.
 
@@ -118,35 +148,28 @@ def consume_embedding(fpath, s_start, s_end, embeddings, db: sqlite_usearch_impl
 def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
     batchsize = COMMIT_BS_SIZE
     batch = 0
-    processed_files = set()
-
+    break_signal = True
     db = get_database(database)
+
     check_database_settings(db)
 
-    with tqdm(total=num_files, desc="Files processed") as pbar:
-        break_signal = True
+    while break_signal:
+        if not q.empty():
+            results = q.get()
 
-        while break_signal:
-            if not q.empty():
-                results = q.get()
+            for fpath, s_start, s_end, embeddings in results:
+                if fpath == stop_at:
+                    break_signal = False
+                    break
 
-                for fpath, s_start, s_end, embeddings in results:
-                    if fpath == stop_at:
-                        break_signal = False
-                        break
+                if consume_embedding(fpath, s_start, s_end, embeddings, db):
+                    batch += 1
 
-                    if fpath not in processed_files:
-                        processed_files.add(fpath)
-                        pbar.update(1)
-
-                    if consume_embedding(fpath, s_start, s_end, embeddings, db):
-                        batch += 1
-
-                    if batch >= batchsize:
-                        db.commit()
-                        batch = 0
-            else:
-                time.sleep(0.1)
+                if batch >= batchsize:
+                    db.commit()
+                    batch = 0
+        else:
+            time.sleep(0.1)
 
     db.commit()
     db.db.close()
@@ -218,12 +241,15 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         # One less process for the pool, because we use one extra for the consumer
         with mp.Pool(processes=cfg.CPU_THREADS - 1) as pool:
             delta = chunksize
-            # Instead of chunk_size arg, manual splitting, because this reduces the overhead for the iterable.
-            for res in pool.imap_unordered(analyze_file, [flist[i : i + delta] for i in range(0, len(flist), delta)], chunksize=1):
-                queue.put(res)
+            with tqdm(total=len(flist), desc="Files processed") as pbar:
+                # Instead of chunk_size arg, manual splitting, because this reduces the overhead for the iterable.
+                for res in pool.imap_unordered(analyze_file, [flist[i : i + delta] for i in range(0, len(flist), delta)], chunksize=1):
+                    queue.put(res)
+                    pbar.update(len(res))
 
         queue.put([("STOP", 0, 0, None)])
         consumer_process.join()
 
     if file_output:
-        create_file_output(file_output, database)
+        # create_file_output(file_output, database)
+        create_csv_output(file_output, database)

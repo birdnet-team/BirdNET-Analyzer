@@ -190,9 +190,9 @@ def _build_extract_tab():
             select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
             db_name_tb = gr.Textbox("embeddings_database", visible=False, interactive=True, info=loc.localize("embeddings-tab-db-info"), scale=2)
 
-        with gr.Row(visible=False, equal_height=True) as file_output_row:
+        with gr.Group(visible=False) as file_output_row, gr.Row(equal_height=True):
             file_output_cb = gr.Checkbox(label=loc.localize("embeddings-tab-file-output-checkbox-label"), value=False, interactive=True)
-            with gr.Group():
+            with gr.Column(scale=2), gr.Group():
                 select_file_output_directory_btn = gr.Button(loc.localize("embeddings-select-file-output-directory-button-label"), visible=False)
                 file_output_tb = gr.Textbox(
                     value=None,
@@ -204,7 +204,7 @@ def _build_extract_tab():
 
             def on_cb_click(status, current, db_dir):
                 if not current:
-                    return gr.update(visible=status), gr.update(visible=status, value=os.path.join(db_dir, "embedding_files"))
+                    return gr.update(visible=status), gr.update(visible=status, value=os.path.join(db_dir, "embeddings.csv"))
                 return gr.update(visible=status), gr.update(visible=status)
 
             file_output_cb.change(
@@ -227,7 +227,7 @@ def _build_extract_tab():
                 batch_size_number = gr.Number(
                     precision=1,
                     label=loc.localize("embedding-settings-batchsize-number-label"),
-                    value=1,
+                    value=8,
                     info=loc.localize("embedding-settings-batchsize-number-info"),
                     minimum=1,
                     interactive=True,
@@ -314,14 +314,19 @@ def _build_extract_tab():
         )
 
         def select_file_output_directory_and_update_tb(current):
-            dir_name = gu.select_directory(state_key="embeddings-file-output-dir", collect_files=False)
+            file_location = gu.save_file_dialog(
+                state_key="embeddings-file-output",
+                filetypes=("CSV (*.csv)",),
+                default_filename="embeddings.csv",
+            )
 
-            return dir_name or current
+            return file_location or current
 
         select_file_output_directory_btn.click(
             select_file_output_directory_and_update_tb,
             inputs=[file_output_tb],
             outputs=[file_output_tb],
+            show_progress="hidden",
         )
 
         def check_settings(dir_name, db_name):
