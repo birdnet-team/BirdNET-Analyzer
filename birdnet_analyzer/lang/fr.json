@@ -152,8 +152,7 @@
     "multi-tab-output-selection-button-label": "Sélectionner le répertoire de sortie",
     "multi-tab-output-textbox-label": "Répertoire de sortie",
     "multi-tab-output-textbox-placeholder": "S'il n'est pas sélectionné, le répertoire d'entrée sera utilisé.",
-    "multi-tab-result-dataframe-column-execution-header": "Execution",
-    "multi-tab-result-dataframe-column-file-header": "Fichier",
+    "multi-tab-result-dataframe-column-file-header": "Fichiers audio non valides",
     "multi-tab-samples-dataframe-column-duration-header": "Longueur",
     "multi-tab-samples-dataframe-column-subpath-header": "Sous-chemin",
     "multi-tab-samples-dataframe-no-files-found": "Aucun fichiers trouvés",
@@ -196,6 +195,15 @@
     "segments-tab-max-seq-number-label": "Nombre maximal de segments",
     "segments-tab-min-confidence-slider-info": "Ne sélectionner que les segments dont la confiance est supérieure à ce seuil.",
     "segments-tab-min-confidence-slider-label": "Confiance minimale",
+    "segments-tab-max-confidence-slider-info": "Ne sélectionner que les segments dont la confiance est inférieure à ce seuil.",
+    "segments-tab-max-confidence-slider-label": "Confiance maximale",
+    "segments-tab-collection-mode-label": "Mode de collecte",
+    "segments-tab-collection-mode-info": "Détermine comment les segments sont sélectionnés à partir des fichiers de résultats.",
+    "segments-tab-n-bins-label": "Nombre de classes de confiance",
+    "segments-tab-n-bins-info": "Définit le nombre de classes de confiance pour le mode de collecte équilibré.",
+    "segments-tab-collection-mode-radio-option-random": "aléatoire",
+    "segments-tab-collection-mode-radio-option-confidence": "confiance",
+    "segments-tab-collection-mode-radio-option-balanced": "équilibré",
     "segments-tab-output-selection-button-label": "Sélectionner le répertoire de sortie",
     "segments-tab-output-selection-textbox-placeholder": "Identique au répertoire audio s'il n'est pas sélectionné",
     "segments-tab-result-dataframe-column-execution-header": "Execution",
@@ -339,5 +347,6 @@
     "validation-no-valid-frequency": "Veuillez saisir une fréquence valide dans",
     "validation-no-valid-learning-rate": "Veuillez saisir un taux d'apprentissage valide.",
     "validation-non-event-samples-required-in-binary-classification": "Des échantillons sans événement sont nécessaires pour la classification binaire.",
-    "validation-only-repeat-upsampling-for-multi-label": "Seul l'échantillonnage ascendant répété est disponible pour les étiquettes multiples."
+    "validation-only-repeat-upsampling-for-multi-label": "Seul l'échantillonnage ascendant répété est disponible pour les étiquettes multiples.",
+    "validation-max-confidence-lower-than-min-confidence": "La confiance maximale doit être supérieure à la confiance minimale"
 }

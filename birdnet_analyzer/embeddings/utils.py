@@ -50,8 +50,7 @@ def analyze_file(item, db: sqlite_usearch_impl.SQLiteUsearchDB):
 
                 # Insert into database
                 db.insert_embedding(embeddings, embeddings_source)
-                db.commit()
-
+        db.commit()
     except Exception as ex:
         # Write error log
         print(f"Error: Cannot analyze audio file {fpath}.", flush=True)

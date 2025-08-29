@@ -4,6 +4,7 @@ import io
 import multiprocessing
 import os
 import sys
+import warnings
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
@@ -16,6 +17,7 @@ import birdnet_analyzer.gui.localization as loc
 from birdnet_analyzer import utils
 from birdnet_analyzer.gui import settings
 
+warnings.filterwarnings("ignore")
 loc.load_local_state()
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -605,10 +607,10 @@ def species_lists(opened=True):
                 if not os.path.isfile(labels):
                     labels = file.replace("Model_FP32.tflite", "Labels.txt")
 
-                    if not file.endswith("Model_FP32.tflite") or not os.path.isfile(labels):
-                        gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
+                if not os.path.isfile(labels):
+                    gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
 
-                        return file, gr.File(value=[file], visible=True)
+                    return file, gr.File(value=[file], visible=True)
 
                 return file, gr.File(value=[file, labels], visible=True)
 

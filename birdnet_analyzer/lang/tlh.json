@@ -152,8 +152,7 @@
     "multi-tab-output-selection-button-label": "wav Segh lo'",
     "multi-tab-output-textbox-label": "wav Segh",
     "multi-tab-output-textbox-placeholder": "chutmey lo'Ha'.",
-    "multi-tab-result-dataframe-column-execution-header": "Qap",
-    "multi-tab-result-dataframe-column-file-header": "wav",
+    "multi-tab-result-dataframe-column-file-header": "QoymeH De' patlh lughHa'",
     "multi-tab-samples-dataframe-column-duration-header": "tup",
     "multi-tab-samples-dataframe-column-subpath-header": "wavmey",
     "multi-tab-samples-dataframe-no-files-found": "wavmey tu'Ha'",
@@ -196,6 +195,15 @@
     "segments-tab-max-seq-number-label": "nIvbogh wavmey",
     "segments-tab-min-confidence-slider-info": "wavmey lo' vIt patlh SeH.",
     "segments-tab-min-confidence-slider-label": "minimum vIt",
+    "segments-tab-max-confidence-slider-info": "patlhvam tISIvbogh vIt 'e' vIghajbogh wavmey neH wIv.",
+    "segments-tab-max-confidence-slider-label": "nIvbogh vIt",
+    "segments-tab-collection-mode-label": "chut Segh",
+    "segments-tab-collection-mode-info": "wavmey chu'Ha' Daqmeyvo' wIvmeH chut Segh.",
+    "segments-tab-n-bins-label": "vIt binmey mI'",
+    "segments-tab-n-bins-info": "chu'Ha' chut Segh balancemey vIt binmey mI'.",
+    "segments-tab-collection-mode-radio-option-random": "SuD",
+    "segments-tab-collection-mode-radio-option-confidence": "vIt",
+    "segments-tab-collection-mode-radio-option-balanced": "balancemey",
     "segments-tab-output-selection-button-label": "wavmey chu'",
     "segments-tab-output-selection-textbox-placeholder": "De' wav Daq rap lo'laH",
     "segments-tab-result-dataframe-column-execution-header": "Qap",
@@ -339,5 +347,6 @@
     "validation-no-valid-frequency": "qeq 'eS patlh yIchoH",
     "validation-no-valid-learning-rate": "qeq patlh yIchoH.",
     "validation-non-event-samples-required-in-binary-classification": "binary qeq 'eS Seghmey lo'laH.",
-    "validation-only-repeat-upsampling-for-multi-label": "wa'logh qochHa' Seghmey multi-label lo'laH."
+    "validation-only-repeat-upsampling-for-multi-label": "wa'logh qochHa' Seghmey multi-label lo'laH.",
+    "validation-max-confidence-lower-than-min-confidence": "nIvbogh vIt patlh tIn law' minimum vIt patlh tIn puS" 
 }

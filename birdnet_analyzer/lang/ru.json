@@ -152,8 +152,7 @@
     "multi-tab-output-selection-button-label": "Выберите выходной каталог",
     "multi-tab-output-textbox-label": "Выходной каталог",
     "multi-tab-output-textbox-placeholder": "Если не выбрано, будет использоваться входной каталог.",
-    "multi-tab-result-dataframe-column-execution-header": "Выполнение",
-    "multi-tab-result-dataframe-column-file-header": "Файл",
+    "multi-tab-result-dataframe-column-file-header": "Недействительные аудиофайлы",
     "multi-tab-samples-dataframe-column-duration-header": "Длина",
     "multi-tab-samples-dataframe-column-subpath-header": "Подпуть",
     "multi-tab-samples-dataframe-no-files-found": "Файлы не найдены",
@@ -196,6 +195,15 @@
     "segments-tab-max-seq-number-label": "Максимальное количество сегментов",
     "segments-tab-min-confidence-slider-info": "Выберите только сегменты с уверенностью выше этого порога.",
     "segments-tab-min-confidence-slider-label": "Минимальная достоверность",
+    "segments-tab-max-confidence-slider-info": "Выберите только сегменты с уверенностью ниже этого порога.",
+    "segments-tab-max-confidence-slider-label": "Максимальная достоверность",
+    "segments-tab-collection-mode-label": "Режим сбора",
+    "segments-tab-collection-mode-info": "Определяет, как сегменты выбираются из файлов результатов.",
+    "segments-tab-n-bins-label": "Количество корзин достоверности",
+    "segments-tab-n-bins-info": "Устанавливает количество корзин достоверности для сбалансированного режима сбора.",
+    "segments-tab-collection-mode-radio-option-random": "случайный",
+    "segments-tab-collection-mode-radio-option-confidence": "достоверность",
+    "segments-tab-collection-mode-radio-option-balanced": "сбалансированный",
     "segments-tab-output-selection-button-label": "Выберите выходной каталог",
     "segments-tab-output-selection-textbox-placeholder": "То же, что и каталог аудио, если не выбран",
     "segments-tab-result-dataframe-column-execution-header": "Выполнение",
@@ -339,5 +347,6 @@
     "validation-no-valid-frequency": "Введите допустимую частоту в",
     "validation-no-valid-learning-rate": "Пожалуйста, введите допустимый коэффициент обучения.",
     "validation-non-event-samples-required-in-binary-classification": "Для бинарной классификации требуются выборки, не связанные с событиями",
-    "validation-only-repeat-upsampling-for-multi-label": "Для нескольких меток доступна только повторная повышающая дискретизация"
+    "validation-only-repeat-upsampling-for-multi-label": "Для нескольких меток доступна только повторная повышающая дискретизация",
+    "validation-max-confidence-lower-than-min-confidence": "Максимальная достоверность должна быть больше минимальной достоверности"
 }
