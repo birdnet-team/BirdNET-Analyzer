@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg  && rm -
 COPY . ./
 
 # Install required Python packages
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir .
 
 # Add entry point to run the script
 ENTRYPOINT [ "python3" ]
