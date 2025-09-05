@@ -26,7 +26,7 @@ jobs:
     # Optional: Add basic test to verify the image works
     - name: Test Docker image
       run: |
-        docker run -v $PWD/birdnet_analyzer/example:/audio birdnet:local-test -m birdnet_analyzer.analyze -i /audio -o /audio --slist /audio
+        docker run -v $PWD/birdnet_analyzer/example:/audio birdnet:local-test -m birdnet_analyzer.analyze /audio --slist /audio
         
         # Verify output file content
         expected_header="Selection	View	Channel	Begin Time (s)	End Time (s)	Low Freq (Hz)	High Freq (Hz)	Common Name	Species Code	Confidence	Begin Path	File Offset (s)"
