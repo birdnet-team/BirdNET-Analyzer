@@ -14,6 +14,7 @@ def analyze(
     slist: str | None = None,
     sensitivity: float = 1.0,
     overlap: float = 0,
+    window_size: float | None = None,,
     fmin: int = 0,
     fmax: int = 15000,
     audio_speed: float = 1.0,
@@ -41,6 +42,7 @@ def analyze(
         slist (str | None, optional): Path to a species list file for filtering. Defaults to None.
         sensitivity (float, optional): Sensitivity of the detection algorithm. Defaults to 1.0.
         overlap (float, optional): Overlap between analysis windows in seconds. Defaults to 0.
+        window_size (float | None, optional): Window size for the time interval of the auto segmentaion.
         fmin (int, optional): Minimum frequency for analysis in Hz. Defaults to 0.
         fmax (int, optional): Maximum frequency for analysis in Hz. Defaults to 15000.
         audio_speed (float, optional): Speed factor for audio playback during analysis. Defaults to 1.0.
@@ -85,6 +87,7 @@ def analyze(
         sensitivity=sensitivity,
         locale=locale,
         overlap=overlap,
+        window_size=window_size,
         fmin=fmin,
         fmax=fmax,
         audio_speed=audio_speed,
@@ -160,9 +163,18 @@ def _set_params(
     from birdnet_analyzer.species.utils import get_species_list
     from birdnet_analyzer.utils import collect_audio_files, read_lines
 
+    if not isinstance(window_size, float | int | None):
+        raise ValueError("Window size must be a numeric value or None.")
+
+    if window_size < 0:
+	raise ValueError("Window size must be a positive value.")
+
+    if window_size:
+        cfg.SIG_LENGTH = window_size
+
     if not isinstance(overlap, int | float):
         raise ValueError("Overlap must be a numeric value.")
-
+    
     if overlap < 0:
         raise ValueError("Overlap must be a non-negative value.")
 
