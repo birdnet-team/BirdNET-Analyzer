@@ -152,8 +152,7 @@
     "multi-tab-output-selection-button-label": "Välj utdatakatalog",
     "multi-tab-output-textbox-label": "Utdatakatalog",
     "multi-tab-output-textbox-placeholder": "Om inte vald kommer indatakatalogen att användas.",
-    "multi-tab-result-dataframe-column-execution-header": "Körning",
-    "multi-tab-result-dataframe-column-file-header": "Fil",
+    "multi-tab-result-dataframe-column-file-header": "Ogiltiga ljudfiler",
     "multi-tab-samples-dataframe-column-duration-header": "Längd",
     "multi-tab-samples-dataframe-column-subpath-header": "Undersökväg",
     "multi-tab-samples-dataframe-no-files-found": "Inga filer hittades",
@@ -196,6 +195,15 @@
     "segments-tab-max-seq-number-label": "Maximalt antal segment",
     "segments-tab-min-confidence-slider-info": "Välj endast segment med en konfidens över detta tröskelvärde.",
     "segments-tab-min-confidence-slider-label": "Minsta konfidens",
+    "segments-tab-max-confidence-slider-info": "Välj endast segment med en konfidens under detta tröskelvärde.",
+    "segments-tab-max-confidence-slider-label": "Maximal konfidens",
+    "segments-tab-collection-mode-label": "Insamlingsläge",
+    "segments-tab-collection-mode-info": "Bestämmer hur segment väljs från resultatfilerna.",
+    "segments-tab-n-bins-label": "Antal konfidensintervall",
+    "segments-tab-n-bins-info": "Anger antalet konfidensintervall för det balanserade insamlingsläget.",
+    "segments-tab-collection-mode-radio-option-random": "slumpmässig",
+    "segments-tab-collection-mode-radio-option-confidence": "konfidens",
+    "segments-tab-collection-mode-radio-option-balanced": "balanserad",
     "segments-tab-output-selection-button-label": "Välj utdatakatalog",
     "segments-tab-output-selection-textbox-placeholder": "Samma som ljudkatalog om inte vald",
     "segments-tab-result-dataframe-column-execution-header": "Körning",
@@ -339,5 +347,6 @@
     "validation-no-valid-frequency": "Ange en giltig frekvens i",
     "validation-no-valid-learning-rate": "Ange en giltig inlärningshastighet.",
     "validation-non-event-samples-required-in-binary-classification": "Icke-händelseexempel krävs för binär klassificering",
-    "validation-only-repeat-upsampling-for-multi-label": "Endast upprepa-upsampling är tillgängligt för multi-etikett"
+    "validation-only-repeat-upsampling-for-multi-label": "Endast upprepa-upsampling är tillgängligt för multi-etikett",
+    "validation-max-confidence-lower-than-min-confidence": "Maximal konfidens måste vara större än minimal konfidens"
 }

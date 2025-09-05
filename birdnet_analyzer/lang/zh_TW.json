@@ -152,8 +152,7 @@
     "multi-tab-output-selection-button-label": "選擇輸出資料夾",
     "multi-tab-output-textbox-label": "輸出資料夾",
     "multi-tab-output-textbox-placeholder": "若無指定，將使用與輸入資料夾相同路徑",
-    "multi-tab-result-dataframe-column-execution-header": "執行",
-    "multi-tab-result-dataframe-column-file-header": "檔案",
+    "multi-tab-result-dataframe-column-file-header": "無效的音訊檔案",
     "multi-tab-samples-dataframe-column-duration-header": "長度",
     "multi-tab-samples-dataframe-column-subpath-header": "音檔路徑",
     "multi-tab-samples-dataframe-no-files-found": "找無檔案",
@@ -196,6 +195,15 @@
     "segments-tab-max-seq-number-label": "音檔片段最大數量",
     "segments-tab-min-confidence-slider-info": "調整可信度閾值，以篩選掉低於可信度閾值的偵測",
     "segments-tab-min-confidence-slider-label": "最低可信度(可信度閾值)",
+    "segments-tab-max-confidence-slider-info": "僅選擇低於此可信度閾值的片段。",
+    "segments-tab-max-confidence-slider-label": "最大可信度",
+    "segments-tab-collection-mode-label": "收集模式",
+    "segments-tab-collection-mode-info": "決定如何從結果文件中選擇片段。",
+    "segments-tab-n-bins-label": "可信度分箱數",
+    "segments-tab-n-bins-info": "設定平衡收集模式下的可信度分箱數量。",
+    "segments-tab-collection-mode-radio-option-random": "隨機",
+    "segments-tab-collection-mode-radio-option-confidence": "可信度",
+    "segments-tab-collection-mode-radio-option-balanced": "平衡",
     "segments-tab-output-selection-button-label": "選擇輸出資料夾",
     "segments-tab-output-selection-textbox-placeholder": "若無指定，將使用與音檔資料夾相同路徑",
     "segments-tab-result-dataframe-column-execution-header": "執行",
@@ -339,5 +347,6 @@
     "validation-no-valid-frequency": "請輸入有效的頻率",
     "validation-no-valid-learning-rate": "請輸入有效的學習速率",
     "validation-non-event-samples-required-in-binary-classification": "在只有兩個分類的模型訓練中必須提供非事件的樣本音檔",
-    "validation-only-repeat-upsampling-for-multi-label": "只在多個分類的模型訓練中進行上取樣"
+    "validation-only-repeat-upsampling-for-multi-label": "只在多個分類的模型訓練中進行上取樣",
+    "validation-max-confidence-lower-than-min-confidence": "最大可信度必須大於最小可信度"
 }
