@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "Especifique o nome do conjunto de dados",
     "embeddings-tab-dataset-label": "Conjunto de dados",
     "embeddings-tab-db-info": "Nome do banco de dados",
+    "embeddings-tab-file-output-checkbox-label": "Aktifkan output file",
     "embeddings-tab-file-output-directory-textbox-label": "Diretório de saída de arquivo",
     "embeddings-tab-file-output-directory-textbox-placeholder": "Se não selecionado, a saída de arquivo será omitida.",
     "embeddings-tab-finish-info": "Extração de embeddings concluída em:",

@@ -46,6 +46,7 @@
     "embeddings-tab-dataset-info": "Wählen Sie den Namen für das Dataset",
     "embeddings-tab-dataset-label": "Dataset",
     "embeddings-tab-db-info": "Der Name der Datenbank",
+    "embeddings-tab-file-output-checkbox-label": "Dateiausgabe aktivieren",
     "embeddings-tab-file-output-directory-textbox-label": "Ausgabeverzeichnis",
     "embeddings-tab-file-output-directory-textbox-placeholder": "Wenn nicht ausgewählt, werden keine Ausgabedateien erzeugt.",
     "embeddings-tab-finish-info": "Extrahieren der Embeddings abgeschlossen. Gespeichert nach:",
