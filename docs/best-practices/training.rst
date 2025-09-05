@@ -76,7 +76,7 @@ If you want to adjust the hyperparameters manually, we have a more detailed docu
 When training a custom classifier you can apply a bandpass filter and also modify the speed of your audio to shift the frequency of your audio to the range of the BirdNET model.
 This also enables you to train classifiers for ultra- or infrasonic signals, i.e. bats or whales.
 
-.. note::
+.. caution::
    These settings also need to be applied when using the trained classifier for inference.
 
 3.3 Caching Training Data
@@ -114,7 +114,7 @@ Custom classifiers can be saved with 2 different modes:
 
 Choose the mode that fits your use case best, depending on whether you need to detect classes originally included in BirdNET or not.
 
-.. note::
+.. caution::
    When using the "Append" mode, make sure that the class names of the new classes do not conflict with existing classes in BirdNET.
 
 4. Using the Custom Classifier
@@ -132,4 +132,4 @@ After the training process is finished your output folder should like this:
 
 To use this classifier select the "Custom classifier" option in the species selection section of the BirdNET-Analyzer GUI and select the .tflite file.
 
-When using the CLI you can specify the path to the .tflite file using the `--classifier` or `-c` argument.
+When using the CLI you can specify the path to the .tflite file using the `-\-classifier` or `-c` argument.
