@@ -6,20 +6,19 @@ In general the segments feature collects all detections from the provided result
 Then segments are selected for each species up to the specified maximum number segments.
 If there are more detections than the maximum for a species, the segment collection mode gives you control over which segments are selected.
 The goal of this is to get a more representative set of segments to use in the review feature or to get only high confidence segments to use as training data.
-The following segment collection modes are available:
 
-1. Random
+Random
 ----------------
 
 This mode will select segments randomly from the detections that are within the specified confidence range.
 Therefore it will mirror the distribution of the confidence values in the detections.
 
-2. Confidence
+Confidence
 ----------------
 
 This mode will select segments based on confidence values, starting with the highest confidence scores.
 
-3. Balanced
+Balanced
 ----------------
 
 This mode will select segments equally distributed across the specified confidence range.
