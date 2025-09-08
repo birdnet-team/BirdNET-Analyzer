@@ -32,6 +32,7 @@ def setup_test_environment():
         "test_dir": test_dir,
         "input_dir": input_dir,
         "output_dir": output_dir,
+        "data_dir": os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
     }
 
     # Clean up
@@ -178,3 +179,22 @@ def test_with_dataset(setup_test_environment):
         original_audio = open_audio_file(os.path.join(input_dir, name + ".flac"), offset=float(start), duration=float(end) - float(start))[0]
 
         assert_array_equal(output_audio, original_audio, "Output audio should match original audio segment")
+
+
+def test_invalid_db_path(setup_test_environment):
+    env = setup_test_environment
+
+    parser = embeddings_parser()
+    args = parser.parse_args(["--input", env["input_dir"], "-db", os.path.join(env["output_dir"], "file.txt")])
+
+    with pytest.raises(ValueError, match="The database path must be a directory."):
+        embeddings(**vars(args))
+
+
+def test_complete_run_multiprocessing(setup_test_environment):
+    env = setup_test_environment
+
+    # Run embeddings function
+    embeddings(os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"), env["output_dir"], threads=3)
+
+    # assert os.path.exists(env["output_dir"], )

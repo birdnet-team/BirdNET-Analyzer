@@ -6,7 +6,8 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.embeddings.core import get_database as get_embeddings_database
+from birdnet_analyzer.embeddings.core import get_or_create_database as get_embeddings_database
+from birdnet_analyzer.embeddings.core import try_get_database
 from birdnet_analyzer.search.core import get_database as get_search_database
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -40,7 +41,7 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
 def run_embeddings_with_tqdm_tracking(
     input_path,
     db_directory,
-    db_name,
+    db_path,
     overlap,
     batch_size,
     threads,
@@ -54,7 +55,7 @@ def run_embeddings_with_tqdm_tracking(
     return run_embeddings(
         input_path,
         db_directory,
-        db_name,
+        db_path,
         overlap,
         threads,
         batch_size,
@@ -70,7 +71,6 @@ def run_embeddings_with_tqdm_tracking(
 def run_embeddings(
     input_path,
     db_directory,
-    db_name,
     overlap,
     threads,
     batch_size,
@@ -84,17 +84,16 @@ def run_embeddings(
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
-    gu.validate(db_name, loc.localize("embeddings-db-name-validation-message"))
-    db_path = os.path.join(db_directory, db_name)
+    gu.validate(db_directory, loc.localize("embeddings-db-name-validation-message"))
 
-    db = get_embeddings_database(db_path)
+    db = get_embeddings_database(db_directory)
 
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
         db.db.close()
         run(
             input_path,
-            db_path,
+            db_directory,
             overlap,
             settings["AUDIO_SPEED"],
             settings["BANDPASS_FMIN"],
@@ -111,9 +110,9 @@ def run_embeddings(
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
             raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]") from e
 
-        run(input_path, db_path, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
+        run(input_path, db_directory, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
 
-    gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_path}")
+    gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_directory}")
 
     return gr.Plot(), gr.Slider(interactive=False), gr.Number(interactive=False), gr.Number(interactive=False)
 
@@ -188,7 +187,13 @@ def _build_extract_tab():
 
         with gr.Group(), gr.Row(equal_height=True):
             select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
-            db_name_tb = gr.Textbox("embeddings_database", visible=False, interactive=True, info=loc.localize("embeddings-tab-db-info"), scale=2)
+            db_path_tb = gr.Textbox(
+                show_label=False,
+                show_copy_button=True,
+                interactive=False,
+                info="⚠️ It is recommended to select an empty directory when creating a new database.",
+                scale=2,
+            )
 
         with gr.Group(visible=False) as file_output_row, gr.Row(equal_height=True):
             file_output_cb = gr.Checkbox(label=loc.localize("embeddings-tab-file-output-checkbox-label"), value=False, interactive=True)
@@ -267,35 +272,34 @@ def _build_extract_tab():
                     interactive=True,
                 )
 
-        def select_directory_and_update_tb(db_name, current_state):
+        def select_directory_and_update_tb(current_state):
             dir_name: str = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
 
             if dir_name:
-                db_path = os.path.join(dir_name, db_name)
+                if os.path.exists(dir_name):
+                    db = try_get_database(dir_name)
 
-                if os.path.exists(db_path):
-                    db = get_embeddings_database(db_path)
+                    if db:
+                        try:
+                            settings = db.get_metadata("birdnet_analyzer_settings")
+                            gr.Info(loc.localize("embeddings-db-already-exists-info"))
 
-                    try:
-                        settings = db.get_metadata("birdnet_analyzer_settings")
-                        gr.Info(loc.localize("embeddings-db-already-exists-info"))
-
-                        return (
-                            dir_name,
-                            gr.Textbox(label=dir_name, visible=True),
-                            gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
-                            gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
-                            gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
-                            gr.update(visible=True),
-                        )
-                    except KeyError:
-                        pass
-                    finally:
-                        db.db.close()
+                            return (
+                                dir_name,
+                                gr.Textbox(value=dir_name),
+                                gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
+                                gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
+                                gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
+                                gr.update(visible=True),
+                            )
+                        except KeyError:
+                            pass
+                        finally:
+                            db.db.close()
 
                 return (
                     dir_name,
-                    gr.Textbox(label=dir_name, visible=True),
+                    gr.Textbox(value=dir_name),
                     gr.Slider(interactive=True),
                     gr.Number(interactive=True),
                     gr.Number(interactive=True),
@@ -304,12 +308,12 @@ def _build_extract_tab():
 
             value = current_state or None
 
-            return value, gr.update(visible=bool(value)), gr.update(), gr.update(), gr.update(), gr.update()
+            return value, gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
 
         select_db_directory_btn.click(
             select_directory_and_update_tb,
-            inputs=[db_name_tb, db_directory_state],
-            outputs=[db_directory_state, db_name_tb, audio_speed_slider, fmin_number, fmax_number, file_output_row],
+            inputs=[db_directory_state],
+            outputs=[db_directory_state, db_path_tb, audio_speed_slider, fmin_number, fmax_number, file_output_row],
             show_progress="hidden",
         )
 
@@ -329,33 +333,33 @@ def _build_extract_tab():
             show_progress="hidden",
         )
 
-        def check_settings(dir_name, db_name):
-            db_path = os.path.join(dir_name, db_name)
+        # def check_settings(dir_name, db_name):
+        #     db_path = os.path.join(dir_name, db_name)
 
-            if db_name and os.path.exists(db_path):
-                db = get_embeddings_database(db_path)
+        #     if db_name and os.path.exists(db_path):
+        #         db = get_embeddings_database(db_path)
 
-                try:
-                    settings = db.get_metadata("birdnet_analyzer_settings")
+        #         try:
+        #             settings = db.get_metadata("birdnet_analyzer_settings")
 
-                    return (
-                        gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
-                        gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
-                        gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
-                    )
-                except KeyError:
-                    pass
-                finally:
-                    db.db.close()
+        #             return (
+        #                 gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
+        #                 gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
+        #                 gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
+        #             )
+        #         except KeyError:
+        #             pass
+        #         finally:
+        #             db.db.close()
 
-            return gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
+        #     return gr.Slider(interactive=True), gr.Number(interactive=True), gr.Number(interactive=True)
 
-        db_name_tb.change(
-            check_settings,
-            inputs=[db_directory_state, db_name_tb],
-            outputs=[audio_speed_slider, fmin_number, fmax_number],
-            show_progress="hidden",
-        )
+        # db_name_tb.change(
+        #     check_settings,
+        #     inputs=[db_directory_state, db_name_tb],
+        #     outputs=[audio_speed_slider, fmin_number, fmax_number],
+        #     show_progress="hidden",
+        # )
 
         progress_plot = gr.Plot()
         start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
@@ -365,7 +369,6 @@ def _build_extract_tab():
             inputs=[
                 input_directory_state,
                 db_directory_state,
-                db_name_tb,
                 overlap_slider,
                 batch_size_number,
                 threads_number,

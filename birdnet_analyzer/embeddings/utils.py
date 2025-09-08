@@ -13,10 +13,26 @@ from tqdm import tqdm
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
 from birdnet_analyzer.analyze.utils import iterate_audio_chunks
-from birdnet_analyzer.embeddings.core import get_database
+from birdnet_analyzer.embeddings.core import get_or_create_database
 
 DATASET_NAME: str = "birdnet_analyzer_dataset"
 COMMIT_BS_SIZE = 512
+
+
+def analyze_file_core(fpath, config):
+    results = []
+    cfg.set_config(config)
+
+    # Process each chunk
+    try:
+        for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
+            results.append((fpath, s_start, s_end, embeddings))
+    except Exception as ex:
+        # Write error log
+        print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
+        utils.write_error_log(ex)
+
+    return results
 
 
 def analyze_file(items):
@@ -27,19 +43,8 @@ def analyze_file(items):
     """
     results = []
 
-    for item in items:
-        # Get file path and restore cfg
-        fpath: str = item[0]
-        cfg.set_config(item[1])
-
-        # Process each chunk
-        try:
-            for s_start, s_end, embeddings in iterate_audio_chunks(fpath, embeddings=True):
-                results.append((fpath, s_start, s_end, embeddings))
-        except Exception as ex:
-            # Write error log
-            print(f"Error: Cannot analyze audio file {fpath}.", flush=True)
-            utils.write_error_log(ex)
+    for fpath, config in items:
+        results.extend(analyze_file_core(fpath, config))
 
     return results
 
@@ -66,7 +71,7 @@ def create_csv_output(output_path: str, database: str):
         db: Database object.
     """
 
-    db = get_database(database)
+    db = get_or_create_database(database)
     parent_dir = os.path.dirname(output_path)
 
     if not os.path.exists(parent_dir):
@@ -96,7 +101,7 @@ def create_file_output(output_path: str, database: str):
         db: Database object.
     """
 
-    db = get_database(database)
+    db = get_or_create_database(database)
 
     # Check if output path exists
     if not os.path.exists(output_path):
@@ -145,11 +150,11 @@ def consume_embedding(fpath, s_start, s_end, embeddings, db: sqlite_usearch_impl
     return False
 
 
-def consumer(q: mp.Queue, stop_at, database: str, num_files: int):
+def consumer(q: mp.Queue, stop_at, database: str):
     batchsize = COMMIT_BS_SIZE
     batch = 0
     break_signal = True
-    db = get_database(database)
+    db = get_or_create_database(database)
 
     check_database_settings(db)
 
@@ -218,11 +223,11 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         # Force single core
         batchsize = COMMIT_BS_SIZE
         batch = 0
-        db = get_database(database)
+        db = get_or_create_database(database)
         check_database_settings(db)
 
-        for entry in tqdm(flist, desc="Files processed"):
-            for fpath, s_start, s_end, embeddings in analyze_file(entry):
+        for fpath, config in tqdm(flist, desc="Files processed"):
+            for _, s_start, s_end, embeddings in analyze_file_core(fpath, config):
                 if consume_embedding(fpath, s_start, s_end, embeddings, db):
                     batch += 1
 
@@ -251,5 +256,4 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         consumer_process.join()
 
     if file_output:
-        # create_file_output(file_output, database)
         create_csv_output(file_output, database)
