@@ -112,6 +112,8 @@ def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, au
             assert start in expected_start_timestamps, f"CSV start time mismatch for start timestamp {start}"
             assert end == expected_end_timestamps[expected_start_timestamps.index(start)]
 
+    db.db.close()
+
 
 def test_search(setup_test_environment):
     """Test embeddings with speed up."""
