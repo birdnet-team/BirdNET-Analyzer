@@ -1,96 +1,135 @@
 Training Custom Classifiers
 ==============================================
 
-Get started by listening to this AI-generated summary of training custom classifiers with BirdNET embeddings:
+1. Introduction 
+----------------
 
-.. raw:: html
-
-    <audio controls>
-      <source src="../_static/BirdNET_Guide-Training-NotebookLM.mp3" type="audio/mpeg">
-      Your browser does not support the audio element.
-    </audio>
-
-| 
-| `Source: Google NotebookLM`
-
-1. Data Collection and Preparation
-----------------------------------
-
-- | **High-Quality Audio Data**: Use recordings with minimal background noise, wind, or overlapping sounds from other species. Prefer lossless formats like WAV or FLAC over MP3 to retain important frequency details.
-
-- | **Balanced Signal-to-Noise Ratio (SNR)**: Ensure a good balance between the target signal and background noise. A balanced SNR helps the model perform well in real-world situations.
-
-- **Diverse and Representative Samples**:
-
-  - Include recordings from various locations to ensure the model performs well across regions.
-  - Consider seasonal and temporal variations, as bird calls can change with seasons and times of day.
-  - Use data from different microphones and recording devices to make the model robust against different hardware.
-
-- **Balanced Species Distribution**:
-
-  - Avoid dataset biases by using a relatively balanced number of samples per species.
-  - For rare species, use as many high-quality examples as possible without overfitting the model.
-
-- | **Noise or Background Class**: Include a "noise" or "background" class. The model needs to learn what is not the target signal. This class helps the model recognize sounds that may resemble target sounds or occur in the background. Use random segments from your recordings without the target vocalizations.
-
-- | **Organize Training Data**: Organize your training data into folders, with each folder representing a class. Folder names are used as labels.
-
-- | **3-Second Audio Snippets**: BirdNET accepts 3-second audio snippets. If your files are shorter, they will be padded with zeros; if longer, multiple 3-second segments will be used. It may be useful to split longer recordings into shorter segments to remove non-target signal.
-
-2. Using the BirdNET-Analyzer GUI
----------------------------------
-
-- | **Download the GUI**: Download the BirdNET-Analyzer GUI from the website. The GUI provides an easy-to-use interface for training and analyzing audio data without needing to write code.
-- | **Start the GUI**: Unzip the file and start the executable `birdnet_analyzer_gui`. This will launch the graphical interface where you can configure your training and analysis settings.
-- | **Select Training Data**: In the "Training" tab, select your training data by navigating to the folder containing your class subfolders. Each subfolder should contain audio files for a specific class.
-- | **Specify Output Location**: Provide a location to save the trained classifier. This is where the model will be saved after training is complete.
-- | **Adjust Hyperparameters**: You can adjust hyperparameters, but default values are generally sufficient. Hyperparameters include settings like learning rate, batch size, and number of epochs.
-- | **Start Training**: Start the training process. This may take some time depending on your hardware. The GUI will display progress and provide updates on the training status.
+The training feature allows you to create custom classifiers in case BirdNET does not contain the species you are interested in.
 
 .. note::
+    Before you consider training a custom classifier you might want to check if another class can act as a proxy for detecting your species or signal of interest.
+    This means if BirdNET consistently detects your target species as another class, then this class can be used in place of your target species.
 
-    When adjusting low- and high-pass frequencies or modifiying the audio speed, make sure to match these setting during the analysis process.
-    Custom models might underperform in Raven when changing these settings, since Raven uses different bandpass filter settings.
+2. Data Preparation
+----------------------
 
-3. Analyzing the Data
----------------------
+Training data is essential for creating a custom classifier. Make sure to gather a sufficient amount of audio recordings that represent the species or signal you want to classify.
+The data used for each class should be diverse and cover various conditions such as different times of day, weather conditions, and locations.
 
-- | **Select Test Data**: In the "Multiple Files Processing" tab, select the folder containing your test data. This folder should contain audio files that you want to analyze using the trained classifier.
-- | **Specify Output Location**: Choose a location for the output files. If not specified, output files will be saved in the same folder as the input files.
-- | **Select Output Format**: Choose the output format (e.g., Raven selection tables, Audacity annotations, CSV). The output format determines how the analysis results will be saved and presented.
-- | **Use Custom Classifier**: Select "Custom classifier" and navigate to the folder containing your trained classifier. This will load the custom model you trained for analyzing the test data.
-- | **Start Analysis**: Begin the analysis process. The GUI will process the audio files and generate output files based on the selected format.
+Organize your data into a directory structure where each class has its own folder containing the audio files. The directory structure should look like this:
 
-4. Interpreting the Results
----------------------------
+.. code-block:: text
 
-- | **Review Output Files**: Check the output files (e.g., selection tables) in Raven or another bioacoustics program. These files contain the analysis results, including detected bird calls and their timestamps.
-- | **Check for False Positives**: Look for false positives (detections where the model identified the target signal, but it was not present). If there are many, consider adding a noise class and retraining the model.
-- | **Frequency Settings**: Ensure the frequency settings in the selection table match the frequencies of your analyzed audio data. This helps in accurately identifying bird calls within the correct frequency range.
-- | **Verify Accuracy**: Listen to the audio recordings to verify the accuracy of detections. This step is crucial for validating the model's performance and ensuring reliable results.
-- | **Evaluate Model Performance**: Assess the model's performance by analyzing false positives and false negatives. Identify any patterns in the errors. This evaluation helps in understanding the model's strengths and weaknesses.
+  dataset/
+  ├── class1/
+  │   ├── audio1.wav
+  │   ├── audio2.wav
+  │   └── ...
+  ├── class2/
+  │   ├── audio1.wav
+  │   ├── audio2.wav
+  │   └── ...
+  └── ...
 
-5. Tips for Improving Model Performance
----------------------------------------
 
-- | **Representative Training Data**: Ensure your training data represents the diversity of your signals. Diverse data helps the model generalize better to different environments and conditions.
-- | **Use a Noise Class**: Including a noise class can significantly improve results. This class helps the model distinguish between target signals and background noise.
-- | **Experiment with Settings**: Try different settings (e.g., minimum confidence threshold). Adjusting these settings can help optimize the model's performance for specific use cases.
-- | **Adjust Cutoff Threshold**: If recall is low (the model misses many target vocalizations), try lowering the cutoff threshold. This can help the model detect more target signals.
-- | **Add Similar Sounds to Noise Class**: If precision is low (the model produces many false positives), add sounds similar to the noise class. This helps the model better differentiate between target and non-target sounds.
-- | **Use a Bandpass Filter**: Remove irrelevant frequencies with a bandpass filter. This preprocessing step can improve the model's focus on relevant frequency ranges.
-- | **Use Segments**: If your training clips are longer than 3 seconds, use segments. Segmenting longer clips helps in creating consistent input data for the model.
-- | **Check Diagnostic Plots**: Ensure the training process is progressing well by reviewing diagnostic plots. These plots provide insights into the model's learning curve and performance metrics.
-- | **Correct File Formats and Sample Rates**: BirdNET only accepts 48 kHz inputs and rejects frequencies above 15 kHz. Ensure your audio files meet these requirements for optimal performance.
+2.1 Non-Event Class
+#####################
 
-6. Additional Considerations
-----------------------------
+We recommended including a non-event class in your training data. This class should contain audio recordings that do not belong to any of the target classes and represents background noise or silence.
+These classes will not be outputted when using the custom classifier, but they are essential for training the model to distinguish between target classes and non-target sounds.
 
-- | **Few-Shot Learning**: You can train your own model with very few examples. Few-shot learning allows the model to learn from a small number of training samples.
-- | **Feature Embeddings**: BirdNET uses feature embeddings to extract relevant information for the problem. Embeddings capture important features from the audio data, which are used for classification.
-- | **Quality of Embeddings**: The quality of embeddings depends on the quality of training data. High-quality training data leads to better embeddings and improved model performance.
-- | **Bioacoustic Applications**: Models trained with bird sounds are often better suited for bioacoustic applications than those trained with general audio data. Specialized training data enhances the model's ability to recognize bird calls.
-- | **Export to Raven**: You can export the trained classifier to Raven. This allows you to use the model within the Raven software for further analysis and visualization.
-- | **Community and Support**: There is an active community and support team. Use the forum and contact the team if you have questions or feature requests. Engaging with the community can provide valuable insights and assistance.
+The following class names can be used for the non-event samples:
+  - noise
+  - other
+  - background
+  - silence
 
-This guide aims to help you train and improve your own models to support your research. Note that training a model is an iterative process, and you may need to try different settings and datasets to achieve the best results.
+2.2 Audio File Length
+#####################
+
+BirdNET will process 3-second audio segments from your recordings and we recommend using 3-second audio files for training.
+In case your audio files are longer than 3 seconds, you can specify a crop mode to choose how these audio files are processed. See :doc:`crop modes <../implementation-details/crop-modes>` for more details. 
+
+3. Training Process
+----------------------
+
+After preparing your data you can start the training process using the BirdNET-Analyzer's training feature.
+The feature can be used via the GUI or the command line interface.
+
+In the GUI go the Train-Tab and select the directory containing your training data. The detected class names will be displayed in a table.
+Further select the output directory and specify the name for your custom classifier. After that you can already start training your classifier with the default settings by clicking the "Start training" button.
+
+3.1 Hyperparameters and Autotune
+#################################
+
+There are several hyperparameters that can be adjusted to optimize the classifier training.
+If you don't have experience with training machine learning models, we recommend using the autotune feature.
+This will run multiple training runs (aka trials) with different hyperparameter settings and select the best performing settings based on the validation data.
+The parameters used for training the final classifier will be saved alongside the resulting classifier.
+When using autotune you can specify the number of trials as well as the number of executions per trial.
+
+If you want to adjust the hyperparameters manually, we have a more detailed documentation available :doc:`here <../implementation-details/training-hyperparameters>`.
+
+3.2 Audio Settings
+###################
+
+When training a custom classifier you can apply a bandpass filter and also modify the speed of your audio to shift the frequency of your audio to the range of the BirdNET model.
+This also enables you to train classifiers for ultra- or infrasonic signals, i.e. bats or whales.
+
+.. caution::
+   These settings also need to be applied when using the trained classifier for inference.
+
+3.3 Caching Training Data
+##########################
+
+A majority of the training time is spent on loading the audio data and extracting the embeddings which are used for training the classifier.
+To speed up the iteration of multiple training runs with same data we recommend using the caching feature. This will store the extracted embeddings in a cache file which can be loaded in later training runs. 
+
+To create a cache file choose "save" as the "training data cache mode" in the settings and specify the location and the name for the cache file.
+In later training runs you can then choose "load" as the "training data cache mode" and select the cache file you created before.
+
+
+.. note::
+  As the cache file contains the embeddings extracted from the audio files, all parameters that refer to the audio processing (e.g. speed modifier, bandpass filter frequencies, crop mode) can't be changed when loading the cache file.
+
+3.4 Using test data
+#####################
+
+You can provide a separate dataset for testing your custom classifier after training is finished.
+The test data should be structured in the same way as the training data, with each class having its own folder.
+
+Precision, Recall, F1-Score, AUPRC and AUROC will be calculated for the test data.
+The metrics will be calculated for each class as well as a macro-average across all classes.
+Threshold based metrics will be calculated with the default threshold of 0.5 as well as an optimal threshold.
+
+The results along with the optimal threshold will be shown in the GUI and also saved to a CSV file in the output directory.
+
+3.5 Model Save Mode
+##########################
+
+Custom classifiers can be saved with 2 different modes:
+
+- **Append**: The trained classifier will extend the existing set of classes that BirdNET can detect. 
+- **Replace**: The trained classifier will replace the BirdNET classifier and will only be able to detect classes provided during the training.
+
+Choose the mode that fits your use case best, depending on whether you need to detect classes originally included in BirdNET or not.
+
+.. caution::
+   When using the "Append" mode, make sure that the class names of the new classes do not conflict with existing classes in BirdNET.
+
+4. Using the Custom Classifier
+--------------------------------
+
+After the training process is finished your output folder should like this:
+
+.. code-block:: text
+
+  classifier-output/
+  ├── CustomClassifier.tflite
+  ├── CustomClassifier_Labels.txt
+  ├── CustomClassifier_Params.csv
+  └── ...
+
+To use this classifier select the "Custom classifier" option in the species selection section of the BirdNET-Analyzer GUI and select the .tflite file.
+
+When using the CLI you can specify the path to the .tflite file using the `-\-classifier` or `-c` argument.
