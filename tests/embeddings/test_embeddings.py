@@ -28,6 +28,7 @@ def setup_test_environment():
         "test_dir": test_dir,
         "input_dir": input_dir,
         "output_dir": output_dir,
+        "data_dir": os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
     }
 
     # Clean up
@@ -53,3 +54,22 @@ def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: Magic
     mock_ensure_model.assert_called_once()
     threads = min(8, max(1, multiprocessing.cpu_count() // 2))
     mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 8, None)
+
+
+def test_invalid_db_path(setup_test_environment):
+    env = setup_test_environment
+
+    parser = embeddings_parser()
+    args = parser.parse_args(["--input", env["input_dir"], "-db", os.path.join(env["output_dir"], "file.txt")])
+
+    with pytest.raises(ValueError, match="The database path must be a directory."):
+        embeddings(**vars(args))
+
+
+def test_complete_run_multiprocessing(setup_test_environment):
+    env = setup_test_environment
+
+    # Run embeddings function
+    embeddings(os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"), env["output_dir"], threads=3)
+
+    # assert os.path.exists(env["output_dir"], )
