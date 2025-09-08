@@ -41,7 +41,6 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
 def run_embeddings_with_tqdm_tracking(
     input_path,
     db_directory,
-    db_path,
     overlap,
     batch_size,
     threads,
@@ -55,7 +54,6 @@ def run_embeddings_with_tqdm_tracking(
     return run_embeddings(
         input_path,
         db_directory,
-        db_path,
         overlap,
         threads,
         batch_size,

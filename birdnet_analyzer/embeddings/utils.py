@@ -240,7 +240,7 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
     else:
         chunksize = 2
         queue = mp.Queue(maxsize=10_000)
-        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, len(flist)))
+        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database))
         consumer_process.start()
 
         # One less process for the pool, because we use one extra for the consumer

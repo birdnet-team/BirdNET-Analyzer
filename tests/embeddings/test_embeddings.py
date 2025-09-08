@@ -32,7 +32,7 @@ def setup_test_environment():
         "test_dir": test_dir,
         "input_dir": input_dir,
         "output_dir": output_dir,
-        "data_dir": os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
+        "data_dir": os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")),
     }
 
     # Clean up
@@ -58,6 +58,7 @@ def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: Magic
     mock_ensure_model.assert_called_once()
     threads = min(8, max(1, multiprocessing.cpu_count() // 2))
     mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 8, None)
+
 
 @pytest.mark.parametrize(
     ("audio_speed", "overlap", "threads"),
@@ -93,7 +94,6 @@ def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, au
     embedding_ids = db.get_embedding_ids()
     assert len(embedding_ids) == len(expected_start_timestamps), "Number of embeddings should match expected count"
 
-
     for embedding_id in embedding_ids:
         source = db.get_embedding_source(embedding_id)
         start, end = source.offsets
@@ -101,7 +101,6 @@ def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, au
         end = round(float(end), 1)
         assert start in expected_start_timestamps, f"Start time mismatch for start timestamp {start}"
         assert end == expected_end_timestamps[expected_start_timestamps.index(start)]
-
 
     with open(file_output, newline="") as csvfile:
         reader = csv.reader(csvfile)
@@ -112,6 +111,7 @@ def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, au
             end = round(float(row[2]), 1)
             assert start in expected_start_timestamps, f"CSV start time mismatch for start timestamp {start}"
             assert end == expected_end_timestamps[expected_start_timestamps.index(start)]
+
 
 def test_search(setup_test_environment):
     """Test embeddings with speed up."""
@@ -140,7 +140,7 @@ def test_search(setup_test_environment):
     # Call function under test
     embeddings(input_dir, database=db_path, audio_speed=audio_speed, overlap=overlap)
 
-    n_results = len(expected_start_timestamps) - 1 #Currently querying the full database is not possible due to hoplite
+    n_results = len(expected_start_timestamps) - 1  # Currently querying the full database is not possible due to hoplite
 
     search(output=search_output_dir, database=db_path, queryfile=query_file, n_results=n_results, score_function="cosine", crop_mode="crop")
 
@@ -149,6 +149,7 @@ def test_search(setup_test_environment):
         output_files.extend([os.path.join(root, file) for file in files])
 
     assert len(output_files) == n_results, "Number of output files should match expected count"
+
 
 def test_with_dataset(setup_test_environment):
     """Test embeddings with speed up."""
@@ -181,20 +182,12 @@ def test_with_dataset(setup_test_environment):
         assert_array_equal(output_audio, original_audio, "Output audio should match original audio segment")
 
 
-def test_invalid_db_path(setup_test_environment):
+@pytest.mark.parametrize(("threads"), [1, 3])
+def test_complete_run_multiprocessing(setup_test_environment, threads):
     env = setup_test_environment
 
-    parser = embeddings_parser()
-    args = parser.parse_args(["--input", env["input_dir"], "-db", os.path.join(env["output_dir"], "file.txt")])
+    embeddings(os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"), env["output_dir"], threads=threads)
 
-    with pytest.raises(ValueError, match="The database path must be a directory."):
-        embeddings(**vars(args))
-
-
-def test_complete_run_multiprocessing(setup_test_environment):
-    env = setup_test_environment
-
-    # Run embeddings function
-    embeddings(os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"), env["output_dir"], threads=3)
-
-    # assert os.path.exists(env["output_dir"], )
+    assert os.path.exists(
+        os.path.join(env["output_dir"], "hoplite.sqlite"),
+    ), "Database has noot been created"
