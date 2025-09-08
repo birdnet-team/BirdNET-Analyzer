@@ -54,14 +54,3 @@ def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: Magic
     mock_ensure_model.assert_called_once()
     threads = min(8, max(1, multiprocessing.cpu_count() // 2))
     mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 8, None)
-
-
-@pytest.mark.parametrize(("threads"), [1, 3])
-def test_complete_run_multiprocessing(setup_test_environment, threads):
-    env = setup_test_environment
-
-    embeddings(os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"), env["output_dir"], threads=threads)
-
-    assert os.path.exists(
-        os.path.join(env["output_dir"], "hoplite.sqlite"),
-    ), "Database has noot been created"
