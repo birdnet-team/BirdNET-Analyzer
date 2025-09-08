@@ -246,11 +246,15 @@ def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchs
         # One less process for the pool, because we use one extra for the consumer
         with mp.Pool(processes=cfg.CPU_THREADS - 1) as pool:
             delta = chunksize
+            processed_files = set()
             with tqdm(total=len(flist), desc="Files processed") as pbar:
                 # Instead of chunk_size arg, manual splitting, because this reduces the overhead for the iterable.
                 for res in pool.imap_unordered(analyze_file, [flist[i : i + delta] for i in range(0, len(flist), delta)], chunksize=1):
+                    num_already_processed = len(processed_files)
+                    processed_files.update([r[0] for r in res])
+                    delta = len(processed_files) - num_already_processed
                     queue.put(res)
-                    pbar.update(len(res))
+                    pbar.update(delta)
 
         queue.put([("STOP", 0, 0, None)])
         consumer_process.join()
