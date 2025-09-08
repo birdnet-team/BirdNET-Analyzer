@@ -189,7 +189,7 @@ def _build_extract_tab():
                 show_label=False,
                 show_copy_button=True,
                 interactive=False,
-                info="⚠️ It is recommended to select an empty directory when creating a new database.",
+                info="⚠️ " + loc.localize("embeddings-tab-dp-path-textbox-info"),
                 scale=2,
             )
 
