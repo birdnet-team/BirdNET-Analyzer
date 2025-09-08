@@ -6,8 +6,10 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
+from numpy.testing import assert_array_equal
 
 import birdnet_analyzer.config as cfg
+from birdnet_analyzer.audio import open_audio_file
 from birdnet_analyzer.cli import embeddings_parser
 from birdnet_analyzer.embeddings.core import embeddings, get_database
 from birdnet_analyzer.search.core import search
@@ -169,4 +171,10 @@ def test_with_dataset(setup_test_environment):
 
     assert len(output_files) == 10, "Number of output files should match expected count"
     for file in output_files:
-        # TODO
+        filename = os.path.split(file)[-1]
+        score, name, start, end = filename.split(".wav")[0].split("_")
+
+        output_audio = open_audio_file(file)[0]
+        original_audio = open_audio_file(os.path.join(input_dir, name + ".flac"), offset=float(start), duration=float(end) - float(start))[0]
+
+        assert_array_equal(output_audio, original_audio, "Output audio should match original audio segment")
