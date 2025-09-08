@@ -14,7 +14,7 @@ def analyze(
     slist: str | None = None,
     sensitivity: float = 1.0,
     overlap: float = 0,
-    window_size: float | None = None,,
+    window_size: float | None = None,
     fmin: int = 0,
     fmax: int = 15000,
     audio_speed: float = 1.0,
@@ -144,6 +144,7 @@ def _set_params(
     sensitivity,
     locale,
     overlap,
+    window_size,
     fmin,
     fmax,
     audio_speed,
@@ -167,14 +168,14 @@ def _set_params(
         raise ValueError("Window size must be a numeric value or None.")
 
     if window_size < 0:
-	raise ValueError("Window size must be a positive value.")
+        raise ValueError("Window size must be a positive value.")
 
     if window_size:
         cfg.SIG_LENGTH = window_size
 
     if not isinstance(overlap, int | float):
         raise ValueError("Overlap must be a numeric value.")
-    
+
     if overlap < 0:
         raise ValueError("Overlap must be a non-negative value.")
 
