@@ -1,4 +1,3 @@
-import csv
 import multiprocessing
 import os
 import shutil
@@ -6,13 +5,10 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
-from numpy.testing import assert_array_equal
 
 import birdnet_analyzer.config as cfg
-from birdnet_analyzer.audio import open_audio_file
 from birdnet_analyzer.cli import embeddings_parser
-from birdnet_analyzer.embeddings.core import embeddings, get_or_create_database
-from birdnet_analyzer.search.core import search
+from birdnet_analyzer.embeddings.core import embeddings
 
 
 @pytest.fixture
