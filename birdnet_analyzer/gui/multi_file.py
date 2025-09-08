@@ -122,7 +122,7 @@ def build_multi_analysis_tab():
                     if folder:
                         files_and_durations = gu.get_audio_files_and_durations(folder)
                         if len(files_and_durations) > 100:
-                            return [folder, *files_and_durations[:100], ["..."]]  # hopefully fixes issue#272
+                            return [folder, [*files_and_durations[:100], ("...", "...")]]  # hopefully fixes issue#272
                         return [folder, files_and_durations]
 
                     return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]]]
