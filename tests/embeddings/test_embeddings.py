@@ -28,6 +28,7 @@ def setup_test_environment():
         "test_dir": test_dir,
         "input_dir": input_dir,
         "output_dir": output_dir,
+        "data_dir": os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")),
     }
 
     # Clean up
@@ -52,4 +53,4 @@ def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: Magic
 
     mock_ensure_model.assert_called_once()
     threads = min(8, max(1, multiprocessing.cpu_count() // 2))
-    mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 1, None)
+    mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 8, None)

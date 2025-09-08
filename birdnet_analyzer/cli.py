@@ -80,6 +80,7 @@ def bandpass_args():
 
     return p
 
+
 def species_list_args():
     """
     Creates an argument parser for species-list arguments.
@@ -110,6 +111,7 @@ def species_list_args():
         help="Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].",
     )
     return p
+
 
 def species_args():
     """
@@ -325,6 +327,7 @@ def analyzer_parser():
         argparse.ArgumentParser: Configured argument parser for the BirdNET Analyzer CLI.
     """
     from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS_MAP
+
     parents = [
         io_args(),
         bandpass_args(),
@@ -414,7 +417,7 @@ def embeddings_parser():
         argparse.ArgumentParser: Configured argument parser for extracting feature embeddings.
     """
 
-    parents = [db_args(), bandpass_args(), audio_speed_args(), overlap_args(), threads_args(), bs_args()]
+    parents = [db_args(), bandpass_args(), audio_speed_args(), overlap_args(), threads_args(), bs_args(default=8)]
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -428,9 +431,7 @@ def embeddings_parser():
         help="Path to input file or folder.",
     )
 
-    parser.add_argument(
-        "--file_output",
-    )
+    parser.add_argument("--file_output", help="Saves all embeddings contained in the database in a csv file.")
 
     return parser
 

@@ -90,7 +90,7 @@ def select_folder(state_key=None):
     if folder_selected and state_key:
         settings.set_state(state_key, folder_selected)
 
-    return folder_selected
+    return folder_selected.replace("/", os.sep) if folder_selected else folder_selected
 
 
 def get_audio_files_and_durations(folder, max_files=None):
@@ -184,7 +184,7 @@ def select_directory(collect_files=True, max_files=None, state_key=None):
 
         return dir_name, [[os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files]
 
-    return dir_name if dir_name else None
+    return dir_name or None
 
 
 def build_header():
