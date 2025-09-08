@@ -11,7 +11,7 @@ from numpy.testing import assert_array_equal
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer.audio import open_audio_file
 from birdnet_analyzer.cli import embeddings_parser
-from birdnet_analyzer.embeddings.core import embeddings, get_database
+from birdnet_analyzer.embeddings.core import embeddings, get_or_create_database
 from birdnet_analyzer.search.core import search
 
 
@@ -86,7 +86,7 @@ def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, au
     # Call function under test
     embeddings(input_dir, database=db_path, audio_speed=audio_speed, overlap=overlap, file_output=file_output, threads=threads)
 
-    db = get_database(db_path)
+    db = get_or_create_database(db_path)
     assert db is not None, "Database should be created successfully"
     assert db.count_embeddings() == len(expected_start_timestamps), "Number of embeddings should match expected count"
 
