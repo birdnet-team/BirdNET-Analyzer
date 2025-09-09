@@ -816,7 +816,7 @@ def train_linear_classifier(
     return classifier, history
 
 
-def save_linear_classifier(classifier, model_path: str, labels: list[str], mode="replace"):
+def save_linear_classifier(classifier, model_path: str, labels: list[str], mode="replace", pop_last_layer=True):
     """Saves the classifier as a tflite model, as well as the used labels in a .txt.
 
     Args:
@@ -836,7 +836,8 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
     saved_model = PBMODEL
 
     # Remove activation layer
-    classifier.pop()
+    if pop_last_layer:
+        classifier.pop()
 
     if mode == "replace":
         combined_model = tf.keras.Sequential([saved_model.embeddings_model, classifier], "basic")
