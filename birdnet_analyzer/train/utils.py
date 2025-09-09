@@ -573,7 +573,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     try:
         if cfg.TRAINED_MODEL_OUTPUT_FORMAT == "both":
             model.save_raven_model(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE)
-            model.save_linear_classifier(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE)
+            model.save_linear_classifier(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE, pop_last_layer=False)
         elif cfg.TRAINED_MODEL_OUTPUT_FORMAT == "tflite":
             model.save_linear_classifier(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE)
         elif cfg.TRAINED_MODEL_OUTPUT_FORMAT == "raven":
