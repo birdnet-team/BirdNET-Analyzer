@@ -25,4 +25,6 @@ In the search feature the similarity measure will be averaged over all segments 
 Smart
 ----------------
 
-# TODO
+In Smart mode, the system analyzes the audio signal to detect segments with the highest energy or amplitude peaks, the points where relevant events such as bird calls are most likely to occur.
+From the full recording, the top 5 segments with the strongest peaks are selected; if fewer than five segments are detected, all are returned.
+This mode is particularly useful for longer audio files (around 15 seconds or more, or whenever overlap produces more than five segments).
