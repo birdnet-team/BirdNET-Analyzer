@@ -71,6 +71,7 @@ def search(
         result_path = os.path.join(output, f"{r.sort_score:.5f}_{filebasename}_{offset}_{offset + duration}.wav")
         audio.save_signal(sig, result_path, rate)
 
+    db.db.close()
 
 def get_database(database_path):
     from perch_hoplite.db import sqlite_usearch_impl

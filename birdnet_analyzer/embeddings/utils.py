@@ -158,26 +158,27 @@ def consumer(q: mp.Queue, stop_at, database: str):
 
     check_database_settings(db)
 
-    while break_signal:
-        if not q.empty():
-            results = q.get()
+    try:
+        while break_signal:
+            if not q.empty():
+                results = q.get()
 
-            for fpath, s_start, s_end, embeddings in results:
-                if fpath == stop_at:
-                    break_signal = False
-                    break
+                for fpath, s_start, s_end, embeddings in results:
+                    if fpath == stop_at:
+                        break_signal = False
+                        break
 
-                if consume_embedding(fpath, s_start, s_end, embeddings, db):
-                    batch += 1
+                    if consume_embedding(fpath, s_start, s_end, embeddings, db):
+                        batch += 1
 
-                if batch >= batchsize:
-                    db.commit()
-                    batch = 0
-        else:
-            time.sleep(0.1)
-
-    db.commit()
-    db.db.close()
+                    if batch >= batchsize:
+                        db.commit()
+                        batch = 0
+            else:
+                time.sleep(0.1)
+    finally:
+        db.commit()
+        db.db.close()
 
 
 def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
