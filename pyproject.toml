@@ -28,6 +28,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
+    "kagglehub",
 ]
 
 [project.optional-dependencies]

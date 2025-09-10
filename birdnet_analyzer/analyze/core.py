@@ -27,6 +27,7 @@ def analyze(
     threads: int = 8,
     locale: str = "en",
     additional_columns: list[str] | None = None,
+    use_perch: bool = False,
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
@@ -55,6 +56,7 @@ def analyze(
         threads (int, optional): Number of CPU threads to use for analysis. Defaults to 8.
         locale (str, optional): Locale for species names and output. Defaults to "en".
         additional_columns (list[str] | None, optional): Additional columns to include in the output. Defaults to None.
+        use_perch (bool, optional): Whether to use the Perch model for analysis. Defaults to False.
     Returns:
         None
     Raises:
@@ -71,7 +73,7 @@ def analyze(
     from birdnet_analyzer.analyze.utils import combine_results as combine
     from birdnet_analyzer.utils import ensure_model_exists
 
-    ensure_model_exists()
+    ensure_model_exists(check_perch=use_perch)
 
     flist = _set_params(
         audio_input=audio_input,
