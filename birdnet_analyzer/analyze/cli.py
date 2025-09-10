@@ -13,7 +13,6 @@ def main():
     freeze_support()
 
     parser = cli.analyzer_parser()
-
     args = parser.parse_args()
 
     try:
