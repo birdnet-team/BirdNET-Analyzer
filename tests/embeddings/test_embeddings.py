@@ -1,6 +1,5 @@
 import csv
 import multiprocessing
-import multiprocessing as mp
 import os
 import shutil
 import tempfile
