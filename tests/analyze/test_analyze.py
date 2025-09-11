@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
@@ -265,7 +266,7 @@ def test_analyze_with_negative_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Audio speed must be a positive value."):
+    with pytest.raises(ValueError, match=re.escape("Audio speed must be a positive value.")):
         analyze(soundscape_path, env["output_dir"], audio_speed=-1.0, top_n=1, min_conf=0)
 
 
@@ -279,7 +280,7 @@ def test_analyze_with_zero_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Audio speed must be a positive value."):
+    with pytest.raises(ValueError, match=re.escape("Audio speed must be a positive value.")):
         analyze(soundscape_path, env["output_dir"], audio_speed=0.0, top_n=1, min_conf=0)
 
 
@@ -293,7 +294,7 @@ def test_analyze_with_invalid_audio_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Audio speed must be a numeric value."):
+    with pytest.raises(ValueError, match=re.escape("Audio speed must be a numeric value.")):
         analyze(soundscape_path, env["output_dir"], audio_speed="fast", top_n=1, min_conf=0)
 
 
@@ -307,7 +308,7 @@ def test_analyze_with_negative_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Overlap must be a non-negative value."):
+    with pytest.raises(ValueError, match=re.escape("Overlap must be a non-negative value.")):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=-1)
 
 
@@ -321,7 +322,7 @@ def test_analyze_with_invalid_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Overlap must be a numeric value."):
+    with pytest.raises(ValueError, match=re.escape("Overlap must be a numeric value.")):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap="high")
 
 

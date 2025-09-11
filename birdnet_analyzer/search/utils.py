@@ -80,7 +80,7 @@ def get_search_results(
     scores_by_embedding_id = {}
 
     for embedding in query_embeddings:
-        results, scores = brutalism.threaded_brute_search(db, embedding, n_results, score_fn)
+        results, scores = brutalism.brute_search(db, embedding, n_results, score_fn)
         sorted_results = results.search_results
 
         if score_function == "euclidean":

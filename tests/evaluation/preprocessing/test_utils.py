@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -296,7 +298,7 @@ def test_read_and_concatenate_files_different_structures(tmp_path):
     df1.to_csv(tmp_path / "file1.txt", sep="\t", index=False)
     df2.to_csv(tmp_path / "file2.txt", sep="\t", index=False)
 
-    with pytest.raises(ValueError, match="File file2.txt has different columns than the previous files."):
+    with pytest.raises(ValueError, match=re.escape("File file2.txt has different columns than the previous files.")):
         read_and_concatenate_files_in_directory(str(tmp_path))
 
 
