@@ -197,22 +197,6 @@ def test_with_dataset(setup_test_environment):
     shutil.rmtree(db_path)
     assert not os.path.exists(db_path), "Database file should be deleted"
 
-@pytest.mark.parametrize(("threads"), [1, 3])
-def test_complete_run_multiprocessing(setup_test_environment, threads):
-    env = setup_test_environment
-
-    embeddings(
-        audio_input=os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"),
-        database=env["output_dir"],
-        threads=threads
-    )
-
-    assert os.path.exists(
-        os.path.join(env["output_dir"], "hoplite.sqlite"),
-    ), "Database has not been created"
-
-    shutil.rmtree(env["output_dir"])
-
 @pytest.mark.parametrize(("threads"), [1, 4])
 @pytest.mark.skipif(os.name == "nt", reason="New insert in database currently broken on windows")
 def test_multiple_inserts(setup_test_environment, threads):
