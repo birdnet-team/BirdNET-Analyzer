@@ -94,7 +94,6 @@ def create_csv_output(output_path: str, database: str):
 
     db.db.close()
 
-
 def create_file_output(output_path: str, database: str):
     """Creates a file output for the database.
 

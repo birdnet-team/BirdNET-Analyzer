@@ -76,4 +76,4 @@ def search(
 def get_database(database_path):
     from perch_hoplite.db import sqlite_usearch_impl
 
-    return sqlite_usearch_impl.SQLiteUsearchDB.create(database_path).thread_split()
+    return sqlite_usearch_impl.SQLiteUsearchDB.create(database_path)

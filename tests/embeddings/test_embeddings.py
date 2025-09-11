@@ -186,7 +186,7 @@ def test_with_dataset(setup_test_environment):
     assert len(output_files) == 10, "Number of output files should match expected count"
     for file in output_files:
         filename = os.path.split(file)[-1]
-        score, name, start, end = filename.split(".wav")[0].split("_")
+        _, name, start, end = filename.split(".wav")[0].split("_")
 
         output_audio = open_audio_file(file)[0]
         original_audio = open_audio_file(os.path.join(input_dir, name + ".flac"), offset=float(start), duration=float(end) - float(start))[0]
