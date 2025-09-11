@@ -233,6 +233,9 @@ def _set_params(
 
     cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
 
+    if cfg.USE_PERCH:
+        cfg.LABELS = cfg.LABELS[1:]
+
     # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
     if custom_classifier is None:
         # TODO does species list even make sense with Perch?

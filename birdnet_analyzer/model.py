@@ -15,7 +15,7 @@ from birdnet_analyzer import utils
 absl.logging.set_verbosity(absl.logging.ERROR)
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 warnings.filterwarnings("ignore")
 
 # Import TFLite from runtime or Tensorflow;
