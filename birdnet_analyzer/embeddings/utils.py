@@ -15,6 +15,8 @@ from birdnet_analyzer import utils
 from birdnet_analyzer.analyze.utils import iterate_audio_chunks
 from birdnet_analyzer.embeddings.core import get_or_create_database
 
+mp.set_start_method("spawn", force=True)
+
 DATASET_NAME: str = "birdnet_analyzer_dataset"
 COMMIT_BS_SIZE = 512
 
