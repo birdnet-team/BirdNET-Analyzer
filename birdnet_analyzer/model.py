@@ -26,8 +26,8 @@ try:
     import tflite_runtime.interpreter as tflite  # type: ignore
 except ModuleNotFoundError:
     from tensorflow import lite as tflite
-if not cfg.MODEL_PATH.endswith(".tflite"):
-    from tensorflow import keras
+# if not cfg.MODEL_PATH.endswith(".tflite"):
+from tensorflow import keras
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER: tflite.Interpreter = None
@@ -35,6 +35,7 @@ C_INTERPRETER: tflite.Interpreter = None
 M_INTERPRETER: tflite.Interpreter = None
 OUTPUT_DETAILS = None
 PBMODEL = None
+PERCH_MODEL = None
 C_PBMODEL = None
 EMPTY_CLASS_EXCEPTION_REF = None
 
@@ -517,6 +518,9 @@ def load_model(class_output=True):
     global INPUT_LAYER_INDEX
     global OUTPUT_LAYER_INDEX
     global OUTPUT_DETAILS
+
+    if cfg.MODEL_PATH is None:
+        raise ValueError("MODEL_PATH is not set.")
 
     # Do we have to load the tflite or protobuf model?
     if cfg.MODEL_PATH.endswith(".tflite"):
@@ -1127,6 +1131,18 @@ def flat_sigmoid(x, sensitivity=-1, bias=1.0):
     return 1 / (1.0 + np.exp(sensitivity * np.clip(x + transformed_bias, -20, 20)))
 
 
+def predict_with_perch(data: np.ndarray):
+    import tensorflow as tf
+    global PERCH_MODEL
+
+    if not PERCH_MODEL:
+        PERCH_MODEL = tf.saved_model.load(cfg.MODEL_PATH)
+
+    result = PERCH_MODEL.signatures["serving_default"](inputs=data)
+
+    return result["label"]
+
+
 def predict(sample):
     """Uses the main net to predict a sample.
 
@@ -1139,6 +1155,9 @@ def predict(sample):
     # Has custom classifier?
     if cfg.CUSTOM_CLASSIFIER is not None:
         return predict_with_custom_classifier(sample)
+
+    if cfg.USE_PERCH:
+        return predict_with_perch(sample)
 
     load_model()
 

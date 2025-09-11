@@ -402,10 +402,10 @@ def ensure_perch_exists():
         return
 
     path = kagglehub.model_download("google/bird-vocalization-classifier/tensorFlow2/perch_v2")
-    checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints", "perch_v2")
 
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    copy_tree(path, checkpoint_dir)
+    os.makedirs(cfg.PERCH_V2_MODEL_PATH, exist_ok=True)
+    copy_tree(path, cfg.PERCH_V2_MODEL_PATH)
+
 
 def ensure_model_exists(check_perch: bool = False):
     import zipfile

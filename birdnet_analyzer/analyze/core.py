@@ -100,6 +100,7 @@ def analyze(
         threads=threads,
         labels_file=cfg.LABELS_FILE,
         additional_columns=additional_columns,
+        use_perch=use_perch,
     )
 
     print(f"Found {len(cfg.FILE_LIST)} files to analyze")
@@ -156,6 +157,7 @@ def _set_params(
     threads,
     labels_file=None,
     additional_columns=None,
+    use_perch=False,
 ):
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.utils import load_codes
@@ -168,9 +170,6 @@ def _set_params(
     if overlap < 0:
         raise ValueError("Overlap must be a non-negative value.")
 
-    if overlap >= cfg.SIG_LENGTH:
-        raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
-
     if not isinstance(audio_speed, int | float):
         raise ValueError("Audio speed must be a numeric value.")
 
@@ -178,7 +177,6 @@ def _set_params(
         raise ValueError("Audio speed must be a positive value.")
 
     cfg.CODES = load_codes()
-    cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
     cfg.SKIP_EXISTING_RESULTS = skip_existing_results
     cfg.LOCATION_FILTER_THRESHOLD = sf_thresh
     cfg.TOP_N = top_n
@@ -194,6 +192,10 @@ def _set_params(
     cfg.COMBINE_RESULTS = combine_results
     cfg.BATCH_SIZE = bs
     cfg.ADDITIONAL_COLUMNS = additional_columns
+    cfg.USE_PERCH = use_perch
+
+    if cfg.USE_PERCH and custom_classifier:
+        raise ValueError("Selected custom classifier and Perch model, please select only one.")
 
     if not output:
         if os.path.isfile(cfg.INPUT_PATH):
@@ -215,31 +217,25 @@ def _set_params(
         cfg.CPU_THREADS = 1
         cfg.TFLITE_THREADS = threads
 
-    if custom_classifier is not None:
-        cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
-
-        if custom_classifier.endswith(".tflite"):
-            cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
-
-            if not os.path.isfile(cfg.LABELS_FILE): # if the label file is not found, an old birdnet model might be used
-                cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
-
-            if not os.path.isfile(cfg.LABELS_FILE): # if the label file is still not found, dont use labels
-                cfg.LABELS_FILE = None
-                cfg.LABELS = None
-            else:
-                cfg.LABELS = read_lines(cfg.LABELS_FILE)
-        else:
-            cfg.APPLY_SIGMOID = False
-            # our output format
-            cfg.LABELS_FILE = os.path.join(custom_classifier, "labels", "label_names.csv")
-
-            if not os.path.isfile(cfg.LABELS_FILE):
-                cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
-                cfg.LABELS = read_lines(cfg.LABELS_FILE)
-            else:
-                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE)]
+    if cfg.USE_PERCH:
+        cfg.MODEL_PATH = cfg.PERCH_V2_MODEL_PATH
+        cfg.LABELS_FILE = cfg.PERCH_LABELS_FILE
+        cfg.SAMPLE_RATE = cfg.PERCH_SAMPLE_RATE
+        cfg.SIG_LENGTH = cfg.PERCH_SIG_LENGTH
     else:
+        cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+        cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+        cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+        cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+
+    if overlap >= cfg.SIG_LENGTH:
+        raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
+
+    cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
+
+    # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
+    if custom_classifier is None:
+        # TODO does species list even make sense with Perch?
         cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
         cfg.CUSTOM_CLASSIFIER = None
 
@@ -256,6 +252,30 @@ def _set_params(
         else:
             cfg.SPECIES_LIST_FILE = None
             cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
+    else:
+        cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+
+        if custom_classifier.endswith(".tflite"):
+            cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
+
+            if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is not found, an old birdnet model might be used
+                cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
+
+            if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is still not found, dont use labels
+                cfg.LABELS_FILE = None
+                cfg.LABELS = None
+            else:
+                cfg.LABELS = read_lines(cfg.LABELS_FILE)
+        else:
+            cfg.APPLY_SIGMOID = False
+            # our output format
+            cfg.LABELS_FILE = os.path.join(custom_classifier, "labels", "label_names.csv")
+
+            if not os.path.isfile(cfg.LABELS_FILE):
+                cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
+                cfg.LABELS = read_lines(cfg.LABELS_FILE)
+            else:
+                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE)]
 
     if cfg.LABELS_FILE:
         lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
