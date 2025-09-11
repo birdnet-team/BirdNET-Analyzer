@@ -7,4 +7,6 @@ Best practices
    best-practices/species-lists
    best-practices/segment-review
    best-practices/training
+   best-practices/evaluation-tool
    best-practices/embeddings
+   
