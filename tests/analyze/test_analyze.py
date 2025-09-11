@@ -280,7 +280,7 @@ def test_analyze_with_zero_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match=re.escpae("Audio speed must be a positive value.")):
+    with pytest.raises(ValueError, match=re.escape("Audio speed must be a positive value.")):
         analyze(soundscape_path, env["output_dir"], audio_speed=0.0, top_n=1, min_conf=0)
 
 
