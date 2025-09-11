@@ -62,7 +62,32 @@ def test_embeddings_cli(mock_run_embeddings: MagicMock, mock_ensure_model: Magic
     mock_run_embeddings.assert_called_once_with(env["input_dir"], env["output_dir"], 0, 1.0, 0, 15000, threads, 8, None)
 
 
-def check(db_path, expected_start_timestamps, expected_end_timestamps, file_output):
+@pytest.mark.parametrize(
+    ("audio_speed", "overlap", "threads"),
+    [(10, 1, 1), (5, 2, 2), (5, 0, 1), (0.1, 1, 4), (0.2, 0, 4)],
+)
+def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, audio_speed, overlap, threads):
+    """Test embeddings with speed up."""
+    env = setup_test_environment
+
+    input_dir = "tests/data/soundscape/"
+    db_path = os.path.join(env["output_dir"], "embedding_db")
+    file_output = os.path.join(env["output_dir"], "file_output/embeddings.csv")
+
+    assert os.path.exists(os.path.join(input_dir, "soundscape.wav")), "Soundscape file does not exist"
+    file_length = 120
+    step_size = round(3 * audio_speed - overlap * audio_speed, 1)
+    expected_start_timestamps = [e / 10 for e in range(0, int(file_length * 10), int(step_size * 10))]
+    expected_end_timestamps = [e / 10 for e in range(int(3 * audio_speed * 10), int(file_length) * 10 + 1, int(step_size * 10))]
+
+    while len(expected_end_timestamps) < len(expected_start_timestamps):
+        if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
+            expected_end_timestamps.append(file_length)
+        else:
+            expected_start_timestamps.pop()
+
+    embeddings(audio_input=input_dir,database=db_path,audio_speed=audio_speed,overlap=overlap,file_output=file_output,threads=threads)
+
     db = get_or_create_database(db_path)
 
     assert db is not None, "Database should be created successfully"
@@ -89,50 +114,9 @@ def check(db_path, expected_start_timestamps, expected_end_timestamps, file_outp
             assert start in expected_start_timestamps, f"CSV start time mismatch for start timestamp {start}"
             assert end == expected_end_timestamps[expected_start_timestamps.index(start)]
 
-
-@pytest.mark.parametrize(
-    ("audio_speed", "overlap", "threads"),
-    [(10, 1, 1), (5, 2, 2), (5, 0, 1), (0.1, 1, 4), (0.2, 0, 4)],
-)
-def test_extract_embeddings_with_speed_up_and_overlap(setup_test_environment, audio_speed, overlap, threads):
-    """Test embeddings with speed up."""
-    env = setup_test_environment
-
-    input_dir = "tests/data/soundscape/"
-    db_path = os.path.join(env["output_dir"], "embedding_db")
-    file_output = os.path.join(env["output_dir"], "file_output/embeddings.csv")
-
-    assert os.path.exists(os.path.join(input_dir, "soundscape.wav")), "Soundscape file does not exist"
-    file_length = 120
-    step_size = round(3 * audio_speed - overlap * audio_speed, 1)
-    expected_start_timestamps = [e / 10 for e in range(0, int(file_length * 10), int(step_size * 10))]
-    expected_end_timestamps = [e / 10 for e in range(int(3 * audio_speed * 10), int(file_length) * 10 + 1, int(step_size * 10))]
-
-    while len(expected_end_timestamps) < len(expected_start_timestamps):
-        if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
-            expected_end_timestamps.append(file_length)
-        else:
-            expected_start_timestamps.pop()
-
-    # Call function under test
-    extract_process = mp.Process(
-        target=embeddings,
-        kwargs={
-            "audio_input": input_dir,
-            "database": db_path,
-            "audio_speed": audio_speed,
-            "overlap": overlap,
-            "file_output": file_output,
-            "threads": threads,
-        },
-    )
-    extract_process.start()
-    extract_process.join()
-
-
-    process = mp.Process(target=check, args=(db_path, expected_start_timestamps, expected_end_timestamps, file_output))
-    process.start()
-    process.join()
+    db.commit()
+    db.db.close()
+    db.ui.reset()
 
     assert os.path.exists(db_path)
     shutil.rmtree(db_path)
@@ -163,25 +147,11 @@ def test_search(setup_test_environment):
         else:
             expected_start_timestamps.pop()
 
-    # Call function under test
-    extract_process = mp.Process(
-        target=embeddings,
-        kwargs={"audio_input": input_dir, "database": db_path, "audio_speed": audio_speed, "overlap": overlap},
-    )
-    extract_process.start()
-    extract_process.join()
+    embeddings(audio_input=input_dir,database=db_path,audio_speed=audio_speed,overlap=overlap)
 
     n_results = len(expected_start_timestamps) - 1  # Currently querying the full database is not possible due to hoplite
 
-    search_process = mp.Process(target=search, kwargs={
-        "output": search_output_dir,
-        "database": db_path,
-        "queryfile": query_file,
-        "n_results": n_results,
-        "score_function": "cosine"
-    })
-    search_process.start()
-    search_process.join()
+    search(output=search_output_dir,database=db_path,queryfile=query_file,n_results=n_results,score_function="cosine")
 
     output_files = []
     for root, _, files in os.walk(search_output_dir):
@@ -206,23 +176,9 @@ def test_with_dataset(setup_test_environment):
     search_output_dir = os.path.join(env["output_dir"], "search_output")
     query_file = "tests/data/embeddings/search_sample.mp3"
 
-    # Call function under test
-    extract_process = mp.Process(
-        target=embeddings,
-        kwargs={"audio_input": input_dir, "database": db_path, "audio_speed": audio_speed, "overlap": overlap},
-    )
-    extract_process.start()
-    extract_process.join()
-    search_process = mp.Process(target=search, kwargs={
-        "output": search_output_dir,
-        "database": db_path,
-        "queryfile": query_file,
-        "n_results": 10,
-        "score_function": "cosine"
-    })
-    search_process.start()
-    search_process.join()
+    embeddings(audio_input=input_dir,database=db_path,audio_speed=audio_speed,overlap=overlap)
 
+    search(output=search_output_dir,database=db_path,queryfile=query_file,n_results=10,score_function="cosine")
 
     output_files = []
     for root, _, files in os.walk(search_output_dir):
@@ -246,16 +202,48 @@ def test_with_dataset(setup_test_environment):
 def test_complete_run_multiprocessing(setup_test_environment, threads):
     env = setup_test_environment
 
-
-    extract_process = mp.Process(
-        target=embeddings,
-        kwargs={"audio_input": os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"), "database": env["output_dir"], "threads": threads}
+    embeddings(
+        audio_input=os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"),
+        database=env["output_dir"],
+        threads=threads
     )
-    extract_process.start()
-    extract_process.join()
 
     assert os.path.exists(
         os.path.join(env["output_dir"], "hoplite.sqlite"),
-    ), "Database has noot been created"
+    ), "Database has not been created"
 
     shutil.rmtree(env["output_dir"])
+
+@pytest.mark.parametrize(("threads"), [1, 4])
+@pytest.mark.skipif(os.name == "nt", reason="New insert in database currently broken on windows")
+def test_multiple_inserts(setup_test_environment, threads):
+    env = setup_test_environment
+
+    embeddings(
+        audio_input=os.path.join(env["data_dir"], "embeddings", "embeddings-dataset"),
+        database=env["output_dir"],
+        threads=threads
+    )
+
+    assert os.path.exists(
+        os.path.join(env["output_dir"], "hoplite.sqlite"),
+    ), "Database has not been created"
+
+    db = get_or_create_database(env["output_dir"])
+    assert db.count_embeddings() == 96, "Database should contain 96 embeddings"
+    db.db.close()
+    db.ui.reset()
+
+    embeddings(
+        audio_input="tests/data/embeddings/search-dataset",
+        database=env["output_dir"],
+        threads=threads
+    )
+
+    db = get_or_create_database(env["output_dir"])
+    assert db.count_embeddings() > 96, "Database should contain more than 96 embeddings"
+    db.db.close()
+    db.ui.reset()
+
+    shutil.rmtree(env["output_dir"])
+    assert not os.path.exists(env["output_dir"]), "Database file should be deleted"
