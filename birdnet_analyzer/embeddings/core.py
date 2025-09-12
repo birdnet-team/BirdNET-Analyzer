@@ -43,11 +43,11 @@ def embeddings(
             batch_size=2
         )
     """
-    from birdnet_analyzer.embeddings.utils import run
+    from birdnet_analyzer.embeddings.utils import extract_embeddings
     from birdnet_analyzer.utils import ensure_model_exists
 
     ensure_model_exists()
-    run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
+    extract_embeddings(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
 
 
 def try_get_database(db_path: str):

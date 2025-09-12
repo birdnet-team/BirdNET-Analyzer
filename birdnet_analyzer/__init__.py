@@ -5,5 +5,5 @@ from birdnet_analyzer.segments import segments
 from birdnet_analyzer.species import species
 from birdnet_analyzer.train import train
 
-__version__ = "2.0.0"
+__version__ = "2.2.0"
 __all__ = ["analyze", "embeddings", "search", "segments", "species", "train"]

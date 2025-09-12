@@ -335,7 +335,7 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match=f"Overlap must be less than {cfg.SIG_LENGTH} seconds."):
+    with pytest.raises(ValueError, match=f"Overlap must be less than {cfg.BIRDNET_SIG_LENGTH} seconds."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
 
 
@@ -426,6 +426,7 @@ def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environme
             assert float(row["sensitivity"]) == cfg.SIGMOID_SENSITIVITY, "Sensitivity value does not match expected value"
             assert row["species_list"] == "", "Species list value does not match expected value"
             assert float(row["min_conf"]) == 0, "Min confidence value does not match expected value"
+
 
 def test_sensitivity(setup_test_environment):
     """Test sensitivity setting."""

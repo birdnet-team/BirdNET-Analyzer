@@ -544,7 +544,7 @@ def segments_parser():
     parser.add_argument(
         "--seg_length",
         type=lambda a: max(1.0, float(a)),
-        default=cfg.SIG_LENGTH,
+        default=cfg.BIRDNET_SIG_LENGTH,
         help="Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.",
     )
 

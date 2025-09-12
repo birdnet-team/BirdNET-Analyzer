@@ -144,7 +144,7 @@ def collect_all_files(path: str, filetypes: list[str], pattern: str = ""):
     return sorted(files)
 
 
-def read_lines(path: str | Path):
+def read_lines(path: str | Path | None) -> list[str]:
     """Reads the lines into a list.
 
     Opens the file and reads its contents into a list.
@@ -394,7 +394,7 @@ def check_perchv2_files():
 
 
 def ensure_perch_exists():
-    from distutils.dir_util import copy_tree
+    from shutil import copytree
 
     import kagglehub
 
@@ -404,7 +404,7 @@ def ensure_perch_exists():
     path = kagglehub.model_download("google/bird-vocalization-classifier/tensorFlow2/perch_v2")
 
     os.makedirs(cfg.PERCH_V2_MODEL_PATH, exist_ok=True)
-    copy_tree(path, cfg.PERCH_V2_MODEL_PATH)
+    copytree(path, cfg.PERCH_V2_MODEL_PATH, dirs_exist_ok=True)
 
 
 def ensure_model_exists(check_perch: bool = False):

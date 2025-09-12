@@ -645,7 +645,7 @@ def download_plot(plot, filename=""):
 
     imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
     res = _WINDOW.create_file_dialog(
-        webview.SAVE_DIALOG,
+        webview.FileDialog.SAVE,
         file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
         save_filename=filename,
     )

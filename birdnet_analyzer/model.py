@@ -7,13 +7,15 @@ import sys
 import warnings
 
 import absl.logging
+import keras
 import numpy as np
-from tensorflow import keras
+import tensorflow as tf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
 
 absl.logging.set_verbosity(absl.logging.ERROR)
+tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -558,6 +560,9 @@ def load_custom_classifier():
     global C_INPUT_SIZE
     global C_PBMODEL
 
+    if cfg.CUSTOM_CLASSIFIER is None:
+        raise ValueError("CUSTOM_CLASSIFIER is not set.")
+
     if cfg.CUSTOM_CLASSIFIER.endswith(".tflite"):
         # Load TFLite model and allocate tensors.
         C_INTERPRETER = _load_interpreter(cfg.CUSTOM_CLASSIFIER, cfg.TFLITE_THREADS)
@@ -616,9 +621,6 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
     Returns:
         A new classifier.
     """
-    # import keras
-    from tensorflow import keras
-
     # Build a simple one- or two-layer linear classifier
     model = keras.Sequential()
 
@@ -701,8 +703,6 @@ def train_linear_classifier(
     Returns:
         (classifier, history)
     """
-    # import keras
-    from tensorflow import keras
 
     class FunctionCallback(keras.callbacks.Callback):
         def __init__(self, on_epoch_end=None) -> None:
@@ -827,14 +827,10 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
         model_path: Path the model will be saved at.
         labels: List of labels used for the classifier.
     """
-    import tensorflow as tf
-
     global PBMODEL
 
-    tf.get_logger().setLevel("ERROR")
-
     if PBMODEL is None:
-        PBMODEL = tf.keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.PB_MODEL), compile=False)
+        PBMODEL = keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.PB_MODEL), compile=False)
 
     saved_model = PBMODEL
 
@@ -843,13 +839,13 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
         classifier.pop()
 
     if mode == "replace":
-        combined_model = tf.keras.Sequential([saved_model.embeddings_model, classifier], "basic")
+        combined_model = keras.Sequential([saved_model.embeddings_model, classifier], "basic")
     elif mode == "append":
         intermediate = classifier(saved_model.model.get_layer("GLOBAL_AVG_POOL").output)
 
-        output = tf.keras.layers.concatenate([saved_model.model.output, intermediate], name="combined_output")
+        output = keras.layers.concatenate([saved_model.model.output, intermediate], name="combined_output")
 
-        combined_model = tf.keras.Model(inputs=saved_model.model.input, outputs=output)
+        combined_model = keras.Model(inputs=saved_model.model.input, outputs=output)
     else:
         raise ValueError("Model save mode must be either 'replace' or 'append'")
 
@@ -862,7 +858,7 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
 
     # Save model as tflite
     converter = tf.lite.TFLiteConverter.from_keras_model(combined_model)
-    tflite_model = converter.convert()
+    tflite_model: bytes = converter.convert()
 
     with open(model_path, "wb") as f:
         f.write(tflite_model)
@@ -897,27 +893,23 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode="repla
     import csv
     import json
 
-    import tensorflow as tf
-
     global PBMODEL
 
-    tf.get_logger().setLevel("ERROR")
-
     if PBMODEL is None:
-        PBMODEL = tf.keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.PB_MODEL), compile=False)
+        PBMODEL = keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.PB_MODEL), compile=False)
 
     saved_model = PBMODEL
 
     if mode == "replace":
-        combined_model = tf.keras.Sequential([saved_model.embeddings_model, classifier], "basic")
+        combined_model = keras.Sequential([saved_model.embeddings_model, classifier], "basic")
     elif mode == "append":
         # Remove activation layer
         classifier.pop()
         intermediate = classifier(saved_model.model.get_layer("GLOBAL_AVG_POOL").output)
 
-        output = tf.keras.layers.concatenate([saved_model.model.output, intermediate], name="combined_output")
+        output = keras.layers.concatenate([saved_model.model.output, intermediate], name="combined_output")
 
-        combined_model = tf.keras.Model(inputs=saved_model.model.input, outputs=output)
+        combined_model = keras.Model(inputs=saved_model.model.input, outputs=output)
     else:
         raise ValueError("Model save mode must be either 'replace' or 'append'")
 
@@ -1067,17 +1059,15 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     Returns:
         Focal loss value.
     """
-    import tensorflow.keras.backend as K
-
     # Apply sigmoid if not already applied
-    y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
+    y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
 
     # Calculate cross entropy
-    cross_entropy = -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred)
+    cross_entropy = -y_true * tf.math.log(y_pred) - (1 - y_true) * tf.math.log(1 - y_pred)
 
     # Calculate focal weight
     p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
-    focal_weight = K.pow(1 - p_t, gamma)
+    focal_weight = tf.pow(1 - p_t, gamma)
 
     # Apply alpha balancing
     alpha_factor = y_true * alpha + (1 - y_true) * (1 - alpha)
@@ -1086,17 +1076,15 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     focal_loss = alpha_factor * focal_weight * cross_entropy
 
     # Sum over all classes
-    return K.sum(focal_loss, axis=-1)
+    return tf.reduce_sum(focal_loss, axis=-1)
 
 
 def custom_loss(y_true, y_pred, epsilon=1e-7):
-    import tensorflow.keras.backend as K
-
     # Calculate loss for positive labels with epsilon
-    positive_loss = -K.sum(y_true * K.log(K.clip(y_pred, epsilon, 1.0 - epsilon)), axis=-1)
+    positive_loss = -tf.reduce_sum(y_true * tf.math.log(tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)), axis=-1)
 
     # Calculate loss for negative labels with epsilon
-    negative_loss = -K.sum((1 - y_true) * K.log(K.clip(1 - y_pred, epsilon, 1.0 - epsilon)), axis=-1)
+    negative_loss = -tf.reduce_sum((1 - y_true) * tf.math.log(tf.clip_by_value(1 - y_pred, epsilon, 1.0 - epsilon)), axis=-1)
 
     # Combine both loss terms
     return positive_loss + negative_loss
@@ -1131,8 +1119,6 @@ def flat_sigmoid(x, sensitivity=-1, bias=1.0):
 
 
 def predict_with_perch(data: np.ndarray):
-    import tensorflow as tf
-
     global PERCH_MODEL
 
     if not PERCH_MODEL:
