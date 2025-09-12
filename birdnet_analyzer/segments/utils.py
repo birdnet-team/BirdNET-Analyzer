@@ -55,7 +55,7 @@ def get_header_mapping(line: str) -> dict:
     return {col: i for i, col in enumerate(cols)}
 
 
-def parse_folders(apath: str, rpath: str, allowed_result_filetypes: tuple[str] = ("txt", "csv")) -> list[dict]:
+def parse_folders(apath: str, rpath: str, allowed_result_filetypes: tuple[str, ...] = ("txt", "csv")) -> list[dict]:
     """Read audio and result files.
 
     Reads all audio files and BirdNET output inside directory recursively.

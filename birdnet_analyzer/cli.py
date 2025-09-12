@@ -398,6 +398,12 @@ def analyzer_parser():
         help="Maximum number of consecutive detections above MIN_CONF to merge for each detected species. This will result in fewer entires in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. Set to None to include all consecutive detections. We use the mean of the top 3 scores from all consecutive detections for merging.",
     )
 
+    parser.add_argument(
+        "--use_perch",
+        action="store_true",
+        help="Use the Perch model for detection."
+    )
+
     return parser
 
 
@@ -538,7 +544,7 @@ def segments_parser():
     parser.add_argument(
         "--seg_length",
         type=lambda a: max(1.0, float(a)),
-        default=cfg.SIG_LENGTH,
+        default=cfg.BIRDNET_SIG_LENGTH,
         help="Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.",
     )
 

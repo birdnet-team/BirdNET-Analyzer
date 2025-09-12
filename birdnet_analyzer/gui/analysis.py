@@ -14,7 +14,7 @@ from birdnet_analyzer.analyze.utils import (
 )
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-ORIGINAL_LABELS_FILE = str(Path(SCRIPT_DIR).parent / cfg.LABELS_FILE)
+ORIGINAL_LABELS_FILE = str(Path(SCRIPT_DIR).parent / cfg.BIRDNET_LABELS_FILE)
 
 
 def analyze_file_wrapper(entry):
@@ -34,7 +34,7 @@ def analyze_file_wrapper(entry):
 
 
 def run_analysis(
-    input_path: str,
+    input_path: str | None,
     output_path: str | None,
     use_top_n: bool,
     top_n: int,
