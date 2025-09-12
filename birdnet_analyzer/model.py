@@ -8,6 +8,7 @@ import warnings
 
 import absl.logging
 import numpy as np
+from tensorflow import keras
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
@@ -26,8 +27,6 @@ try:
     import tflite_runtime.interpreter as tflite  # type: ignore
 except ModuleNotFoundError:
     from tensorflow import lite as tflite
-# if not cfg.MODEL_PATH.endswith(".tflite"):
-from tensorflow import keras
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER: tflite.Interpreter = None
@@ -1133,6 +1132,7 @@ def flat_sigmoid(x, sensitivity=-1, bias=1.0):
 
 def predict_with_perch(data: np.ndarray):
     import tensorflow as tf
+
     global PERCH_MODEL
 
     if not PERCH_MODEL:

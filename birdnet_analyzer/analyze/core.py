@@ -238,7 +238,7 @@ def _set_params(
 
     # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
     if custom_classifier is None:
-        # TODO does species list even make sense with Perch?
+        # TODO: does species list even make sense with Perch?
         cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
         cfg.CUSTOM_CLASSIFIER = None
 

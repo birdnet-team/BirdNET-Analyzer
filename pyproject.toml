@@ -21,10 +21,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "librosa",
+    "librosa>=0.11",
     "resampy",
-    "tensorflow==2.15.1",
-    "scikit-learn==1.6.1",
+    "tensorflow>=2.20",
     "tqdm",
     "pandas",
     "matplotlib",
@@ -36,14 +35,14 @@ train = ["keras-tuner"]
 server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio==5.32.1",
-    "pywebview",
+    "gradio>=5.45",
+    "pywebview>=6.0",
     "plotly[express]",
     "pywin32;platform_system=='Windows'",
     "qtpy;platform_system=='Linux'",
     "PyGObject;platform_system=='Linux'",
 ]
-embeddings = ["perch-hoplite"]
+embeddings = ["perch-hoplite@git+https://github.com/google-research/perch-hoplite"]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout"]

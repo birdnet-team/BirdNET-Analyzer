@@ -84,7 +84,7 @@ def select_folder(state_key=None):
         tk.destroy()
     else:
         initial_dir = settings.get_state(state_key, "") if state_key else ""
-        dirname = _WINDOW.create_file_dialog(webview.FOLDER_DIALOG, directory=initial_dir)
+        dirname = _WINDOW.create_file_dialog(webview.FileDialog.FOLDER, directory=initial_dir)
         folder_selected = dirname[0] if dirname else None
 
     if folder_selected and state_key:
@@ -488,7 +488,7 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
         The selected file or None of the dialog was canceled.
     """
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    file = _WINDOW.create_file_dialog(webview.SAVE_DIALOG, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
+    file = _WINDOW.create_file_dialog(webview.FileDialog.SAVE, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
 
     if file:
         if state_key:
@@ -509,7 +509,7 @@ def select_file(filetypes=(), state_key=None):
         The selected file or None of the dialog was canceled.
     """
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    files = _WINDOW.create_file_dialog(webview.OPEN_DIALOG, file_types=filetypes, directory=initial_selection)
+    files = _WINDOW.create_file_dialog(webview.FileDialog.LOAD, file_types=filetypes, directory=initial_selection)
 
     if files:
         if state_key:
