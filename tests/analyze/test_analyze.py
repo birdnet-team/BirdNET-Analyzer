@@ -49,13 +49,10 @@ def setup_test_environment():
         setattr(cfg, attr, value)
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
-def test_analyze_single_file(
-    mock_save_params: MagicMock, mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment
-):
+def test_analyze_single_file(mock_save_params: MagicMock, mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing a single audio file."""
     env = setup_test_environment
 
@@ -75,17 +72,15 @@ def test_analyze_single_file(
     analyze(env["test_file1"], env["output_dir"], min_conf=0.5)
 
     # Verify behavior
-    mock_ensure_model.assert_called_once()
     mock_set_params.assert_called_once()
     mock_analyze_file.assert_called_once_with((env["test_file1"], {"param1": "value1"}))
     mock_save_params.assert_called_once()
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("multiprocessing.Pool")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
-def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing multiple files with multiprocessing."""
     env = setup_test_environment
 
@@ -112,14 +107,12 @@ def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, 
     analyze(env["input_dir"], env["output_dir"], threads=2)
 
     # Verify behavior
-    mock_ensure_model.assert_called_once()
     mock_set_params.assert_called_once()
     mock_pool.assert_called_once_with(2)
     pool_instance.map_async.assert_called_once()
     mock_save_params.assert_called_once()
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
@@ -129,7 +122,6 @@ def test_analyze_with_combined_results(
     mock_save_params: MagicMock,
     mock_analyze_file: MagicMock,
     mock_set_params: MagicMock,
-    mock_ensure_model: MagicMock,
     setup_test_environment,
 ):
     """Test analyzing files with combined results."""
@@ -152,17 +144,15 @@ def test_analyze_with_combined_results(
     analyze(env["test_file1"], env["output_dir"], combine_results=True)
 
     # Verify behavior
-    mock_ensure_model.assert_called_once()
     mock_set_params.assert_called_once()
     mock_analyze_file.assert_called_once_with((env["test_file1"], {"param1": "value1"}))
     mock_combine_results.assert_called_once_with([result_file])
     mock_save_params.assert_called_once()
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with location-based filtering."""
     env = setup_test_environment
 
@@ -175,17 +165,15 @@ def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["lat"] == 42.5
     assert kwargs["lon"] == -76.45
     assert kwargs["week"] == 20
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with a custom classifier."""
     env = setup_test_environment
 
@@ -203,15 +191,13 @@ def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_p
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["custom_classifier"] == custom_classifier
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with multiple output result types."""
     env = setup_test_environment
 
@@ -224,15 +210,13 @@ def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_s
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["rtype"] == ["table", "csv", "audacity"]
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with a custom species list."""
     env = setup_test_environment
 
@@ -250,7 +234,6 @@ def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["slist"] == species_list
 

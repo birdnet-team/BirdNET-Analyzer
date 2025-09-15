@@ -334,8 +334,8 @@ def sample_sliders(opened=True):
 
             with gr.Row():
                 sensitivity_slider = gr.Slider(
-                    minimum=0.75,
-                    maximum=1.25,
+                    minimum=0.5,
+                    maximum=1.5,
                     value=cfg.SIGMOID_SENSITIVITY,
                     step=0.01,
                     label=loc.localize("inference-settings-sensitivity-slider-label"),
