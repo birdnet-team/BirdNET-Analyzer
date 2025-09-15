@@ -510,7 +510,7 @@ def select_file(filetypes=(), state_key=None):
         The selected file or None of the dialog was canceled.
     """
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    files = _WINDOW.create_file_dialog(webview.FileDialog.LOAD, file_types=filetypes, directory=initial_selection)
+    files = _WINDOW.create_file_dialog(webview.FileDialog.OPEN, file_types=filetypes, directory=initial_selection)
 
     if files:
         if state_key:
