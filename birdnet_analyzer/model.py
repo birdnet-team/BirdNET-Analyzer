@@ -18,7 +18,7 @@ absl.logging.set_verbosity(absl.logging.ERROR)
 tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-# os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 warnings.filterwarnings("ignore")
 
 # Import TFLite from runtime or Tensorflow;
@@ -1122,11 +1122,13 @@ def predict_with_perch(data: np.ndarray):
     global PERCH_MODEL
 
     if not PERCH_MODEL:
-        PERCH_MODEL = tf.saved_model.load(cfg.MODEL_PATH)
+        PERCH_MODEL = tf.saved_model.load(
+            cfg.MODEL_PATH,
+        )
 
     result = PERCH_MODEL.signatures["serving_default"](inputs=data)
 
-    return result["label"]
+    return tf.nn.softmax(result["label"], axis=-1).numpy()
 
 
 def predict(sample):

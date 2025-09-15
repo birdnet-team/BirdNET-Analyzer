@@ -71,9 +71,6 @@ def analyze(
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params
     from birdnet_analyzer.analyze.utils import combine_results as combine
-    from birdnet_analyzer.utils import ensure_model_exists
-
-    ensure_model_exists(check_perch=use_perch)
 
     flist = _set_params(
         audio_input=audio_input,
@@ -162,7 +159,9 @@ def _set_params(
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.utils import load_codes
     from birdnet_analyzer.species.utils import get_species_list
-    from birdnet_analyzer.utils import collect_audio_files, read_lines
+    from birdnet_analyzer.utils import collect_audio_files, ensure_model_exists, read_lines
+
+    ensure_model_exists(check_perch=use_perch)
 
     if not isinstance(overlap, int | float):
         raise ValueError("Overlap must be a numeric value.")
@@ -222,19 +221,17 @@ def _set_params(
         cfg.LABELS_FILE = cfg.PERCH_LABELS_FILE
         cfg.SAMPLE_RATE = cfg.PERCH_SAMPLE_RATE
         cfg.SIG_LENGTH = cfg.PERCH_SIG_LENGTH
+        cfg.LABELS = read_lines(cfg.PERCH_LABELS_FILE)
+        cfg.LABELS = cfg.LABELS[1:]  # it's a csv with header
     else:
         cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
         cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
         cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
         cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+        cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
 
     if overlap >= cfg.SIG_LENGTH:
         raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
-
-    cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
-
-    if cfg.USE_PERCH:
-        cfg.LABELS = cfg.LABELS[1:]
 
     # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
     if custom_classifier is None:

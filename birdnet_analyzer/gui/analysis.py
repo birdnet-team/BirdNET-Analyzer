@@ -132,6 +132,7 @@ def run_analysis(
         top_n=top_n if use_top_n else None,
         output=output_path,
         additional_columns=additional_columns,
+        use_perch=species_list_choice == gu._USE_PERCH,
     )
 
     if species_list_choice == gu._CUSTOM_CLASSIFIER:
@@ -170,10 +171,4 @@ def run_analysis(
     if save_params:
         save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
 
-    return (
-        [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list]
-        if input_dir
-        else result_list[0][1]["csv"]
-        if result_list[0][1]
-        else None
-    )
+    return [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list] if input_dir else result_list[0][1]["csv"] if result_list[0][1] else None

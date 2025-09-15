@@ -51,7 +51,7 @@ def run_batch_analysis(
     threads,
     input_dir,
     skip_existing,
-    progress=gr.Progress(),
+    progress=gr.Progress(track_tqdm=True),
 ):
     from birdnet_analyzer.gui.analysis import run_analysis
 

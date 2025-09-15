@@ -401,7 +401,7 @@ def ensure_perch_exists():
     if check_perchv2_files():
         return
 
-    path = kagglehub.model_download("google/bird-vocalization-classifier/tensorFlow2/perch_v2")
+    path = kagglehub.model_download("google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu")
 
     os.makedirs(cfg.PERCH_V2_MODEL_PATH, exist_ok=True)
     copytree(path, cfg.PERCH_V2_MODEL_PATH, dirs_exist_ok=True)

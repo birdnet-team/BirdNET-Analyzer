@@ -13,7 +13,9 @@ keywords = ["birdnet", "birdnet-analyzer"]
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
     "Topic :: Multimedia :: Sound/Audio :: Analysis",
     "Topic :: Scientific/Engineering",
@@ -42,7 +44,9 @@ gui = [
     "qtpy;platform_system=='Linux'",
     "PyGObject;platform_system=='Linux'",
 ]
-embeddings = ["perch-hoplite@git+https://github.com/google-research/perch-hoplite"]
+embeddings = [
+    "perch-hoplite@git+https://github.com/google-research/perch-hoplite",
+]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout"]
