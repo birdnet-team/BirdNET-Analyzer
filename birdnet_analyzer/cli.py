@@ -169,7 +169,7 @@ def overlap_args(help_string="Overlap of prediction segments. Values in [0.0, 2.
     p.add_argument(
         "--overlap",
         type=lambda a: max(0.0, min(2.9, float(a))),
-        default=cfg.SIG_OVERLAP,
+        default=.0,
         help=help_string,
     )
 

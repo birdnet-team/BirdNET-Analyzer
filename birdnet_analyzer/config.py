@@ -38,7 +38,7 @@ BIRDNET_SIG_LENGTH: float = 3.0
 PERCH_SIG_LENGTH: float = 5.0
 
 # Define overlap between consecutive chunks <3.0; 0 = no overlap
-SIG_OVERLAP: float = 0
+SIG_OVERLAP: float = 0.0
 
 # Define minimum length of audio chunk for prediction,
 # chunks shorter than 3 seconds will be padded with zeros
