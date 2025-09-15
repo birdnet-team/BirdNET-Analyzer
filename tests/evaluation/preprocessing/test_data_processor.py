@@ -100,7 +100,7 @@ class TestDataProcessorInit:
                 sample_duration=0,
             )
 
-        with pytest.raises(ValueError, match="Sample duration cannot exceed the recording duration."):
+        with pytest.raises(ValueError, match=r"Sample duration cannot exceed the recording duration."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
@@ -111,21 +111,21 @@ class TestDataProcessorInit:
     @patch.object(DataProcessor, "load_data")
     def test_init_with_invalid_min_overlap(self, mock_load_data):
         """Test initializing with invalid min_overlap values."""
-        with pytest.raises(ValueError, match="Min overlap must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Min overlap must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
                 min_overlap=-5,
             )
 
-        with pytest.raises(ValueError, match="Min overlap must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Min overlap must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
                 min_overlap=0,
             )
 
-        with pytest.raises(ValueError, match="Min overlap cannot exceed the sample duration."):
+        with pytest.raises(ValueError, match=r"Min overlap cannot exceed the sample duration."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
@@ -225,7 +225,7 @@ class TestDataProcessorInit:
     @patch.object(DataProcessor, "load_data")
     def test_init_with_invalid_recording_duration(self, mock_load_data):
         """Test initializing with negative recording_duration."""
-        with pytest.raises(ValueError, match="Recording duration must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Recording duration must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="",
                 annotation_directory_path="",
@@ -735,7 +735,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_min_overlap_negative(self, mock_load_data, mock_process_data):
         """Test negative min_overlap raises ValueError."""
-        with pytest.raises(ValueError, match="Min overlap must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Min overlap must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -746,7 +746,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_min_overlap_greater_than_sample_duration(self, mock_load_data, mock_process_data):
         """Test min_overlap > sample_duration raises ValueError."""
-        with pytest.raises(ValueError, match="Min overlap cannot exceed the sample duration."):
+        with pytest.raises(ValueError, match=r"Min overlap cannot exceed the sample duration."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -758,7 +758,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_min_overlap_zero(self, mock_load_data, mock_process_data):
         """Test min_overlap=0 raises ValueError."""
-        with pytest.raises(ValueError, match="Min overlap must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Min overlap must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -794,7 +794,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_recording_duration_zero(self, mock_load_data):
         """Test recording_duration=0 raises ValueError."""
-        with pytest.raises(ValueError, match="Recording duration must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Recording duration must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -804,7 +804,7 @@ class TestDataProcessorValidateParameters:
     @patch.object(DataProcessor, "load_data")
     def test_recording_duration_negative(self, mock_load_data):
         """Test negative recording_duration raises ValueError."""
-        with pytest.raises(ValueError, match="Recording duration must be greater than 0."):
+        with pytest.raises(ValueError, match=r"Recording duration must be greater than 0."):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 annotation_directory_path="dummy_annot_path",
@@ -1999,7 +1999,7 @@ class TestCreateTensors:
                 "A_annotation": [1],
             }
         )
-        with pytest.raises(ValueError, match="NaN values found in confidence columns."):
+        with pytest.raises(ValueError, match=r"NaN values found in confidence columns."):
             self.dp.create_tensors()
 
     def test_nan_in_annotations(self):
@@ -2133,12 +2133,12 @@ class TestGetColumnName:
 
     def test_field_name_is_none(self):
         """Test when field_name is None."""
-        with pytest.raises(TypeError, match="field_name cannot be None."):
+        with pytest.raises(TypeError, match=r"field_name cannot be None."):
             self.dp.get_column_name(None, prediction=True)
 
     def test_prediction_is_none(self):
         """Test when prediction is None."""
-        with pytest.raises(TypeError, match="prediction parameter cannot be None."):
+        with pytest.raises(TypeError, match=r"prediction parameter cannot be None."):
             self.dp.get_column_name("Class", prediction=None)
 
     def test_field_name_empty_string(self):
@@ -2342,7 +2342,7 @@ class TestGetFilteredTensors:
 
     def test_selected_classes_not_in_data(self):
         """Test when selected classes are not in data."""
-        with pytest.raises(ValueError, match="No valid classes selected."):
+        with pytest.raises(ValueError, match=r"No valid classes selected."):
             self.dp.get_filtered_tensors(selected_classes=["C"], selected_recordings=["rec1"])
 
     def test_selected_recordings_not_in_data(self):
@@ -2356,7 +2356,7 @@ class TestGetFilteredTensors:
 
     def test_empty_selected_classes(self):
         """Test when selected_classes is empty."""
-        with pytest.raises(ValueError, match="No valid classes selected."):
+        with pytest.raises(ValueError, match=r"No valid classes selected."):
             self.dp.get_filtered_tensors(selected_classes=[], selected_recordings=["rec1"])
 
     def test_empty_selected_recordings(self):
@@ -2369,7 +2369,7 @@ class TestGetFilteredTensors:
     def test_samples_df_is_empty(self):
         """Test when samples_df is empty."""
         self.dp.samples_df = pd.DataFrame()
-        with pytest.raises(ValueError, match="samples_df is empty."):
+        with pytest.raises(ValueError, match=r"samples_df is empty."):
             self.dp.get_filtered_tensors(selected_classes=["A"], selected_recordings=["rec1"])
 
     def test_missing_confidence_or_annotation_columns(self):
