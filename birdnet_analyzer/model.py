@@ -7,15 +7,13 @@ import sys
 import warnings
 
 import absl.logging
-import keras
 import numpy as np
-import tensorflow as tf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
 
 absl.logging.set_verbosity(absl.logging.ERROR)
-tf.get_logger().setLevel("ERROR")
+# tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -514,6 +512,8 @@ def load_model(class_output=True):
         class_output (bool): If True, sets the output layer index to the classification output.
                              If False, sets the output layer index to the feature embeddings.
     """
+    import keras
+
     global PBMODEL
     global INTERPRETER
     global INPUT_LAYER_INDEX
@@ -621,6 +621,8 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
     Returns:
         A new classifier.
     """
+    import keras
+
     # Build a simple one- or two-layer linear classifier
     model = keras.Sequential()
 
@@ -703,6 +705,7 @@ def train_linear_classifier(
     Returns:
         (classifier, history)
     """
+    import keras
 
     class FunctionCallback(keras.callbacks.Callback):
         def __init__(self, on_epoch_end=None) -> None:
@@ -827,6 +830,9 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
         model_path: Path the model will be saved at.
         labels: List of labels used for the classifier.
     """
+    import keras
+    import tensorflow as tf
+
     global PBMODEL
 
     if PBMODEL is None:
@@ -892,6 +898,10 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode="repla
     """
     import csv
     import json
+
+    import keras
+    import tensorflow as tf
+
 
     global PBMODEL
 
@@ -1059,6 +1069,8 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     Returns:
         Focal loss value.
     """
+    import tensorflow as tf
+
     # Apply sigmoid if not already applied
     y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
 
@@ -1080,6 +1092,8 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
 
 
 def custom_loss(y_true, y_pred, epsilon=1e-7):
+    import tensorflow as tf
+
     # Calculate loss for positive labels with epsilon
     positive_loss = -tf.reduce_sum(y_true * tf.math.log(tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)), axis=-1)
 
@@ -1119,6 +1133,8 @@ def flat_sigmoid(x, sensitivity=-1, bias=1.0):
 
 
 def predict_with_perch(data: np.ndarray):
+    import tensorflow as tf
+
     global PERCH_MODEL
 
     if not PERCH_MODEL:
