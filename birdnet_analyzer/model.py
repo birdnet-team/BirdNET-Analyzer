@@ -5,7 +5,6 @@ import logging
 import os
 import sys
 import warnings
-from typing import TYPE_CHECKING
 
 import absl.logging
 import numpy as np
@@ -24,16 +23,11 @@ warnings.filterwarnings("ignore")
 # import Keras if protobuf model;
 # NOTE: we have to use TFLite if we want to use
 # the metadata model or want to extract embeddings
-if TYPE_CHECKING:
-    try:
-        import tflite_runtime.interpreter as tflite  # type: ignore
-    except ModuleNotFoundError:
-        from tensorflow import lite as tflite
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-INTERPRETER: tflite.Interpreter = None
-C_INTERPRETER: tflite.Interpreter = None
-M_INTERPRETER: tflite.Interpreter = None
+INTERPRETER = None
+C_INTERPRETER = None
+M_INTERPRETER = None
 OUTPUT_DETAILS = None
 PBMODEL = None
 PERCH_MODEL = None
@@ -42,7 +36,10 @@ EMPTY_CLASS_EXCEPTION_REF = None
 
 
 def _load_interpreter(mpath, threads):
-    from tensorflow import lite as tflite
+    try:
+        import tflite_runtime.interpreter as tflite  # type: ignore
+    except ModuleNotFoundError:
+        from tensorflow import lite as tflite
 
     return tflite.Interpreter(
         model_path=mpath,
@@ -905,7 +902,6 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode="repla
 
     import keras
     import tensorflow as tf
-
 
     global PBMODEL
 
