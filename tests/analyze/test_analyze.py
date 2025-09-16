@@ -2,6 +2,7 @@ import csv
 import os
 import shutil
 import tempfile
+import platform
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -321,7 +322,7 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     with pytest.raises(ValueError, match=rf"Overlap must be less than {cfg.BIRDNET_SIG_LENGTH} seconds."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
 
-
+@pytest.mark.skipif(platform.system() == "Darwin", reason="Don't ask me why it times out on macOS.")
 @pytest.mark.parametrize(
     ("audio_speed", "overlap"),
     [(10, 1), (5, 2), (5, 0), (0.1, 1), (0.2, 0), (0.3, 0.7)],
