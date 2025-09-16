@@ -9,17 +9,16 @@ on:
     branches: [main]
     paths: [birdnet_analyzer/**, .github/workflows/ci.yml, tests/**, pyproject.toml]
 
-concurrency:
-  group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
-  cancel-in-progress: true
-
 jobs:
   running-tests:
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}-${{ matrix.python-version }}"
+      cancel-in-progress: true
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11"]
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
         with:
