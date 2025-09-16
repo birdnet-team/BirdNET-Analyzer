@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import warnings
+from typing import TYPE_CHECKING
 
 import absl.logging
 import numpy as np
@@ -23,10 +24,11 @@ warnings.filterwarnings("ignore")
 # import Keras if protobuf model;
 # NOTE: we have to use TFLite if we want to use
 # the metadata model or want to extract embeddings
-try:
-    import tflite_runtime.interpreter as tflite  # type: ignore
-except ModuleNotFoundError:
-    from tensorflow import lite as tflite
+if TYPE_CHECKING:
+    try:
+        import tflite_runtime.interpreter as tflite  # type: ignore
+    except ModuleNotFoundError:
+        from tensorflow import lite as tflite
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER: tflite.Interpreter = None
@@ -40,6 +42,8 @@ EMPTY_CLASS_EXCEPTION_REF = None
 
 
 def _load_interpreter(mpath, threads):
+    from tensorflow import lite as tflite
+
     return tflite.Interpreter(
         model_path=mpath,
         num_threads=threads,
