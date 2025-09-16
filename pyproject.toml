@@ -25,7 +25,8 @@ classifiers = [
 dependencies = [
     "librosa>=0.11",
     "resampy",
-    "tensorflow>=2.20",
+    "tensorflow>=2.20;platform_system!='Darwin'",
+    "tensorflow~=2.19;platform_system=='Darwin'",
     "tqdm",
     "pandas",
     "matplotlib",
