@@ -16,7 +16,7 @@ def test_read_lines_label_files():
 
     for line in original_lines:
         names = line.split("_")
-        assert len(names) == 2, f"Expected two names in {line}, but got {len(names)} in {cfg.cfg.BIRDNET_LABELS_FILE}"
+        assert len(names) == 2, f"Expected two names in {line}, but got {len(names)} in {cfg.BIRDNET_LABELS_FILE}"
         original_labels.append(names)
 
     for label in labels:
