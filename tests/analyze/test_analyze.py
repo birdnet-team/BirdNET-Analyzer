@@ -1,8 +1,8 @@
 import csv
 import os
+import platform
 import shutil
 import tempfile
-import platform
 from unittest.mock import MagicMock, patch
 
 import pytest
