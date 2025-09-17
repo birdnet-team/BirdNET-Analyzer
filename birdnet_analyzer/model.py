@@ -20,7 +20,7 @@ except ModuleNotFoundError:
     from tensorflow import lite as tflite
 
 absl.logging.set_verbosity(absl.logging.ERROR)
-# tf.get_logger().setLevel("ERROR")
+tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
