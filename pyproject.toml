@@ -100,6 +100,10 @@ birdnet_analyzer = [
 testpaths = ["tests"]
 pythonpath = ["birdnet_analyzer"]
 timeout = 120
+filterwarnings = [
+    "ignore::DeprecationWarning:audioread.*",
+    "ignore::UserWarning:sklearn.*",
+]
 
 [tool.ruff]
 exclude = ["conf.py"]
