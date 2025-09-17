@@ -139,16 +139,12 @@ def collect_all_files(path: str, filetypes: list[str], pattern: str = ""):
     files = []
 
     for root, _, flist in os.walk(path):
-        files.extend(
-            os.path.join(root, f)
-            for f in flist
-            if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in filetypes and (pattern in f or not pattern)
-        )
+        files.extend(os.path.join(root, f) for f in flist if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in filetypes and (pattern in f or not pattern))
 
     return sorted(files)
 
 
-def read_lines(path: str | Path):
+def read_lines(path: str | Path, trim: bool = False, fail_on_blank_lines: bool = False):
     """Reads the lines into a list.
 
     Opens the file and reads its contents into a list.
@@ -160,7 +156,20 @@ def read_lines(path: str | Path):
     Returns:
         A list of all species inside the file.
     """
-    return Path(path).read_text(encoding="utf-8").splitlines() if path else []
+
+    if not path:
+        return []
+
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    cleaned_lines = []
+
+    for line in lines:
+        if not line and fail_on_blank_lines:
+            raise ValueError(f"Blank lines are not allowed in species list\nFile: {path}")
+
+        cleaned_lines.append(line.strip() if trim else line)
+
+    return cleaned_lines
 
 
 def list_subdirectories(path: str):
@@ -283,12 +292,7 @@ def write_error_log(ex: Exception):
     import datetime
 
     with open(cfg.ERROR_LOG_FILE, "a") as elog:
-        elog.write(
-            datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-            + "\n"
-            + "".join(traceback.TracebackException.from_exception(ex).format())
-            + "\n"
-        )
+        elog.write(datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]") + "\n" + "".join(traceback.TracebackException.from_exception(ex).format()) + "\n")
 
 
 def img2base64(path):
