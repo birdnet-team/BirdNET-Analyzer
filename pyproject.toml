@@ -51,7 +51,7 @@ embeddings = [
 ]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
-tests = ["pytest", "pytest-timeout"]
+tests = ["pytest", "pytest-timeout", "pytest-order"]
 dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff"]
 
 [project.scripts]
