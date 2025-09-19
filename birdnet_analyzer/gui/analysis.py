@@ -59,7 +59,7 @@ def run_analysis(
     locale: str,
     batch_size: int,
     threads: int,
-    input_dir: str,
+    input_dir: str | None,
     skip_existing: bool,
     save_params: bool,
     progress: gr.Progress | None,
@@ -102,6 +102,7 @@ def run_analysis(
 
     locale = locale.lower()
     custom_classifier = custom_classifier_file if species_list_choice == gu._CUSTOM_CLASSIFIER else None
+    use_perch = species_list_choice == gu._USE_PERCH
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else -1
     lon = lon if species_list_choice == gu._PREDICT_SPECIES else -1
@@ -113,7 +114,7 @@ def run_analysis(
         custom_classifier=custom_classifier,
         sensitivity=min(1.25, max(0.75, float(sensitivity))),
         locale=locale,
-        overlap=max(0.0, min(2.9, float(overlap))),
+        overlap=max(0.0, min(4.9 if use_perch else 2.9, float(overlap))),
         merge_consecutive=max(1, int(merge_consecutive)),
         audio_speed=max(0.1, 1.0 / (audio_speed * -1)) if audio_speed < 0 else max(1.0, float(audio_speed)),
         fmin=max(0, min(cfg.SIG_FMAX, int(fmin))),
@@ -132,7 +133,7 @@ def run_analysis(
         top_n=top_n if use_top_n else None,
         output=output_path,
         additional_columns=additional_columns,
-        use_perch=species_list_choice == gu._USE_PERCH,
+        use_perch=use_perch,
     )
 
     if species_list_choice == gu._CUSTOM_CLASSIFIER:

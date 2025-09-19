@@ -4,9 +4,7 @@
 import logging
 import os
 import sys
-import warnings
 
-import absl.logging
 import keras
 import numpy as np
 import tensorflow as tf
@@ -19,12 +17,9 @@ try:
 except ModuleNotFoundError:
     from tensorflow import lite as tflite
 
-absl.logging.set_verbosity(absl.logging.ERROR)
 tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-warnings.filterwarnings("ignore")
 
 # Import TFLite from runtime or Tensorflow;
 # import Keras if protobuf model;

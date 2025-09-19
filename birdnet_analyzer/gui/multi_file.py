@@ -1,9 +1,8 @@
-# ruff: noqa: I001
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.utils as gu
 
 OUTPUT_TYPE_MAP = {
     "Raven selection table": "table",
@@ -147,29 +146,7 @@ def build_multi_analysis_tab():
                     show_progress="hidden",
                 )
 
-        (
-            use_top_n,
-            top_n_input,
-            confidence_slider,
-            sensitivity_slider,
-            overlap_slider,
-            merge_consecutive_slider,
-            audio_speed_slider,
-            fmin_number,
-            fmax_number,
-        ) = gu.sample_sliders()
-
-        (
-            species_list_radio,
-            species_file_input,
-            lat_number,
-            lon_number,
-            week_number,
-            sf_thresh_number,
-            yearlong_checkbox,
-            selected_classifier_state,
-            map_plot,
-        ) = gu.species_lists()
+        sample_settings, species_settings = gu.sample_and_species_settings(opened=False)
 
         with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True), gr.Group():
             output_type_radio = gr.CheckboxGroup(
@@ -227,23 +204,23 @@ def build_multi_analysis_tab():
 
         inputs = [
             output_directory_predict_state,
-            use_top_n,
-            top_n_input,
-            confidence_slider,
-            sensitivity_slider,
-            overlap_slider,
-            merge_consecutive_slider,
-            audio_speed_slider,
-            fmin_number,
-            fmax_number,
-            species_list_radio,
-            species_file_input,
-            lat_number,
-            lon_number,
-            week_number,
-            yearlong_checkbox,
-            sf_thresh_number,
-            selected_classifier_state,
+            sample_settings["use_top_n_checkbox"],
+            sample_settings["top_n_input"],
+            sample_settings["confidence_slider"],
+            sample_settings["sensitivity_slider"],
+            sample_settings["overlap_slider"],
+            sample_settings["merge_consecutive_slider"],
+            sample_settings["audio_speed_slider"],
+            sample_settings["fmin_number"],
+            sample_settings["fmax_number"],
+            species_settings["species_list_radio"],
+            species_settings["species_file_input"],
+            species_settings["lat_number"],
+            species_settings["lon_number"],
+            species_settings["week_number"],
+            species_settings["yearlong_checkbox"],
+            species_settings["sf_thresh_number"],
+            species_settings["selected_classifier_state"],
             output_type_radio,
             additional_columns_,
             combine_tables_checkbox,
@@ -260,7 +237,7 @@ def build_multi_analysis_tab():
         start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
         output_type_radio.change(show_additional_columns, inputs=output_type_radio, outputs=additional_columns_)
 
-    return lat_number, lon_number, map_plot
+    return species_settings["lat_number"], species_settings["lon_number"], species_settings["map_plot"]
 
 
 if __name__ == "__main__":

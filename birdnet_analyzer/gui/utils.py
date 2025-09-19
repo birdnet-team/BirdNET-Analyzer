@@ -8,6 +8,7 @@ import warnings
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
+from typing import Literal
 
 import gradio as gr
 import webview
@@ -30,6 +31,28 @@ _USE_PERCH = loc.localize("species-list-radio-option-use-perch")
 _WINDOW: webview.Window | None = None
 _URL = ""
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
+_SAMPLE_KEYS = Literal[
+    "use_top_n_checkbox",
+    "top_n_input",
+    "confidence_slider",
+    "sensitivity_slider",
+    "overlap_slider",
+    "merge_consecutive_slider",
+    "audio_speed_slider",
+    "fmin_number",
+    "fmax_number",
+]
+_SPECIES_KEYS = Literal[
+    "species_list_radio",
+    "species_file_input",
+    "lat_number",
+    "lon_number",
+    "week_number",
+    "sf_thresh_number",
+    "yearlong_checkbox",
+    "selected_classifier_state",
+    "map_plot",
+]
 
 
 def gui_runtime_error_handler(f):
@@ -289,16 +312,32 @@ def build_settings():
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
 
-def sample_sliders(opened=True):
-    """Creates the gradio accordion for the inference settings.
+def sample_and_species_settings(opened=True):
+    sample_settings = sample_sliders(opened=opened)
+    species_settings = species_lists(opened=opened)
+
+    def on_species_list_change(value):
+        is_perch = value == _USE_PERCH
+
+        return gr.update(interactive=not is_perch), gr.update(maximum=4.9 if is_perch else 2.9)
+
+    species_settings["species_list_radio"].change(
+        on_species_list_change,
+        inputs=species_settings["species_list_radio"],
+        outputs=[sample_settings["sensitivity_slider"], sample_settings["overlap_slider"]],
+        show_progress="hidden",
+    )
+
+    return sample_settings, species_settings
+
+
+def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
+    """Creates the gradio accordion for sample settings.
 
     Args:
         opened: If True the accordion is open on init.
-
     Returns:
-        A tuple with the created elements:
-        (Slider (min confidence), Slider (sensitivity), Slider (overlap),
-         Slider (audio speed), Number (fmin), Number (fmax))
+        A dict with the created elements.
     """
     with gr.Accordion(loc.localize("inference-settings-accordion-label"), open=opened):
         with gr.Group():
@@ -383,17 +422,17 @@ def sample_sliders(opened=True):
                     info=loc.localize("inference-settings-fmax-number-info"),
                 )
 
-        return (
-            use_top_n_checkbox,
-            top_n_input,
-            confidence_slider,
-            sensitivity_slider,
-            overlap_slider,
-            merge_consecutive_slider,
-            audio_speed_slider,
-            fmin_number,
-            fmax_number,
-        )
+        return {
+            "use_top_n_checkbox": use_top_n_checkbox,
+            "top_n_input": top_n_input,
+            "confidence_slider": confidence_slider,
+            "sensitivity_slider": sensitivity_slider,
+            "overlap_slider": overlap_slider,
+            "merge_consecutive_slider": merge_consecutive_slider,
+            "audio_speed_slider": audio_speed_slider,
+            "fmin_number": fmin_number,
+            "fmax_number": fmax_number,
+        }
 
 
 def locale():
@@ -565,16 +604,12 @@ def show_species_choice(choice: str):
     ]
 
 
-def species_lists(opened=True):
-    """Creates the gradio accordion for species selection.
-
+def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
+    """Creates the gradio accordion for species list selection.
     Args:
         opened: If True the accordion is open on init.
-
     Returns:
-        A tuple with the created elements:
-        (Radio (choice), File (custom species list), Slider (lat), Slider (lon),
-         Slider (week), Slider (threshold), Checkbox (yearlong?), State (custom classifier))
+        A dict with the created elements.
     """
     with gr.Accordion(loc.localize("species-list-accordion-label"), open=opened), gr.Row():
         species_list_radio = gr.Radio(
@@ -628,17 +663,17 @@ def species_lists(opened=True):
             show_progress="hidden",
         )
 
-        return (
-            species_list_radio,
-            species_file_input,
-            lat_number,
-            lon_number,
-            week_number,
-            sf_thresh_number,
-            yearlong_checkbox,
-            selected_classifier_state,
-            map_plot,
-        )
+        return {
+            "species_list_radio": species_list_radio,
+            "species_file_input": species_file_input,
+            "lat_number": lat_number,
+            "lon_number": lon_number,
+            "week_number": week_number,
+            "sf_thresh_number": sf_thresh_number,
+            "yearlong_checkbox": yearlong_checkbox,
+            "selected_classifier_state": selected_classifier_state,
+            "map_plot": map_plot,
+        }
 
 
 def download_plot(plot, filename=""):

@@ -46,32 +46,32 @@ def run_single_file_analysis(
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
     result_filepath = run_analysis(
-        input_path,
-        None,
-        use_top_n,
-        top_n,
-        confidence,
-        sensitivity,
-        overlap,
-        merge_consecutive,
-        audio_speed,
-        fmin,
-        fmax,
-        species_list_choice,
-        species_list_file,
-        lat,
-        lon,
-        week,
-        use_yearlong,
-        sf_thresh,
-        custom_classifier_file,
-        "csv",
-        None,
-        False,
-        locale if locale else "en",
-        1,
-        4,
-        None,
+        input_path=input_path,
+        output_path=None,
+        use_top_n=use_top_n,
+        top_n=top_n,
+        confidence=confidence,
+        sensitivity=sensitivity,
+        overlap=overlap,
+        merge_consecutive=merge_consecutive,
+        audio_speed=audio_speed,
+        fmin=fmin,
+        fmax=fmax,
+        species_list_choice=species_list_choice,
+        species_list_file=species_list_file,
+        lat=lat,
+        lon=lon,
+        week=week,
+        use_yearlong=use_yearlong,
+        sf_thresh=sf_thresh,
+        custom_classifier_file=custom_classifier_file,
+        output_types="csv",
+        additional_columns=None,
+        combine_tables=False,
+        locale=locale if locale else "en",
+        batch_size=1,
+        threads=4,
+        input_dir=None,
         skip_existing=False,
         save_params=False,
         progress=None,
@@ -113,30 +113,7 @@ def build_single_analysis_tab():
             )
         audio_path_state = gr.State()
         table_path_state = gr.State()
-
-        (
-            use_top_n,
-            top_n_input,
-            confidence_slider,
-            sensitivity_slider,
-            overlap_slider,
-            merge_consecutive_slider,
-            audio_speed_slider,
-            fmin_number,
-            fmax_number,
-        ) = gu.sample_sliders(False)
-
-        (
-            species_list_radio,
-            species_file_input,
-            lat_number,
-            lon_number,
-            week_number,
-            sf_thresh_number,
-            yearlong_checkbox,
-            selected_classifier_state,
-            map_plot,
-        ) = gu.species_lists(False)
+        sample_settings, species_settings = gu.sample_and_species_settings(opened=False)
         locale_radio = gu.locale()
 
         single_file_analyze = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface", interactive=False)
@@ -202,27 +179,27 @@ def build_single_analysis_tab():
 
         inputs = [
             audio_path_state,
-            use_top_n,
-            top_n_input,
-            confidence_slider,
-            sensitivity_slider,
-            overlap_slider,
-            merge_consecutive_slider,
-            audio_speed_slider,
-            fmin_number,
-            fmax_number,
-            species_list_radio,
-            species_file_input,
-            lat_number,
-            lon_number,
-            week_number,
-            yearlong_checkbox,
-            sf_thresh_number,
-            selected_classifier_state,
+            sample_settings["use_top_n_checkbox"],
+            sample_settings["top_n_input"],
+            sample_settings["confidence_slider"],
+            sample_settings["sensitivity_slider"],
+            sample_settings["overlap_slider"],
+            sample_settings["merge_consecutive_slider"],
+            sample_settings["audio_speed_slider"],
+            sample_settings["fmin_number"],
+            sample_settings["fmax_number"],
+            species_settings["species_list_radio"],
+            species_settings["species_file_input"],
+            species_settings["lat_number"],
+            species_settings["lon_number"],
+            species_settings["week_number"],
+            species_settings["yearlong_checkbox"],
+            species_settings["sf_thresh_number"],
+            species_settings["selected_classifier_state"],
             locale_radio,
         ]
 
-        def time_to_seconds(time_str):
+        def time_to_seconds(time_str: str):
             try:
                 hours, minutes, seconds = time_str.split(":")
                 return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
@@ -257,7 +234,7 @@ def build_single_analysis_tab():
         single_file_analyze.click(run_single_file_analysis, inputs=inputs, outputs=[output_dataframe, action_row, table_path_state])
         table_download_button.click(download_table, inputs=table_path_state)
 
-    return lat_number, lon_number, map_plot
+    return species_settings["lat_number"], species_settings["lon_number"], species_settings["map_plot"]
 
 
 if __name__ == "__main__":
