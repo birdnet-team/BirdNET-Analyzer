@@ -38,7 +38,7 @@ train = ["keras-tuner"]
 server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio>=5.45",
+    "gradio>=5.46",
     "pywebview>=6.0",
     "pyobjc-framework-UniformTypeIdentifiers;platform_system=='Darwin'", # macOS only, until pywebview adds it as dependency
     "plotly[express]",

@@ -319,15 +319,30 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match=rf"Overlap must be less than {cfg.BIRDNET_SIG_LENGTH} seconds."):
+    with pytest.raises(ValueError, match=rf"Overlap must be less than or equal to {cfg.BIRDNET_SIG_LENGTH - 0.1} seconds for BirdNET model."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
 
 @pytest.mark.skipif(platform.system() == "Darwin", reason="Don't ask me why it times out on macOS.")
 @pytest.mark.parametrize(
-    ("audio_speed", "overlap"),
-    [(10, 1), (5, 2), (5, 0), (0.1, 1), (0.2, 0), (0.3, 0.7)],
+    ("use_perch", "audio_speed", "overlap"),
+    [
+        (False, 10, 1),
+        (False, 5, 2),
+        (False, 5, 0),
+        (False, 0.1, 1),
+        (False, 0.2, 0),
+        (False, 0.3, 0.7),
+        (True, 10, 1),
+        (True, 5, 2),
+        (True, 5, 0),
+        # (True, 0.1, 1), # Takes too long
+        (True, 0.2, 0),
+        (True, 0.3, 0.7),
+        (True, 1.0, 4),
+        # (True, 2.0, 4.9), # Also takes too long
+    ],
 )
-def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, overlap):
+def test_analyze_with_speed_up_and_overlap(setup_test_environment, use_perch, audio_speed, overlap):
     """Test analyzing with speed up."""
     env = setup_test_environment
 
@@ -336,9 +351,12 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
     file_length = 120
     precision = 100
-    step_size = round((3 - overlap) * audio_speed, precision // 10)
+    seq_length = cfg.PERCH_SIG_LENGTH if use_perch else cfg.BIRDNET_SIG_LENGTH
+    step_size = round((seq_length - overlap) * audio_speed, precision // 10)
     expected_start_timestamps = [e / precision for e in range(0, int(file_length * precision), int(step_size * precision))]
-    expected_end_timestamps = [e / precision for e in range(round(3 * audio_speed * precision), int(file_length * precision) + 1, int(step_size * precision))]
+    expected_end_timestamps = [
+        e / precision for e in range(round(seq_length * audio_speed * precision), int(file_length * precision) + 1, int(step_size * precision))
+    ]
 
     while len(expected_end_timestamps) < len(expected_start_timestamps):
         if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
@@ -347,7 +365,7 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
             expected_start_timestamps.pop()
 
     # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=overlap)
+    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=overlap, use_perch=use_perch)
 
     output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
     assert os.path.exists(output_file)
