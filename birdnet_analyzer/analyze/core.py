@@ -169,11 +169,20 @@ def _set_params(
     if overlap < 0:
         raise ValueError("Overlap must be a non-negative value.")
 
+    if not use_perch and overlap > 2.9:
+        raise ValueError("Overlap must be less than or equal to 2.9 seconds for BirdNET model.")
+
+    if use_perch and overlap > 4.9:
+        raise ValueError("Overlap must be less than or equal to 4.9 seconds for Perch model.")
+
     if not isinstance(audio_speed, int | float):
         raise ValueError("Audio speed must be a numeric value.")
 
     if audio_speed <= 0:
         raise ValueError("Audio speed must be a positive value.")
+
+    if use_perch and sensitivity != 1.0:
+        print("Warning: Sensitivity setting is ignored when using the Perch model.")
 
     cfg.CODES = load_codes()
     cfg.SKIP_EXISTING_RESULTS = skip_existing_results

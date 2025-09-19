@@ -168,7 +168,7 @@ def overlap_args(help_string="Overlap of prediction segments. Values in [0.0, 2.
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument(
         "--overlap",
-        type=lambda a: max(0.0, min(2.9, float(a))),
+        type=lambda a: max(0.0, min(4.9, float(a))),
         default=0.0,
         help=help_string,
     )
