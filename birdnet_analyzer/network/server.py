@@ -31,14 +31,17 @@ def start_server(host="0.0.0.0", port=8080, spath="uploads/", threads=1, locale=
 
     utils.ensure_model_exists()
 
+    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+
     # Load eBird codes, labels
     cfg.CODES = analyze.load_codes()
     cfg.LABELS = utils.read_lines(cfg.LABELS_FILE)
 
     # Load translated labels
-    lfile = os.path.join(
-        cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt")
-    )
+    lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
 
     if locale not in ["en"] and os.path.isfile(lfile):
         cfg.TRANSLATED_LABELS = utils.read_lines(lfile)

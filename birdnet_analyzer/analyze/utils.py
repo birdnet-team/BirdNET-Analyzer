@@ -101,8 +101,6 @@ def generate_raven_table(timestamps: list[str], result: dict[str, list], afile_p
 
     # If we don't have any valid predictions, we still need to add a line to the selection table
     # in case we want to combine results
-    # TODO: That's a weird way to do it, but it works for now. It would be better to keep track
-    # of file durations during the analysis.
     if len(out_string) == len(RAVEN_TABLE_HEADER) and cfg.OUTPUT_PATH is not None:
         selection_id += 1
         out_string += f"{selection_id}\tSpectrogram 1\t1\t0\t3\t{low_freq}\t{high_freq}\tnocall\tnocall\t1.0\t{afile_path}\t0\n"
@@ -586,7 +584,7 @@ def predict(samples):
     prediction = model.predict(data)
 
     # Logits or sigmoid activations?
-    if cfg.APPLY_SIGMOID:
+    if cfg.APPLY_SIGMOID and not cfg.USE_PERCH:
         prediction = model.flat_sigmoid(np.array(prediction), sensitivity=-1, bias=cfg.SIGMOID_SENSITIVITY)
 
     return prediction

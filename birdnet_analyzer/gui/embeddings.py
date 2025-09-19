@@ -52,7 +52,7 @@ def run_embeddings(
     file_output,
     progress,
 ):
-    from birdnet_analyzer.embeddings.utils import run
+    from birdnet_analyzer.embeddings.utils import extract_embeddings
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
@@ -63,7 +63,7 @@ def run_embeddings(
     try:
         settings = db.get_metadata("birdnet_analyzer_settings")
         db.db.close()
-        run(
+        extract_embeddings(
             input_path,
             db_directory,
             overlap,
@@ -82,7 +82,7 @@ def run_embeddings(
         if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
             raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]") from e
 
-        run(input_path, db_directory, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
+        extract_embeddings(input_path, db_directory, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_directory}")
 

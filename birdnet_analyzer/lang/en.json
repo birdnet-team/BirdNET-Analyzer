@@ -258,6 +258,7 @@
     "species-list-radio-option-custom-classifier": "Custom classifier",
     "species-list-radio-option-custom-list": "Custom species list",
     "species-list-radio-option-predict-list": "Species by location",
+    "species-list-radio-option-use-perch": "Perch v2",
     "species-tab-filename-textbox-label": "Name of the file, if not specified 'species_list.txt' will be used.",
     "species-tab-finish-info": "Species list saved at",
     "species-tab-select-output-directory-button-label": "Select output directory",

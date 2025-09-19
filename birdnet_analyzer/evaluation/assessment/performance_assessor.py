@@ -81,7 +81,7 @@ class PerformanceAssessor:
         self.num_classes = num_classes
         self.threshold = threshold
         self.classes = classes
-        self.task = task
+        self.task: Literal["binary", "multilabel"] = task
         self.metrics_list = metrics_list
 
         # Set default colors for plotting

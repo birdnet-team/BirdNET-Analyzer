@@ -40,6 +40,11 @@ def search(
     from birdnet_analyzer import audio
     from birdnet_analyzer.search.utils import get_search_results
 
+    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+
     # Create output folder
     if not os.path.exists(output):
         os.makedirs(output)
@@ -66,10 +71,12 @@ def search(
         filebasename = os.path.basename(file)
         filebasename = os.path.splitext(filebasename)[0]
         offset = embedding_source.offsets[0]
-        duration = cfg.SIG_LENGTH * audio_speed
+        duration = cfg.BIRDNET_SIG_LENGTH * audio_speed
         sig, rate = audio.open_audio_file(file, offset=offset, duration=duration, sample_rate=None)
         result_path = os.path.join(output, f"{r.sort_score:.5f}_{filebasename}_{offset}_{offset + duration}.wav")
         audio.save_signal(sig, result_path, rate)
+
+    db.db.close()
 
 
 def get_database(database_path):
