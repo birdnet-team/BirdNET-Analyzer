@@ -1115,7 +1115,7 @@ def flat_sigmoid(x, sensitivity=-1, bias=1.0):
 def predict_with_perch(data: np.ndarray):
     global PERCH_MODEL
 
-    if not PERCH_MODEL:
+    if PERCH_MODEL is None:
         PERCH_MODEL = tf.saved_model.load(
             cfg.MODEL_PATH,
         )
