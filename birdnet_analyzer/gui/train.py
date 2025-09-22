@@ -112,7 +112,7 @@ def start_training(
 
     from birdnet_analyzer.train.utils import train_model
 
-    # Skip training data validation when cache mode is not "load"
+    # Skip training data validation when cache mode is "load"
     if cache_mode != "load":
         gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
 
