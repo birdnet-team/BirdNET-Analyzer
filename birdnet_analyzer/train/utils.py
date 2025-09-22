@@ -512,6 +512,10 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
         cfg.UPSAMPLING_RATIO = best_params["upsampling_ratio"]
         cfg.TRAIN_WITH_MIXUP = best_params["mixup"]
         cfg.TRAIN_WITH_LABEL_SMOOTHING = best_params["label_smoothing"]
+        cfg.TRAIN_WITH_FOCAL_LOSS = best_params["focal_loss"]
+        if cfg.TRAIN_WITH_FOCAL_LOSS:
+            cfg.FOCAL_LOSS_ALPHA = best_params["focal_loss_alpha"]
+            cfg.FOCAL_LOSS_GAMMA = best_params["focal_loss_gamma"]
 
         print("Best params: ")
         print("hidden_units: ", cfg.TRAIN_HIDDEN_UNITS)
@@ -523,6 +527,10 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
             print("upsampling_mode: ", cfg.UPSAMPLING_MODE)
         print("mixup: ", cfg.TRAIN_WITH_MIXUP)
         print("label_smoothing: ", cfg.TRAIN_WITH_LABEL_SMOOTHING)
+        print("focal_loss: ", cfg.TRAIN_WITH_FOCAL_LOSS)
+        if cfg.TRAIN_WITH_FOCAL_LOSS:
+            print("focal_loss_alpha: ", cfg.FOCAL_LOSS_ALPHA)
+            print("focal_loss_gamma: ", cfg.FOCAL_LOSS_GAMMA)
 
     # Build model
     print("Building model...", flush=True)
@@ -739,6 +747,8 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
 
     # Make predictions
     y_pred_prob = classifier.predict(x_test)
+
+    y_pred_prob = model.flat_sigmoid(y_pred_prob, sensitivity=-1, bias=1.0)
 
     # Calculate metrics for each class
     metrics = {}
