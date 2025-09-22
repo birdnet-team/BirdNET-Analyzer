@@ -413,11 +413,11 @@ def ensure_model_exists(check_perch: bool = False):
     import requests
     from tqdm import tqdm
 
-    if FROZEN:
-        return
-
     if check_perch:
         ensure_perch_exists()
+        return
+
+    if FROZEN:
         return
 
     if check_birdnet_files():
