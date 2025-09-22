@@ -112,7 +112,7 @@ def start_training(
 
     from birdnet_analyzer.train.utils import train_model
 
-    # Skip training data validation when cache mode is "load"
+    # Skip training data validation when cache mode is not "load"
     if cache_mode != "load":
         gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
 
@@ -363,9 +363,9 @@ def build_train_tab():
                     gr.update(visible=value == "save"),
                     gr.update(visible=value == "load"),
                     gr.update(interactive=value != "load"),
-                    [],
+                    gr.update(visible=value != "load"),
                     gr.update(interactive=value != "load"),
-                    [],
+                    gr.update(visible=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),

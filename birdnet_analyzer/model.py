@@ -4,6 +4,7 @@
 import logging
 import os
 import sys
+from typing import Literal
 
 import keras
 import numpy as np
@@ -35,6 +36,16 @@ PBMODEL = None
 PERCH_MODEL = None
 C_PBMODEL = None
 EMPTY_CLASS_EXCEPTION_REF = None
+
+
+class WrappedSavedModel(keras.layers.Layer):
+    def __init__(self, fn):
+        super().__init__()
+        self.fn = fn
+
+    def call(self, inputs):
+        outputs = self.fn(inputs)
+        return list(outputs.values())[0]
 
 
 def _load_interpreter(mpath, threads):
@@ -815,7 +826,32 @@ def train_linear_classifier(
     return classifier, history
 
 
-def save_linear_classifier(classifier, model_path: str, labels: list[str], mode="replace", pop_last_layer=True):
+def combine_models(classifier, mode: Literal["replace", "append"], add_sigmoid=False):
+    global PBMODEL
+
+    if mode not in ("replace", "append"):
+        raise ValueError("Model save mode must be either 'replace' or 'append'")
+
+    if PBMODEL is None:
+        PBMODEL = tf.saved_model.load(os.path.join(SCRIPT_DIR, cfg.PB_MODEL))
+
+    saved_model = PBMODEL
+    inputs = keras.Input(shape=(144000,), dtype=tf.float32, name="input_audio")
+    wrapper = WrappedSavedModel(saved_model.signatures["embeddings"])(inputs)
+
+    if mode == "replace":
+        output = classifier(wrapper)
+    elif mode == "append":
+        basic = WrappedSavedModel(saved_model.signatures["basic"])(inputs)
+        output = keras.layers.concatenate([basic, classifier(wrapper)], name="combined_output")
+
+    if add_sigmoid:
+        output = keras.layers.Activation("sigmoid")(output)
+
+    return keras.Model(inputs=inputs, outputs=output, name="basic")
+
+
+def save_linear_classifier(classifier, model_path: str, labels: list[str], mode: Literal["replace", "append"] = "replace"):
     """Saves the classifier as a tflite model, as well as the used labels in a .txt.
 
     Args:
@@ -823,27 +859,7 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
         model_path: Path the model will be saved at.
         labels: List of labels used for the classifier.
     """
-    global PBMODEL
-
-    if PBMODEL is None:
-        PBMODEL = keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.PB_MODEL), compile=False)
-
-    saved_model = PBMODEL
-
-    # Remove activation layer
-    if pop_last_layer:
-        classifier.pop()
-
-    if mode == "replace":
-        combined_model = keras.Sequential([saved_model.embeddings_model, classifier], "basic")
-    elif mode == "append":
-        intermediate = classifier(saved_model.model.get_layer("GLOBAL_AVG_POOL").output)
-
-        output = keras.layers.concatenate([saved_model.model.output, intermediate], name="combined_output")
-
-        combined_model = keras.Model(inputs=saved_model.model.input, outputs=output)
-    else:
-        raise ValueError("Model save mode must be either 'replace' or 'append'")
+    combined_model = combine_models(classifier, mode=mode, add_sigmoid=False)
 
     # Append .tflite if necessary
     if not model_path.endswith(".tflite"):
@@ -869,7 +885,7 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
     save_model_params(model_path.replace(".tflite", "_Params.csv"))
 
 
-def save_raven_model(classifier, model_path: str, labels: list[str], mode="replace"):
+def save_raven_model(classifier, model_path: str, labels: list[str], mode: Literal["replace", "append"] = "replace"):
     """
     Save a TensorFlow model with a custom classifier and associated metadata for use with BirdNET.
 
@@ -889,25 +905,7 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode="repla
     import csv
     import json
 
-    global PBMODEL
-
-    if PBMODEL is None:
-        PBMODEL = keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.PB_MODEL), compile=False)
-
-    saved_model = PBMODEL
-
-    if mode == "replace":
-        combined_model = keras.Sequential([saved_model.embeddings_model, classifier], "basic")
-    elif mode == "append":
-        # Remove activation layer
-        classifier.pop()
-        intermediate = classifier(saved_model.model.get_layer("GLOBAL_AVG_POOL").output)
-
-        output = keras.layers.concatenate([saved_model.model.output, intermediate], name="combined_output")
-
-        combined_model = keras.Model(inputs=saved_model.model.input, outputs=output)
-    else:
-        raise ValueError("Model save mode must be either 'replace' or 'append'")
+    combined_model = combine_models(classifier, mode=mode, add_sigmoid=True)
 
     # Make signatures
     class SignatureModule(tf.Module):
