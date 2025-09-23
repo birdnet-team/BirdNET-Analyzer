@@ -8,39 +8,43 @@ from multiprocessing import freeze_support
 import requests
 
 
-def send_request(host: str, port: int, fpath: str, mdata: str):
-    """Sends a classification request to the server.
-
+def send_request(host: str, port: int, fpath: str, mdata: str) -> dict:
+    """
+    Sends a classification request to the server.
+    This function sends an HTTP POST request to a server for analyzing an audio file.
+    It includes the audio file and additional metadata in the request payload.
     Args:
-        host: Host address of the server.
-        port: Port for the request.
-        fpath: File path of the file to be analyzed.
-        mdata: Additional json metadata.
-
+        host (str): The host address of the server.
+        port (int): The port number to connect to on the server.
+        fpath (str): The file path of the audio file to be analyzed.
+        mdata (str): A JSON string containing additional metadata for the analysis.
+        dict: The JSON-decoded response from the server.
     Returns:
-        The json decoded response.
+        dict: The JSON-decoded response from the server.
+    Raises:
+        FileNotFoundError: If the specified file path does not exist.
+        requests.exceptions.RequestException: If the HTTP request fails.
     """
     url = f"http://{host}:{port}/analyze"
 
     print(f"Requesting analysis for {fpath}")
 
-    # Make payload
-    multipart_form_data = {"audio": (fpath.rsplit(os.sep, 1)[-1], open(fpath, "rb")), "meta": (None, mdata)}
+    with open(fpath, "rb") as f:
+        # Make payload
+        multipart_form_data = {"audio": (fpath.rsplit(os.sep, 1)[-1], f), "meta": (None, mdata)}
 
-    # Send request
-    start_time = time.time()
-    response = requests.post(url, files=multipart_form_data)
-    end_time = time.time()
+        # Send request
+        start_time = time.time()
+        response = requests.post(url, files=multipart_form_data)
+        end_time = time.time()
 
-    print("Response: {}, Time: {:.4f}s".format(response.text, end_time - start_time), flush=True)
+        print(f"Response: {response.text}, Time: {end_time - start_time:.4f}s", flush=True)
 
-    # Convert to dict
-    data = json.loads(response.text)
-
-    return data
+        # Convert to dict
+        return json.loads(response.text)
 
 
-def save_result(data, fpath):
+def _save_result(data, fpath):
     """Saves the server response.
 
     Args:
@@ -57,7 +61,7 @@ def save_result(data, fpath):
 
 
 if __name__ == "__main__":
-    import birdnet_analyzer.cli as cli
+    from birdnet_analyzer import cli
 
     # Freeze support for executable
     freeze_support()
@@ -88,4 +92,4 @@ if __name__ == "__main__":
     # Save result
     fpath = args.output if args.output else args.i.rsplit(".", 1)[0] + ".BirdNET.results.json"
 
-    save_result(data, fpath)
+    _save_result(data, fpath)

@@ -22,7 +22,16 @@ footer {
 }
 
 #embeddings-search-results {
-    overflow-y: scroll;
-    height: 700px;
+    max-height: 1107px;
+    overflow: auto;
+    flex-wrap: nowrap;
+    padding-right: 5px;
 }
 
+#heart {
+    display: inline;
+    background-color: white;
+    border-radius: 3px;
+    margin-right: 3px;
+    padding: 1px;
+}

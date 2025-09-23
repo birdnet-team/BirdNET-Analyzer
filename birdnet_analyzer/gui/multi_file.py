@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
@@ -9,6 +10,16 @@ OUTPUT_TYPE_MAP = {
     "Audacity": "audacity",
     "CSV": "csv",
     "Kaleidoscope": "kaleidoscope",
+}
+ADDITIONAL_COLUMNS_MAP = {
+    "Latitude": "lat",
+    "Longitude": "lon",
+    "Week": "week",
+    "Overlap": "overlap",
+    "Sensitivity": "sensitivity",
+    "Minimum confidence": "min_conf",
+    "Species list file": "species_list",
+    "Model file": "model",
 }
 
 
@@ -33,6 +44,7 @@ def run_batch_analysis(
     sf_thresh,
     custom_classifier_file,
     output_type,
+    additional_columns,
     combine_tables,
     locale,
     batch_size,
@@ -53,7 +65,7 @@ def run_batch_analysis(
     if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
-    return run_analysis(
+    results = run_analysis(
         None,
         output_path,
         use_top_n,
@@ -74,8 +86,9 @@ def run_batch_analysis(
         sf_thresh,
         custom_classifier_file,
         output_type,
+        additional_columns,
         combine_tables,
-        "en" if not locale else locale,
+        locale if locale else "en",
         batch_size if batch_size and batch_size > 0 else 1,
         threads if threads and threads > 0 else 4,
         input_dir,
@@ -83,6 +96,8 @@ def run_batch_analysis(
         True,
         progress,
     )
+
+    return [path for path, successful in results if not successful]
 
 
 def build_multi_analysis_tab():
@@ -95,7 +110,6 @@ def build_multi_analysis_tab():
                 select_directory_btn = gr.Button(loc.localize("multi-tab-input-selection-button-label"))
                 directory_input = gr.Matrix(
                     interactive=False,
-                    elem_classes="matrix-mh-200",
                     headers=[
                         loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
                         loc.localize("multi-tab-samples-dataframe-column-duration-header"),
@@ -106,16 +120,14 @@ def build_multi_analysis_tab():
                     folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
                     if folder:
-                        files_and_durations = gu.get_files_and_durations(folder)
+                        files_and_durations = gu.get_audio_files_and_durations(folder)
                         if len(files_and_durations) > 100:
-                            return [folder, files_and_durations[:100] + [["..."]]]  # hopefully fixes issue#272
+                            return [folder, [*files_and_durations[:100], ("...", "...")]]  # hopefully fixes issue#272
                         return [folder, files_and_durations]
 
                     return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]]]
 
-                select_directory_btn.click(
-                    select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress=True
-                )
+                select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress="full")
 
             with gr.Column():
                 select_out_directory_btn = gr.Button(loc.localize("multi-tab-output-selection-button-label"))
@@ -132,7 +144,7 @@ def build_multi_analysis_tab():
                 select_out_directory_btn.click(
                     select_directory_wrapper,
                     outputs=[output_directory_predict_state, selected_out_textbox],
-                    show_progress=False,
+                    show_progress="hidden",
                 )
 
         (
@@ -159,29 +171,33 @@ def build_multi_analysis_tab():
             map_plot,
         ) = gu.species_lists()
 
-        with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True):
-            with gr.Group():
-                output_type_radio = gr.CheckboxGroup(
-                    list(OUTPUT_TYPE_MAP.items()),
-                    value="table",
-                    label=loc.localize("multi-tab-output-radio-label"),
-                    info=loc.localize("multi-tab-output-radio-info"),
+        with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True), gr.Group():
+            output_type_radio = gr.CheckboxGroup(
+                list(OUTPUT_TYPE_MAP.items()),
+                value="table",
+                label=loc.localize("multi-tab-output-radio-label"),
+                info=loc.localize("multi-tab-output-radio-info"),
+            )
+            additional_columns_ = gr.CheckboxGroup(
+                list(ADDITIONAL_COLUMNS_MAP.items()),
+                visible=False,
+                label=loc.localize("multi-tab-additional-columns-checkbox-label"),
+                info=loc.localize("multi-tab-additional-columns-checkbox-info"),
+            )
+
+            with gr.Row():
+                combine_tables_checkbox = gr.Checkbox(
+                    False,
+                    label=loc.localize("multi-tab-output-combine-tables-checkbox-label"),
+                    info=loc.localize("multi-tab-output-combine-tables-checkbox-info"),
                 )
 
-                with gr.Row():
-                    with gr.Column():
-                        combine_tables_checkbox = gr.Checkbox(
-                            False,
-                            label=loc.localize("multi-tab-output-combine-tables-checkbox-label"),
-                            info=loc.localize("multi-tab-output-combine-tables-checkbox-info"),
-                        )
-
-                with gr.Row():
-                    skip_existing_checkbox = gr.Checkbox(
-                        False,
-                        label=loc.localize("multi-tab-skip-existing-checkbox-label"),
-                        info=loc.localize("multi-tab-skip-existing-checkbox-info"),
-                    )
+            with gr.Row():
+                skip_existing_checkbox = gr.Checkbox(
+                    False,
+                    label=loc.localize("multi-tab-skip-existing-checkbox-label"),
+                    info=loc.localize("multi-tab-skip-existing-checkbox-info"),
+                )
 
         with gr.Row():
             batch_size_number = gr.Number(
@@ -206,9 +222,7 @@ def build_multi_analysis_tab():
         result_grid = gr.Matrix(
             headers=[
                 loc.localize("multi-tab-result-dataframe-column-file-header"),
-                loc.localize("multi-tab-result-dataframe-column-execution-header"),
             ],
-            elem_classes="matrix-mh-200",
         )
 
         inputs = [
@@ -231,6 +245,7 @@ def build_multi_analysis_tab():
             sf_thresh_number,
             selected_classifier_state,
             output_type_radio,
+            additional_columns_,
             combine_tables_checkbox,
             locale_radio,
             batch_size_number,
@@ -239,7 +254,11 @@ def build_multi_analysis_tab():
             skip_existing_checkbox,
         ]
 
+        def show_additional_columns(values):
+            return gr.update(visible="csv" in values)
+
         start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
+        output_type_radio.change(show_additional_columns, inputs=output_type_radio, outputs=additional_columns_)
 
     return lat_number, lon_number, map_plot
 

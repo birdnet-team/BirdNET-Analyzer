@@ -3211,7 +3211,7 @@ Lichenostomus cratitius_eukaliptusowczyk purpurowy
 Lichenostomus melanops_eukaliptusowczyk żółtoczelny
 Lichmera incana_miodojadek szarouchy
 Lichmera indistincta_miodojadek brązowy
-Lichmera indistincta_miodojadek brązowy
+Lichmera limbata_Indonesian Honeyeater
 Lichmera squamata_miodojadek łuskowany
 Limnoctites rectirostris_szydłodziobek
 Limnoctites sulphuriferus_moczarnik żółtogardy

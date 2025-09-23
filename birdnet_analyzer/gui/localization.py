@@ -1,7 +1,8 @@
+# ruff: noqa: PLW0603
 import json
 import os
 
-import birdnet_analyzer.gui.settings as settings
+from birdnet_analyzer.gui import settings
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 LANGUAGE_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "lang")
@@ -20,20 +21,25 @@ def load_local_state():
     settings.ensure_settings_file()
 
     try:
-        TARGET_LANGUAGE = json.load(open(settings.GUI_SETTINGS_PATH, encoding="utf-8"))["language-id"]
+        with open(settings.GUI_SETTINGS_PATH, encoding="utf-8") as f:
+            settings_data = json.load(f)
+
+            if "language-id" in settings_data:
+                TARGET_LANGUAGE = settings_data["language-id"]
     except FileNotFoundError:
         print(f"gui-settings.json not found. Using fallback language {settings.FALLBACK_LANGUAGE}.")
 
     try:
-        with open(f"{LANGUAGE_DIR}/{TARGET_LANGUAGE}.json", "r", encoding="utf-8") as f:
+        with open(f"{LANGUAGE_DIR}/{TARGET_LANGUAGE}.json", encoding="utf-8") as f:
             LANGUAGE_LOOKUP = json.load(f)
     except FileNotFoundError:
         print(
-            f"Language file for {TARGET_LANGUAGE} not found in {LANGUAGE_DIR}. Using fallback language {settings.FALLBACK_LANGUAGE}."
+            f"Language file for {TARGET_LANGUAGE} not found in {LANGUAGE_DIR}."
+            + "Using fallback language {settings.FALLBACK_LANGUAGE}."
         )
 
     if TARGET_LANGUAGE != settings.FALLBACK_LANGUAGE:
-        with open(f"{LANGUAGE_DIR}/{settings.FALLBACK_LANGUAGE}.json", "r") as f:
+        with open(f"{LANGUAGE_DIR}/{settings.FALLBACK_LANGUAGE}.json") as f:
             fallback: dict = json.load(f)
 
         for key, value in fallback.items():
@@ -49,7 +55,8 @@ def localize(key: str) -> str:
         key (str): The key to be localized.
 
     Returns:
-        str: The localized string corresponding to the given key. If the key is not found in the localization lookup, the original key is returned.
+        str: The localized string corresponding to the given key.
+             If the key is not found in the localization lookup, the original key is returned.
     """
     return LANGUAGE_LOOKUP.get(key, key)
 

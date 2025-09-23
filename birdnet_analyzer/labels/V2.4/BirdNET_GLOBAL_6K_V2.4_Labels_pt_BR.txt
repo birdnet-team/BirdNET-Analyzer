@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Maracanã-Pequena
 Diuca diuca_Diuca
 Dives dives_Melodious Blackbird
 Dives warczewiczi_Scrub Blackbird
-Dog_Dog
+Dog_Cão
 Dolichonyx oryzivorus_Triste-Pia
 Donacobius atricapilla_Japacanim
 Donacospiza albifrons_Tico-Tico-Do-Banhado

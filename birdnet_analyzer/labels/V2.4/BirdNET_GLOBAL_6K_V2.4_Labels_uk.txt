@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Ара червоноплечий
 Diuca diuca_Діука південна
 Dives dives_Трупіал-чернець галасливий
 Dives warczewiczi_Трупіал-чернець чагарниковий
-Dog_Dog
+Dog_Собака
 Dolichonyx oryzivorus_Гоглу
 Donacobius atricapilla_Мімик
 Donacospiza albifrons_Шиферець довгохвостий

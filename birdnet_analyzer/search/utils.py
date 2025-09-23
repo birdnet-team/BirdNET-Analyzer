@@ -1,11 +1,10 @@
 import numpy as np
-from perch_hoplite.db import brutalism, sqlite_usearch_impl
+from perch_hoplite.db import brutalism
 from perch_hoplite.db.search_results import SearchResult
 from scipy.spatial.distance import euclidean
 
-import birdnet_analyzer.audio as audio
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.model as model
+from birdnet_analyzer import audio, model
 
 
 def cosine_sim(a, b):
@@ -13,13 +12,16 @@ def cosine_sim(a, b):
         return np.array([cosine_sim(a[i], b) for i in range(a.shape[0])])
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
+
 def euclidean_scoring(a, b):
     if a.ndim == 2:
         return np.array([euclidean_scoring(a[i], b) for i in range(a.shape[0])])
     return euclidean(a, b)
 
+
 def euclidean_scoring_inverse(a, b):
     return -euclidean_scoring(a, b)
+
 
 def get_query_embedding(queryfile_path):
     """
@@ -29,7 +31,7 @@ def get_query_embedding(queryfile_path):
     Returns:
         The query embedding.
     """
- 
+
     # Load audio
     sig, rate = audio.open_audio_file(
         queryfile_path,
@@ -47,17 +49,12 @@ def get_query_embedding(queryfile_path):
     else:
         sig_splits = audio.split_signal(sig, rate, cfg.SIG_LENGTH, cfg.SIG_OVERLAP, cfg.SIG_MINLEN)
 
-    samples = sig_splits
-    data = np.array(samples, dtype="float32")
-    query = model.embeddings(data)
-    return query
+    return model.embeddings(sig_splits)
 
 
-def get_database(database_path):
-    return sqlite_usearch_impl.SQLiteUsearchDB.create(database_path).thread_split()
-
-
-def get_search_results(queryfile_path, db, n_results, audio_speed, fmin, fmax, score_function: str, crop_mode, crop_overlap):
+def get_search_results(
+    queryfile_path, db, n_results, audio_speed, fmin, fmax, score_function: str, crop_mode, crop_overlap
+):
     # Set bandpass frequency range
     cfg.BANDPASS_FMIN = max(0, min(cfg.SIG_FMAX, int(fmin)))
     cfg.BANDPASS_FMAX = max(cfg.SIG_FMIN, min(cfg.SIG_FMAX, int(fmax)))
@@ -74,16 +71,13 @@ def get_search_results(queryfile_path, db, n_results, audio_speed, fmin, fmax, s
     elif score_function == "dot":
         score_fn = np.dot
     elif score_function == "euclidean":
-        score_fn = euclidean_scoring_inverse # TODO: this is a bit hacky since the search function expects the score to be high for similar embeddings
+        score_fn = euclidean_scoring_inverse  # TODO: this is a bit hacky since the search function expects the score to be high for similar embeddings
     else:
         raise ValueError("Invalid score function. Choose 'cosine', 'euclidean' or 'dot'.")
 
     db_embeddings_count = db.count_embeddings()
-
-    if n_results > db_embeddings_count-1:
-        n_results = db_embeddings_count-1
-
-    scores_by_embedding_id = {} 
+    n_results = min(n_results, db_embeddings_count - 1)
+    scores_by_embedding_id = {}
 
     for embedding in query_embeddings:
         results, scores = brutalism.threaded_brute_search(db, embedding, n_results, score_fn)
@@ -92,7 +86,7 @@ def get_search_results(queryfile_path, db, n_results, audio_speed, fmin, fmax, s
         if score_function == "euclidean":
             for result in sorted_results:
                 result.sort_score *= -1
-        
+
         for result in sorted_results:
             if result.embedding_id not in scores_by_embedding_id:
                 scores_by_embedding_id[result.embedding_id] = []

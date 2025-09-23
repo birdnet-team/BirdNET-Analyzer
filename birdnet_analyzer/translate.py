@@ -4,14 +4,43 @@ Can be used to translate species names into other languages.
 
 Uses the requests to the eBird-API.
 """
+
 import json
 import os
 import urllib.request
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import utils
 
-LOCALES = ['af', 'ar', 'cs', 'da', 'de', 'en_uk', 'es', 'fi', 'fr', 'hu', 'it', 'ja', 'ko', 'nl', 'no', 'pl', 'pt_BR', 'pt_PT', 'ro', 'ru', 'sk', 'sl', 'sv', 'th', 'tr', 'uk', 'zh']
+LOCALES = [
+    "af",
+    "ar",
+    "cs",
+    "da",
+    "de",
+    "en_uk",
+    "es",
+    "fi",
+    "fr",
+    "hu",
+    "it",
+    "ja",
+    "ko",
+    "nl",
+    "no",
+    "pl",
+    "pt_BR",
+    "pt_PT",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sv",
+    "th",
+    "tr",
+    "uk",
+    "zh",
+]
 """ Locales for 26 common languages (according to GitHub Copilot) """
 
 API_TOKEN = "yourAPIToken"
@@ -45,7 +74,7 @@ def translate(locale: str):
 
     Args:
         locale: Two character string of a language.
-    
+
     Returns:
         The translated list of labels.
     """
@@ -90,8 +119,7 @@ def save_labels_file(labels: list[str], locale: str):
         cfg.TRANSLATED_LABELS_PATH, "{}_{}.txt".format(os.path.basename(cfg.LABELS_FILE).rsplit(".", 1)[0], locale)
     )
     with open(fpath, "w", encoding="utf-8") as f:
-        for label in labels:
-            f.write(label + "\n")
+        f.writelines(label + "\n" for label in labels)
 
 
 if __name__ == "__main__":

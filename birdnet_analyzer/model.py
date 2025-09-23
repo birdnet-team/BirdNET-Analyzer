@@ -1,19 +1,21 @@
+# ruff: noqa: PLW0603
 """Contains functions to use the BirdNET models."""
 
+import logging
 import os
 import sys
 import warnings
 
+import absl.logging
 import numpy as np
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import utils
 
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-
+absl.logging.set_verbosity(absl.logging.ERROR)
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 warnings.filterwarnings("ignore")
 
 # Import TFLite from runtime or Tensorflow;
@@ -27,17 +29,29 @@ except ModuleNotFoundError:
 if not cfg.MODEL_PATH.endswith(".tflite"):
     from tensorflow import keras
 
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER: tflite.Interpreter = None
 C_INTERPRETER: tflite.Interpreter = None
 M_INTERPRETER: tflite.Interpreter = None
+OUTPUT_DETAILS = None
 PBMODEL = None
 C_PBMODEL = None
 EMPTY_CLASS_EXCEPTION_REF = None
 
+
+def _load_interpreter(mpath, threads):
+    return tflite.Interpreter(
+        model_path=mpath,
+        num_threads=threads,
+        # XNNPACK disabled, because it does not support variable inputsize anyway (ie batchsize)
+        experimental_op_resolver_type=tflite.experimental.OpResolverType.BUILTIN_WITHOUT_DEFAULT_DELEGATES,
+    )
+
+
 def get_empty_class_exception():
     import keras_tuner.errors
-    global EMPTY_CLASS_EXCEPTION_REF
 
+    global EMPTY_CLASS_EXCEPTION_REF
 
     if EMPTY_CLASS_EXCEPTION_REF:
         return EMPTY_CLASS_EXCEPTION_REF
@@ -95,9 +109,7 @@ def mixup(x, y, augmentation_ratio=0.25, alpha=0.2):
     Returns:
         Augmented data.
     """
-
-    # Set numpy random seed
-    np.random.seed(cfg.RANDOM_SEED)
+    rng = np.random.default_rng(cfg.RANDOM_SEED)
 
     # Get indices of all positive samples
     positive_indices = np.unique(np.where(y[:, :] == 1)[0])
@@ -110,24 +122,24 @@ def mixup(x, y, augmentation_ratio=0.25, alpha=0.2):
 
     for _ in range(num_samples_to_augment):
         # Randomly choose one instance from the positive samples
-        index = np.random.choice(positive_indices)
+        index = rng.choice(positive_indices)
 
         # Choose another one, when the chosen one was already mixed up
         while index in mixed_up_indices:
-            index = np.random.choice(positive_indices)
+            index = rng.choice(positive_indices)
 
         x1, y1 = x[index], y[index]
 
         # Randomly choose a different instance from the dataset
-        second_index = np.random.choice(positive_indices)
+        second_index = rng.choice(positive_indices)
 
         # Choose again, when the same or an already mixed up sample was selected
         while second_index == index or second_index in mixed_up_indices:
-            second_index = np.random.choice(positive_indices)
+            second_index = rng.choice(positive_indices)
         x2, y2 = x[second_index], y[second_index]
 
         # Generate a random mixing coefficient (lambda)
-        lambda_ = np.random.beta(alpha, alpha)
+        lambda_ = rng.beta(alpha, alpha)
 
         # Mix the embeddings and labels
         mixed_x = lambda_ * x1 + (1 - lambda_) * x2
@@ -140,8 +152,8 @@ def mixup(x, y, augmentation_ratio=0.25, alpha=0.2):
         # Mark the sample as already mixed up
         mixed_up_indices.append(index)
 
-    del mixed_x
-    del mixed_y
+        del mixed_x
+        del mixed_y
 
     return x, y
 
@@ -159,9 +171,7 @@ def random_split(x, y, val_ratio=0.2):
     Returns:
         A tuple of (x_train, y_train, x_val, y_val).
     """
-
-    # Set numpy random seed
-    np.random.seed(cfg.RANDOM_SEED)
+    rng = np.random.default_rng(cfg.RANDOM_SEED)
 
     # Get number of classes
     num_classes = y.shape[1]
@@ -183,7 +193,7 @@ def random_split(x, y, val_ratio=0.2):
         num_samples_val = max(0, num_samples - num_samples_train)
 
         # Randomly choose samples for training and validation
-        np.random.shuffle(positive_indices)
+        rng.shuffle(positive_indices)
         train_indices = positive_indices[:num_samples_train]
         val_indices = positive_indices[num_samples_train : num_samples_train + num_samples_val]
 
@@ -202,7 +212,7 @@ def random_split(x, y, val_ratio=0.2):
     num_samples = len(non_event_indices)
     num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
     num_samples_val = max(0, num_samples - num_samples_train)
-    np.random.shuffle(non_event_indices)
+    rng.shuffle(non_event_indices)
     train_indices = non_event_indices[:num_samples_train]
     val_indices = non_event_indices[num_samples_train : num_samples_train + num_samples_val]
     x_train.append(x[train_indices])
@@ -218,12 +228,12 @@ def random_split(x, y, val_ratio=0.2):
 
     # Shuffle data
     indices = np.arange(len(x_train))
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
     x_train = x_train[indices]
     y_train = y_train[indices]
 
     indices = np.arange(len(x_val))
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
     x_val = x_val[indices]
     y_val = y_val[indices]
 
@@ -244,9 +254,7 @@ def random_multilabel_split(x, y, val_ratio=0.2):
         A tuple of (x_train, y_train, x_val, y_val).
 
     """
-
-    # Set numpy random seed
-    np.random.seed(cfg.RANDOM_SEED)
+    rng = np.random.default_rng(cfg.RANDOM_SEED)
 
     # Find all combinations of labels
     class_combinations = np.unique(y, axis=0)
@@ -270,7 +278,7 @@ def random_multilabel_split(x, y, val_ratio=0.2):
             num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
             num_samples_val = max(0, num_samples - num_samples_train)
             # Randomly choose samples for training and validation
-            np.random.shuffle(indices)
+            rng.shuffle(indices)
             train_indices = indices[:num_samples_train]
             val_indices = indices[num_samples_train : num_samples_train + num_samples_val]
             # Append samples to training and validation data
@@ -287,19 +295,19 @@ def random_multilabel_split(x, y, val_ratio=0.2):
 
     # Shuffle data
     indices = np.arange(len(x_train))
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
     x_train = x_train[indices]
     y_train = y_train[indices]
 
     indices = np.arange(len(x_val))
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
     x_val = x_val[indices]
     y_val = y_val[indices]
 
     return x_train, y_train, x_val, y_val
 
 
-def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply: callable, size=2):
+def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply, size=2):
     """
     Upsamples the minority class in the dataset using the specified apply function.
     Parameters:
@@ -311,19 +319,17 @@ def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply: callabl
     Returns:
         tuple: A tuple containing the upsampled feature matrix and target labels.
     """
+    rng = np.random.default_rng(cfg.RANDOM_SEED)
     y_temp = []
     x_temp = []
 
     if cfg.BINARY_CLASSIFICATION:
         # Determine if 1 or 0 is the minority class
-        if y.sum(axis=0) < len(y) - y.sum(axis=0):
-            minority_label = 1
-        else:
-            minority_label = 0
+        minority_label = 1 if y.sum(axis=0) < len(y) - y.sum(axis=0) else 0
 
         while np.where(y == minority_label)[0].shape[0] + len(y_temp) < min_samples:
             # Randomly choose a sample from the minority class
-            random_index = np.random.choice(np.where(y == minority_label)[0], size=size)
+            random_index = rng.choice(np.where(y == minority_label)[0], size=size)
 
             # Apply SMOTE
             x_app, y_app = apply(x, y, random_index)
@@ -334,7 +340,7 @@ def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply: callabl
             while y[:, i].sum() + len(y_temp) < min_samples:
                 try:
                     # Randomly choose a sample from the minority class
-                    random_index = np.random.choice(np.where(y[:, i] == 1)[0], size=size)
+                    random_index = rng.choice(np.where(y[:, i] == 1)[0], size=size)
                 except ValueError as e:
                     raise get_empty_class_exception()(index=i) from e
 
@@ -362,13 +368,10 @@ def upsampling(x: np.ndarray, y: np.ndarray, ratio=0.5, mode="repeat"):
     """
 
     # Set numpy random seed
-    np.random.seed(cfg.RANDOM_SEED)
+    rng = np.random.default_rng(cfg.RANDOM_SEED)
 
     # Determine min number of samples
-    if cfg.BINARY_CLASSIFICATION:
-        min_samples = int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio)
-    else:
-        min_samples = int(np.max(y.sum(axis=0)) * ratio)
+    min_samples = int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio) if cfg.BINARY_CLASSIFICATION else int(np.max(y.sum(axis=0)) * ratio)
 
     x_temp = []
     y_temp = []
@@ -397,7 +400,7 @@ def upsampling(x: np.ndarray, y: np.ndarray, ratio=0.5, mode="repeat"):
         # select two random samples and calculate the linear combination
         def applyLinearCombination(x, y, random_indices):
             # Calculate the linear combination of the two samples
-            alpha = np.random.uniform(0, 1)
+            alpha = rng.uniform(0, 1)
             new_sample = alpha * x[random_indices[0]] + (1 - alpha) * x[random_indices[1]]
 
             # Append the new sample and label to a temp list
@@ -413,13 +416,13 @@ def upsampling(x: np.ndarray, y: np.ndarray, ratio=0.5, mode="repeat"):
             indices = np.argsort(distances)[1 : k + 1]
 
             # Randomly choose one of the neighbors
-            random_neighbor = np.random.choice(indices)
+            random_neighbor = rng.choice(indices)
 
             # Calculate the difference vector
             diff = x[random_neighbor] - x[random_index[0]]
 
             # Randomly choose a weight between 0 and 1
-            weight = np.random.uniform(0, 1)
+            weight = rng.uniform(0, 1)
 
             # Calculate the new sample
             new_sample = x[random_index[0]] + weight * diff
@@ -436,7 +439,7 @@ def upsampling(x: np.ndarray, y: np.ndarray, ratio=0.5, mode="repeat"):
 
     # Shuffle data
     indices = np.arange(len(x))
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
     x = x[indices]
     y = y[indices]
 
@@ -513,29 +516,26 @@ def load_model(class_output=True):
     global INTERPRETER
     global INPUT_LAYER_INDEX
     global OUTPUT_LAYER_INDEX
+    global OUTPUT_DETAILS
 
     # Do we have to load the tflite or protobuf model?
     if cfg.MODEL_PATH.endswith(".tflite"):
-        # Load TFLite model and allocate tensors.
-        INTERPRETER = tflite.Interpreter(
-            model_path=os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), num_threads=cfg.TFLITE_THREADS
-        )
-        INTERPRETER.allocate_tensors()
+        if not INTERPRETER:
+            # Load TFLite model and allocate tensors.
+            INTERPRETER = _load_interpreter(os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), cfg.TFLITE_THREADS)
+            INTERPRETER.allocate_tensors()
 
-        # Get input and output tensors.
-        input_details = INTERPRETER.get_input_details()
-        output_details = INTERPRETER.get_output_details()
+            # Get input and output tensors.
+            input_details = INTERPRETER.get_input_details()
+            OUTPUT_DETAILS = INTERPRETER.get_output_details()
 
-        # Get input tensor index
-        INPUT_LAYER_INDEX = input_details[0]["index"]
+            # Get input tensor index
+            INPUT_LAYER_INDEX = input_details[0]["index"]
 
         # Get classification output or feature embeddings
-        if class_output:
-            OUTPUT_LAYER_INDEX = output_details[0]["index"]
-        else:
-            OUTPUT_LAYER_INDEX = output_details[0]["index"] - 1
+        OUTPUT_LAYER_INDEX = OUTPUT_DETAILS[0]["index"] if class_output else OUTPUT_DETAILS[0]["index"] - 1
 
-    else:
+    elif not PBMODEL:
         # Load protobuf model
         # Note: This will throw a bunch of warnings about custom gradients
         # which we will ignore until TF lets us block them
@@ -557,7 +557,7 @@ def load_custom_classifier():
 
     if cfg.CUSTOM_CLASSIFIER.endswith(".tflite"):
         # Load TFLite model and allocate tensors.
-        C_INTERPRETER = tflite.Interpreter(model_path=cfg.CUSTOM_CLASSIFIER, num_threads=cfg.TFLITE_THREADS)
+        C_INTERPRETER = _load_interpreter(cfg.CUSTOM_CLASSIFIER, cfg.TFLITE_THREADS)
         C_INTERPRETER.allocate_tensors()
 
         # Get input and output tensors.
@@ -589,9 +589,7 @@ def load_meta_model():
     global M_OUTPUT_LAYER_INDEX
 
     # Load TFLite model and allocate tensors.
-    M_INTERPRETER = tflite.Interpreter(
-        model_path=os.path.join(SCRIPT_DIR, cfg.MDATA_MODEL_PATH), num_threads=cfg.TFLITE_THREADS
-    )
+    M_INTERPRETER = _load_interpreter(os.path.join(SCRIPT_DIR, cfg.MDATA_MODEL_PATH), cfg.TFLITE_THREADS)
     M_INTERPRETER.allocate_tensors()
 
     # Get input and output tensors.
@@ -624,19 +622,30 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
     # Input layer
     model.add(keras.layers.InputLayer(input_shape=(input_size,)))
 
-    # Hidden layer
+    # Batch normalization on input to standardize embeddings
+    model.add(keras.layers.BatchNormalization())
+
+    # Optional L2 regularization for all dense layers
+    regularizer = keras.regularizers.l2(1e-5)
+
+    # Hidden layer with improved architecture
     if hidden_units > 0:
-        # Dropout layer?
+        # Dropout layer before hidden layer
         if dropout > 0:
             model.add(keras.layers.Dropout(dropout))
-        model.add(keras.layers.Dense(hidden_units, activation="relu"))
 
-    # Dropout layer?
+        # Add a hidden layer with L2 regularization
+        model.add(keras.layers.Dense(hidden_units, activation="relu", kernel_regularizer=regularizer, kernel_initializer="he_normal"))
+
+        # Add another batch normalization after the hidden layer
+        model.add(keras.layers.BatchNormalization())
+
+    # Dropout layer before output
     if dropout > 0:
         model.add(keras.layers.Dropout(dropout))
 
-    # Classification layer
-    model.add(keras.layers.Dense(num_labels))
+    # Classification layer with L2 regularization
+    model.add(keras.layers.Dense(num_labels, kernel_regularizer=regularizer, kernel_initializer="glorot_uniform"))
 
     # Activation layer
     model.add(keras.layers.Activation("sigmoid"))
@@ -648,6 +657,8 @@ def train_linear_classifier(
     classifier,
     x_train,
     y_train,
+    x_test,
+    y_test,
     epochs,
     batch_size,
     learning_rate,
@@ -656,6 +667,9 @@ def train_linear_classifier(
     upsampling_mode,
     train_with_mixup,
     train_with_label_smoothing,
+    train_with_focal_loss=False,
+    focal_loss_gamma=2.0,
+    focal_loss_alpha=0.25,
     on_epoch_end=None,
 ):
     """Trains a custom classifier.
@@ -666,14 +680,19 @@ def train_linear_classifier(
         classifier: The classifier to be trained.
         x_train: Samples.
         y_train: Labels.
+        x_test: Validation samples.
+        y_test: Validation labels.
         epochs: Number of epochs to train.
         batch_size: Batch size.
         learning_rate: The learning rate during training.
-        val_split: Validation split ratio.
+        val_split: Validation split ratio (is 0 when using test data).
         upsampling_ratio: Upsampling ratio.
         upsampling_mode: Upsampling mode.
         train_with_mixup: If True, applies mixup to the training data.
         train_with_label_smoothing: If True, applies label smoothing to the training data.
+        train_with_focal_loss: If True, uses focal loss instead of binary cross-entropy loss.
+        focal_loss_gamma: Focal loss gamma parameter.
+        focal_loss_alpha: Focal loss alpha parameter.
         on_epoch_end: Optional callback `function(epoch, logs)`.
 
     Returns:
@@ -692,19 +711,23 @@ def train_linear_classifier(
                 self.on_epoch_end_fn(epoch, logs)
 
     # Set random seed
-    np.random.seed(cfg.RANDOM_SEED)
+    rng = np.random.default_rng(cfg.RANDOM_SEED)
 
     # Shuffle data
     idx = np.arange(x_train.shape[0])
-    np.random.shuffle(idx)
+    rng.shuffle(idx)
     x_train = x_train[idx]
     y_train = y_train[idx]
 
     # Random val split
-    if not cfg.MULTI_LABEL:
-        x_train, y_train, x_val, y_val = random_split(x_train, y_train, val_split)
+    if val_split > 0:
+        if not cfg.MULTI_LABEL:
+            x_train, y_train, x_val, y_val = random_split(x_train, y_train, val_split)
+        else:
+            x_train, y_train, x_val, y_val = random_multilabel_split(x_train, y_train, val_split)
     else:
-        x_train, y_train, x_val, y_val = random_multilabel_split(x_train, y_train, val_split)
+        x_val = x_test
+        y_val = y_test
 
     print(
         f"Training on {x_train.shape[0]} samples, validating on {x_val.shape[0]} samples.",
@@ -724,27 +747,51 @@ def train_linear_classifier(
     if train_with_label_smoothing and not cfg.BINARY_CLASSIFICATION:
         y_train = label_smoothing(y_train)
 
-    # Early stopping
+    # Early stopping with patience depending on dataset size
+    patience = min(10, max(5, int(epochs / 10)))
+    min_delta = 0.001
+
     callbacks = [
+        # EarlyStopping with restore_best_weights
         keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=5,
+            monitor="val_AUPRC",
+            mode="max",
+            patience=patience,
             verbose=1,
-            start_from_epoch=5,
+            min_delta=min_delta,
             restore_best_weights=True,
         ),
+        # Function callback for progress tracking
         FunctionCallback(on_epoch_end=on_epoch_end),
     ]
 
-    # Cosine annealing lr schedule
-    lr_schedule = keras.experimental.CosineDecay(learning_rate, epochs * x_train.shape[0] / batch_size)
+    # Learning rate schedule - use cosine decay with warmup
+    warmup_epochs = min(5, int(epochs * 0.1))
+
+    def lr_schedule(epoch, lr):
+        if epoch < warmup_epochs:
+            # Linear warmup
+            return learning_rate * (epoch + 1) / warmup_epochs
+
+        # Cosine decay
+        progress = (epoch - warmup_epochs) / (epochs - warmup_epochs)
+        return learning_rate * (0.1 + 0.9 * (1 + np.cos(np.pi * progress)) / 2)
+
+    # Add LR scheduler callback
+    callbacks.append(keras.callbacks.LearningRateScheduler(lr_schedule))
 
     optimizer_cls = keras.optimizers.legacy.Adam if sys.platform == "darwin" else keras.optimizers.Adam
 
-    # Compile model
+    def _focal_loss(y_true, y_pred):
+        return focal_loss(y_true, y_pred, gamma=focal_loss_gamma, alpha=focal_loss_alpha)
+
+    # Choose the loss function based on config
+    loss_function = _focal_loss if train_with_focal_loss else custom_loss
+
+    # Compile model with appropriate metrics for classification task
     classifier.compile(
-        optimizer=optimizer_cls(learning_rate=lr_schedule),
-        loss=custom_loss,
+        optimizer=optimizer_cls(learning_rate=learning_rate),
+        loss=loss_function,
         metrics=[
             keras.metrics.AUC(
                 curve="PR",
@@ -764,14 +811,12 @@ def train_linear_classifier(
     )
 
     # Train model
-    history = classifier.fit(
-        x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), callbacks=callbacks
-    )
+    history = classifier.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val), callbacks=callbacks)
 
     return classifier, history
 
 
-def save_linear_classifier(classifier, model_path: str, labels: list[str], mode="replace"):
+def save_linear_classifier(classifier, model_path: str, labels: list[str], mode="replace", pop_last_layer=True):
     """Saves the classifier as a tflite model, as well as the used labels in a .txt.
 
     Args:
@@ -791,7 +836,8 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
     saved_model = PBMODEL
 
     # Remove activation layer
-    classifier.pop()
+    if pop_last_layer:
+        classifier.pop()
 
     if mode == "replace":
         combined_model = tf.keras.Sequential([saved_model.embeddings_model, classifier], "basic")
@@ -814,20 +860,21 @@ def save_linear_classifier(classifier, model_path: str, labels: list[str], mode=
     # Save model as tflite
     converter = tf.lite.TFLiteConverter.from_keras_model(combined_model)
     tflite_model = converter.convert()
-    open(model_path, "wb").write(tflite_model)
+
+    with open(model_path, "wb") as f:
+        f.write(tflite_model)
 
     if mode == "append":
         labels = [*utils.read_lines(os.path.join(SCRIPT_DIR, cfg.LABELS_FILE)), *labels]
 
     # Save labels
     with open(model_path.replace(".tflite", "_Labels.txt"), "w", encoding="utf-8") as f:
-        for label in labels:
-            f.write(label + "\n")
+        f.writelines(label + "\n" for label in labels)
 
     save_model_params(model_path.replace(".tflite", "_Params.csv"))
 
 
-def save_raven_model(classifier, model_path, labels: list[str], mode="replace"):
+def save_raven_model(classifier, model_path: str, labels: list[str], mode="replace"):
     """
     Save a TensorFlow model with a custom classifier and associated metadata for use with BirdNET.
 
@@ -888,7 +935,7 @@ def save_raven_model(classifier, model_path, labels: list[str], mode="replace"):
 
     # Save signature model
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    model_path = model_path[:-7] if model_path.endswith(".tflite") else model_path
+    model_path = model_path.removesuffix(".tflite")
     tf.saved_model.save(smodel, model_path, signatures=signatures)
 
     if mode == "append":
@@ -902,7 +949,7 @@ def save_raven_model(classifier, model_path, labels: list[str], mode="replace"):
 
     with open(os.path.join(labels_dir, "label_names.csv"), "w", newline="") as labelsfile:
         labelwriter = csv.writer(labelsfile)
-        labelwriter.writerows(zip(labelIds, labels))
+        labelwriter.writerows(zip(labelIds, labels, strict=True))
 
     # Save class names file
     classes_dir = os.path.join(model_path, "classes")
@@ -960,8 +1007,6 @@ def predict_filter(lat, lon, week):
     Returns:
         A list of probabilities for all species.
     """
-    global M_INTERPRETER
-
     # Does interpreter exist?
     if M_INTERPRETER is None:
         load_meta_model()
@@ -996,26 +1041,52 @@ def explore(lat: float, lon: float, week: int):
     l_filter = np.where(l_filter >= cfg.LOCATION_FILTER_THRESHOLD, l_filter, 0)
 
     # Zip with labels
-    l_filter = list(zip(l_filter, cfg.LABELS))
+    l_filter = list(zip(l_filter, cfg.LABELS, strict=True))
 
     # Sort by filter value
-    l_filter = sorted(l_filter, key=lambda x: x[0], reverse=True)
+    return sorted(l_filter, key=lambda x: x[0], reverse=True)
 
-    return l_filter
+
+def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
+    """
+    Focal loss for better handling of class imbalance.
+
+    This loss function gives more weight to hard examples and down-weights easy examples.
+    Particularly helpful for imbalanced datasets where some classes have few samples.
+
+    Args:
+        y_true: Ground truth labels.
+        y_pred: Predicted probabilities.
+        gamma: Focusing parameter. Higher values mean more focus on hard examples.
+        alpha: Balance parameter. Controls weight of positive vs negative examples.
+        epsilon: Small constant to prevent log(0).
+
+    Returns:
+        Focal loss value.
+    """
+    import tensorflow.keras.backend as K
+
+    # Apply sigmoid if not already applied
+    y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
+
+    # Calculate cross entropy
+    cross_entropy = -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred)
+
+    # Calculate focal weight
+    p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
+    focal_weight = K.pow(1 - p_t, gamma)
+
+    # Apply alpha balancing
+    alpha_factor = y_true * alpha + (1 - y_true) * (1 - alpha)
+
+    # Calculate focal loss
+    focal_loss = alpha_factor * focal_weight * cross_entropy
+
+    # Sum over all classes
+    return K.sum(focal_loss, axis=-1)
 
 
 def custom_loss(y_true, y_pred, epsilon=1e-7):
-    """Custom loss function that also estimated loss for negative labels.
-
-    Args:
-        y_true: True labels.
-        y_pred: Predicted labels.
-        epsilon: Epsilon value to avoid log(0).
-
-    Returns:
-        The loss.
-    """
-
     import tensorflow.keras.backend as K
 
     # Calculate loss for positive labels with epsilon
@@ -1025,9 +1096,7 @@ def custom_loss(y_true, y_pred, epsilon=1e-7):
     negative_loss = -K.sum((1 - y_true) * K.log(K.clip(1 - y_pred, epsilon, 1.0 - epsilon)), axis=-1)
 
     # Combine both loss terms
-    total_loss = positive_loss + negative_loss
-
-    return total_loss
+    return positive_loss + negative_loss
 
 
 def flat_sigmoid(x, sensitivity=-1, bias=1.0):
@@ -1071,11 +1140,7 @@ def predict(sample):
     if cfg.CUSTOM_CLASSIFIER is not None:
         return predict_with_custom_classifier(sample)
 
-    global INTERPRETER
-
-    # Does interpreter or keras model exist?
-    if INTERPRETER is None and PBMODEL is None:
-        load_model()
+    load_model()
 
     if PBMODEL is None:
         # Reshape input tensor
@@ -1085,15 +1150,10 @@ def predict(sample):
         # Make a prediction (Audio only for now)
         INTERPRETER.set_tensor(INPUT_LAYER_INDEX, np.array(sample, dtype="float32"))
         INTERPRETER.invoke()
-        prediction = INTERPRETER.get_tensor(OUTPUT_LAYER_INDEX)
+        return INTERPRETER.get_tensor(OUTPUT_LAYER_INDEX)
 
-        return prediction
-
-    else:
-        # Make a prediction (Audio only for now)
-        prediction = PBMODEL.basic(sample)["scores"]
-
-        return prediction
+    # Make a prediction (Audio only for now)
+    return PBMODEL.basic(sample)["scores"]
 
 
 def predict_with_custom_classifier(sample):
@@ -1105,10 +1165,6 @@ def predict_with_custom_classifier(sample):
     Returns:
         The prediction scores for the sample.
     """
-    global C_INTERPRETER
-    global C_INPUT_SIZE
-    global C_PBMODEL
-
     # Does interpreter exist?
     if C_INTERPRETER is None and C_PBMODEL is None:
         load_custom_classifier()
@@ -1123,13 +1179,10 @@ def predict_with_custom_classifier(sample):
         # Make a prediction
         C_INTERPRETER.set_tensor(C_INPUT_LAYER_INDEX, np.array(vector, dtype="float32"))
         C_INTERPRETER.invoke()
-        prediction = C_INTERPRETER.get_tensor(C_OUTPUT_LAYER_INDEX)
 
-        return prediction
-    else:
-        prediction = C_PBMODEL.basic(sample)["scores"]
+        return C_INTERPRETER.get_tensor(C_OUTPUT_LAYER_INDEX)
 
-        return prediction
+    return C_PBMODEL.basic(sample)["scores"]
 
 
 def embeddings(sample):
@@ -1141,19 +1194,17 @@ def embeddings(sample):
     Returns:
         The embeddings.
     """
-    global INTERPRETER
 
-    # Does interpreter exist?
-    if INTERPRETER is None:
-        load_model(False)
+    load_model(False)
+
+    sample = np.array(sample, dtype="float32")
 
     # Reshape input tensor
     INTERPRETER.resize_tensor_input(INPUT_LAYER_INDEX, [len(sample), *sample[0].shape])
     INTERPRETER.allocate_tensors()
 
     # Extract feature embeddings
-    INTERPRETER.set_tensor(INPUT_LAYER_INDEX, np.array(sample, dtype="float32"))
+    INTERPRETER.set_tensor(INPUT_LAYER_INDEX, sample)
     INTERPRETER.invoke()
-    features = INTERPRETER.get_tensor(OUTPUT_LAYER_INDEX)
 
-    return features
+    return INTERPRETER.get_tensor(OUTPUT_LAYER_INDEX)

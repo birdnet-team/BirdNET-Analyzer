@@ -3,9 +3,9 @@ import os
 import gradio as gr
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.gui.utils as gu
 import birdnet_analyzer.gui.localization as loc
-import birdnet_analyzer.gui.settings as settings
+import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.gui import settings
 
 
 @gu.gui_runtime_error_handler
@@ -52,7 +52,7 @@ def build_species_tab():
             select_directory_and_update_tb,
             inputs=classifier_name,
             outputs=[output_directory_state, classifier_name],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = (

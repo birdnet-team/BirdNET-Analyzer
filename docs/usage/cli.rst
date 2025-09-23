@@ -10,7 +10,7 @@ birdnet_analyzer.analyze
    :ref: birdnet_analyzer.cli.analyzer_parser
    :prog: birdnet_analyzer.analyze
 
-   Run ``analyzer.py`` to analyze an audio file.
+   Run ``birdnet_analyzer.analyze`` to analyze an audio file or a directory containing audio files.
    You need to set paths for the audio file and selection table output. Here is an example:
 
    .. code:: bash
@@ -42,13 +42,13 @@ birdnet_analyzer.embeddings
    :ref: birdnet_analyzer.cli.embeddings_parser
    :prog: birdnet_analyzer.embeddings
 
-   Run ``embeddings.py`` to extract feature embeddings instead of class predictions.
+   Run ``birdnet_analyzer.embeddings`` to extract feature embeddings instead of class predictions.
    Result file will contain timestamps and lists of float values representing the embedding for a particular 3-second segment.
    Embeddings can be used for clustering or similarity analysis. Here is an example:
 
    .. code:: bash
 
-      python -m birdnet_analyzer.embeddings example/ --threads 4 --batchsize 16
+      python -m birdnet_analyzer.embeddings example/ --threads 4 --batch_size 16
 
 .. _cli-segments:
 
@@ -59,7 +59,7 @@ birdnet_analyzer.segments
    :ref: birdnet_analyzer.cli.segments_parser
    :prog: birdnet_analyzer.segments
 
-   After the analysis, run ``segments.py`` to extract short audio segments for species detections to verify results.
+   After the analysis, run ``birdnet_analyzer.segments`` to extract short audio segments for species detections to verify results.
    This way, it might be easier to review results instead of loading hundreds of result files manually.
 
 .. _cli-species:
@@ -88,7 +88,7 @@ birdnet_analyzer.server
    Install one additional package with ``pip install bottle``.
 
    Start the server with ``python -m birdnet_analyzer.server``.
-   You can also specify a host name or IP and port number, e.g., ``python -m birdnet_analayzer.server --host localhost --port 8080``.
+   You can also specify a host name or IP and port number, e.g., ``python -m birdnet_analyzer.server --host localhost --port 8080``.
 
    The server is single-threaded, so you’ll need to start multiple instances for higher throughput. This service is intented for short audio files (e.g., 1-10 seconds).
 
@@ -96,7 +96,7 @@ birdnet_analyzer.server
    You can use the provided Python client or any other client implementation.
    Request payload needs to be ``multipart/form-data`` with the following fields:
    ``audio`` for raw audio data as byte code, and ``meta`` for additional information on the audio file.
-   Take a look at our example client implementation in the ``client.py`` script.
+   Take a look at our example client implementation in the ``birdnet_analyzer.client`` script.
 
    Parse results from the server. The server will send back a JSON response with the detection results. The response also contains a msg field, indicating success or error. Results consist of a sorted list of (species, score) tuples.
 
@@ -156,7 +156,7 @@ birdnet_analyzer.train
 
    **The script saves the trained classifier model based on the best validation loss achieved during training. This ensures that the model saved is optimized for performance according to the chosen metric.**
 
-   After training, you can use the custom trained classifier with the ``--classifier`` argument of the ``analyze.py`` script.
+   After training, you can use the custom trained classifier with the ``--classifier`` argument of the ``birdnet_analyzer.analyze`` script.
    If you want to use the custom classifier in Raven, make sure to set ``--model_format raven``.
 
    .. note::

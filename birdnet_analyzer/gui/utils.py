@@ -1,6 +1,10 @@
+# ruff: noqa: PLW0603
+import base64
+import io
 import multiprocessing
 import os
 import sys
+import warnings
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
@@ -9,31 +13,11 @@ import gradio as gr
 import webview
 
 import birdnet_analyzer.config as cfg
+import birdnet_analyzer.gui.localization as loc
+from birdnet_analyzer import utils
+from birdnet_analyzer.gui import settings
 
-FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
-
-if FROZEN:
-    # divert stdout & stderr to logs.txt file since we have no console when deployed
-    userdir = Path.home()
-
-    if sys.platform == "win32":
-        userdir /= "AppData/Roaming"
-    elif sys.platform == "linux":
-        userdir /= ".local/share"
-    elif sys.platform == "darwin":
-        userdir /= "Library/Application Support"
-
-    APPDIR = userdir / "BirdNET-Analyzer-GUI"
-
-    APPDIR.mkdir(parents=True, exist_ok=True)
-
-    sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")
-    cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
-
-import birdnet_analyzer.gui.settings as settings  # noqa: E402
-import birdnet_analyzer.utils as utils  # noqa: E402
-import birdnet_analyzer.gui.localization as loc  # noqa: E402
-
+warnings.filterwarnings("ignore")
 loc.load_local_state()
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -42,11 +26,12 @@ _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
-_WINDOW: webview.Window = None
+_WINDOW: webview.Window | None = None
 _URL = ""
+_HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
 
 
-def gui_runtime_error_handler(f: callable):
+def gui_runtime_error_handler(f):
     """
     A decorator function to handle errors during the execution of a callable.
 
@@ -74,7 +59,7 @@ def gui_runtime_error_handler(f: callable):
     return wrapper
 
 
-# Nishant - Following two functions (select_folder andget_files_and_durations) are written for Folder selection
+# Nishant - Following two functions (select_folder and get_files_and_durations) are written for Folder selection
 def select_folder(state_key=None):
     """
     Opens a folder selection dialog and returns the selected folder path.
@@ -105,10 +90,10 @@ def select_folder(state_key=None):
     if folder_selected and state_key:
         settings.set_state(state_key, folder_selected)
 
-    return folder_selected
+    return folder_selected.replace("/", os.sep) if folder_selected else folder_selected
 
 
-def get_files_and_durations(folder, max_files=None):
+def get_audio_files_and_durations(folder, max_files=None):
     """
     Collects audio files from a specified folder and retrieves their durations.
     Args:
@@ -197,21 +182,20 @@ def select_directory(collect_files=True, max_files=None, state_key=None):
 
         files = utils.collect_audio_files(dir_name, max_files=max_files)
 
-        return dir_name, [
-            [os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files
-        ]
+        return dir_name, [[os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files]
 
-    return dir_name if dir_name else None
+    return dir_name or None
 
 
 def build_header():
     with gr.Row():
         gr.Markdown(
             f"""
-            <div style='display: flex; align-items: center;'>
-                <img src='data:image/png;base64,{utils.img2base64(os.path.join(SCRIPT_DIR, "assets/img/birdnet_logo.png"))}' style='width: 50px; height: 50px; margin-right: 10px;'>
-                <h2>BirdNET Analyzer</h2>
-            </div>
+<div style='display: flex; align-items: center;'>
+    <img src='data:image/png;base64,{utils.img2base64(os.path.join(SCRIPT_DIR, "assets/img/birdnet_logo.png"))}'
+        style='width: 50px; height: 50px; margin-right: 10px;'>
+    <h2>BirdNET Analyzer</h2>
+</div>
             """
         )
 
@@ -220,15 +204,20 @@ def build_footer():
     with gr.Row():
         gr.Markdown(
             f"""
-                <div style='display: flex; justify-content: space-around; align-items: center; padding: 10px; text-align: center'>
-                    <div>
-                        <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span id="current-version">{os.environ["GUI_VERSION"] if FROZEN else "main"}</span><span style="display: none" id="update-available"><a>+</a></span></div>
-                        <div>Model version: {cfg.MODEL_VERSION}</div>
-                    </div>
-                    <div>K. Lisa Yang Center for Conservation Bioacoustics<br>Chemnitz University of Technology</div>
-                    <div>{loc.localize("footer-help")}:<br><a href='https://birdnet.cornell.edu/analyzer' target='_blank'>birdnet.cornell.edu/analyzer</a></div>
-                </div>
-                """
+<div style='display: flex; justify-content: space-around; align-items: center; padding: 10px; text-align: center'>
+    <div>
+        <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span
+                id="current-version">{os.environ["GUI_VERSION"] if utils.FROZEN else "main"}</span><span
+                style="display: none" id="update-available"><a>+</a></span></div>
+        <div>Model version: {cfg.MODEL_VERSION}</div>
+    </div>
+    <div>K. Lisa Yang Center for Conservation Bioacoustics<br>Chemnitz University of Technology</div>
+    <div>{loc.localize("footer-help")}:&nbsp;<a href='https://birdnet.cornell.edu/analyzer'
+            target='_blank'>birdnet.cornell.edu/analyzer</a>
+            <br><img id='heart' src='{_HEART_LOGO}'>{loc.localize("footer-support")}: <a href='https://birdnet.cornell.edu/donate' target='_blank'>birdnet.cornell.edu/donate</a>
+    </div>
+
+</div>"""  # noqa: E501
         )
 
 
@@ -287,16 +276,16 @@ def build_settings():
 
         def on_tab_select(value: gr.SelectData):
             if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
-                with open(cfg.ERROR_LOG_FILE, "r", encoding="utf-8") as f:
+                with open(cfg.ERROR_LOG_FILE, encoding="utf-8") as f:
                     lines = f.readlines()
                     last_100_lines = lines[-100:]
                     return "".join(last_100_lines)
 
             return ""
 
-        languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress=False)
-        theme_radio.input(on_theme_change, inputs=theme_radio, show_progress=False)
-        settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress=False)
+        languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress="hidden")
+        theme_radio.input(on_theme_change, inputs=theme_radio, show_progress="hidden")
+        settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
 
 def sample_sliders(opened=True):
@@ -307,7 +296,8 @@ def sample_sliders(opened=True):
 
     Returns:
         A tuple with the created elements:
-        (Slider (min confidence), Slider (sensitivity), Slider (overlap), Slider (audio speed), Number (fmin), Number (fmax))
+        (Slider (min confidence), Slider (sensitivity), Slider (overlap),
+         Slider (audio speed), Number (fmin), Number (fmax))
     """
     with gr.Accordion(loc.localize("inference-settings-accordion-label"), open=opened):
         with gr.Group():
@@ -338,7 +328,7 @@ def sample_sliders(opened=True):
                 lambda use_top_n: (gr.Number(visible=use_top_n), gr.Slider(visible=not use_top_n)),
                 inputs=use_top_n_checkbox,
                 outputs=[top_n_input, confidence_slider],
-                show_progress=False,
+                show_progress="hidden",
             )
 
             with gr.Row():
@@ -414,7 +404,7 @@ def locale():
         The dropdown element.
     """
     label_files = os.listdir(ORIGINAL_TRANSLATED_LABELS_PATH)
-    options = ["EN"] + [label_file.rsplit("_", 1)[-1].split(".")[0].upper() for label_file in label_files]
+    options = ["EN"] + [label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files]
 
     return gr.Dropdown(
         options,
@@ -435,39 +425,32 @@ def plot_map_scatter_mapbox(lat, lon, zoom=4):
 
 def species_list_coordinates(show_map=False):
     with gr.Row(equal_height=True):
-        with gr.Column(scale=1):
-            with gr.Group():
-                lat_number = gr.Slider(
-                    minimum=-90,
-                    maximum=90,
-                    value=0,
-                    step=1,
-                    label=loc.localize("species-list-coordinates-lat-number-label"),
-                    info=loc.localize("species-list-coordinates-lat-number-info"),
-                )
-                lon_number = gr.Slider(
-                    minimum=-180,
-                    maximum=180,
-                    value=0,
-                    step=1,
-                    label=loc.localize("species-list-coordinates-lon-number-label"),
-                    info=loc.localize("species-list-coordinates-lon-number-info"),
-                )
+        with gr.Column(scale=1), gr.Group():
+            lat_number = gr.Slider(
+                minimum=-90,
+                maximum=90,
+                value=0,
+                step=1,
+                label=loc.localize("species-list-coordinates-lat-number-label"),
+                info=loc.localize("species-list-coordinates-lat-number-info"),
+            )
+            lon_number = gr.Slider(
+                minimum=-180,
+                maximum=180,
+                value=0,
+                step=1,
+                label=loc.localize("species-list-coordinates-lon-number-label"),
+                info=loc.localize("species-list-coordinates-lon-number-info"),
+            )
 
         map_plot = gr.Plot(plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map)
 
-        lat_number.change(
-            plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False
-        )
-        lon_number.change(
-            plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress=False
-        )
+        lat_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress="hidden")
+        lon_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress="hidden")
 
     with gr.Group():
         with gr.Row():
-            yearlong_checkbox = gr.Checkbox(
-                True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label")
-            )
+            yearlong_checkbox = gr.Checkbox(True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label"))
             week_number = gr.Slider(
                 minimum=1,
                 maximum=48,
@@ -490,9 +473,30 @@ def species_list_coordinates(show_map=False):
     def on_change(use_yearlong):
         return gr.Slider(interactive=(not use_yearlong))
 
-    yearlong_checkbox.change(on_change, inputs=yearlong_checkbox, outputs=week_number, show_progress=False)
+    yearlong_checkbox.change(on_change, inputs=yearlong_checkbox, outputs=week_number, show_progress="hidden")
 
     return lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot
+
+
+def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
+    """Creates a file save dialog.
+
+    Args:
+        filetypes: List of filetypes to be filtered in the dialog.
+
+    Returns:
+        The selected file or None of the dialog was canceled.
+    """
+    initial_selection = settings.get_state(state_key, "") if state_key else ""
+    file = _WINDOW.create_file_dialog(webview.SAVE_DIALOG, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
+
+    if file:
+        if state_key:
+            settings.set_state(state_key, os.path.dirname(file))
+
+        return str(file)
+
+    return None
 
 
 def select_file(filetypes=(), state_key=None):
@@ -509,7 +513,7 @@ def select_file(filetypes=(), state_key=None):
 
     if files:
         if state_key:
-            settings.set_state(state_key, files[0])
+            settings.set_state(state_key, os.path.dirname(files[0]))
 
         return files[0]
 
@@ -537,14 +541,14 @@ def show_species_choice(choice: str):
             gr.Column(visible=False),
             gr.Column(visible=False),
         ]
-    elif choice == _PREDICT_SPECIES:
+    if choice == _PREDICT_SPECIES:
         return [
             gr.Row(visible=True),
             gr.File(visible=False),
             gr.Column(visible=False),
             gr.Column(visible=False),
         ]
-    elif choice == _CUSTOM_CLASSIFIER:
+    if choice == _CUSTOM_CLASSIFIER:
         return [
             gr.Row(visible=False),
             gr.File(visible=False),
@@ -568,72 +572,92 @@ def species_lists(opened=True):
 
     Returns:
         A tuple with the created elements:
-        (Radio (choice), File (custom species list), Slider (lat), Slider (lon), Slider (week), Slider (threshold), Checkbox (yearlong?), State (custom classifier))
+        (Radio (choice), File (custom species list), Slider (lat), Slider (lon),
+         Slider (week), Slider (threshold), Checkbox (yearlong?), State (custom classifier))
     """
-    with gr.Accordion(loc.localize("species-list-accordion-label"), open=opened):
-        with gr.Row():
-            species_list_radio = gr.Radio(
-                [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES],
-                value=_ALL_SPECIES,
-                label=loc.localize("species-list-radio-label"),
-                info=loc.localize("species-list-radio-info"),
-                elem_classes="d-block",
-            )
+    with gr.Accordion(loc.localize("species-list-accordion-label"), open=opened), gr.Row():
+        species_list_radio = gr.Radio(
+            [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES],
+            value=_ALL_SPECIES,
+            label=loc.localize("species-list-radio-label"),
+            info=loc.localize("species-list-radio-info"),
+            elem_classes="d-block",
+        )
 
-            with gr.Column(visible=False) as position_row:
-                lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = (
-                    species_list_coordinates()
-                )
+        with gr.Column(visible=False) as position_row:
+            lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = species_list_coordinates()
 
-            species_file_input = gr.File(
-                file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label")
-            )
-            empty_col = gr.Column()
+        species_file_input = gr.File(file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label"))
+        empty_col = gr.Column()
 
-            with gr.Column(visible=False) as custom_classifier_selector:
-                classifier_selection_button = gr.Button(
-                    loc.localize("species-list-custom-classifier-selection-button-label")
-                )
-                classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False)
-                selected_classifier_state = gr.State()
+        with gr.Column(visible=False) as custom_classifier_selector:
+            classifier_selection_button = gr.Button(loc.localize("species-list-custom-classifier-selection-button-label"))
+            classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False)
+            selected_classifier_state = gr.State()
 
-                def on_custom_classifier_selection_click():
-                    file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
+            def on_custom_classifier_selection_click():
+                file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
 
-                    if file:
-                        labels = os.path.splitext(file)[0] + "_Labels.txt"
-
-                        if not os.path.isfile(labels):
-                            labels = file.replace("Model_FP32.tflite", "Labels.txt")
-
-                        return file, gr.File(value=[file, labels], visible=True)
-
+                if not file:
                     return None, None
 
-                classifier_selection_button.click(
-                    on_custom_classifier_selection_click,
-                    outputs=[selected_classifier_state, classifier_file_input],
-                    show_progress=False,
-                )
+                base_name = os.path.splitext(file)[0]
+                labels = base_name + "_Labels.txt"
 
-            species_list_radio.change(
-                show_species_choice,
-                inputs=[species_list_radio],
-                outputs=[position_row, species_file_input, custom_classifier_selector, empty_col],
-                show_progress=False,
+                if not os.path.isfile(labels):
+                    labels = file.replace("Model_FP32.tflite", "Labels.txt")
+
+                if not os.path.isfile(labels):
+                    gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
+
+                    return file, gr.File(value=[file], visible=True)
+
+                return file, gr.File(value=[file, labels], visible=True)
+
+            classifier_selection_button.click(
+                on_custom_classifier_selection_click,
+                outputs=[selected_classifier_state, classifier_file_input],
+                show_progress="hidden",
             )
 
-            return (
-                species_list_radio,
-                species_file_input,
-                lat_number,
-                lon_number,
-                week_number,
-                sf_thresh_number,
-                yearlong_checkbox,
-                selected_classifier_state,
-                map_plot,
-            )
+        species_list_radio.change(
+            show_species_choice,
+            inputs=[species_list_radio],
+            outputs=[position_row, species_file_input, custom_classifier_selector, empty_col],
+            show_progress="hidden",
+        )
+
+        return (
+            species_list_radio,
+            species_file_input,
+            lat_number,
+            lon_number,
+            week_number,
+            sf_thresh_number,
+            yearlong_checkbox,
+            selected_classifier_state,
+            map_plot,
+        )
+
+
+def download_plot(plot, filename=""):
+    from PIL import Image
+
+    imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
+    res = _WINDOW.create_file_dialog(
+        webview.SAVE_DIALOG,
+        file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
+        save_filename=filename,
+    )
+
+    if res:
+        if res.endswith(".webp"):
+            with open(res, "wb") as f:
+                f.write(imgdata)
+        else:
+            output_format = res.rsplit(".", 1)[-1].upper()
+            img = Image.open(io.BytesIO(imgdata))
+            img.save(res, output_format if output_format in ["PNG", "JPEG"] else "PNG")
 
 
 def _get_network_shortcuts():
@@ -669,9 +693,7 @@ def _get_network_shortcuts():
                     try:
                         # https://learn.microsoft.com/de-de/windows/win32/shell/links
                         # CLSID_ShellLink: Class ID for Shell Link object
-                        shell_link = pythoncom.CoCreateInstance(
-                            shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink
-                        )
+                        shell_link = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink)
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
                         # Query IPersistFile interface used to
@@ -710,6 +732,8 @@ def open_window(builder: list[Callable] | Callable):
     global _URL
     multiprocessing.freeze_support()
 
+    utils.ensure_model_exists()
+
     with gr.Blocks(
         css=open(os.path.join(SCRIPT_DIR, "assets/gui.css")).read(),
         js=open(os.path.join(SCRIPT_DIR, "assets/gui.js")).read(),
@@ -722,9 +746,8 @@ def open_window(builder: list[Callable] | Callable):
 
         if callable(builder):
             map_plots.append(builder())
-        elif isinstance(builder, (tuple, set, list)):
-            for build in builder:
-                map_plots.append(build())
+        elif isinstance(builder, tuple | set | list):
+            map_plots.extend(build() for build in builder)
 
         build_settings()
         build_footer()
@@ -750,8 +773,13 @@ def open_window(builder: list[Callable] | Callable):
         enable_monitoring=False,
         allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
     )[1]
+    webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
-        "BirdNET-Analyzer", _URL.rstrip("/") + f"?__theme={settings.theme()}", width=1300, height=900
+        "BirdNET-Analyzer",
+        _URL.rstrip("/") + f"?__theme={settings.theme()}",
+        width=1300,
+        height=900,
+        min_size=(1300, 900),
     )
     set_window(_WINDOW)
 

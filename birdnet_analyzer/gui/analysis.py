@@ -4,11 +4,14 @@ from pathlib import Path
 
 import gradio as gr
 
-import birdnet_analyzer.analyze.utils as analyze
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.utils as gu
-import birdnet_analyzer.gui.localization as loc
-import birdnet_analyzer.model as model
+from birdnet_analyzer import model
+from birdnet_analyzer.analyze.utils import (
+    analyze_file,
+    combine_results,
+    save_analysis_params,
+)
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ORIGINAL_LABELS_FILE = str(Path(SCRIPT_DIR).parent / cfg.LABELS_FILE)
@@ -27,7 +30,7 @@ def analyze_file_wrapper(entry):
         tuple: A tuple where the first element is the file path and the second
                element is the result of the analyze.analyzeFile function.
     """
-    return (entry[0], analyze.analyze_file(entry))
+    return (entry[0], analyze_file(entry))
 
 
 def run_analysis(
@@ -51,6 +54,7 @@ def run_analysis(
     sf_thresh: float,
     custom_classifier_file,
     output_types: str,
+    additional_columns: list[str] | None,
     combine_tables: bool,
     locale: str,
     batch_size: int,
@@ -81,6 +85,7 @@ def run_analysis(
         sf_thresh: The threshold for the predicted species list.
         custom_classifier_file: Custom classifier to be used.
         output_type: The type of result to be generated.
+        additional_columns: Additional columns to be added to the result.
         output_filename: The filename for the combined output.
         locale: The translation to be used.
         batch_size: The number of samples in a batch.
@@ -88,20 +93,22 @@ def run_analysis(
         input_dir: The input directory.
         progress: The gradio progress bar.
     """
+    import birdnet_analyzer.gui.localization as loc
+
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-preparing')} ...")
 
-    from birdnet_analyzer.analyze import set_params
+    from birdnet_analyzer.analyze.core import _set_params
 
     locale = locale.lower()
     custom_classifier = custom_classifier_file if species_list_choice == gu._CUSTOM_CLASSIFIER else None
-    slist = species_list_file.name if species_list_choice == gu._CUSTOM_SPECIES else None
+    slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else -1
     lon = lon if species_list_choice == gu._PREDICT_SPECIES else -1
     week = -1 if use_yearlong else week
 
-    flist = set_params(
-        input=input_dir if input_dir else input_path,
+    flist = _set_params(
+        audio_input=input_dir if input_dir else input_path,
         min_conf=confidence,
         custom_classifier=custom_classifier,
         sensitivity=min(1.25, max(0.75, float(sensitivity))),
@@ -124,6 +131,7 @@ def run_analysis(
         slist=slist,
         top_n=top_n if use_top_n else None,
         output=output_path,
+        additional_columns=additional_columns,
     )
 
     if species_list_choice == gu._CUSTOM_CLASSIFIER:
@@ -141,8 +149,7 @@ def run_analysis(
 
     # Analyze files
     if cfg.CPU_THREADS < 2:
-        for entry in flist:
-            result_list.append(analyze_file_wrapper(entry))
+        result_list.extend(analyze_file_wrapper(entry) for entry in flist)
     else:
         with concurrent.futures.ProcessPoolExecutor(max_workers=cfg.CPU_THREADS) as executor:
             futures = (executor.submit(analyze_file_wrapper, arg) for arg in flist)
@@ -157,11 +164,11 @@ def run_analysis(
     if cfg.COMBINE_RESULTS:
         combine_list = [[r[1] for r in result_list if r[0] == i[0]][0] for i in flist]
         print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
-        analyze.combine_results(combine_list)
+        combine_results(combine_list)
         print("done!", flush=True)
 
     if save_params:
-        analyze.save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
+        save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
 
     return (
         [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list]

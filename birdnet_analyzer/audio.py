@@ -3,7 +3,7 @@
 import librosa
 import numpy as np
 import soundfile as sf
-from scipy.signal import firwin, kaiserord, lfilter
+from scipy.signal import find_peaks, firwin, kaiserord, lfilter
 
 import birdnet_analyzer.config as cfg
 
@@ -61,7 +61,7 @@ def get_audio_file_length(path):
     """
     # Open file with librosa (uses ffmpeg or libav)
 
-    return librosa.get_duration(filename=path, sr=None)
+    return librosa.get_duration(path=path, sr=None)
 
 
 def get_sample_rate(path: str):
@@ -184,8 +184,7 @@ def split_signal(sig, rate, seconds, overlap, minlen, amount=None):
 
     # Split signal with overlap
     sig_splits = []
-    for i in range(0, 1 + lastchunkpos, stepsize):
-        sig_splits.append(data[i : i + chunksize])
+    sig_splits.extend(data[i : i + chunksize] for i in range(0, lastchunkpos + 1, stepsize))
 
     return sig_splits
 
@@ -213,6 +212,68 @@ def crop_center(sig, rate, seconds):
     return sig
 
 
+def smart_crop_signal(sig, rate, sig_length, sig_overlap, sig_minlen):
+    """Smart crop audio signal based on peak detection.
+
+    This function analyzes the audio signal to find peaks in energy/amplitude,
+    which are more likely to contain relevant target signals (e.g., bird calls).
+    Only the audio segments with the highest energy peaks are returned.
+
+    Args:
+        sig: The audio signal.
+        rate: The sample rate of the audio signal.
+        sig_length: The desired length of each snippet in seconds.
+        sig_overlap: The overlap between snippets in seconds.
+        sig_minlen: The minimum length of a snippet in seconds.
+
+    Returns:
+        A list of audio snippets with the highest energy/peaks.
+    """
+
+    # If signal is too short, just return it
+    if len(sig) / rate <= sig_length:
+        return [sig]
+
+    # Split the signal into overlapping windows
+    splits = split_signal(sig, rate, sig_length, sig_overlap, sig_minlen)
+
+    if len(splits) <= 1:
+        return splits
+
+    # Calculate energy for each window
+    energies = []
+    for split in splits:
+        # Calculate RMS energy
+        energy = np.sqrt(np.mean(split**2))
+        # Also consider peak values
+        peak = np.max(np.abs(split))
+        # Combine both metrics
+        energies.append(energy * 0.7 + peak * 0.3)  # Weighted combination
+
+    # Find peaks in the energy curve
+    # Smooth energies first to avoid small fluctuations
+    smoothed_energies = np.convolve(energies, np.ones(3) / 3, mode="same")
+    peaks, _ = find_peaks(smoothed_energies, height=np.mean(smoothed_energies), distance=2)
+
+    # If no clear peaks found, fall back to selecting top energy segments
+    if len(peaks) < 2:
+        # Sort segments by energy and take top segments (up to 3 or 1/3 of total, whichever is more)
+        num_segments = max(3, len(splits) // 3)
+        indices = np.argsort(energies)[-num_segments:]
+        return [splits[i] for i in sorted(indices)]
+
+    # Return the audio segments corresponding to the peaks
+    peak_splits = [splits[i] for i in peaks]
+
+    # If we have too many peaks, select the strongest ones
+    if len(peak_splits) > 5:
+        peak_energies = [energies[i] for i in peaks]
+        sorted_indices = np.argsort(peak_energies)[::-1]  # Sort in descending order
+        peak_splits = [peak_splits[i] for i in sorted_indices[:5]]  # Take top 5
+
+    return peak_splits
+
+
 def bandpass(sig, rate, fmin, fmax, order=5):
     """
     Apply a bandpass filter to the input signal.
@@ -228,7 +289,7 @@ def bandpass(sig, rate, fmin, fmax, order=5):
         numpy.ndarray: The filtered signal as a float32 array.
     """
     # Check if we have to bandpass at all
-    if fmin == cfg.SIG_FMIN and fmax == cfg.SIG_FMAX or fmin > fmax:
+    if (fmin == cfg.SIG_FMIN and fmax == cfg.SIG_FMAX) or fmin > fmax:
         return sig
 
     from scipy.signal import butter, lfilter
@@ -277,7 +338,7 @@ def bandpass_kaiser_fir(sig, rate, fmin, fmax, width=0.02, stopband_attenuation_
         numpy.ndarray: The filtered signal as a float32 numpy array.
     """
     # Check if we have to bandpass at all
-    if fmin == cfg.SIG_FMIN and fmax == cfg.SIG_FMAX or fmin > fmax:
+    if (fmin == cfg.SIG_FMIN and fmax == cfg.SIG_FMAX) or fmin > fmax:
         return sig
 
     nyquist = 0.5 * rate

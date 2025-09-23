@@ -1,3 +1,3 @@
-from birdnet_analyzer.search import main
+from birdnet_analyzer.search.cli import main
 
 main()

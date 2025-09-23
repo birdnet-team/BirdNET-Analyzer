@@ -1947,7 +1947,7 @@ Diopsittaca nobilis_Ara noble
 Diuca diuca_Diuca gris
 Dives dives_Quiscale chanteur
 Dives warczewiczi_Quiscale buissonnier
-Dog_Dog
+Dog_Chien
 Dolichonyx oryzivorus_Goglu des prés
 Donacobius atricapilla_Donacobe à miroir
 Donacospiza albifrons_Donacospize des marais

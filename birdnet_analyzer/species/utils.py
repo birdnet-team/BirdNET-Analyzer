@@ -6,8 +6,7 @@ Can be used to predict a species list using coordinates and weeks.
 import os
 
 import birdnet_analyzer.config as cfg
-import birdnet_analyzer.model as model
-import birdnet_analyzer.utils as utils
+from birdnet_analyzer import model, utils
 
 
 def get_species_list(lat: float, lon: float, week: int, threshold=0.05, sort=False) -> list[str]:
@@ -64,12 +63,11 @@ def run(output_path, lat, lon, week, threshold, sortby):
 
     # Get species list
     species_list = get_species_list(
-        cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD, False if sortby == "freq" else True
+        cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD, sortby != "freq"
     )
 
     print(f"Done. {len(species_list)} species on list.", flush=True)
 
     # Save species list
     with open(cfg.OUTPUT_PATH, "w") as f:
-        for s in species_list:
-            f.write(s + "\n")
+        f.writelines(s + "\n" for s in species_list)

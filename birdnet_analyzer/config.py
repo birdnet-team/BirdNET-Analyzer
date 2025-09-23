@@ -69,8 +69,8 @@ LOCATION_FILTER_THRESHOLD: float = 0.03
 
 # If None or empty file, no custom species list will be used
 # Note: Entries in this list have to match entries from the LABELS_FILE
-# We use the 2021 eBird taxonomy for species names (Clements list)
-CODES_FILE: str = os.path.join(SCRIPT_DIR, "eBird_taxonomy_codes_2021E.json")
+# We use the 2024 eBird taxonomy for species names (Clements list)
+CODES_FILE: str = os.path.join(SCRIPT_DIR, "eBird_taxonomy_codes_2024E.json")
 SPECIES_LIST_FILE: str = os.path.join(SCRIPT_DIR, "example/species_list.txt")
 
 # Supported file types
@@ -89,6 +89,15 @@ SIGMOID_SENSITIVITY: float = 1.0
 # (be aware: if APPLY_SIGMOID = False, this no longer represents
 # probabilities and needs to be adjusted)
 MIN_CONFIDENCE: float = 0.25
+
+# Maximum confidence score for the segments feature.
+MAX_CONFIDENCE: float = 1.0
+
+# How segments are selected from the result files.
+SEGMENTS_COLLECTION_MODE: str = "random"
+
+# Number of bins for the balanced collection mode
+BALANCED_COLLECTION_BINS: int = 10
 
 # Number of consecutive detections for one species to merge into one
 # If set to 1 or 0, no merging will be done
@@ -114,6 +123,7 @@ USE_NOISE: bool = False
 # 'audacity' denotes a TXT file with the same format as Audacity timeline labels
 # 'csv' denotes a generic CSV file with start, end, species and confidence.
 RESULT_TYPES: set[str] | list[str] = {"table"}
+ADDITIONAL_COLUMNS: list[str] | None = None
 OUTPUT_RAVEN_FILENAME: str = "BirdNET_SelectionTable.txt"  # this is for combined Raven selection tables only
 # OUTPUT_RTABLE_FILENAME: str = "BirdNET_RTable.csv"
 OUTPUT_KALEIDOSCOPE_FILENAME: str = "BirdNET_Kaleidoscope.csv"
@@ -151,7 +161,7 @@ TRAIN_BATCH_SIZE: int = 32
 TRAIN_VAL_SPLIT: float = 0.2
 
 # Learning rate for training
-TRAIN_LEARNING_RATE: float = 0.001
+TRAIN_LEARNING_RATE: float = 0.0001
 
 # Number of hidden units in custom classifier
 # If >0, a two-layer classifier will be trained
@@ -165,6 +175,15 @@ TRAIN_WITH_MIXUP: bool = False
 
 # Whether to apply label smoothing for training
 TRAIN_WITH_LABEL_SMOOTHING: bool = False
+
+# Whether to use focal loss for training
+TRAIN_WITH_FOCAL_LOSS: bool = False
+
+# Focal loss gamma parameter
+FOCAL_LOSS_GAMMA: float = 2.0
+
+# Focal loss alpha parameter
+FOCAL_LOSS_ALPHA: float = 0.25
 
 # Model output format
 TRAINED_MODEL_OUTPUT_FORMAT: str = "tflite"
@@ -204,6 +223,7 @@ OUTPUT_PATH: str = ""
 
 # Training data path
 TRAIN_DATA_PATH: str = ""
+TEST_DATA_PATH: str = ""
 
 CODES = {}
 LABELS: list[str] = []
@@ -216,7 +236,7 @@ FILE_STORAGE_PATH: str = ""
 # Path to custom trained classifier
 # If None, no custom classifier will be used
 # Make sure to set the LABELS_FILE above accordingly
-CUSTOM_CLASSIFIER = None
+CUSTOM_CLASSIFIER: str | None = None
 
 ######################
 # Get and set config #

@@ -7,7 +7,7 @@ You can find label files in the checkpoints folder, e.g., `checkpoints/V2.4/Bird
 
 Species names need to consist of `scientific name_common name` to be valid.
 
-You can generate a species list for a given location using :ref:`species.py <cli-species>`.
+You can generate a species list for a given location using :ref:`birdnet_analyzer.species <cli-species>`.
 
 Practical Information and Considerations
 ----------------------------------------
@@ -29,7 +29,7 @@ In cases where eBird does not have enough observations (i.e., checklists), the d
 If you know which species to expect in your area, it is recommended to compile your own species list. This can help improve the accuracy of BirdNET-Analyzer for your specific use case.
 
 1. **Collect Species Names**: Use the labels file from the model checkpoints to get the correct species names. Ensure the names are in the format `scientific name_common name`.
-2. **Generate Species List**: Use the `species.py` script to generate a species list for a given location and time. This script uses the GeoModel to predict species occurrence based on latitude, longitude, and week of the year.
+2. **Generate Species List**: Use the `birdnet_analyzer.species` script to generate a species list for a given location and time. This script uses the GeoModel to predict species occurrence based on latitude, longitude, and week of the year.
 
 **Example of Training Data**
 
