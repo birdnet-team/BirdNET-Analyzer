@@ -754,8 +754,8 @@ def train_linear_classifier(
     callbacks = [
         # EarlyStopping with restore_best_weights
         keras.callbacks.EarlyStopping(
-            monitor="val_AUPRC",
-            mode="max",
+            monitor="val_loss",
+            mode="min",
             patience=patience,
             verbose=1,
             min_delta=min_delta,
