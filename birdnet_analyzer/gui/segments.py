@@ -188,7 +188,7 @@ def build_segments_tab():
                 info=loc.localize("inference-settings-audio-speed-slider-info"),
             )
             seq_length_number = gr.Number(
-                cfg.SIG_LENGTH,
+                cfg.BIRDNET_SIG_LENGTH,
                 label=loc.localize("segments-tab-seq-length-number-label"),
                 info=loc.localize("segments-tab-seq-length-number-info"),
                 minimum=0.1,
