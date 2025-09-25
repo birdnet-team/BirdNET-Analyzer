@@ -257,7 +257,7 @@ def _set_params(
                 if os.path.isdir(cfg.SPECIES_LIST_FILE):
                     cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
 
-            cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE)
+            cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
         else:
             cfg.SPECIES_LIST_FILE = None
             cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
@@ -274,7 +274,7 @@ def _set_params(
                 cfg.LABELS_FILE = None
                 cfg.LABELS = None
             else:
-                cfg.LABELS = read_lines(cfg.LABELS_FILE)
+                cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
         else:
             cfg.APPLY_SIGMOID = False
             # our output format
@@ -282,9 +282,9 @@ def _set_params(
 
             if not os.path.isfile(cfg.LABELS_FILE):
                 cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
-                cfg.LABELS = read_lines(cfg.LABELS_FILE)
+                cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
             else:
-                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE)]
+                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)]
 
     if cfg.LABELS_FILE:
         lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
