@@ -1,0 +1,220 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embedding Extraction and Search &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Implementation details" href="../implementation-details.html" />
+    <link rel="prev" title="Evaluation Tool" href="evaluation-tool.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../best-practices.html">Best practices</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="species-lists.html">Creating Your Own Species List</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segment-review.html">Segment Review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html">Training Custom Classifiers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="evaluation-tool.html">Evaluation Tool</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Embedding Extraction and Search</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../best-practices.html">Best practices</a></li>
+      <li class="breadcrumb-item active">Embedding Extraction and Search</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="embedding-extraction-and-search">
+<h1>Embedding Extraction and Search<a class="headerlink" href="#embedding-extraction-and-search" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>1. Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>The embeddings extraction and search feature allows you to quickly search for similar audio files in large datasets.
+This can be used to explore your data and help you to collect training data for building a custom classifier.</p>
+</section>
+<section id="extracting-embeddings-and-creating-a-database">
+<h2>2. Extracting Embeddings and creating a Database<a class="headerlink" href="#extracting-embeddings-and-creating-a-database" title="Link to this heading"></a></h2>
+<p>The first step is to create a database of embeddings from your audio files.
+In the GUI go to the Embeddings-Tab and then to the Extract-Section. There you can select the directory containing your audio files.
+As with the analysis feature this will go to your directory recursively and include all audio files from the selected folder and any subdirectories.
+After that choose the directory where your embeddings database should be created and specify a name for your database.</p>
+<p>You can further specify the following parameters for the extraction:</p>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Overlap</strong>: Audio is still processed in 3-second snippets. This parameter specifies the overlap between these snippets.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Batch size</strong>: This can be adjusted to increase the performance of the extraction process depending on your hardware.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Audio speed modifier</strong>:  This can be used to speed up or slow down the audio during the extraction process to enable working with ultra- and infrasonic recordings.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Bandpass filter frequencies</strong>: This sets the bandpass filter which is applied after the speed modifier, to further filter out unwanted frequencies.</div>
+</div>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The audio speed and bandpass parameters will be stored in the database and will also applied during the search process.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Due to limitations of the underlying hoplite database, multithreading is not supported for the extraction process.</p>
+</div>
+<dl class="simple">
+<dt>The database will be created as a folder with the specified name containing two files:</dt><dd><ul class="simple">
+<li><p>‘hoplite.sqlite’</p></li>
+<li><p>‘usearch.index’</p></li>
+</ul>
+</dd>
+</dl>
+<section id="file-output">
+<h3>2.1. File output<a class="headerlink" href="#file-output" title="Link to this heading"></a></h3>
+<p>If you want to process the embeddings as files, you can also specify a folder for the file output. If no folder is specified the file output will be omitted.
+The file output will create an individual file for each 3 second audio snippet that is processed, containing the extracted embedding.</p>
+<p>The files will be named according to the following pattern: “{original_file_name}_{start}_{end}.birdnet.embeddings.txt”.</p>
+</section>
+</section>
+<section id="searching-your-database">
+<h2>3. Searching your database<a class="headerlink" href="#searching-your-database" title="Link to this heading"></a></h2>
+<p>The database can be searched in the GUI in the Search-Section of the Embeddings-Tab.
+To start the search first select the database you want to search in. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.</p>
+<p>After that select a file as a query example to find similar sounds in the database.
+You can select the <a class="reference internal" href="../implementation-details/crop-modes.html"><span class="doc">crop mode</span></a> to specify how the example file will be cropped if it is longer than 3 seconds. For the segments crop mode the simliarity measure will be averaged over all segments of the query example.</p>
+<p>Further specify the maximum number of results you want to retrieve and the score-function.</p>
+<p>The following score functions are available:</p>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Cosine</strong>: Uses the cosine of the angle between the two embedding vectors. More similar vectors will result in a higher value.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Dot</strong>: Uses the dot product of the two embedding vectors. As with the cosine measure, more similar vectors will result in a higher value, but longer vectors will also increase the score.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Euclidean</strong>: Uses the euclidean distance between the two embedding vectors. More similar vectors will result in a lower value.</div>
+</div>
+</li>
+</ul>
+<p>Click the start search button to show the results. The results will be displayed over multiple pages.
+For each result a spectrogram of the corresponding audio snippet will be shown and the audio can be played back for reference.</p>
+<p>While inspecting the results you can mark them for export. After finishing the selection click the export button and choose a folder to save the results in.
+You can now use the data for training custom classifiers or for further analysis.</p>
+<section id="about-audio-speed-and-bandpass-filter-in-search">
+<h3>3.1 About audio speed and bandpass filter in search<a class="headerlink" href="#about-audio-speed-and-bandpass-filter-in-search" title="Link to this heading"></a></h3>
+<p>The audio speed and bandpass filter settings that were used for the extraction process will also be applied to the query example and the result-snippets.
+This will also be reflected in the spectrograms and the audio playback.</p>
+<p>However, the exported audio will always be in the original speed and without any bandpass filter applied.
+This is to ensure that the exported audio retains its original sample rate and also to make using it in the training process more intuitive.</p>
+<p>As the processed audio snippets are always 3 seconds long after the audio speed modifier, the exported audio files may be shorter or longer.
+For example with an audio speed modifier of 2, e.g. double speed, the exported audio will only be 1.5 seconds long.</p>
+</section>
+<section id="search-via-cli">
+<h3>3.2. Search via CLI<a class="headerlink" href="#search-via-cli" title="Link to this heading"></a></h3>
+<p>Searching the database can also be done via the command line interface, although due to the missing interface a manual inspection and selection of the results is not possible.
+Visit the command line interface documentation for more information on how to use the CLI.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="evaluation-tool.html" class="btn btn-neutral float-left" title="Evaluation Tool" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../implementation-details.html" class="btn btn-neutral float-right" title="Implementation details" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
