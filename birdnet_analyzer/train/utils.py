@@ -122,9 +122,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     if cache_mode == "load":
         if os.path.isfile(cache_file):
             print(f"\t...loading from cache: {cache_file}", flush=True)
-            x_train, y_train, x_test, y_test, labels, cfg.BINARY_CLASSIFICATION, cfg.MULTI_LABEL = (
-                utils.load_from_cache(cache_file)
-            )
+            x_train, y_train, x_test, y_test, labels, cfg.BINARY_CLASSIFICATION, cfg.MULTI_LABEL = utils.load_from_cache(cache_file)
             return x_train, y_train, x_test, y_test, labels
 
         print(f"\t...cache file not found: {cache_file}", flush=True)
@@ -149,9 +147,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     labels = sorted(labels)
 
     # Get valid labels
-    valid_labels = [
-        label for label in labels if label.lower() not in cfg.NON_EVENT_CLASSES and not label.startswith("-")
-    ]
+    valid_labels = [label for label in labels if label.lower() not in cfg.NON_EVENT_CLASSES and not label.startswith("-")]
 
     # Check if binary classification
     cfg.BINARY_CLASSIFICATION = len(valid_labels) == 1
@@ -178,9 +174,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
 
     # Only allow repeat upsampling for multi-label setting
     if cfg.MULTI_LABEL and cfg.UPSAMPLING_RATIO > 0 and cfg.UPSAMPLING_MODE != "repeat":
-        raise Exception(
-            "Only repeat-upsampling ist available for multi-label", "validation-only-repeat-upsampling-for-multi-label"
-        )
+        raise Exception("Only repeat-upsampling ist available for multi-label", "validation-only-repeat-upsampling-for-multi-label")
 
     # Load training data
     x_train = []
@@ -205,9 +199,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
             for label in folder_labels:
                 if label.lower() not in cfg.NON_EVENT_CLASSES and not label.startswith("-"):
                     label_vector[valid_labels.index(label)] = 1
-                elif (
-                    label.startswith("-") and label[1:] in valid_labels
-                ):  # Negative labels need to be contained in the valid labels
+                elif label.startswith("-") and label[1:] in valid_labels:  # Negative labels need to be contained in the valid labels
                     label_vector[valid_labels.index(label[1:])] = -1
 
             # Get list of files
@@ -226,9 +218,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
                 tasks = []
 
                 for f in files:
-                    task = p.apply_async(
-                        partial(_load_audio_file, f=f, label_vector=label_vector, config=cfg.get_config())
-                    )
+                    task = p.apply_async(partial(_load_audio_file, f=f, label_vector=label_vector, config=cfg.get_config()))
                     tasks.append(task)
 
                 # Wait for tasks to complete and monitor progress with tqdm
@@ -255,9 +245,7 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
 
     if cfg.TEST_DATA_PATH and cfg.TEST_DATA_PATH != cfg.TRAIN_DATA_PATH:
         test_folders = sorted(utils.list_subdirectories(cfg.TEST_DATA_PATH))
-        allowed_test_folders = [
-            folder for folder in test_folders if folder in train_folders and not folder.startswith("-")
-        ]
+        allowed_test_folders = [folder for folder in test_folders if folder in train_folders and not folder.startswith("-")]
         x_test, y_test = load_data(cfg.TEST_DATA_PATH, allowed_test_folders)
     else:
         x_test = np.array([])
@@ -310,12 +298,14 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     Returns:
         A keras `History` object, whose `history` property contains all the metrics.
     """
+    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
 
     # Load training data
     print("Loading training data...", flush=True)
-    x_train, y_train, x_test, y_test, labels = _load_training_data(
-        cfg.TRAIN_CACHE_MODE, cfg.TRAIN_CACHE_FILE, on_data_load_end
-    )
+    x_train, y_train, x_test, y_test, labels = _load_training_data(cfg.TRAIN_CACHE_MODE, cfg.TRAIN_CACHE_FILE, on_data_load_end)
     print(f"...Done. Loaded {x_train.shape[0]} training samples and {y_train.shape[1]} labels.", flush=True)
     if len(x_test) > 0:
         print(f"...Loaded {x_test.shape[0]} test samples.", flush=True)
@@ -364,9 +354,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                     classifier = model.build_linear_classifier(
                         self.y_train.shape[1],
                         self.x_train.shape[1],
-                        hidden_units=hp.Choice(
-                            "hidden_units", [0, 128, 256, 512, 1024, 2048], default=cfg.TRAIN_HIDDEN_UNITS
-                        ),
+                        hidden_units=hp.Choice("hidden_units", [0, 128, 256, 512, 1024, 2048], default=cfg.TRAIN_HIDDEN_UNITS),
                         dropout=hp.Choice("dropout", [0.0, 0.25, 0.33, 0.5, 0.75, 0.9], default=cfg.TRAIN_DROPOUT),
                     )
                     print("...Done.", flush=True)
@@ -432,9 +420,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                         batch_size=batch_size,
                         learning_rate=learning_rate,
                         val_split=0.0 if len(self.x_test) > 0 else cfg.TRAIN_VAL_SPLIT,
-                        upsampling_ratio=hp.Choice(
-                            "upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0], default=cfg.UPSAMPLING_RATIO
-                        ),
+                        upsampling_ratio=hp.Choice("upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0], default=cfg.UPSAMPLING_RATIO),
                         upsampling_mode=hp.Choice(
                             "upsampling_mode",
                             upsampling_choices,
@@ -443,9 +429,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                             parent_values=[0.25, 0.33, 0.5, 0.75, 1.0],
                         ),
                         train_with_mixup=hp.Boolean("mixup", default=cfg.TRAIN_WITH_MIXUP),
-                        train_with_label_smoothing=hp.Boolean(
-                            "label_smoothing", default=cfg.TRAIN_WITH_LABEL_SMOOTHING
-                        ),
+                        train_with_label_smoothing=hp.Boolean("label_smoothing", default=cfg.TRAIN_WITH_LABEL_SMOOTHING),
                         train_with_focal_loss=hp.Boolean("focal_loss", default=cfg.TRAIN_WITH_FOCAL_LOSS),
                         focal_loss_gamma=hp.Choice(
                             "focal_loss_gamma",
@@ -534,9 +518,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
 
     # Build model
     print("Building model...", flush=True)
-    classifier = model.build_linear_classifier(
-        y_train.shape[1], x_train.shape[1], cfg.TRAIN_HIDDEN_UNITS, cfg.TRAIN_DROPOUT
-    )
+    classifier = model.build_linear_classifier(y_train.shape[1], x_train.shape[1], cfg.TRAIN_HIDDEN_UNITS, cfg.TRAIN_DROPOUT)
     print("...Done.", flush=True)
 
     # Train model
@@ -579,9 +561,11 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     print("Saving model...", flush=True)
 
     try:
+        classifier.pop() # Remove activation
+
         if cfg.TRAINED_MODEL_OUTPUT_FORMAT == "both":
             model.save_raven_model(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE)
-            model.save_linear_classifier(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE, pop_last_layer=False)
+            model.save_linear_classifier(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE)
         elif cfg.TRAINED_MODEL_OUTPUT_FORMAT == "tflite":
             model.save_linear_classifier(classifier, cfg.CUSTOM_CLASSIFIER, labels, mode=cfg.TRAINED_MODEL_SAVE_MODE)
         elif cfg.TRAINED_MODEL_OUTPUT_FORMAT == "raven":

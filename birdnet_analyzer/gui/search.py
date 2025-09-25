@@ -63,6 +63,11 @@ def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overl
     gu.validate(query_path, loc.localize("embeddings-search-query-validation-message"))
     gu.validate(max_samples, loc.localize("embeddings-search-max-samples-validation-message"))
 
+    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+
     db = get_search_database(db_path)
     settings = db.get_metadata("birdnet_analyzer_settings")
 
@@ -180,7 +185,7 @@ def build_search_tab():
                                         embedding_source = db.get_embedding_source(r.embedding_id)
                                         file = embedding_source.source_id
                                         offset = embedding_source.offsets[0]
-                                        duration = cfg.SIG_LENGTH * settings["AUDIO_SPEED"]
+                                        duration = cfg.BIRDNET_SIG_LENGTH * settings["AUDIO_SPEED"]
                                         spec = utils.spectrogram_from_file(
                                             file,
                                             offset=offset,
@@ -283,7 +288,7 @@ def build_search_tab():
 
             sig, rate = audio.open_audio_file(
                 audiofilepath,
-                duration=cfg.SIG_LENGTH * audio_speed if crop_mode == "first" else None,
+                duration=cfg.BIRDNET_SIG_LENGTH * audio_speed if crop_mode == "first" else None,
                 fmin=fmin,
                 fmax=fmax,
                 speed=audio_speed,
@@ -291,9 +296,9 @@ def build_search_tab():
 
             # Crop query audio
             if crop_mode == "center":
-                sig = [audio.crop_center(sig, rate, cfg.SIG_LENGTH)][0]
+                sig = [audio.crop_center(sig, rate, cfg.BIRDNET_SIG_LENGTH)][0]
             elif crop_mode == "first":
-                sig = [audio.split_signal(sig, rate, cfg.SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][0]
+                sig = [audio.split_signal(sig, rate, cfg.BIRDNET_SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][0]
 
             sig = np.array(sig, dtype="float32")
             spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))

@@ -46,6 +46,11 @@ def run(output_path, lat, lon, week, threshold, sortby):
     Returns:
         None
     """
+    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+
     # Load eBird codes, labels
     cfg.LABELS = utils.read_lines(cfg.LABELS_FILE)
 
