@@ -115,9 +115,8 @@ def save_labels_file(labels: list[str], locale: str):
     os.makedirs(cfg.TRANSLATED_LABELS_PATH, exist_ok=True)
 
     # Save labels file
-    fpath = os.path.join(
-        cfg.TRANSLATED_LABELS_PATH, "{}_{}.txt".format(os.path.basename(cfg.LABELS_FILE).rsplit(".", 1)[0], locale)
-    )
+    fpath = os.path.join(cfg.TRANSLATED_LABELS_PATH, "{}_{}.txt".format(os.path.basename(cfg.BIRDNET_LABELS_FILE).rsplit(".", 1)[0], locale))
+
     with open(fpath, "w", encoding="utf-8") as f:
         f.writelines(label + "\n" for label in labels)
 
