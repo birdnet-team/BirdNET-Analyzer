@@ -196,7 +196,7 @@ def _set_params(
     cfg.BANDPASS_FMIN = fmin
     cfg.BANDPASS_FMAX = fmax
     cfg.AUDIO_SPEED = audio_speed
-    cfg.RESULT_TYPES = rtype
+    cfg.RESULT_TYPES = rtype if isinstance(rtype, list | tuple | set) else [rtype]
     cfg.COMBINE_RESULTS = combine_results
     cfg.BATCH_SIZE = bs
     cfg.ADDITIONAL_COLUMNS = additional_columns
