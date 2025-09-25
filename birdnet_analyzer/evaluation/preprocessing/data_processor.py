@@ -52,7 +52,7 @@ class DataProcessor:
         prediction_file_name: str | None = None,
         annotation_file_name: str | None = None,
         class_mapping: dict[str, str] | None = None,
-        sample_duration: int = 3,
+        sample_duration: float = 3.0,
         min_overlap: float = 0.5,
         columns_predictions: dict[str, str] | None = None,
         columns_annotations: dict[str, str] | None = None,
@@ -68,7 +68,7 @@ class DataProcessor:
             annotation_file_name (Optional[str]): Name of the annotation file to process.
             class_mapping (Optional[Dict[str, str]]): Optional dictionary mapping raw class
                                                       names to standardized class names.
-            sample_duration (int, optional): Length of each data sample in seconds. Defaults to 3.
+            sample_duration (float, optional): Length of each data sample in seconds. Defaults to 3.0.
             min_overlap (float, optional): Minimum overlap required between prediction and
                                            annotation to consider a match.
             columns_predictions (Optional[Dict[str, str]], optional): Column name mappings for prediction files.
@@ -80,7 +80,7 @@ class DataProcessor:
             ValueError: If any parameter is invalid (e.g., negative sample duration).
         """
         # Initialize instance variables
-        self.sample_duration: int = sample_duration
+        self.sample_duration: float = sample_duration
         self.min_overlap: float = min_overlap
         self.class_mapping: dict[str, str] | None = class_mapping
 

@@ -139,7 +139,7 @@ def sigmoid_args():
     """
     Creates an argument parser for sigmoid sensitivity.
     This function sets up an argument parser with a single argument `--sensitivity`.
-    The sensitivity value is constrained to be within the range [0.75, 1.25], where higher
+    The sensitivity value is constrained to be within the range [0.5, 1.5], where higher
     values result in higher detection sensitivity. The default value is taken from
     `cfg.SIGMOID_SENSITIVITY`.
     Returns:
@@ -148,9 +148,9 @@ def sigmoid_args():
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument(
         "--sensitivity",
-        type=lambda a: min(1.25, max(0.75, float(a))),
+        type=lambda a: min(1.5, max(0.5, float(a))),
         default=cfg.SIGMOID_SENSITIVITY,
-        help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.75, 1.25]. Values other than 1.0 will shift the sigmoid functionon the x-axis. Use complementary to the cut-off threshold.",
+        help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid functionon the x-axis. Use complementary to the cut-off threshold.",
     )
 
     return p
@@ -168,8 +168,8 @@ def overlap_args(help_string="Overlap of prediction segments. Values in [0.0, 2.
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument(
         "--overlap",
-        type=lambda a: max(0.0, min(2.9, float(a))),
-        default=cfg.SIG_OVERLAP,
+        type=lambda a: max(0.0, min(4.9, float(a))),
+        default=0.0,
         help=help_string,
     )
 
@@ -398,6 +398,8 @@ def analyzer_parser():
         help="Maximum number of consecutive detections above MIN_CONF to merge for each detected species. This will result in fewer entires in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. Set to None to include all consecutive detections. We use the mean of the top 3 scores from all consecutive detections for merging.",
     )
 
+    parser.add_argument("--use_perch", action="store_true", help="Use the Perch model for detection.")
+
     return parser
 
 
@@ -538,7 +540,7 @@ def segments_parser():
     parser.add_argument(
         "--seg_length",
         type=lambda a: max(1.0, float(a)),
-        default=cfg.SIG_LENGTH,
+        default=cfg.BIRDNET_SIG_LENGTH,
         help="Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.",
     )
 
@@ -562,7 +564,6 @@ def segments_parser():
         default=10,
         help="Number of bins to use for the balanced collection mode",
     )
-
 
     return parser
 

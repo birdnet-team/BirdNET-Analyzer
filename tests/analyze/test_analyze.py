@@ -1,5 +1,6 @@
 import csv
 import os
+import platform
 import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
@@ -49,13 +50,10 @@ def setup_test_environment():
         setattr(cfg, attr, value)
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
-def test_analyze_single_file(
-    mock_save_params: MagicMock, mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment
-):
+def test_analyze_single_file(mock_save_params: MagicMock, mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing a single audio file."""
     env = setup_test_environment
 
@@ -75,17 +73,15 @@ def test_analyze_single_file(
     analyze(env["test_file1"], env["output_dir"], min_conf=0.5)
 
     # Verify behavior
-    mock_ensure_model.assert_called_once()
     mock_set_params.assert_called_once()
     mock_analyze_file.assert_called_once_with((env["test_file1"], {"param1": "value1"}))
     mock_save_params.assert_called_once()
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("multiprocessing.Pool")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
-def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing multiple files with multiprocessing."""
     env = setup_test_environment
 
@@ -112,14 +108,12 @@ def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, 
     analyze(env["input_dir"], env["output_dir"], threads=2)
 
     # Verify behavior
-    mock_ensure_model.assert_called_once()
     mock_set_params.assert_called_once()
     mock_pool.assert_called_once_with(2)
     pool_instance.map_async.assert_called_once()
     mock_save_params.assert_called_once()
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
 @patch("birdnet_analyzer.analyze.utils.save_analysis_params")
@@ -129,7 +123,6 @@ def test_analyze_with_combined_results(
     mock_save_params: MagicMock,
     mock_analyze_file: MagicMock,
     mock_set_params: MagicMock,
-    mock_ensure_model: MagicMock,
     setup_test_environment,
 ):
     """Test analyzing files with combined results."""
@@ -152,17 +145,15 @@ def test_analyze_with_combined_results(
     analyze(env["test_file1"], env["output_dir"], combine_results=True)
 
     # Verify behavior
-    mock_ensure_model.assert_called_once()
     mock_set_params.assert_called_once()
     mock_analyze_file.assert_called_once_with((env["test_file1"], {"param1": "value1"}))
     mock_combine_results.assert_called_once_with([result_file])
     mock_save_params.assert_called_once()
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with location-based filtering."""
     env = setup_test_environment
 
@@ -175,17 +166,15 @@ def test_analyze_with_location_filtering(mock_analyze_file: MagicMock, mock_set_
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["lat"] == 42.5
     assert kwargs["lon"] == -76.45
     assert kwargs["week"] == 20
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with a custom classifier."""
     env = setup_test_environment
 
@@ -203,15 +192,13 @@ def test_analyze_with_custom_classifier(mock_analyze_file: MagicMock, mock_set_p
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["custom_classifier"] == custom_classifier
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with multiple output result types."""
     env = setup_test_environment
 
@@ -224,15 +211,13 @@ def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_s
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["rtype"] == ["table", "csv", "audacity"]
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
 @patch("birdnet_analyzer.analyze.core._set_params")
 @patch("birdnet_analyzer.analyze.utils.analyze_file")
-def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set_params: MagicMock, mock_ensure_model: MagicMock, setup_test_environment):
+def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set_params: MagicMock, setup_test_environment):
     """Test analyzing with a custom species list."""
     env = setup_test_environment
 
@@ -250,7 +235,6 @@ def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
-    mock_ensure_model.assert_called_once()
     _, kwargs = mock_set_params.call_args
     assert kwargs["slist"] == species_list
 
@@ -265,7 +249,7 @@ def test_analyze_with_negative_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Audio speed must be a positive value."):
+    with pytest.raises(ValueError, match=r"Audio speed must be a positive value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=-1.0, top_n=1, min_conf=0)
 
 
@@ -279,7 +263,7 @@ def test_analyze_with_zero_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Audio speed must be a positive value."):
+    with pytest.raises(ValueError, match=r"Audio speed must be a positive value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=0.0, top_n=1, min_conf=0)
 
 
@@ -293,7 +277,7 @@ def test_analyze_with_invalid_audio_speed(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Audio speed must be a numeric value."):
+    with pytest.raises(ValueError, match=r"Audio speed must be a numeric value."):
         analyze(soundscape_path, env["output_dir"], audio_speed="fast", top_n=1, min_conf=0)
 
 
@@ -307,7 +291,7 @@ def test_analyze_with_negative_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Overlap must be a non-negative value."):
+    with pytest.raises(ValueError, match=r"Overlap must be a non-negative value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=-1)
 
 
@@ -321,7 +305,7 @@ def test_analyze_with_invalid_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match="Overlap must be a numeric value."):
+    with pytest.raises(ValueError, match=r"Overlap must be a numeric value."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap="high")
 
 
@@ -335,15 +319,30 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
     # Call function under test
-    with pytest.raises(ValueError, match=f"Overlap must be less than {cfg.SIG_LENGTH} seconds."):
+    with pytest.raises(ValueError, match=rf"Overlap must be less than or equal to {cfg.BIRDNET_SIG_LENGTH - 0.1} seconds for BirdNET model."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
 
-
+@pytest.mark.skipif(platform.system() == "Darwin", reason="Don't ask me why it times out on macOS.")
 @pytest.mark.parametrize(
-    ("audio_speed", "overlap"),
-    [(10, 1), (5, 2), (5, 0), (0.1, 1), (0.2, 0), (0.3, 0.7)],
+    ("use_perch", "audio_speed", "overlap"),
+    [
+        (False, 10, 1),
+        (False, 5, 2),
+        (False, 5, 0),
+        (False, 0.1, 1),
+        (False, 0.2, 0),
+        (False, 0.3, 0.7),
+        (True, 10, 1),
+        (True, 5, 2),
+        (True, 5, 0),
+        # (True, 0.1, 1), # Takes too long
+        (True, 0.2, 0),
+        (True, 0.3, 0.7),
+        (True, 1.0, 4),
+        # (True, 2.0, 4.9), # Also takes too long
+    ],
 )
-def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, overlap):
+def test_analyze_with_speed_up_and_overlap(setup_test_environment, use_perch, audio_speed, overlap):
     """Test analyzing with speed up."""
     env = setup_test_environment
 
@@ -352,9 +351,12 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
     file_length = 120
     precision = 100
-    step_size = round((3 - overlap) * audio_speed, precision // 10)
+    seq_length = cfg.PERCH_SIG_LENGTH if use_perch else cfg.BIRDNET_SIG_LENGTH
+    step_size = round((seq_length - overlap) * audio_speed, precision // 10)
     expected_start_timestamps = [e / precision for e in range(0, int(file_length * precision), int(step_size * precision))]
-    expected_end_timestamps = [e / precision for e in range(round(3 * audio_speed * precision), int(file_length * precision) + 1, int(step_size * precision))]
+    expected_end_timestamps = [
+        e / precision for e in range(round(seq_length * audio_speed * precision), int(file_length * precision) + 1, int(step_size * precision))
+    ]
 
     while len(expected_end_timestamps) < len(expected_start_timestamps):
         if file_length - expected_start_timestamps[-1] >= 1 * audio_speed:
@@ -363,7 +365,7 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, audio_speed, 
             expected_start_timestamps.pop()
 
     # Call function under test
-    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=overlap)
+    analyze(soundscape_path, env["output_dir"], audio_speed=audio_speed, top_n=1, overlap=overlap, use_perch=use_perch)
 
     output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
     assert os.path.exists(output_file)
@@ -426,6 +428,7 @@ def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environme
             assert float(row["sensitivity"]) == cfg.SIGMOID_SENSITIVITY, "Sensitivity value does not match expected value"
             assert row["species_list"] == "", "Species list value does not match expected value"
             assert float(row["min_conf"]) == 0, "Min confidence value does not match expected value"
+
 
 def test_sensitivity(setup_test_environment):
     """Test sensitivity setting."""

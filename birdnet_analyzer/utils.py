@@ -139,16 +139,12 @@ def collect_all_files(path: str, filetypes: list[str], pattern: str = ""):
     files = []
 
     for root, _, flist in os.walk(path):
-        files.extend(
-            os.path.join(root, f)
-            for f in flist
-            if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in filetypes and (pattern in f or not pattern)
-        )
+        files.extend(os.path.join(root, f) for f in flist if not f.startswith(".") and f.rsplit(".", 1)[-1].lower() in filetypes and (pattern in f or not pattern))
 
     return sorted(files)
 
 
-def read_lines(path: str | Path):
+def read_lines(path: str | Path | None) -> list[str]:
     """Reads the lines into a list.
 
     Opens the file and reads its contents into a list.
@@ -283,12 +279,7 @@ def write_error_log(ex: Exception):
     import datetime
 
     with open(cfg.ERROR_LOG_FILE, "a") as elog:
-        elog.write(
-            datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-            + "\n"
-            + "".join(traceback.TracebackException.from_exception(ex).format())
-            + "\n"
-        )
+        elog.write(datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]") + "\n" + "".join(traceback.TracebackException.from_exception(ex).format()) + "\n")
 
 
 def img2base64(path):
@@ -332,7 +323,7 @@ def save_result_file(result_path: str, out_string: str):
         rfile.write(out_string)
 
 
-def check_model_files():
+def check_birdnet_files():
     checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints", "V2.4")
     required_files = [
         "BirdNET_GLOBAL_6K_V2.4_Model/variables/variables.data-00000-of-00001",
@@ -373,6 +364,10 @@ def check_model_files():
         "BirdNET_GLOBAL_6K_V2.4_Model_INT8.tflite",
     ]
 
+    return check_model_files(checkpoint_dir, required_files)
+
+
+def check_model_files(checkpoint_dir, required_files):
     for file in required_files:
         if not os.path.exists(os.path.join(checkpoint_dir, file)):
             print(f"Missing {file}")
@@ -384,13 +379,48 @@ def check_model_files():
     return True
 
 
-def ensure_model_exists():
+def check_perchv2_files():
+    checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints", "perch_v2")
+    required_files = [
+        "fingerprint.pb",
+        "saved_model.pb",
+        "variables/variables.index",
+        "variables/variables.data-00000-of-00001",
+        "assets/labels.csv",
+        "assets/perch_v2_ebird_classes.csv",
+    ]
+
+    return check_model_files(checkpoint_dir, required_files)
+
+
+def ensure_perch_exists():
+    from shutil import copytree
+
+    import kagglehub
+
+    if check_perchv2_files():
+        return
+
+    path = kagglehub.model_download("google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu")
+
+    os.makedirs(cfg.PERCH_V2_MODEL_PATH, exist_ok=True)
+    copytree(path, cfg.PERCH_V2_MODEL_PATH, dirs_exist_ok=True)
+
+
+def ensure_model_exists(check_perch: bool = False):
     import zipfile
 
     import requests
     from tqdm import tqdm
 
-    if FROZEN or check_model_files():
+    if check_perch:
+        ensure_perch_exists()
+        return
+
+    if FROZEN:
+        return
+
+    if check_birdnet_files():
         return
 
     checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints")
