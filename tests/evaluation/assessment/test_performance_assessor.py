@@ -169,7 +169,7 @@ class TestPerformanceAssessorCalculateMetrics:
         assessor = PerformanceAssessor(num_classes=num_classes)
         predictions = self.rng.random((100, num_classes))
         labels = self.rng.integers(0, 2, size=(100,))  # Invalid shape
-        with pytest.raises(ValueError, match="predictions and labels must have the same shape."):
+        with pytest.raises(ValueError, match=r"predictions and labels must have the same shape."):
             assessor.calculate_metrics(predictions, labels)
 
     def test_calculate_metrics_with_mismatched_predictions_and_labels(self):
@@ -401,7 +401,7 @@ class TestPerformanceAssessorPlotMetricsAllThresholds:
         assessor = PerformanceAssessor(num_classes=num_classes)
         predictions = self.rng.random(100)  # Invalid shape
         labels = self.rng.integers(0, 2, size=(100, num_classes))
-        with pytest.raises(ValueError, match="predictions and labels must have the same shape."):
+        with pytest.raises(ValueError, match=r"predictions and labels must have the same shape."):
             assessor.plot_metrics_all_thresholds(predictions, labels)
 
     def test_plot_metrics_all_thresholds_with_invalid_labels_shape(self):

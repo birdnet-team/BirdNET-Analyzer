@@ -180,8 +180,11 @@ def consumer(q: mp.Queue, stop_at, database: str):
     db.db.close()
 
 
-def run(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
-    ### Make sure to comment out appropriately if you are not using args. ###
+def extract_embeddings(audio_input, database, overlap, audio_speed, fmin, fmax, threads, batchsize, file_output):
+    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
 
     # Set input and output path
     cfg.INPUT_PATH = audio_input
