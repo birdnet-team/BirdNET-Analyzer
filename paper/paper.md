@@ -1,8 +1,10 @@
 ---
-title: 'BirdNET Analyzer: A biocoustics analysis software'
+title: 'BirdNET-Analyzer: A bioacoustics analysis software'
 tags:
-  - Bioacoustic
-  - Audio analysis
+  - Python
+  - bioacoustics
+  - audio analysis
+  - bird sound recognition
 authors:
   - name: Stefan Kahl
     equal-contrib: true
@@ -16,8 +18,10 @@ authors:
 affiliations:
  - name: TU Chemnitz, Germany
    index: 1
+   ror: 00a208s56
  - name: Cornell Lab of Ornithology, USA
    index: 2
+   ror: 00k86w020
 date: 31 March 2025
 bibliography: paper.bib
 
