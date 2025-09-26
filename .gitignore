@@ -181,3 +181,6 @@ BirdNET_analysis_params.csv
 
 # Build files
 entitlements.plist
+
+# Config files
+.markdownlint.*
