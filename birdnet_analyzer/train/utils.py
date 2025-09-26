@@ -552,8 +552,8 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
 
     print("...Done.", flush=True)
 
-    # Get best validation metrics based on AUPRC instead of loss for more reliable results with imbalanced data
-    best_epoch = np.argmax(history.history["val_AUPRC"])
+    # Get best validation metrics based on loss
+    best_epoch = np.argmin(history.history["val_loss"])
     best_val_auprc = history.history["val_AUPRC"][best_epoch]
     best_val_auroc = history.history["val_AUROC"][best_epoch]
     best_val_loss = history.history["val_loss"][best_epoch]
