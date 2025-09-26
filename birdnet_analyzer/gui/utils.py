@@ -531,6 +531,8 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     file = _WINDOW.create_file_dialog(webview.FileDialog.SAVE, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
 
     if file:
+        file: str = file[0] if isinstance(file, list | tuple) else file
+
         if state_key:
             settings.set_state(state_key, os.path.dirname(file))
 
