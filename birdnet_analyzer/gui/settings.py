@@ -3,8 +3,6 @@ import os
 import sys
 from pathlib import Path
 
-from absl import logging
-
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
 
@@ -33,9 +31,6 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 GUI_SETTINGS_PATH = os.path.join(APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
 STATE_SETTINGS_PATH = os.path.join(APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json")
-
-
-logging.set_verbosity(logging.ERROR)
 
 
 def get_state_dict() -> dict:
