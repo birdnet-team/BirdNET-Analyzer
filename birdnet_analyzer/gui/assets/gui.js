@@ -54,17 +54,16 @@ function init() {
     }
 
     function bindReviewKeyShortcuts() {
-        const posBtn = document.getElementById("positive-button");
-        const negBtn = document.getElementById("negative-button");
-        const skipBtn = document.getElementById("skip-button");
-        const undoBtn = document.getElementById("undo-button");
-
-        if (!posBtn || !negBtn) return;
-
         console.log("Binding review key shortcuts...");
 
         document.addEventListener("keydown", function (event) {
+            const posBtn = document.getElementById("positive-button");
+            const negBtn = document.getElementById("negative-button");
+            const skipBtn = document.getElementById("skip-button");
+            const undoBtn = document.getElementById("undo-button");
             const reviewTabBtn = document.getElementById("review-tab-button");
+
+            if (!posBtn || !negBtn) return;
 
             if (reviewTabBtn.ariaSelected === "false") return;
 
