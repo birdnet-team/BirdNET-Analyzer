@@ -478,6 +478,9 @@ def save_model_params(path):
             "Upsamling ratio",
             "use mixup",
             "use label smoothing",
+            "use focal loss",
+            "focal loss alpha",
+            "focal loss gamma",
             "BirdNET Model version",
         ),
         (
@@ -492,6 +495,9 @@ def save_model_params(path):
             cfg.UPSAMPLING_RATIO,
             cfg.TRAIN_WITH_MIXUP,
             cfg.TRAIN_WITH_LABEL_SMOOTHING,
+            cfg.TRAIN_WITH_FOCAL_LOSS,
+            cfg.FOCAL_LOSS_ALPHA,
+            cfg.FOCAL_LOSS_GAMMA,
             cfg.MODEL_VERSION,
         ),
     )
