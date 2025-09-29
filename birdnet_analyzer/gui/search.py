@@ -259,7 +259,7 @@ def build_search_tab():
                 [],
                 {},
                 gr.Button(visible=True),
-                gr.Textbox(value=None, visible=False),
+                gr.Textbox(value=None, visible=True),
             )
 
         return None, None, None, None, [], {}, gr.Button(visible=False), gr.Textbox(visible=False)
@@ -313,6 +313,7 @@ def build_search_tab():
         outputs=[query_spectrogram, results_state, export_state],
         preprocess=False,
     )
+
     query_sample_tb.change(
         update_query_spectrogram,
         inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
