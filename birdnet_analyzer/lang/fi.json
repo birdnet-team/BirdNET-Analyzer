@@ -258,7 +258,7 @@
     "species-list-radio-option-custom-classifier": "Mukautettu luokittelija",
     "species-list-radio-option-custom-list": "Mukautettu lajilista",
     "species-list-radio-option-predict-list": "Lajit sijainnin mukaan",
-    "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-radio-option-use-perch": "Perch v2 (preview)",
     "species-tab-filename-textbox-label": "Tiedoston nimi, jos ei määritetty, käytetään nimeä 'species_list.txt'.",
     "species-tab-finish-info": "Lajilista tallennettu kohteeseen",
     "species-tab-select-output-directory-button-label": "Valitse tulostehakemisto",
