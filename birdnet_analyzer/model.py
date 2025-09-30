@@ -593,10 +593,6 @@ def load_custom_classifier():
         # Get classification output
         C_OUTPUT_LAYER_INDEX = output_details[0]["index"]
     else:
-        import tensorflow as tf
-
-        tf.get_logger().setLevel("ERROR")
-
         C_PBMODEL = tf.saved_model.load(cfg.CUSTOM_CLASSIFIER)
 
 
@@ -796,8 +792,6 @@ def train_linear_classifier(
     # Add LR scheduler callback
     callbacks.append(keras.callbacks.LearningRateScheduler(lr_schedule))
 
-    optimizer_cls = keras.optimizers.legacy.Adam if sys.platform == "darwin" else keras.optimizers.Adam
-
     def _focal_loss(y_true, y_pred):
         return focal_loss(y_true, y_pred, gamma=focal_loss_gamma, alpha=focal_loss_alpha)
 
@@ -806,7 +800,7 @@ def train_linear_classifier(
 
     # Compile model with appropriate metrics for classification task
     classifier.compile(
-        optimizer=optimizer_cls(learning_rate=learning_rate),
+        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
         loss=loss_function,
         metrics=[
             keras.metrics.AUC(

@@ -688,20 +688,28 @@ def download_plot(plot, filename=""):
     from PIL import Image
 
     imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
-    res = _WINDOW.create_file_dialog(
+    res: str = _WINDOW.create_file_dialog(
         webview.FileDialog.SAVE,
         file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
         save_filename=filename,
     )
 
     if res:
-        if res.endswith(".webp"):
+        if isinstance(res, list | tuple):
+            res = res[0]
+
+        file_ext = res.split(".", 1)[-1].upper()
+
+        if file_ext == "WEBP":
             with open(res, "wb") as f:
                 f.write(imgdata)
         else:
-            output_format = res.rsplit(".", 1)[-1].upper()
+            if file_ext not in ["PNG", "JPEG"]:
+                file_ext = "PNG"
+                res += ".png"
+
             img = Image.open(io.BytesIO(imgdata))
-            img.save(res, output_format if output_format in ["PNG", "JPEG"] else "PNG")
+            img.save(res, file_ext)
 
 
 def _get_network_shortcuts():
