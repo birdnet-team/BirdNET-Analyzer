@@ -9,6 +9,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 from typing import Literal
+import platform
 
 import gradio as gr
 import webview
@@ -614,8 +615,13 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
         A dict with the created elements.
     """
     with gr.Accordion(loc.localize("species-list-accordion-label"), open=opened), gr.Row():
+        values = [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES, _USE_PERCH]
+
+        if platform.system() == "Darwin":
+            values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
+
         species_list_radio = gr.Radio(
-            [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES, _USE_PERCH],
+            values,
             value=_ALL_SPECIES,
             label=loc.localize("species-list-radio-label"),
             info=loc.localize("species-list-radio-info"),

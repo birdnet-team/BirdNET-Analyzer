@@ -258,3 +258,11 @@ def get_config():
 def set_config(c: dict):
     for k, v in c.items():
         globals()[k] = v
+
+
+#####################
+# Convenience funcs #
+#####################
+
+def perch_labels_file():
+    return os.path.join(PERCH_V2_MODEL_PATH, "assets", "labels.csv")
