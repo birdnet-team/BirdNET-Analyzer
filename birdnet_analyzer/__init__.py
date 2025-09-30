@@ -11,5 +11,6 @@ from birdnet_analyzer.train import train
 __version__ = "2.3.0"
 __all__ = ["analyze", "embeddings", "search", "segments", "species", "train"]
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["WRAPT_DISABLE_EXTENSIONS"] = "true"
 
 warnings.filterwarnings("ignore")

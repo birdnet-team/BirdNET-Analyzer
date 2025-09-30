@@ -3,7 +3,6 @@
 
 import logging
 import os
-import sys
 from typing import Literal
 
 import keras
@@ -12,6 +11,7 @@ import tensorflow as tf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
+from birdnet_analyzer.train import custom_models
 
 try:
     import tflite_runtime.interpreter as tflite  # type: ignore
@@ -826,7 +826,14 @@ def train_linear_classifier(
     return classifier, history
 
 
-def combine_models(classifier, mode: Literal["replace", "append"], add_sigmoid=False):
+def save_linear_classifier(classifier, model_path: str, labels: list[str], mode: Literal["replace", "append"] = "replace"):
+    """Saves the classifier as a tflite model, as well as the used labels in a .txt.
+
+    Args:
+        classifier: The custom classifier.
+        model_path: Path the model will be saved at.
+        labels: List of labels used for the classifier.
+    """
     global PBMODEL
 
     if mode not in ("replace", "append"):
@@ -845,21 +852,7 @@ def combine_models(classifier, mode: Literal["replace", "append"], add_sigmoid=F
         basic = WrappedSavedModel(saved_model.signatures["basic"])(inputs)
         output = keras.layers.concatenate([basic, classifier(wrapper)], name="combined_output")
 
-    if add_sigmoid:
-        output = keras.layers.Activation("sigmoid")(output)
-
-    return keras.Model(inputs=inputs, outputs=output, name="basic")
-
-
-def save_linear_classifier(classifier, model_path: str, labels: list[str], mode: Literal["replace", "append"] = "replace"):
-    """Saves the classifier as a tflite model, as well as the used labels in a .txt.
-
-    Args:
-        classifier: The custom classifier.
-        model_path: Path the model will be saved at.
-        labels: List of labels used for the classifier.
-    """
-    combined_model = combine_models(classifier, mode=mode, add_sigmoid=False)
+    combined_model = keras.Model(inputs=inputs, outputs=output, name="basic")
 
     # Append .tflite if necessary
     if not model_path.endswith(".tflite"):
@@ -905,27 +898,48 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode: Liter
     import csv
     import json
 
-    combined_model = combine_models(classifier, mode=mode, add_sigmoid=True)
+    # combined_model = combine_models(classifier, mode=mode, add_sigmoid=True)
 
     # Make signatures
-    class SignatureModule(tf.Module):
-        def __init__(self, keras_model):
-            super().__init__()
-            self.model = keras_model
+    # class SignatureModule(tf.Module):
+    #     def __init__(self, keras_model):
+    #         super().__init__()
+    #         self.model = keras_model
 
-        @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])
-        def basic(self, inputs):
-            return {"scores": self.model(inputs)}
+    #     @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])
+    #     def basic(self, inputs):
+    #         return {"scores": self.model(inputs)}
 
-    smodel = SignatureModule(combined_model)
+    # smodel = SignatureModule(combined_model)
+    # signatures = {
+    #     "basic": smodel.basic,
+    # }
+
+    # # Save signature model
+    # os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    # model_path = model_path.removesuffix(".tflite")
+    # tf.saved_model.save(smodel, model_path, signatures=signatures)
+
+    global PBMODEL
+
+    if PBMODEL is None:
+        PBMODEL = tf.saved_model.load(os.path.join(SCRIPT_DIR, cfg.PB_MODEL))
+
+    model_cls = custom_models.CombinedModelAppendWithSigmoid if mode == "append" else custom_models.CombinedModelReplaceWithSigmoid
+    combined_model = model_cls(PBMODEL, classifier)
+
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])
+    def basic(inputs):
+        return {"scores": combined_model(inputs)}
+
     signatures = {
-        "basic": smodel.basic,
+        "basic": basic,
     }
 
     # Save signature model
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     model_path = model_path.removesuffix(".tflite")
-    tf.saved_model.save(smodel, model_path, signatures=signatures)
+    tf.saved_model.save(combined_model, model_path, signatures=signatures)
 
     if mode == "append":
         labels = [*utils.read_lines(os.path.join(SCRIPT_DIR, cfg.LABELS_FILE)), *labels]
