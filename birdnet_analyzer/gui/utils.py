@@ -3,13 +3,13 @@ import base64
 import io
 import multiprocessing
 import os
+import platform
 import sys
 import warnings
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 from typing import Literal
-import platform
 
 import gradio as gr
 import webview

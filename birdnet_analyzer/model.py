@@ -1,6 +1,8 @@
 # ruff: noqa: PLW0603
 """Contains functions to use the BirdNET models."""
 
+import csv
+import json
 import logging
 import os
 from typing import Literal
@@ -21,11 +23,6 @@ except ModuleNotFoundError:
 tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
-# Import TFLite from runtime or Tensorflow;
-# import Keras if protobuf model;
-# NOTE: we have to use TFLite if we want to use
-# the metadata model or want to extract embeddings
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER = None
@@ -557,6 +554,7 @@ def load_model(class_output=True):
         # Load protobuf model
         # Note: This will throw a bunch of warnings about custom gradients
         # which we will ignore until TF lets us block them
+        # TODO: pretty sure this doesn't work anymore, but I don't think anyone uses it
         PBMODEL = keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), compile=False)
 
 
@@ -895,31 +893,6 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode: Liter
     Returns:
         None
     """
-    import csv
-    import json
-
-    # combined_model = combine_models(classifier, mode=mode, add_sigmoid=True)
-
-    # Make signatures
-    # class SignatureModule(tf.Module):
-    #     def __init__(self, keras_model):
-    #         super().__init__()
-    #         self.model = keras_model
-
-    #     @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])
-    #     def basic(self, inputs):
-    #         return {"scores": self.model(inputs)}
-
-    # smodel = SignatureModule(combined_model)
-    # signatures = {
-    #     "basic": smodel.basic,
-    # }
-
-    # # Save signature model
-    # os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    # model_path = model_path.removesuffix(".tflite")
-    # tf.saved_model.save(smodel, model_path, signatures=signatures)
-
     global PBMODEL
 
     if PBMODEL is None:
