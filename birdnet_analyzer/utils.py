@@ -440,7 +440,7 @@ def ensure_model_exists(check_perch: bool = False):
 
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    url = "https://tuc.cloud/index.php/s/3BsizWy5M7CtQ5w/download/V2.4.zip"
+    url = "https://tuc.cloud/index.php/s/886x39f5N3sdsAM/download/V2.4.zip"
     download_path = os.path.join(checkpoint_dir, "V2.4.zip")
 
     response = requests.get(url, stream=True, timeout=30)
