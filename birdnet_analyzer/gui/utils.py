@@ -301,9 +301,10 @@ def build_settings():
 
         def on_tab_select(value: gr.SelectData):
             if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
-                with open(cfg.ERROR_LOG_FILE, encoding="utf-8") as f:
-                    lines = f.readlines()
+                with open(cfg.ERROR_LOG_FILE, mode="rb") as f:
+                    lines = [line.decode("utf-8", errors="ignore") for line in f]
                     last_100_lines = lines[-100:]
+
                     return "".join(last_100_lines)
 
             return ""
