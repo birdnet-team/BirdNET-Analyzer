@@ -1,4 +1,5 @@
 # ruff: noqa: PLW0603
+# pyright: reportOptionalMemberAccess=false
 """Contains functions to use the BirdNET models."""
 
 import csv
@@ -901,7 +902,7 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode: Liter
     model_cls = custom_models.CombinedModelAppendWithSigmoid if mode == "append" else custom_models.CombinedModelReplaceWithSigmoid
     combined_model = model_cls(PBMODEL, classifier)
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])  # pyright: ignore[reportCallIssue]
     def basic(inputs):
         return {"scores": combined_model(inputs)}
 
