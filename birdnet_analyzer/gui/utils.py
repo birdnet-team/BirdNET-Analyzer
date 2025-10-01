@@ -688,7 +688,7 @@ def download_plot(plot, filename=""):
     from PIL import Image
 
     imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
-    res: str = _WINDOW.create_file_dialog(
+    res = _WINDOW.create_file_dialog(
         webview.FileDialog.SAVE,
         file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
         save_filename=filename,
