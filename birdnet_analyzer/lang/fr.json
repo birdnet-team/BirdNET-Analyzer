@@ -258,7 +258,7 @@
     "species-list-radio-option-custom-classifier": "Classificateur personnalisé",
     "species-list-radio-option-custom-list": "Liste des espèces personnalisées",
     "species-list-radio-option-predict-list": "Espèces par lieu",
-    "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-radio-option-use-perch": "Perch v2 (preview)",
     "species-tab-filename-textbox-label": "Nom du fichier, si non spécifié « species_list.txt » sera utilisé.",
     "species-tab-finish-info": "La liste des espèces est sauvegardé à l’adresse:",
     "species-tab-select-output-directory-button-label": "Sélectionner un dossier de sortie",

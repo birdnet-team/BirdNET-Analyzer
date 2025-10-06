@@ -258,7 +258,7 @@
     "species-list-radio-option-custom-classifier": "Anpassad klassificerare",
     "species-list-radio-option-custom-list": "Anpassad artlista",
     "species-list-radio-option-predict-list": "Arter efter plats",
-    "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-radio-option-use-perch": "Perch v2 (preview)",
     "species-tab-filename-textbox-label": "Namn på filen, om inte angivet används 'species_list.txt'.",
     "species-tab-finish-info": "Artlista sparad i",
     "species-tab-select-output-directory-button-label": "Välj utdatakatalog",

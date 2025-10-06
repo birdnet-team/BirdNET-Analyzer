@@ -227,10 +227,10 @@ def _set_params(
 
     if cfg.USE_PERCH:
         cfg.MODEL_PATH = cfg.PERCH_V2_MODEL_PATH
-        cfg.LABELS_FILE = cfg.PERCH_LABELS_FILE
+        cfg.LABELS_FILE = cfg.perch_labels_file()
         cfg.SAMPLE_RATE = cfg.PERCH_SAMPLE_RATE
         cfg.SIG_LENGTH = cfg.PERCH_SIG_LENGTH
-        cfg.LABELS = read_lines(cfg.PERCH_LABELS_FILE)
+        cfg.LABELS = read_lines(cfg.LABELS_FILE)
         cfg.LABELS = cfg.LABELS[1:]  # it's a csv with header
     else:
         cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH

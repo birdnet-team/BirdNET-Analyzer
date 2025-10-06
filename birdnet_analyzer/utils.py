@@ -393,7 +393,6 @@ def check_model_files(checkpoint_dir, required_files):
 
 
 def check_perchv2_files():
-    checkpoint_dir = os.path.join(SCRIPT_DIR, "checkpoints", "perch_v2")
     required_files = [
         "fingerprint.pb",
         "saved_model.pb",
@@ -403,7 +402,7 @@ def check_perchv2_files():
         "assets/perch_v2_ebird_classes.csv",
     ]
 
-    return check_model_files(checkpoint_dir, required_files)
+    return check_model_files(cfg.PERCH_V2_MODEL_PATH, required_files)
 
 
 def ensure_perch_exists():
@@ -416,8 +415,12 @@ def ensure_perch_exists():
 
     path = kagglehub.model_download("google/bird-vocalization-classifier/tensorFlow2/perch_v2_cpu")
 
-    os.makedirs(cfg.PERCH_V2_MODEL_PATH, exist_ok=True)
-    copytree(path, cfg.PERCH_V2_MODEL_PATH, dirs_exist_ok=True)
+    try:
+        os.makedirs(cfg.PERCH_V2_MODEL_PATH, exist_ok=True)
+        copytree(path, cfg.PERCH_V2_MODEL_PATH, dirs_exist_ok=True)
+    except PermissionError:
+        # we might not have permissions to write if installed system-wide
+        cfg.PERCH_V2_MODEL_PATH = path
 
 
 def ensure_model_exists(check_perch: bool = False):

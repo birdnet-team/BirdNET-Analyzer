@@ -3,6 +3,7 @@ import base64
 import io
 import multiprocessing
 import os
+import platform
 import sys
 import warnings
 from collections.abc import Callable
@@ -300,9 +301,10 @@ def build_settings():
 
         def on_tab_select(value: gr.SelectData):
             if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
-                with open(cfg.ERROR_LOG_FILE, encoding="utf-8") as f:
-                    lines = f.readlines()
+                with open(cfg.ERROR_LOG_FILE, mode="rb") as f:
+                    lines = [line.decode("utf-8", errors="ignore") for line in f]
                     last_100_lines = lines[-100:]
+
                     return "".join(last_100_lines)
 
             return ""
@@ -614,8 +616,13 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
         A dict with the created elements.
     """
     with gr.Accordion(loc.localize("species-list-accordion-label"), open=opened), gr.Row():
+        values = [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES, _USE_PERCH]
+
+        if platform.system() == "Darwin":
+            values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
+
         species_list_radio = gr.Radio(
-            [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES, _USE_PERCH],
+            values,
             value=_ALL_SPECIES,
             label=loc.localize("species-list-radio-label"),
             info=loc.localize("species-list-radio-info"),
@@ -689,13 +696,21 @@ def download_plot(plot, filename=""):
     )
 
     if res:
-        if res.endswith(".webp"):
+        if isinstance(res, list | tuple):
+            res = res[0]
+
+        file_ext = res.split(".", 1)[-1].upper()
+
+        if file_ext == "WEBP":
             with open(res, "wb") as f:
                 f.write(imgdata)
         else:
-            output_format = res.rsplit(".", 1)[-1].upper()
+            if file_ext not in ["PNG", "JPEG"]:
+                file_ext = "PNG"
+                res += ".png"
+
             img = Image.open(io.BytesIO(imgdata))
-            img.save(res, output_format if output_format in ["PNG", "JPEG"] else "PNG")
+            img.save(res, file_ext)
 
 
 def _get_network_shortcuts():

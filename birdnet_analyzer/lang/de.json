@@ -258,7 +258,7 @@
     "species-list-radio-option-custom-classifier": "Benutzerdefinierter Klassifikator",
     "species-list-radio-option-custom-list": "Benutzerdefinierte Artenliste",
     "species-list-radio-option-predict-list": "Arten nach Standort",
-    "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-radio-option-use-perch": "Perch v2 (preview)",
     "species-tab-filename-textbox-label": "Name der Datei, wenn nicht angegeben, wird 'species_list.txt' verwendet.",
     "species-tab-finish-info": "Artenliste gespeichert unter",
     "species-tab-select-output-directory-button-label": "Wählen Sie das Ausgabeverzeichnis",

@@ -1,9 +1,11 @@
 # ruff: noqa: PLW0603
+# pyright: reportOptionalMemberAccess=false
 """Contains functions to use the BirdNET models."""
 
+import csv
+import json
 import logging
 import os
-import sys
 from typing import Literal
 
 import keras
@@ -12,6 +14,7 @@ import tensorflow as tf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import utils
+from birdnet_analyzer.train import custom_models
 
 try:
     import tflite_runtime.interpreter as tflite  # type: ignore
@@ -21,11 +24,6 @@ except ModuleNotFoundError:
 tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
-# Import TFLite from runtime or Tensorflow;
-# import Keras if protobuf model;
-# NOTE: we have to use TFLite if we want to use
-# the metadata model or want to extract embeddings
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER = None
@@ -557,6 +555,7 @@ def load_model(class_output=True):
         # Load protobuf model
         # Note: This will throw a bunch of warnings about custom gradients
         # which we will ignore until TF lets us block them
+        # TODO: pretty sure this doesn't work anymore, but I don't think anyone uses it
         PBMODEL = keras.models.load_model(os.path.join(SCRIPT_DIR, cfg.MODEL_PATH), compile=False)
 
 
@@ -593,10 +592,6 @@ def load_custom_classifier():
         # Get classification output
         C_OUTPUT_LAYER_INDEX = output_details[0]["index"]
     else:
-        import tensorflow as tf
-
-        tf.get_logger().setLevel("ERROR")
-
         C_PBMODEL = tf.saved_model.load(cfg.CUSTOM_CLASSIFIER)
 
 
@@ -796,8 +791,6 @@ def train_linear_classifier(
     # Add LR scheduler callback
     callbacks.append(keras.callbacks.LearningRateScheduler(lr_schedule))
 
-    optimizer_cls = keras.optimizers.legacy.Adam if sys.platform == "darwin" else keras.optimizers.Adam
-
     def _focal_loss(y_true, y_pred):
         return focal_loss(y_true, y_pred, gamma=focal_loss_gamma, alpha=focal_loss_alpha)
 
@@ -806,7 +799,7 @@ def train_linear_classifier(
 
     # Compile model with appropriate metrics for classification task
     classifier.compile(
-        optimizer=optimizer_cls(learning_rate=learning_rate),
+        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
         loss=loss_function,
         metrics=[
             keras.metrics.AUC(
@@ -832,7 +825,14 @@ def train_linear_classifier(
     return classifier, history
 
 
-def combine_models(classifier, mode: Literal["replace", "append"], add_sigmoid=False):
+def save_linear_classifier(classifier, model_path: str, labels: list[str], mode: Literal["replace", "append"] = "replace"):
+    """Saves the classifier as a tflite model, as well as the used labels in a .txt.
+
+    Args:
+        classifier: The custom classifier.
+        model_path: Path the model will be saved at.
+        labels: List of labels used for the classifier.
+    """
     global PBMODEL
 
     if mode not in ("replace", "append"):
@@ -851,21 +851,7 @@ def combine_models(classifier, mode: Literal["replace", "append"], add_sigmoid=F
         basic = WrappedSavedModel(saved_model.signatures["basic"])(inputs)
         output = keras.layers.concatenate([basic, classifier(wrapper)], name="combined_output")
 
-    if add_sigmoid:
-        output = keras.layers.Activation("sigmoid")(output)
-
-    return keras.Model(inputs=inputs, outputs=output, name="basic")
-
-
-def save_linear_classifier(classifier, model_path: str, labels: list[str], mode: Literal["replace", "append"] = "replace"):
-    """Saves the classifier as a tflite model, as well as the used labels in a .txt.
-
-    Args:
-        classifier: The custom classifier.
-        model_path: Path the model will be saved at.
-        labels: List of labels used for the classifier.
-    """
-    combined_model = combine_models(classifier, mode=mode, add_sigmoid=False)
+    combined_model = keras.Model(inputs=inputs, outputs=output, name="basic")
 
     # Append .tflite if necessary
     if not model_path.endswith(".tflite"):
@@ -908,30 +894,26 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode: Liter
     Returns:
         None
     """
-    import csv
-    import json
+    global PBMODEL
 
-    combined_model = combine_models(classifier, mode=mode, add_sigmoid=True)
+    if PBMODEL is None:
+        PBMODEL = tf.saved_model.load(os.path.join(SCRIPT_DIR, cfg.PB_MODEL))
 
-    # Make signatures
-    class SignatureModule(tf.Module):
-        def __init__(self, keras_model):
-            super().__init__()
-            self.model = keras_model
+    model_cls = custom_models.CombinedModelAppendWithSigmoid if mode == "append" else custom_models.CombinedModelReplaceWithSigmoid
+    combined_model = model_cls(PBMODEL, classifier)
 
-        @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])
-        def basic(self, inputs):
-            return {"scores": self.model(inputs)}
+    @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])  # pyright: ignore[reportCallIssue]
+    def basic(inputs):
+        return {"scores": combined_model(inputs)}
 
-    smodel = SignatureModule(combined_model)
     signatures = {
-        "basic": smodel.basic,
+        "basic": basic,
     }
 
     # Save signature model
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     model_path = model_path.removesuffix(".tflite")
-    tf.saved_model.save(smodel, model_path, signatures=signatures)
+    tf.saved_model.save(combined_model, model_path, signatures=signatures)
 
     if mode == "append":
         labels = [*utils.read_lines(os.path.join(SCRIPT_DIR, cfg.LABELS_FILE)), *labels]
