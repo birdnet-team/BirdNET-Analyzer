@@ -102,7 +102,11 @@ Precision, Recall, F1-Score, AUPRC and AUROC will be calculated for the test dat
 The metrics will be calculated for each class as well as a macro-average across all classes.
 Threshold based metrics will be calculated with the default threshold of 0.5 as well as an optimal threshold.
 
-The results along with the optimal threshold will be shown in the GUI and also saved to a CSV file in the output directory.
+Results for the default threshold will be shown in the GUI.
+The complete results, including results for the optimal threshold, will be saved to a CSV file in the output directory.
+
+.. hint::
+  The optimal threshhold is selected based on the F1-Score. This might cause precision or recall to be lower than on the default threshhold.
 
 3.5 Model Save Mode
 ##########################
