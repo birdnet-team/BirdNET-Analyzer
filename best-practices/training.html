@@ -1,0 +1,249 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training Custom Classifiers &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Evaluation Tool" href="evaluation-tool.html" />
+    <link rel="prev" title="Segment Review" href="segment-review.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../best-practices.html">Best practices</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="species-lists.html">Creating Your Own Species List</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segment-review.html">Segment Review</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Training Custom Classifiers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="evaluation-tool.html">Evaluation Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="embeddings.html">Embedding Extraction and Search</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../best-practices.html">Best practices</a></li>
+      <li class="breadcrumb-item active">Training Custom Classifiers</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="training-custom-classifiers">
+<h1>Training Custom Classifiers<a class="headerlink" href="#training-custom-classifiers" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>1. Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>The training feature allows you to create custom classifiers in case BirdNET does not contain the species you are interested in.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Before you consider training a custom classifier you might want to check if another class can act as a proxy for detecting your species or signal of interest.
+This means if BirdNET consistently detects your target species as another class, then this class can be used in place of your target species.</p>
+</div>
+</section>
+<section id="data-preparation">
+<h2>2. Data Preparation<a class="headerlink" href="#data-preparation" title="Link to this heading"></a></h2>
+<p>Training data is essential for creating a custom classifier. Make sure to gather a sufficient amount of audio recordings that represent the species or signal you want to classify.
+The data used for each class should be diverse and cover various conditions such as different times of day, weather conditions, and locations.</p>
+<p>Organize your data into a directory structure where each class has its own folder containing the audio files. The directory structure should look like this:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>dataset/
+├── class1/
+│   ├── audio1.wav
+│   ├── audio2.wav
+│   └── ...
+├── class2/
+│   ├── audio1.wav
+│   ├── audio2.wav
+│   └── ...
+└── ...
+</pre></div>
+</div>
+<section id="non-event-class">
+<h3>2.1 Non-Event Class<a class="headerlink" href="#non-event-class" title="Link to this heading"></a></h3>
+<p>We recommended including a non-event class in your training data. This class should contain audio recordings that do not belong to any of the target classes and represents background noise or silence.
+These classes will not be outputted when using the custom classifier, but they are essential for training the model to distinguish between target classes and non-target sounds.</p>
+<dl class="simple">
+<dt>The following class names can be used for the non-event samples:</dt><dd><ul class="simple">
+<li><p>noise</p></li>
+<li><p>other</p></li>
+<li><p>background</p></li>
+<li><p>silence</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="audio-file-length">
+<h3>2.2 Audio File Length<a class="headerlink" href="#audio-file-length" title="Link to this heading"></a></h3>
+<p>BirdNET will process 3-second audio segments from your recordings and we recommend using 3-second audio files for training.
+In case your audio files are longer than 3 seconds, you can specify a crop mode to choose how these audio files are processed. See <a class="reference internal" href="../implementation-details/crop-modes.html"><span class="doc">crop modes</span></a> for more details.</p>
+</section>
+</section>
+<section id="training-process">
+<h2>3. Training Process<a class="headerlink" href="#training-process" title="Link to this heading"></a></h2>
+<p>After preparing your data you can start the training process using the BirdNET-Analyzer’s training feature.
+The feature can be used via the GUI or the command line interface.</p>
+<p>In the GUI go the Train-Tab and select the directory containing your training data. The detected class names will be displayed in a table.
+Further select the output directory and specify the name for your custom classifier. After that you can already start training your classifier with the default settings by clicking the “Start training” button.</p>
+<section id="hyperparameters-and-autotune">
+<h3>3.1 Hyperparameters and Autotune<a class="headerlink" href="#hyperparameters-and-autotune" title="Link to this heading"></a></h3>
+<p>There are several hyperparameters that can be adjusted to optimize the classifier training.
+If you don’t have experience with training machine learning models, we recommend using the autotune feature.
+This will run multiple training runs (aka trials) with different hyperparameter settings and select the best performing settings based on the validation data.
+The parameters used for training the final classifier will be saved alongside the resulting classifier.
+When using autotune you can specify the number of trials as well as the number of executions per trial.</p>
+<p>If you want to adjust the hyperparameters manually, we have a more detailed documentation available <a class="reference internal" href="../implementation-details/training-hyperparameters.html"><span class="doc">here</span></a>.</p>
+</section>
+<section id="audio-settings">
+<h3>3.2 Audio Settings<a class="headerlink" href="#audio-settings" title="Link to this heading"></a></h3>
+<p>When training a custom classifier you can apply a bandpass filter and also modify the speed of your audio to shift the frequency of your audio to the range of the BirdNET model.
+This also enables you to train classifiers for ultra- or infrasonic signals, i.e. bats or whales.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>These settings also need to be applied when using the trained classifier for inference.</p>
+</div>
+</section>
+<section id="caching-training-data">
+<h3>3.3 Caching Training Data<a class="headerlink" href="#caching-training-data" title="Link to this heading"></a></h3>
+<p>A majority of the training time is spent on loading the audio data and extracting the embeddings which are used for training the classifier.
+To speed up the iteration of multiple training runs with same data we recommend using the caching feature. This will store the extracted embeddings in a cache file which can be loaded in later training runs.</p>
+<p>To create a cache file choose “save” as the “training data cache mode” in the settings and specify the location and the name for the cache file.
+In later training runs you can then choose “load” as the “training data cache mode” and select the cache file you created before.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As the cache file contains the embeddings extracted from the audio files, all parameters that refer to the audio processing (e.g. speed modifier, bandpass filter frequencies, crop mode) can’t be changed when loading the cache file.</p>
+</div>
+</section>
+<section id="using-test-data">
+<h3>3.4 Using test data<a class="headerlink" href="#using-test-data" title="Link to this heading"></a></h3>
+<p>You can provide a separate dataset for testing your custom classifier after training is finished.
+The test data should be structured in the same way as the training data, with each class having its own folder.</p>
+<p>Precision, Recall, F1-Score, AUPRC and AUROC will be calculated for the test data.
+The metrics will be calculated for each class as well as a macro-average across all classes.
+Threshold based metrics will be calculated with the default threshold of 0.5 as well as an optimal threshold.</p>
+<p>Results for the default threshold will be shown in the GUI.
+The complete results, including results for the optimal threshold, will be saved to a CSV file in the output directory.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>The optimal threshhold is selected based on the F1-Score. This might cause precision or recall to be lower than on the default threshhold.</p>
+</div>
+</section>
+<section id="model-save-mode">
+<h3>3.5 Model Save Mode<a class="headerlink" href="#model-save-mode" title="Link to this heading"></a></h3>
+<p>Custom classifiers can be saved with 2 different modes:</p>
+<ul class="simple">
+<li><p><strong>Append</strong>: The trained classifier will extend the existing set of classes that BirdNET can detect.</p></li>
+<li><p><strong>Replace</strong>: The trained classifier will replace the BirdNET classifier and will only be able to detect classes provided during the training.</p></li>
+</ul>
+<p>Choose the mode that fits your use case best, depending on whether you need to detect classes originally included in BirdNET or not.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>When using the “Append” mode, make sure that the class names of the new classes do not conflict with existing classes in BirdNET.</p>
+</div>
+</section>
+</section>
+<section id="using-the-custom-classifier">
+<h2>4. Using the Custom Classifier<a class="headerlink" href="#using-the-custom-classifier" title="Link to this heading"></a></h2>
+<p>After the training process is finished your output folder should like this:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>classifier-output/
+├── CustomClassifier.tflite
+├── CustomClassifier_Labels.txt
+├── CustomClassifier_Params.csv
+└── ...
+</pre></div>
+</div>
+<p>To use this classifier select the “Custom classifier” option in the species selection section of the BirdNET-Analyzer GUI and select the .tflite file.</p>
+<p>When using the CLI you can specify the path to the .tflite file using the <cite>--classifier</cite> or <cite>-c</cite> argument.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="segment-review.html" class="btn btn-neutral float-left" title="Segment Review" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="evaluation-tool.html" class="btn btn-neutral float-right" title="Evaluation Tool" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
