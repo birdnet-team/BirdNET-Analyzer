@@ -724,6 +724,8 @@ def train_linear_classifier(
     # Set random seed
     rng = np.random.default_rng(cfg.RANDOM_SEED)
 
+    keras.utils.set_random_seed(cfg.RANDOM_SEED)
+
     # Shuffle data
     idx = np.arange(x_train.shape[0])
     rng.shuffle(idx)
