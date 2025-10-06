@@ -104,6 +104,9 @@ Threshold based metrics will be calculated with the default threshold of 0.5 as 
 
 The results along with the optimal threshold will be shown in the GUI and also saved to a CSV file in the output directory.
 
+.. hint::
+  The optimal threshhold is selected based on the F1-Score. This might cause precision or recall to be lower than on the default threshhold.
+
 3.5 Model Save Mode
 ##########################
 
