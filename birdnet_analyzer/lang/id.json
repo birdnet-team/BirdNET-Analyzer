@@ -258,7 +258,7 @@
     "species-list-radio-option-custom-classifier": "Klasifikator kustom",
     "species-list-radio-option-custom-list": "Daftar spesies kustom",
     "species-list-radio-option-predict-list": "Spesies berdasarkan lokasi",
-    "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-radio-option-use-perch": "Perch v2 (preview)",
     "species-tab-filename-textbox-label": "Nama file, jika tidak ditentukan 'daftar_spesies.txt' akan digunakan.",
     "species-tab-finish-info": "Daftar spesies disimpan di",
     "species-tab-select-output-directory-button-label": "Pilih output direktori",

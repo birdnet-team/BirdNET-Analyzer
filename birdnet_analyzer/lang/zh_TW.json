@@ -258,7 +258,7 @@
     "species-list-radio-option-custom-classifier": "客製化分類器",
     "species-list-radio-option-custom-list": "客製化物種清單",
     "species-list-radio-option-predict-list": "依地點選擇物種清單",
-    "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-radio-option-use-perch": "Perch v2 (preview)",
     "species-tab-filename-textbox-label": "檔案名稱，若無指定，檔案將被命名為'species_list.txt'",
     "species-tab-finish-info": "儲存物種清單於",
     "species-tab-select-output-directory-button-label": "選擇輸出資料夾",
