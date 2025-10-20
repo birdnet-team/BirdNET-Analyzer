@@ -263,29 +263,6 @@ def _load_training_data(cache_mode=None, cache_file="", progress_callback=None):
     # Return only the valid labels for further use
     return x_train, y_train, x_test, y_test, valid_labels
 
-
-def normalize_embeddings(embeddings):
-    """
-    Normalize embeddings to improve training stability and performance.
-
-    This applies L2 normalization to each embedding vector, which can help
-    with convergence and model performance, especially when training on
-    embeddings from different sources or domains.
-
-    Args:
-        embeddings: numpy array of embedding vectors
-
-    Returns:
-        Normalized embeddings array
-    """
-    # Calculate L2 norm of each embedding vector
-    norms = np.sqrt(np.sum(embeddings**2, axis=1, keepdims=True))
-    # Avoid division by zero
-    norms[norms == 0] = 1.0
-    # Normalize each embedding vector
-    return embeddings / norms
-
-
 def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, autotune_directory="autotune"):
     """Trains a custom classifier.
 
@@ -309,12 +286,6 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
     print(f"...Done. Loaded {x_train.shape[0]} training samples and {y_train.shape[1]} labels.", flush=True)
     if len(x_test) > 0:
         print(f"...Loaded {x_test.shape[0]} test samples.", flush=True)
-
-    # Normalize embeddings
-    print("Normalizing embeddings...", flush=True)
-    x_train = normalize_embeddings(x_train)
-    if len(x_test) > 0:
-        x_test = normalize_embeddings(x_test)
 
     if cfg.AUTOTUNE:
         import gc
