@@ -1,5 +1,6 @@
 ---
 title: 'BirdNET-Analyzer: A bioacoustics analysis software'
+
 tags:
   - Python
   - bioacoustics
@@ -12,11 +13,8 @@ tags:
   - bird sound recognition
   - birdnet
   - bird
+
 authors:
-  - name: Stefan Kahl
-    equal-contrib: true
-    affiliation: "1, 2"
-    orcid: 0000-0002-2411-8877
   - name: Josef Haupt
     equal-contrib: true
     affiliation: 1
@@ -24,6 +22,13 @@ authors:
   - name: Max Mauermann
     equal-contrib: true
     affiliation: 1
+  - name: Stefan Kahl
+    equal-contrib: true
+    affiliation: "1, 2"
+    orcid: 0000-0002-2411-8877
+  - name: Maximilian Eibl
+    affiliation: 1
+  
 affiliations:
  - name: Chemnitz University of Technology, Germany
    index: 1
@@ -31,6 +36,7 @@ affiliations:
  - name: K. Lisa Yang Center for Conservation Bioacoustics, Cornell Lab of Ornithology, Cornell University, USA
    index: 2
    ror: 00k86w020
+
 date: 31 March 2025
 bibliography: paper.bib
 ---
@@ -49,8 +55,11 @@ Monitoring avian biodiversity is an important tool for ecological research, cons
 
 The BirdNET-Analyzer is implemented in Python and built around the BirdNET deep learning model. The audio signals are converted into its spectrogram representation, processed by the model and predictions, with confidence scores and timestamps, are saved in the specified output format. Since Raven Pro is another popular tool for ecologists, the BirdNET-Analyzer supports the output of Raven compatible tables, but Audacity, csv and Kaleidoscope are also supported and can be combined at will.
 
-The software can be considered as a collection of tools, that represent the quasi workflow of ecological work. It consists of the audio analysis which outputs the scores and timestamps, the extraction of the audio segments with that include some target species and validation of the extracted segments. In addition the BirdNET-Analyzer also enables users to train a custom classification layer if, for example the target species is not included in the standard BirdNET model or when a specialized classifier is necessary. The custom classification layer will either replace the existing one of the default model or can be appended to the existing one, also leaving the predictions from BirdNET in the output. These newly trained models can also be evaluated directly in the application using the "Evaluation" module, which allows users to compare predictions with annotations and outputs metrics to evaluate the trained model.
+The software can be considered as a collection of tools, that represent the workflow of ecological work. It consists of the audio analysis which outputs the scores and timestamps, the extraction of the audio segments with that include some target species and validation of the extracted segments. In addition the BirdNET-Analyzer also enables users to train a custom classification layer if, for example the target species is not included in the standard BirdNET model or when a specialized classifier is necessary. The custom classification layer will either replace the existing one of the default model or can be appended to the existing one, also leaving the predictions from BirdNET in the output. These newly trained models can also be evaluated directly in the application using the "Evaluation" module, which allows users to compare predictions with annotations and outputs metrics to evaluate the trained model.
 
 ![The graphical interface of the BirdNET-Analyzer](fig/gui.png)
 
 Embeddings can be used to compare calls and are essentially a compressed version of the audio signal. The application allows users to extract the embeddings and save them in a database using the perch-hoplite. These databases can be used to search for similar embeddings usind an audio sample.
+
+# Beyond Birds
+
