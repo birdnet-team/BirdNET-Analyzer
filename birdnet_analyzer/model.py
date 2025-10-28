@@ -635,9 +635,6 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
     # Input layer
     model.add(keras.layers.InputLayer(input_shape=(input_size,)))
 
-    # Batch normalization on input to standardize embeddings
-    model.add(keras.layers.BatchNormalization())
-
     # Optional L2 regularization for all dense layers
     regularizer = keras.regularizers.l2(1e-5)
 
@@ -649,9 +646,6 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
 
         # Add a hidden layer with L2 regularization
         model.add(keras.layers.Dense(hidden_units, activation="relu", kernel_regularizer=regularizer, kernel_initializer="he_normal"))
-
-        # Add another batch normalization after the hidden layer
-        model.add(keras.layers.BatchNormalization())
 
     # Dropout layer before output
     if dropout > 0:
