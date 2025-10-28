@@ -453,6 +453,7 @@ def build_evaluation_tab():
                     info=loc.localize("eval-tab-select-classes-checkboxgroup-info"),
                     interactive=True,
                     elem_classes="custom-checkbox-group",
+                    show_select_all=True,
                 )
 
             with gr.Column():
@@ -463,6 +464,7 @@ def build_evaluation_tab():
                     info=loc.localize("eval-tab-select-recordings-checkboxgroup-info"),
                     interactive=True,
                     elem_classes="custom-checkbox-group",
+                    show_select_all=True,
                 )
 
         # ----------------------- Parameters Box -----------------------
