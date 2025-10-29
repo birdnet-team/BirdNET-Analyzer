@@ -16,14 +16,11 @@ tags:
 
 authors:
   - name: Josef Haupt
-    equal-contrib: true
     affiliation: 1
     orcid: 0009-0000-4646-6357
   - name: Max Mauermann
-    equal-contrib: true
     affiliation: 1
   - name: Stefan Kahl
-    equal-contrib: true
     affiliation: "1, 2"
     orcid: 0000-0002-2411-8877
   - name: Maximilian Eibl
@@ -51,6 +48,8 @@ The package supports macOS and Windows through dedicated installers, and it is a
 
 Monitoring avian biodiversity is a crucial component of ecological research, conservation planning, and the assessment of environmental change. Birds are highly sensitive to changing ecological factors, making them valuable indicators of the ecosystem health and the success of restoration efforts.
 
+Passive acoustic monitoring (PAM) has rapidly gained prominence in ecological research as a long-term and non-invasive approach to studying biodiversity. A systematic review of terrestrial PAM studies highlights a fifteenfold increase in publications since the 1990s, underscoring its growing importance and the ongoing need for standardized and automated analysis tools [@sugai2019terrestrial].
+
 Manual listening and annotation are time-consuming, can be subjective, and impractical for the growing volume of acoustic data collected by autonomous recording units and community projects, such as BirdNET-Pi [@birdnetpi]. As a result, there is a growing need for reliable, scalable, and user-friendly software to automate bird sound identification.
 
 A persistent challenge in the field lies in the divide between machine learning developers and ecologists: while researchers continue to advance neural network–based sound classifiers, many ecologists face high technical barriers to adopting these tools. BirdNET-Analyzer bridges this gap by offering an intuitive GUI that supports common ecological workflows without requiring programming knowledge, while also providing a powerful CLI for advanced users and automated processing.
@@ -59,7 +58,9 @@ By combining accessibility with flexibility, BirdNET-Analyzer empowers researche
 
 # Software description
 
-The BirdNET-Analyzer is implemented in Python and built around the BirdNET deep learning model, which processes spectrogram representations of audio signals to predict the presence of bird species along with associated confidence scores and timestamps. The tool supports multiple output formats to facilitate interoperability with widely used software in ecology, including Raven Pro, Audacity, Kaleidoscope, and CSV formats.
+The BirdNET-Analyzer is implemented in Python and built around the BirdNET deep learning model, which processes spectrogram representations of audio signals to predict the presence of bird species along with associated confidence scores and timestamps. The tool supports multiple output formats to facilitate interoperability with widely used software in ecology, including Raven Pro [@ravenpro], Audacity, Kaleidoscope, and CSV formats.
+
+The generated outputs can also be easily integrated with complementary tools, such as birdnetR [@birdnetR], an R package that provides a convenient interface for querying BirdNET results, visualizing detections, and linking acoustic predictions to environmental or spatial datasets. Together, these tools form an open ecosystem that for creating bioacoustic workflows across programming environments.
 
 The software can be considered as a modular collection of tools, that represent the core workflow of ecological audio analysis.
 
@@ -83,11 +84,14 @@ The software can be considered as a modular collection of tools, that represent 
 
 # Beyond Birds
 
-Users can create custom classifiers in the **Train** tab, retraining only the classification layer of the model. This approach has been successfully applied to other taxa, including amphibians, mammals, and insects, demonstrating the framework’s adaptability for general-purpose bioacoustic monitoring and ecological sound classification.
+Users can create custom classifiers in the **Train** tab, retraining only the classification layer of the model. This approach has been successfully applied to region-specific endangered species [@weidlich2025continuous] as well as other taxa, including amphibians [@perez2023combining], mammals, and insects, demonstrating the framework’s adaptability for general-purpose bioacoustic monitoring and ecological sound classification.
 
 # Community
 
-The project is actively developed and maintained by the BirdNET research team, with an open and growing user community.
-TODO
+The project is actively developed and maintained by the BirdNET research team, with a growing user community. BirdNET and the BirdNET-Analyzer are used in a number of ongoing research projects [TODO citations]
+
+# Funding
+
+BirdNET is a joint effort of partners from academia and industry. TODO
 
 # References
