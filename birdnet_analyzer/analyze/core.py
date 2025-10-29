@@ -242,28 +242,26 @@ def _set_params(
     if overlap >= cfg.SIG_LENGTH:
         raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
 
-    # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
-    if custom_classifier is None:
-        # TODO: does species list even make sense with Perch?
-        cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
-        cfg.CUSTOM_CLASSIFIER = None
+    cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+    cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
 
-        if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
-            if not slist:
-                cfg.SPECIES_LIST_FILE = None
-            else:
-                cfg.SPECIES_LIST_FILE = slist
-
-                if os.path.isdir(cfg.SPECIES_LIST_FILE):
-                    cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
-
-            cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
-        else:
+    # TODO: Should really be None instead of -1
+    if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
+        if not slist:
             cfg.SPECIES_LIST_FILE = None
-            cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
-    else:
-        cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+        else:
+            cfg.SPECIES_LIST_FILE = slist
 
+            if os.path.isdir(cfg.SPECIES_LIST_FILE):
+                cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
+
+        cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
+    else:
+        # TODO: What if only one of the two is given?
+        cfg.SPECIES_LIST_FILE = None
+        cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
+
+    if custom_classifier:
         if custom_classifier.endswith(".tflite"):
             cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
 
@@ -285,6 +283,50 @@ def _set_params(
                 cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
             else:
                 cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)]
+
+    # # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
+    # if custom_classifier is None:
+    #     # TODO: does species list even make sense with Perch?
+    #     cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
+    #     cfg.CUSTOM_CLASSIFIER = None
+
+    #     if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
+    #         if not slist:
+    #             cfg.SPECIES_LIST_FILE = None
+    #         else:
+    #             cfg.SPECIES_LIST_FILE = slist
+
+    #             if os.path.isdir(cfg.SPECIES_LIST_FILE):
+    #                 cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
+
+    #         cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
+    #     else:
+    #         cfg.SPECIES_LIST_FILE = None
+    #         cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
+    # else:
+    #     cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+
+    #     if custom_classifier.endswith(".tflite"):
+    #         cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
+
+    #         if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is not found, an old birdnet model might be used
+    #             cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
+
+    #         if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is still not found, dont use labels
+    #             cfg.LABELS_FILE = None
+    #             cfg.LABELS = None
+    #         else:
+    #             cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
+    #     else:
+    #         cfg.APPLY_SIGMOID = False
+    #         # our output format
+    #         cfg.LABELS_FILE = os.path.join(custom_classifier, "labels", "label_names.csv")
+
+    #         if not os.path.isfile(cfg.LABELS_FILE):
+    #             cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
+    #             cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
+    #         else:
+    #             cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)]
 
     if cfg.LABELS_FILE:
         lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))

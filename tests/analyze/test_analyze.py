@@ -239,6 +239,54 @@ def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set
     assert kwargs["slist"] == species_list
 
 
+def test_analyze_with_real_custom_classifier(setup_test_environment):
+    """Test analyzing with a non-existent custom classifier."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    classifier = "tests/data/analyze/CustomClassifier.tflite"
+    labels = classifier.replace(".tflite", "_Labels.txt", 1)
+
+    analyze(soundscape_path, env["output_dir"], classifier=classifier)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file), "Output file was not created"
+
+    with open(labels) as f:
+        labels = [line.split("_", 1)[1] for line in f.read().splitlines()]
+
+    with open(output_file) as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            assert row["Common Name"] in labels, f"Unexpected label found: {row['label']}"
+
+def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environment):
+    """Test analyzing with a real custom classifier and species list."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    classifier = "tests/data/analyze/CustomClassifier.tflite"
+    species_list = "tests/data/analyze/species_list.txt"
+
+    analyze(soundscape_path, env["output_dir"], classifier=classifier, slist=species_list)
+
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.selection.table.txt")
+    assert os.path.exists(output_file), "Output file was not created"
+
+    with open(species_list) as f:
+        valid_species = {line.strip().split("_", 1)[1] for line in f.read().splitlines()}
+
+    with open(output_file) as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            assert row["Common Name"] in valid_species, f"Label not in species list: {row['Common Name']}"
+
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_negative_speed(setup_test_environment):
     """Test analyzing with negative speed."""
