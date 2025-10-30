@@ -29,6 +29,7 @@ def run_single_file_analysis(
     week,
     use_yearlong,
     sf_thresh,
+    selected_model,
     custom_classifier_file,
     locale,
 ):
@@ -64,6 +65,7 @@ def run_single_file_analysis(
         week=week,
         use_yearlong=use_yearlong,
         sf_thresh=sf_thresh,
+        selected_model=selected_model,
         custom_classifier_file=custom_classifier_file,
         output_types="csv",
         additional_columns=None,
@@ -113,7 +115,7 @@ def build_single_analysis_tab():
             )
         audio_path_state = gr.State()
         table_path_state = gr.State()
-        sample_settings, species_settings = gu.sample_and_species_settings(opened=False)
+        sample_settings, species_settings, model_settings = gu.sample_species_model_settings(opened=False)
         locale_radio = gu.locale()
 
         single_file_analyze = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface", interactive=False)
@@ -195,7 +197,8 @@ def build_single_analysis_tab():
             species_settings["week_number"],
             species_settings["yearlong_checkbox"],
             species_settings["sf_thresh_number"],
-            species_settings["selected_classifier_state"],
+            model_settings["model_selection_radio"],
+            model_settings["selected_classifier_state"],
             locale_radio,
         ]
 

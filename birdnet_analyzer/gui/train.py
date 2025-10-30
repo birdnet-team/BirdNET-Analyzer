@@ -597,7 +597,7 @@ def build_train_tab():
             info=loc.localize("training-tab-model-save-mode-radio-info"),
         )
 
-        train_history_plot = gr.Plot()
+        train_history_plot = gr.Plot(show_label=False)
         metrics_table = gr.Dataframe(
             headers=["Class", "Precision", "Recall", "F1 Score", "AUPRC", "AUROC", "Samples"],
             visible=False,
