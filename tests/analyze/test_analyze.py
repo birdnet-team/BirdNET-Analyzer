@@ -261,7 +261,7 @@ def test_analyze_with_real_custom_classifier(setup_test_environment):
     with open(output_file) as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
-            assert row["Common Name"] in labels, f"Unexpected label found: {row['label']}"
+            assert row["Common Name"] in labels, f"Unexpected label found: {row['Common Name']}"
 
 def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environment):
     """Test analyzing with a real custom classifier and species list."""
