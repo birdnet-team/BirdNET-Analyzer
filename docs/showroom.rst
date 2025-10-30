@@ -166,6 +166,22 @@ These are some highlights, make sure to check them out!
 
         | Learn more at: `ribbit.edi.eco <https://ribbit.edi.eco/>`_
 
+    * - .. image:: _static/birdomatic.jpg
+            :alt: Birdomatic
+            :align: center
+            :target: https://www.birdomatic.com/
+
+      - | **BirdOMatic**
+      
+        BirdOMatic is a fun personal "workbench" project that allows me to slice and dice the 35 bazillion IDs that BirdNET found in our 40 Tbytes of audio data (5 years and counting, 40 hours a day across 6 recorders in Driftless Area prairies, wetlands, savannas and woods).
+        Lots of pivot table options ("it slices") and sorting and searching options ("it dices").
+        You can get from any ID to a cool workbench with downloadable spectrogram, links to MacCawley's spectrograms, file and weather data.
+        Available to anyone (researchers, teachers, birders) on the web.
+        The full BirdNET-ID dataset is available on request.
+        The project code is on GitHub and there's lots of documentation for those who would like to replicate all this for your own project.
+
+        | Learn more at: `BirdOMatic <https://www.BirdOMatic.com>`_, `Docs <https://docs.birdomatic.com/>`_ and `GitHub <https://github.com/PGBWB-team/bird-workbench>`_
+
 **Other cool projects:**
 
 * BirdCAGE is an application for monitoring the bird songs in audio streams: `BirdCAGE at GitHub <https://github.com/mmcc-xx/BirdCAGE>`_
