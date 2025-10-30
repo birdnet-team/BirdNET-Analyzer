@@ -240,7 +240,7 @@ def test_analyze_with_custom_species_list(mock_analyze_file: MagicMock, mock_set
 
 
 def test_analyze_with_real_custom_classifier(setup_test_environment):
-    """Test analyzing with a non-existent custom classifier."""
+    """Test analyzing with a real custom classifier."""
     env = setup_test_environment
 
     soundscape_path = "birdnet_analyzer/example/soundscape.wav"
