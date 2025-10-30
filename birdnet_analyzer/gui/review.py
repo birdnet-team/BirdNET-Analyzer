@@ -142,7 +142,7 @@ def build_review_tab():
 
             with gr.Column() as review_item_col, gr.Row():
                 with gr.Column(), gr.Group():
-                    spectrogram_image = gr.Plot(label=loc.localize("review-tab-spectrogram-plot-label"), show_label=False)
+                    spectrogram_image = gr.Plot(show_label=False)
                     spectrogram_dl_btn = gr.Button("Download spectrogram", size="sm")
 
                 with gr.Column():
