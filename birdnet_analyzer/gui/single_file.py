@@ -79,8 +79,8 @@ def run_single_file_analysis(
         progress=None,
     )
 
-    if not result_filepath:
-        raise gr.Error(loc.localize("single-tab-analyze-file-error"))
+    if isinstance(result_filepath, list):
+        raise gr.Error(loc.localize("single-tab-analyze-file-error") + f": {result_filepath[0]}")
 
     # read the result file to return the data to be displayed.
     with open(result_filepath, encoding="utf-8") as f:

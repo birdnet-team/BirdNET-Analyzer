@@ -98,7 +98,21 @@ def run_batch_analysis(
         progress,
     )
 
-    return [path for path, successful in results if not successful]
+    def map_to_reason(result):
+        match result:
+            case "NoBackendError":
+                return loc.localize("multi-tab-file-error-nobackend")
+            case _:
+                return result
+
+    skipped_files = [[path, map_to_reason(successful)] for path, successful in results if isinstance(successful, str)]
+    header = (
+        [loc.localize("multi-tab-result-dataframe-column-invalid-file-header"), loc.localize("multi-tab-result-dataframe-column-reason-header")]
+        if skipped_files
+        else [loc.localize("multi-tab-result-dataframe-column-success-header")]
+    )
+
+    return gr.update(value=skipped_files, headers=header, col_count=2 if skipped_files else 1, elem_classes=None if skipped_files else "success")
 
 
 def build_multi_analysis_tab():
@@ -198,11 +212,7 @@ def build_multi_analysis_tab():
 
         start_batch_analysis_btn = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface")
 
-        result_grid = gr.Matrix(
-            headers=[
-                loc.localize("multi-tab-result-dataframe-column-file-header"),
-            ],
-        )
+        result_grid = gr.Matrix(headers=[""], col_count=1)
 
         inputs = [
             output_directory_predict_state,
