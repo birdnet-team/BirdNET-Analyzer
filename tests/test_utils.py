@@ -48,6 +48,7 @@ def test_birdnet_download():
 
 @pytest.mark.skipif(not IS_GITHUB_RUNNER, reason="Skip tests locally to avoid downloading large files")
 @pytest.mark.order("second")
+@pytest.mark.timeout(300)
 def test_perch_download():
     download_path = Path(cfg.PERCH_V2_MODEL_PATH)
 

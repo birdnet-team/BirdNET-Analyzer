@@ -46,9 +46,7 @@ gui = [
     "qtpy;platform_system=='Linux'",
     "PyGObject;platform_system=='Linux'",
 ]
-embeddings = [
-    "perch-hoplite@git+https://github.com/google-research/perch-hoplite",
-]
+embeddings = ["perch-hoplite>=0.1.1"]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout", "pytest-order"]

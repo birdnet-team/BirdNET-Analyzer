@@ -256,7 +256,7 @@ def build_embeddings_tab():
             show_progress="hidden",
         )
 
-        progress_plot = gr.Plot()
+        progress_plot = gr.Plot(show_label=False)
         start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
 
         start_btn.click(
