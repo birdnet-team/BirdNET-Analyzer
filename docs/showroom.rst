@@ -172,10 +172,9 @@ These are some highlights, make sure to check them out!
             :target: https://www.birdomatic.com/
 
       - | **BirdOMatic**
-      
-        BirdOMatic is a fun personal "workbench" project that allows me to slice and dice the 35 bazillion IDs that BirdNET found in our 40 Tbytes of audio data (5 years and counting, 40 hours a day across 6 recorders in Driftless Area prairies, wetlands, savannas and woods).
-        Lots of pivot table options ("it slices") and sorting and searching options ("it dices").
-        You can get from any ID to a cool workbench with downloadable spectrogram, links to MacCawley's spectrograms, file and weather data.
+
+        BirdOMatic is a fun personal "workbench" project that allows users to slice and dice the millions of IDs that BirdNET found in our 40 terabytes of audio data (5+ years, 40 hours a day across 6 recorders).
+        It offers flexible filtering, sorting, and search functions and provides access to spectrograms, weather data, and recording files
         Available to anyone (researchers, teachers, birders) on the web.
         The full BirdNET-ID dataset is available on request.
         The project code is on GitHub and there's lots of documentation for those who would like to replicate all this for your own project.
