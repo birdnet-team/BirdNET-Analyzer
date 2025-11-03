@@ -1,0 +1,346 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evaluation Tool &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Embedding Extraction and Search" href="embeddings.html" />
+    <link rel="prev" title="Training Custom Classifiers" href="training.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../best-practices.html">Best practices</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="species-lists.html">Creating Your Own Species List</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segment-review.html">Segment Review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html">Training Custom Classifiers</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Evaluation Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="embeddings.html">Embedding Extraction and Search</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../best-practices.html">Best practices</a></li>
+      <li class="breadcrumb-item active">Evaluation Tool</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="evaluation-tool">
+<h1>Evaluation Tool<a class="headerlink" href="#evaluation-tool" title="Link to this heading"></a></h1>
+<p>The Evaluation Tab in BirdNET Analyzer is a tool designed to assess the performance of deep learning models on bioacoustic data.
+Whether you are dealing with binary or multi-label classification tasks, this interface calculates and visualizes essential performance metrics.
+This guide explains each component of the Evaluation Tab and offers step-by-step instructions to ensure a smooth evaluation process.</p>
+<section id="overview">
+<h2>1. Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The Evaluation Tab works by comparing two primary inputs:</p>
+<ul class="simple">
+<li><p>Annotation Files: Files that provide the ground truth labels using Raven selection tables.</p></li>
+<li><p>Prediction Files: Files generated by the BirdNET Analyzer that contain your model’s prediction scores and labels.</p></li>
+</ul>
+<p>By aligning predictions with annotations over uniform time intervals, the system computes a range of performance metrics such as:</p>
+<ul class="simple">
+<li><p>F1 Score</p></li>
+<li><p>Recall</p></li>
+<li><p>Precision</p></li>
+<li><p>Average Precision (AP)</p></li>
+<li><p>AUROC (Area Under the Receiver Operating Characteristic)</p></li>
+<li><p>Accuracy</p></li>
+</ul>
+<p>These metrics help you evaluate how well your model performs on bioacoustic data.</p>
+</section>
+<section id="file-selection">
+<h2>2. File selection<a class="headerlink" href="#file-selection" title="Link to this heading"></a></h2>
+<section id="annotations">
+<h3>Annotations<a class="headerlink" href="#annotations" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Purpose</strong>: Provide the true labels for evaluation.</p></li>
+<li><p><strong>How to Use</strong>: Upload one or more annotation files via the file dialog or simply drag-and-drop them into the designated area.</p></li>
+</ul>
+</section>
+<section id="predictions">
+<h3>Predictions<a class="headerlink" href="#predictions" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Purpose</strong>: Supply the model’s prediction data.</p></li>
+<li><p><strong>How to Use</strong>: Upload one or more prediction files using the same drag-and-drop or file dialog method.</p></li>
+</ul>
+</section>
+</section>
+<section id="column-mapping-for-annotations-and-predictions">
+<h2>3. Column Mapping for Annotations and Predictions<a class="headerlink" href="#column-mapping-for-annotations-and-predictions" title="Link to this heading"></a></h2>
+<p>Different input files may use different column names. To ensure the tool can correctly interpret your data, you can map the columns from your files to the expected parameters.</p>
+<section id="annotations-mapping">
+<h3>Annotations Mapping<a class="headerlink" href="#annotations-mapping" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Start Time</strong>: Marks the beginning of the annotation.</p></li>
+<li><p><strong>End Time</strong>: Marks the end of the annotation.</p></li>
+<li><p><strong>Class</strong>: Contains the label or category.</p></li>
+<li><p><strong>Recording</strong>: Identifies the audio file.</p></li>
+<li><p><strong>Duration</strong>: Indicates the total duration of the audio file.</p></li>
+</ul>
+</section>
+<section id="predictions-mapping">
+<h3>Predictions Mapping<a class="headerlink" href="#predictions-mapping" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Start Time</strong>: Marks the beginning of the prediction.</p></li>
+<li><p><strong>End Time</strong>: Marks the end of the prediction.</p></li>
+<li><p><strong>Class</strong>: Contains the predicted label.</p></li>
+<li><p><strong>Confidence</strong>: Holds the confidence scores of the predictions.</p></li>
+<li><p><strong>Recording</strong>: Identifies the audio file.</p></li>
+<li><p><strong>Duration</strong>: Indicates the total duration of the audio file.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The system pre-populates these fields with default column names. If your files use different column names, simply select the appropriate ones from the drop-down menus.</p>
+</div>
+</section>
+</section>
+<section id="class-mapping-optional">
+<h2>4. Class Mapping (Optional)<a class="headerlink" href="#class-mapping-optional" title="Link to this heading"></a></h2>
+<p>If there is a discrepancy between class names in your annotation and prediction files, you can reconcile these differences using a JSON mapping file.</p>
+<ul class="simple">
+<li><p><strong>Download Template</strong>: Click the “Download Template” button to obtain a sample JSON file that shows how to map the predicted class names to the annotation class names.</p></li>
+<li><p><strong>Upload Mapping File</strong>: After editing the template to match your naming conventions, upload the updated file to standardize class names across your data.</p></li>
+</ul>
+</section>
+<section id="classes-and-recordings-selection">
+<h2>5. Classes and Recordings Selection<a class="headerlink" href="#classes-and-recordings-selection" title="Link to this heading"></a></h2>
+<p>Once you have uploaded and mapped your files, the system automatically extracts the available classes and recordings.</p>
+<ul class="simple">
+<li><p><strong>Select Classes</strong>: Use the checkbox group to choose specific classes for evaluation. If no selection is made, all classes are included by default.</p></li>
+<li><p><strong>Select Recordings</strong>: Similarly, select the recordings you wish to evaluate to focus on specific data subsets.</p></li>
+</ul>
+</section>
+<section id="parameters-configuration">
+<h2>6. Parameters Configuration<a class="headerlink" href="#parameters-configuration" title="Link to this heading"></a></h2>
+<p>Customize the evaluation process by adjusting the following parameters:</p>
+<ul class="simple">
+<li><p><strong>Sample Duration (s)</strong>: The length of each audio segment. (Default: 3 seconds – matching BirdNET’s prediction segment.)</p></li>
+<li><p><strong>Recording Duration</strong>: Explicitly set the recording duration. (Default: The recording duration is automatically inferred from your files.)</p></li>
+<li><p><strong>Minimum Overlap (s)</strong>: The minimum time overlap between an annotation and a prediction for them to be considered a match. (Default: 0.5 seconds)</p></li>
+<li><p><strong>Threshold</strong>: The cut-off value to decide if a prediction is positive. (Default: 0.1)</p></li>
+<li><p><strong>Class-wise Metrics</strong>: Toggle this option if you want to compute performance metrics for each class individually. If disabled, metrics are averaged across all classes.</p></li>
+</ul>
+</section>
+<section id="metrics-selection">
+<h2>7. Metrics Selection<a class="headerlink" href="#metrics-selection" title="Link to this heading"></a></h2>
+<p>Select the performance metrics you want to compute and visualize. The available options include:</p>
+<ul>
+<li><p><strong>AUROC</strong>: Measures the probability that the model will rank a random positive case higher than a random negative one.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advantage: Provides an overall sense of the model’s discriminative power, especially with imbalanced data.</p></li>
+<li><p>Disadvantage: Can be challenging to interpret.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>Precision</strong>: Indicates how often the model’s positive predictions are correct.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advantage: Highlights the model’s accuracy in predicting positives.</p></li>
+<li><p>Disadvantage: Does not account for missed positive cases.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>Recall</strong>: Measures the percentage of actual positive cases the model correctly identifies.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advantage: Ensures that most positive cases are detected.</p></li>
+<li><p>Disadvantage: May lead to many false positives if not balanced with precision.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>F1 Score</strong>: The harmonic mean of precision and recall, offering a balanced metric.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advantage: Combines both false positives and false negatives into one score.</p></li>
+<li><p>Disadvantage: Can be less intuitive if precision and recall values differ greatly.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>Average Precision (AP)</strong>: Summarizes the precision-recall curve by averaging the precision at each recall level.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advantage: Provides a single metric across all thresholds.</p></li>
+<li><p>Disadvantage: Can be noisy for classes with few positive cases.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>Accuracy</strong>: The overall percentage of correct predictions.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advantage: Simple to understand and calculate.</p></li>
+<li><p>Disadvantage: May be misleading in cases of class imbalance.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="actions">
+<h2>8. Actions<a class="headerlink" href="#actions" title="Link to this heading"></a></h2>
+<p>After configuring your files and parameters, use the action buttons to execute the evaluation and visualize the results.</p>
+<ul class="simple">
+<li><p><strong>Calculate Metrics:</strong> Processes your input files and computes the selected performance metrics.</p></li>
+<li><p><strong>Plot Metrics:</strong> Generates visualizations (line/bar plots) of the computed metrics.</p></li>
+<li><p><strong>Plot Confusion Matrix</strong>: Displays a confusion matrix showing the correct and incorrect predictions for each class.</p></li>
+<li><p><strong>Plot Metrics All Thresholds</strong>: Visualizes how performance metrics change across a range of threshold values, helping you understand trade-offs (e.g., between precision and recall).</p></li>
+<li><p><strong>Download Results Table</strong>: Exports a CSV file containing the computed metrics.</p></li>
+<li><p><strong>Download Data Table</strong>: Exports a CSV file with the processed data that details the alignment between annotations and predictions.</p></li>
+</ul>
+</section>
+<section id="step-by-step-usage">
+<h2>9. Step-by-Step Usage<a class="headerlink" href="#step-by-step-usage" title="Link to this heading"></a></h2>
+<section id="file-upload">
+<h3>1. File Upload<a class="headerlink" href="#file-upload" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Navigate to the File Selection section.</p></li>
+<li><p>Upload your annotation and prediction files using the provided file dialog or drag-and-drop interface.</p></li>
+</ul>
+</section>
+<section id="column-mapping">
+<h3>2. Column Mapping<a class="headerlink" href="#column-mapping" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Review and adjust the column mappings using the drop-down menus to match your file’s structure.</p></li>
+</ul>
+</section>
+<section id="optional-class-mapping">
+<h3>3. Optional Class Mapping<a class="headerlink" href="#optional-class-mapping" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>If your class names differ between annotation and prediction files, download the JSON template, update it, and then upload the class mapping file.</p></li>
+</ul>
+</section>
+<section id="select-classes-and-recordings">
+<h3>4. Select Classes and Recordings<a class="headerlink" href="#select-classes-and-recordings" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Use the checkbox groups to select the specific classes and recordings you want to evaluate.</p></li>
+</ul>
+</section>
+<section id="set-parameters">
+<h3>5. Set Parameters<a class="headerlink" href="#set-parameters" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Adjust the sample duration, recording duration, minimum overlap, and threshold values.</p></li>
+<li><p>Toggle the Class-wise Metrics option if you require individual class evaluations.</p></li>
+</ul>
+</section>
+<section id="select-metrics">
+<h3>6. Select Metrics<a class="headerlink" href="#select-metrics" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Check the boxes for the performance metrics (AUROC, Precision, Recall, F1 Score, AP, Accuracy) you wish to compute and visualize.</p></li>
+</ul>
+</section>
+<section id="execute-evaluation-and-visualizations">
+<h3>7. Execute Evaluation and Visualizations<a class="headerlink" href="#execute-evaluation-and-visualizations" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Click Calculate Metrics to process the data.</p></li>
+<li><p>Generate visualizations by clicking on Plot Metrics, Plot Confusion Matrix, or Plot Metrics All Thresholds</p></li>
+<li><p>Download the results or processed data tables as needed.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Before generating the visualizations, ensure that you have calculated the metrics by clicking the “Calculate Metrics” button.</p>
+</div>
+</section>
+</section>
+<section id="conclusion">
+<h2>10. Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>The Evaluation Tab in BirdNET Analyzer provides a comprehensive and flexible framework to assess the performance of bioacoustic classification models.
+By following this guide, you can efficiently configure your inputs, adjust evaluation parameters, compute key performance metrics, and generate insightful visualizations.
+This tool is designed to streamline your evaluation workflow and deepen your understanding of your model’s performance.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="training.html" class="btn btn-neutral float-left" title="Training Custom Classifiers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="embeddings.html" class="btn btn-neutral float-right" title="Embedding Extraction and Search" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
