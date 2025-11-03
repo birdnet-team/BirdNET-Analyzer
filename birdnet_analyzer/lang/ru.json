@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "Выберите выходной каталог",
     "multi-tab-output-textbox-label": "Выходной каталог",
     "multi-tab-output-textbox-placeholder": "Если не выбрано, будет использоваться входной каталог.",
-    "multi-tab-result-dataframe-column-file-header": "Недействительные аудиофайлы",
     "multi-tab-result-dataframe-column-invalid-file-header": "Недопустимые аудиофайлы",
     "multi-tab-result-dataframe-column-reason-header": "Причина",
     "multi-tab-result-dataframe-column-success-header": "Все файлы проанализированы!",

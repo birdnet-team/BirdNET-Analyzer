@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "Ausgabeverzeichnis auswählen",
     "multi-tab-output-textbox-label": "Ausgabeverzeichnis",
     "multi-tab-output-textbox-placeholder": "Wenn nicht ausgewählt, wird das Eingabeverzeichnis verwendet.",
-    "multi-tab-result-dataframe-column-file-header": "Ungültige Audiodateien",
     "multi-tab-result-dataframe-column-invalid-file-header": "Ungültige Audiodateien",
     "multi-tab-result-dataframe-column-reason-header": "Grund",
     "multi-tab-result-dataframe-column-success-header": "Alle Dateien wurden analysiert!",

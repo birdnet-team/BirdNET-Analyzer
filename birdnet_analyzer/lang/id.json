@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "Pilih direktori output",
     "multi-tab-output-textbox-label": "Direktori output",
     "multi-tab-output-textbox-placeholder": "Jika tidak dipilih, direktori input akan digunakan.",
-    "multi-tab-result-dataframe-column-file-header": "Berkas audio yang tidak valid",
     "multi-tab-result-dataframe-column-invalid-file-header": "File audio tidak valid",
     "multi-tab-result-dataframe-column-reason-header": "Alasan",
     "multi-tab-result-dataframe-column-success-header": "Semua file telah dianalisis!",

@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "Selecione o diretório de saída",
     "multi-tab-output-textbox-label": "Diretório de saída",
     "multi-tab-output-textbox-placeholder": "Se não for selecionado, o diretório de entrada será usado.",
-    "multi-tab-result-dataframe-column-file-header": "Arquivos de áudio inválidos",
     "multi-tab-result-dataframe-column-invalid-file-header": "Arquivos de áudio inválidos",
     "multi-tab-result-dataframe-column-reason-header": "Motivo",
     "multi-tab-result-dataframe-column-success-header": "Todos os arquivos foram analisados!",

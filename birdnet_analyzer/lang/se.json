@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "Välj utdatakatalog",
     "multi-tab-output-textbox-label": "Utdatakatalog",
     "multi-tab-output-textbox-placeholder": "Om inte vald kommer indatakatalogen att användas.",
-    "multi-tab-result-dataframe-column-file-header": "Ogiltiga ljudfiler",
     "multi-tab-result-dataframe-column-invalid-file-header": "Ogiltiga ljudfiler",
     "multi-tab-result-dataframe-column-reason-header": "Orsak",
     "multi-tab-result-dataframe-column-success-header": "Alla filer har analyserats!",

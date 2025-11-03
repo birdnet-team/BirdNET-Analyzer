@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "Valitse tulostehakemisto",
     "multi-tab-output-textbox-label": "Tulostehakemisto",
     "multi-tab-output-textbox-placeholder": "Jos ei valittu, käytetään syötehakemistoa.",
-    "multi-tab-result-dataframe-column-file-header": "Virheelliset äänitiedostot",
     "multi-tab-result-dataframe-column-invalid-file-header": "Virheelliset äänitiedostot",
     "multi-tab-result-dataframe-column-reason-header": "Syy",
     "multi-tab-result-dataframe-column-success-header": "Kaikki tiedostot analysoitu!",

@@ -157,7 +157,6 @@
     "multi-tab-output-selection-button-label": "選擇輸出資料夾",
     "multi-tab-output-textbox-label": "輸出資料夾",
     "multi-tab-output-textbox-placeholder": "若無指定，將使用與輸入資料夾相同路徑",
-    "multi-tab-result-dataframe-column-file-header": "無效的音訊檔案",
     "multi-tab-result-dataframe-column-invalid-file-header": "無效的音訊檔案",
     "multi-tab-result-dataframe-column-reason-header": "原因",
     "multi-tab-result-dataframe-column-success-header": "所有檔案皆已分析！",
