@@ -41,6 +41,7 @@ def run_batch_analysis(
     week,
     use_yearlong,
     sf_thresh,
+    selected_model,
     custom_classifier_file,
     output_type,
     additional_columns,
@@ -83,6 +84,7 @@ def run_batch_analysis(
         week,
         use_yearlong,
         sf_thresh,
+        selected_model,
         custom_classifier_file,
         output_type,
         additional_columns,
@@ -160,7 +162,7 @@ def build_multi_analysis_tab():
                     show_progress="hidden",
                 )
 
-        sample_settings, species_settings = gu.sample_and_species_settings(opened=False)
+        sample_settings, species_settings, model_settings = gu.sample_species_model_settings(opened=False)
 
         with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True), gr.Group():
             output_type_radio = gr.CheckboxGroup(
@@ -230,7 +232,8 @@ def build_multi_analysis_tab():
             species_settings["week_number"],
             species_settings["yearlong_checkbox"],
             species_settings["sf_thresh_number"],
-            species_settings["selected_classifier_state"],
+            model_settings["model_selection_radio"],
+            model_settings["selected_classifier_state"],
             output_type_radio,
             additional_columns_,
             combine_tables_checkbox,

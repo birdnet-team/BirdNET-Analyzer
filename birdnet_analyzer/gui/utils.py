@@ -29,6 +29,7 @@ _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
 _USE_PERCH = loc.localize("species-list-radio-option-use-perch")
+_USE_BIRDNET = "BirdNET " + cfg.MODEL_VERSION
 _WINDOW: webview.Window | None = None
 _URL = ""
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
@@ -314,9 +315,10 @@ def build_settings():
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
 
-def sample_and_species_settings(opened=True):
+def sample_species_model_settings(opened=True):
     sample_settings = sample_sliders(opened=opened)
     species_settings = species_lists(opened=opened)
+    model_settings = model_selection(opened=opened)
 
     def on_species_list_change(value):
         is_perch = value == _USE_PERCH
@@ -330,7 +332,7 @@ def sample_and_species_settings(opened=True):
         show_progress="hidden",
     )
 
-    return sample_settings, species_settings
+    return sample_settings, species_settings, model_settings
 
 
 def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
@@ -341,7 +343,7 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
     Returns:
         A dict with the created elements.
     """
-    with gr.Accordion(loc.localize("inference-settings-accordion-label"), open=opened):
+    with gr.Group(), gr.Accordion(loc.localize("inference-settings-accordion-label"), open=opened):
         with gr.Group():
             with gr.Row():
                 use_top_n_checkbox = gr.Checkbox(
@@ -564,7 +566,7 @@ def select_file(filetypes=(), state_key=None):
     return None
 
 
-def show_species_choice(choice: str):
+def show_species_choice(choice: str, file_input):
     """Sets the visibility of the species list choices.
 
     Args:
@@ -575,37 +577,94 @@ def show_species_choice(choice: str):
             Row update,
             File update,
             Column update,
-            Column update,
         ]
     """
     if choice == _CUSTOM_SPECIES:
-        return [
-            gr.Row(visible=False),
-            gr.File(visible=True),
-            gr.Column(visible=False),
-            gr.Column(visible=False),
-        ]
+        return [gr.Row(visible=False), gr.File(visible=True), gr.Column(visible=False), gr.Row(visible=bool(file_input))]
     if choice == _PREDICT_SPECIES:
         return [
             gr.Row(visible=True),
             gr.File(visible=False),
             gr.Column(visible=False),
-            gr.Column(visible=False),
-        ]
-    if choice == _CUSTOM_CLASSIFIER:
-        return [
             gr.Row(visible=False),
-            gr.File(visible=False),
-            gr.Column(visible=True),
-            gr.Column(visible=False),
         ]
 
     return [
         gr.Row(visible=False),
         gr.File(visible=False),
-        gr.Column(visible=False),
         gr.Column(visible=True),
+        gr.Row(visible=False),
     ]
+
+
+def model_selection(opened=True):
+    with gr.Group(), gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened):
+        with gr.Row():
+            values = [_USE_BIRDNET, _CUSTOM_CLASSIFIER, _USE_PERCH]
+
+            if platform.system() == "Darwin":
+                values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
+
+            model_selection_radio = gr.Radio(
+                choices=values,
+                value=_USE_BIRDNET,
+                label=loc.localize("model-selection-radio-label"),
+                info=loc.localize("model-selection-radio-info"),
+            )
+
+            with gr.Column(visible=False) as custom_classifier_selector:
+                classifier_selection_button = gr.Button(loc.localize("species-list-custom-classifier-selection-button-label"))
+                classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False, show_label=False)
+                selected_classifier_state = gr.State()
+
+                def on_custom_classifier_selection_click():
+                    file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
+
+                    if not file:
+                        return None, None, None
+
+                    base_name = os.path.splitext(file)[0]
+                    labels = base_name + "_Labels.txt"
+
+                    if not os.path.isfile(labels):
+                        labels = file.replace("Model_FP32.tflite", "Labels.txt")
+
+                    if not os.path.isfile(labels):
+                        gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
+
+                        return file, gr.update(value=file, visible=True), gr.update(visible=False)
+
+                    return (
+                        file,
+                        gr.update(value=file, visible=True),
+                        gr.update(value=utils.read_lines(labels), visible=True),
+                    )
+
+        species_list_df = gr.List(value=[], headers=["Species"], max_height=200, show_label=False, visible=False)
+
+    classifier_selection_button.click(
+        on_custom_classifier_selection_click,
+        outputs=[selected_classifier_state, classifier_file_input, species_list_df],
+        show_progress="hidden",
+    )
+
+    def on_model_selection_change(choice: str, cc_state):
+        if choice == _CUSTOM_CLASSIFIER:
+            return gr.update(visible=True), gr.update(visible=cc_state is not None)
+
+        return gr.update(visible=False), gr.update(visible=False)
+
+    model_selection_radio.change(
+        on_model_selection_change,
+        inputs=[model_selection_radio, selected_classifier_state],
+        outputs=[custom_classifier_selector, species_list_df],
+        show_progress="hidden",
+    )
+
+    return {
+        "model_selection_radio": model_selection_radio,
+        "selected_classifier_state": selected_classifier_state,
+    }
 
 
 def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
@@ -615,74 +674,58 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
     Returns:
         A dict with the created elements.
     """
-    with gr.Accordion(loc.localize("species-list-accordion-label"), open=opened), gr.Row():
-        values = [_CUSTOM_SPECIES, _PREDICT_SPECIES, _CUSTOM_CLASSIFIER, _ALL_SPECIES, _USE_PERCH]
+    with gr.Group(), gr.Accordion(loc.localize("species-list-accordion-label"), open=opened):
+        with gr.Row():
+            values = [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
 
-        if platform.system() == "Darwin":
-            values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
-
-        species_list_radio = gr.Radio(
-            values,
-            value=_ALL_SPECIES,
-            label=loc.localize("species-list-radio-label"),
-            info=loc.localize("species-list-radio-info"),
-            elem_classes="d-block",
-        )
-
-        with gr.Column(visible=False) as position_row:
-            lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = species_list_coordinates()
-
-        species_file_input = gr.File(file_types=[".txt"], visible=False, label=loc.localize("species-list-custom-list-file-label"))
-        empty_col = gr.Column()
-
-        with gr.Column(visible=False) as custom_classifier_selector:
-            classifier_selection_button = gr.Button(loc.localize("species-list-custom-classifier-selection-button-label"))
-            classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False)
-            selected_classifier_state = gr.State()
-
-            def on_custom_classifier_selection_click():
-                file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
-
-                if not file:
-                    return None, None
-
-                base_name = os.path.splitext(file)[0]
-                labels = base_name + "_Labels.txt"
-
-                if not os.path.isfile(labels):
-                    labels = file.replace("Model_FP32.tflite", "Labels.txt")
-
-                if not os.path.isfile(labels):
-                    gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
-
-                    return file, gr.File(value=[file], visible=True)
-
-                return file, gr.File(value=[file, labels], visible=True)
-
-            classifier_selection_button.click(
-                on_custom_classifier_selection_click,
-                outputs=[selected_classifier_state, classifier_file_input],
-                show_progress="hidden",
+            species_list_radio = gr.Radio(
+                values,
+                value=_ALL_SPECIES,
+                label=loc.localize("species-list-radio-label"),
+                info=loc.localize("species-list-radio-info"),
+                elem_classes="d-block",
             )
 
-        species_list_radio.change(
-            show_species_choice,
-            inputs=[species_list_radio],
-            outputs=[position_row, species_file_input, custom_classifier_selector, empty_col],
-            show_progress="hidden",
-        )
+            with gr.Column(visible=False) as position_row:
+                lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = species_list_coordinates()
 
-        return {
-            "species_list_radio": species_list_radio,
-            "species_file_input": species_file_input,
-            "lat_number": lat_number,
-            "lon_number": lon_number,
-            "week_number": week_number,
-            "sf_thresh_number": sf_thresh_number,
-            "yearlong_checkbox": yearlong_checkbox,
-            "selected_classifier_state": selected_classifier_state,
-            "map_plot": map_plot,
-        }
+            species_file_input = gr.File(file_types=[".txt"], visible=False, show_label=False)
+            empty_col = gr.Column()
+
+        list_df = gr.List(value=[], headers=["Species"], max_height=200, show_label=False, visible=False)
+
+    species_list_radio.change(
+        show_species_choice,
+        inputs=[species_list_radio, species_file_input],
+        outputs=[position_row, species_file_input, empty_col, list_df],
+        show_progress="hidden",
+    )
+
+    def on_species_file_change(file):
+        if not file:
+            return gr.update(value=[], visible=False)
+
+        species_list = utils.read_lines(file)
+
+        return gr.update(value=species_list, visible=True)
+
+    species_file_input.change(
+        on_species_file_change,
+        inputs=species_file_input,
+        outputs=[list_df],
+        show_progress="hidden",
+    )
+
+    return {
+        "species_list_radio": species_list_radio,
+        "species_file_input": species_file_input,
+        "lat_number": lat_number,
+        "lon_number": lon_number,
+        "week_number": week_number,
+        "sf_thresh_number": sf_thresh_number,
+        "yearlong_checkbox": yearlong_checkbox,
+        "map_plot": map_plot,
+    }
 
 
 def download_plot(plot, filename=""):

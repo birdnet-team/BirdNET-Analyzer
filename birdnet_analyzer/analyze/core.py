@@ -242,28 +242,26 @@ def _set_params(
     if overlap >= cfg.SIG_LENGTH:
         raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
 
-    # Custom classifier trained with the Analyzer, not arbitrary models, meaning; A a tflite model or B a raven model
-    if custom_classifier is None:
-        # TODO: does species list even make sense with Perch?
-        cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
-        cfg.CUSTOM_CLASSIFIER = None
+    cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+    cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
 
-        if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
-            if not slist:
-                cfg.SPECIES_LIST_FILE = None
-            else:
-                cfg.SPECIES_LIST_FILE = slist
-
-                if os.path.isdir(cfg.SPECIES_LIST_FILE):
-                    cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
-
-            cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
-        else:
+    # TODO: Should really be None instead of -1
+    if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
+        if not slist:
             cfg.SPECIES_LIST_FILE = None
-            cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
-    else:
-        cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+        else:
+            cfg.SPECIES_LIST_FILE = slist
 
+            if os.path.isdir(cfg.SPECIES_LIST_FILE):
+                cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
+
+        cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
+    else:
+        # TODO: What if only one of the two is given?
+        cfg.SPECIES_LIST_FILE = None
+        cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
+
+    if custom_classifier:
         if custom_classifier.endswith(".tflite"):
             cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
 

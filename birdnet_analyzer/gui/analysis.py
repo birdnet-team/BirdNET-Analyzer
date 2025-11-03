@@ -52,6 +52,7 @@ def run_analysis(
     week: int,
     use_yearlong: bool,
     sf_thresh: float,
+    selected_model: str,
     custom_classifier_file,
     output_types: str,
     additional_columns: list[str] | None,
@@ -101,8 +102,8 @@ def run_analysis(
     from birdnet_analyzer.analyze.core import _set_params
 
     locale = locale.lower()
-    custom_classifier = custom_classifier_file if species_list_choice == gu._CUSTOM_CLASSIFIER else None
-    use_perch = species_list_choice == gu._USE_PERCH
+    custom_classifier = custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
+    use_perch = selected_model == gu._USE_PERCH
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else -1
     lon = lon if species_list_choice == gu._PREDICT_SPECIES else -1
