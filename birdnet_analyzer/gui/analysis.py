@@ -172,4 +172,10 @@ def run_analysis(
     if save_params:
         save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
 
-    return [[os.path.relpath(r[0], input_dir), bool(r[1])] for r in result_list] if input_dir else result_list[0][1]["csv"] if result_list[0][1] else None
+    return (
+        [[os.path.relpath(r[0], input_dir), r[1] if isinstance(r[1], str) else None] for r in result_list]
+        if input_dir
+        else result_list[0][1]["csv"]
+        if isinstance(result_list[0][1], dict)
+        else [result_list[0][1]]
+    )

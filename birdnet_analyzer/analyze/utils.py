@@ -441,7 +441,7 @@ def combine_csv_files(saved_results: list[str]):
         f.write(out_string)
 
 
-def combine_results(saved_results: Sequence[dict[str, str] | None]):
+def combine_results(saved_results: Sequence[dict[str, str] | str]):
     """
     Combines various types of result files based on the configuration settings.
     This function checks the types of results specified in the configuration
@@ -456,13 +456,13 @@ def combine_results(saved_results: Sequence[dict[str, str] | None]):
         None
     """
     if "table" in cfg.RESULT_TYPES:
-        combine_raven_tables([f["table"] for f in saved_results if f])
+        combine_raven_tables([f["table"] for f in saved_results if isinstance(f, dict)])
 
     if "kaleidoscope" in cfg.RESULT_TYPES:
-        combine_kaleidoscope_files([f["kaleidoscope"] for f in saved_results if f])
+        combine_kaleidoscope_files([f["kaleidoscope"] for f in saved_results if isinstance(f, dict)])
 
     if "csv" in cfg.RESULT_TYPES:
-        combine_csv_files([f["csv"] for f in saved_results if f])
+        combine_csv_files([f["csv"] for f in saved_results if isinstance(f, dict)])
 
 
 def merge_consecutive_detections(
@@ -761,8 +761,9 @@ def analyze_file(item) -> dict[str, str] | None:
         # Write error log
         print(f"Error: Cannot analyze audio file {fpath}.\n", flush=True)
         utils.write_error_log(ex)
+        msg = str(ex)
 
-        return None
+        return msg or repr(ex).strip("()")
 
     # Save as selection table
     try:
@@ -773,7 +774,7 @@ def analyze_file(item) -> dict[str, str] | None:
         print(f"Error: Cannot save result for {fpath}.\n", flush=True)
         utils.write_error_log(ex)
 
-        return None
+        return str(ex)
 
     delta_time = (datetime.datetime.now() - start_time).total_seconds()
     print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
