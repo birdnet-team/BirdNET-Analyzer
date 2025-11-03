@@ -6,8 +6,16 @@ When editing your own `species_list.txt` file, make sure to copy species names f
 You can find label files in the checkpoints folder, e.g., `checkpoints/V2.4/BirdNET_GLOBAL_6K_V2.4_Labels.txt`.
 
 Species names need to consist of `scientific name_common name` to be valid.
+If you want to use the Perch model, you have to use their naming convention, which is just `scientific name`.
+For examples check the respective label files.
 
 You can generate a species list for a given location using :ref:`birdnet_analyzer.species <cli-species>`.
+
+.. note::
+    The checkpoints folder can be found in the installation directory of BirdNET-Analyzer.
+    If you're using BirdNET-Analyzer from GitHub, you can access the checkpoints folder once the analyzer has run at least once, because the model is downloaded in the background.
+
+    Alternatively, you can manually download the model checkpoint `here <https://tuc.cloud/index.php/s/886x39f5N3sdsAM/download/V2.4.zip>`_.
 
 Practical Information and Considerations
 ----------------------------------------

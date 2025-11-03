@@ -87,7 +87,7 @@ Once you have uploaded and mapped your files, the system automatically extracts 
 Customize the evaluation process by adjusting the following parameters:
 
 * **Sample Duration (s)**: The length of each audio segment. (Default: 3 seconds – matching BirdNET’s prediction segment.)
-* **Recording Duration **: Explicitly set the recording duration. (Default: The recording duration is automatically inferred from your files.)
+* **Recording Duration**: Explicitly set the recording duration. (Default: The recording duration is automatically inferred from your files.)
 * **Minimum Overlap (s)**: The minimum time overlap between an annotation and a prediction for them to be considered a match. (Default: 0.5 seconds)
 * **Threshold**: The cut-off value to decide if a prediction is positive. (Default: 0.1)
 * **Class-wise Metrics**: Toggle this option if you want to compute performance metrics for each class individually. If disabled, metrics are averaged across all classes.
@@ -143,40 +143,40 @@ After configuring your files and parameters, use the action buttons to execute t
 9. Step-by-Step Usage
 ---------------------------------
 
-1.	File Upload
-######################
+1. File Upload
+##############
 
 * Navigate to the File Selection section.
 * Upload your annotation and prediction files using the provided file dialog or drag-and-drop interface.
 
-2.	Column Mapping
-######################
+2. Column Mapping
+#################
 
 * Review and adjust the column mappings using the drop-down menus to match your file’s structure.
 
-3.	Optional Class Mapping
-######################
+3. Optional Class Mapping
+#########################
 
 * If your class names differ between annotation and prediction files, download the JSON template, update it, and then upload the class mapping file.
 
-4.	Select Classes and Recordings
-######################
+4. Select Classes and Recordings
+################################
 
 * Use the checkbox groups to select the specific classes and recordings you want to evaluate.
 
-5.	Set Parameters
-######################
+5. Set Parameters
+#################
 
 * Adjust the sample duration, recording duration, minimum overlap, and threshold values.
 * Toggle the Class-wise Metrics option if you require individual class evaluations.
 
-6.	Select Metrics
-######################
+6. Select Metrics
+#################
 
 * Check the boxes for the performance metrics (AUROC, Precision, Recall, F1 Score, AP, Accuracy) you wish to compute and visualize.
 
-7.	Execute Evaluation and Visualizations
-######################
+7. Execute Evaluation and Visualizations
+########################################
 
 * Click Calculate Metrics to process the data.
 * Generate visualizations by clicking on Plot Metrics, Plot Confusion Matrix, or Plot Metrics All Thresholds 
