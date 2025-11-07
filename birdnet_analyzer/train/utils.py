@@ -305,6 +305,7 @@ def train_model(on_epoch_end=None, on_trial_result=None, on_data_load_end=None, 
                     overwrite=True,
                     directory=autotune_directory,
                     project_name="birdnet_analyzer",
+                    seed=cfg.RANDOM_SEED,
                 )
                 self.x_train = x_train
                 self.y_train = y_train
