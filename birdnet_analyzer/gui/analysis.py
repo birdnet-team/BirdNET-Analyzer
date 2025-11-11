@@ -113,7 +113,7 @@ def run_analysis(
         audio_input=input_dir if input_dir else input_path,
         min_conf=confidence,
         custom_classifier=custom_classifier,
-        sensitivity=min(1.25, max(0.75, float(sensitivity))),
+        sensitivity=min(1.5, max(0.5, float(sensitivity))),
         locale=locale,
         overlap=max(0.0, min(4.9 if use_perch else 2.9, float(overlap))),
         merge_consecutive=max(1, int(merge_consecutive)),
