@@ -116,6 +116,9 @@ def run_batch_analysis(
 
 
 def build_multi_analysis_tab():
+    # Constant for clearing the result grid when selecting new directories
+    CLEAR_GRID = gr.update(value=[], headers=[""], col_count=1)
+
     with gr.Tab(loc.localize("multi-tab-title")):
         input_directory_state = gr.State()
         output_directory_predict_state = gr.State()
@@ -132,17 +135,18 @@ def build_multi_analysis_tab():
                 )
 
                 def select_directory_on_empty():  # Nishant - Function modified for For Folder selection
+                    """Returns: (folder_path, files_list, grid_update)"""
                     folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
                     if folder:
                         files_and_durations = gu.get_audio_files_and_durations(folder)
                         if len(files_and_durations) > 100:
-                            return [folder, [*files_and_durations[:100], ("...", "...")]]  # hopefully fixes issue#272
-                        return [folder, files_and_durations]
+                            return [folder, [*files_and_durations[:100], ("...", "...")], CLEAR_GRID]  # hopefully fixes issue#272
+                        return [folder, files_and_durations, CLEAR_GRID]
 
-                    return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]]]
+                    return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]], CLEAR_GRID]
 
-                select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress="full")
+                # Event handler registered after result_grid is defined (see below)
 
             with gr.Column():
                 select_out_directory_btn = gr.Button(loc.localize("multi-tab-output-selection-button-label"))
@@ -153,14 +157,13 @@ def build_multi_analysis_tab():
                 )
 
                 def select_directory_wrapper():  # Nishant - Function modified for For Folder selection
+                    """Returns: (folder_path, display_text, grid_update)"""
                     folder = gu.select_folder(state_key="batch-analysis-output-dir")
-                    return (folder, folder) if folder else ("", "")
+                    if folder:
+                        return (folder, folder, CLEAR_GRID)
+                    return ("", "", CLEAR_GRID)
 
-                select_out_directory_btn.click(
-                    select_directory_wrapper,
-                    outputs=[output_directory_predict_state, selected_out_textbox],
-                    show_progress="hidden",
-                )
+                # Event handler registered after result_grid is defined (see below)
 
         sample_settings, species_settings, model_settings = gu.sample_species_model_settings(opened=False)
 
@@ -249,6 +252,12 @@ def build_multi_analysis_tab():
 
         start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
         output_type_radio.change(show_additional_columns, inputs=output_type_radio, outputs=additional_columns_)
+        select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input, result_grid], show_progress="full")
+        select_out_directory_btn.click(
+            select_directory_wrapper,
+            outputs=[output_directory_predict_state, selected_out_textbox, result_grid],
+            show_progress="hidden",
+        )
 
     return species_settings["lat_number"], species_settings["lon_number"], species_settings["map_plot"]
 
