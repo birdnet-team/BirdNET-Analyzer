@@ -137,7 +137,7 @@ def run_analysis(
         use_perch=use_perch,
     )
 
-    if species_list_choice == gu._CUSTOM_CLASSIFIER:
+    if selected_model == gu._CUSTOM_CLASSIFIER:
         if custom_classifier_file is None:
             raise gr.Error(loc.localize("validation-no-custom-classifier-selected"))
 

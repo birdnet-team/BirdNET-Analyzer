@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "birdnet_analyzer"
-version = "2.3.0"
+version = "2.4.0"
 license = { text = "MIT" }
 description = "BirdNET analyzer for scientific audio data processing and bird classification."
 authors = [{ name = "Stefan Kahl" }]
@@ -25,8 +25,8 @@ classifiers = [
 dependencies = [
     "librosa>=0.11",
     "resampy",
-    "tensorflow>=2.20;platform_system!='Darwin'",
-    "tensorflow==2.19;platform_system=='Darwin'", # https://github.com/apache/arrow/issues/40088 - until fixed
+    "tensorflow>=2.20",
+    "pyarrow>=22.0.0;platform_system=='Darwin'", # https://github.com/apache/arrow/issues/40088
     "tqdm",
     "pandas",
     "matplotlib",

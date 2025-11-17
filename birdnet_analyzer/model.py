@@ -28,12 +28,16 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 INTERPRETER = None
 C_INTERPRETER = None
+C_INPUT_LAYER_INDEX = None
+C_OUTPUT_LAYER_INDEX = None
+C_INPUT_SIZE = None
 M_INTERPRETER = None
 OUTPUT_DETAILS = None
 PBMODEL = None
 PERCH_MODEL = None
 C_PBMODEL = None
 EMPTY_CLASS_EXCEPTION_REF = None
+_LAST_CUSTOM_CLASSIFIER_PATH = None
 
 
 class WrappedSavedModel(keras.layers.Layer):
@@ -503,15 +507,23 @@ def save_model_params(path):
 
 def reset_custom_classifier():
     """
-    Resets the custom classifier by setting the global variables C_INTERPRETER and C_PBMODEL to None.
-    This function is used to clear any existing custom classifier models and interpreters, effectively
-    resetting the state of the custom classifier.
+    Resets the custom classifier by clearing all related global state variables.
+    This function is used to clear any existing custom classifier models, interpreters,
+    and configuration, effectively resetting the state of the custom classifier.
     """
     global C_INTERPRETER
     global C_PBMODEL
+    global C_INPUT_LAYER_INDEX
+    global C_OUTPUT_LAYER_INDEX
+    global C_INPUT_SIZE
+    global _LAST_CUSTOM_CLASSIFIER_PATH
 
     C_INTERPRETER = None
     C_PBMODEL = None
+    C_INPUT_LAYER_INDEX = None
+    C_OUTPUT_LAYER_INDEX = None
+    C_INPUT_SIZE = None
+    _LAST_CUSTOM_CLASSIFIER_PATH = None
 
 
 def load_model(class_output=True):
@@ -1148,8 +1160,13 @@ def predict_with_custom_classifier(sample):
     Returns:
         The prediction scores for the sample.
     """
-    # Does interpreter exist?
-    if C_INTERPRETER is None and C_PBMODEL is None:
+    global _LAST_CUSTOM_CLASSIFIER_PATH
+
+    # Check if interpreter needs loading (first time or path changed)
+    if (C_INTERPRETER is None and C_PBMODEL is None) or _LAST_CUSTOM_CLASSIFIER_PATH != cfg.CUSTOM_CLASSIFIER:
+        if _LAST_CUSTOM_CLASSIFIER_PATH is not None:
+            logging.info(f"Reloading custom classifier: {_LAST_CUSTOM_CLASSIFIER_PATH} -> {cfg.CUSTOM_CLASSIFIER}")
+        _LAST_CUSTOM_CLASSIFIER_PATH = cfg.CUSTOM_CLASSIFIER
         load_custom_classifier()
 
     if C_PBMODEL is None:

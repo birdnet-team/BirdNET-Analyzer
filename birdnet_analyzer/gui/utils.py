@@ -323,12 +323,16 @@ def sample_species_model_settings(opened=True):
     def on_species_list_change(value):
         is_perch = value == _USE_PERCH
 
-        return gr.update(interactive=not is_perch), gr.update(maximum=4.9 if is_perch else 2.9)
+        return (
+            gr.update(interactive=not is_perch),
+            gr.update(maximum=4.9 if is_perch else 2.9),
+            gr.update(choices=[_CUSTOM_SPECIES, _ALL_SPECIES] if is_perch else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES], value=_ALL_SPECIES),
+        )
 
-    species_settings["species_list_radio"].change(
+    model_settings["model_selection_radio"].change(
         on_species_list_change,
-        inputs=species_settings["species_list_radio"],
-        outputs=[sample_settings["sensitivity_slider"], sample_settings["overlap_slider"]],
+        inputs=model_settings["model_selection_radio"],
+        outputs=[sample_settings["sensitivity_slider"], sample_settings["overlap_slider"], species_settings["species_list_radio"]],
         show_progress="hidden",
     )
 
