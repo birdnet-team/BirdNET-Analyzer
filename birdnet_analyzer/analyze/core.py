@@ -201,6 +201,7 @@ def _set_params(
     cfg.BATCH_SIZE = bs
     cfg.ADDITIONAL_COLUMNS = additional_columns
     cfg.USE_PERCH = use_perch
+    cfg.LABEL_LANGUAGE = locale
 
     if cfg.USE_PERCH and custom_classifier:
         raise ValueError("Selected custom classifier and Perch model, please select only one.")

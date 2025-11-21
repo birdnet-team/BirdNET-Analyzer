@@ -1,5 +1,7 @@
 import os
 
+from birdnet.globals import MODEL_LANGUAGES
+
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 #################
@@ -141,6 +143,9 @@ ANALYSIS_PARAMS_FILENAME: str = "BirdNET_analysis_params.csv"
 SKIP_EXISTING_RESULTS: bool = False
 
 COMBINE_RESULTS: bool = False
+
+LABEL_LANGUAGE: MODEL_LANGUAGES = "en"
+
 #####################
 # Training settings #
 #####################
