@@ -1,6 +1,9 @@
 # ruff: noqa: E501
 import argparse
 import os
+from typing import cast
+
+from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
 import birdnet_analyzer.config as cfg
 
@@ -32,6 +35,13 @@ ASCII_LOGO = r"""
                                                ***+==           
                                               ****+             
 """  # noqa: W291
+
+
+def birdnet_arg():
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--birdnet", default="2.4", const="2.4", nargs="?", help="Use the BirdNET model. Specify the version to use.")
+
+    return p
 
 
 def io_args():
@@ -96,13 +106,12 @@ def species_list_args():
                                  Defaults to cfg.LOCATION_FILTER_THRESHOLD.
     """
     p = argparse.ArgumentParser(add_help=False)
-    p.add_argument("--lat", type=float, default=-1, help="Recording location latitude. Set -1 to ignore.")
-    p.add_argument("--lon", type=float, default=-1, help="Recording location longitude. Set -1 to ignore.")
+    p.add_argument("--lat", type=float, help="Recording location latitude.")
+    p.add_argument("--lon", type=float, help="Recording location longitude.")
     p.add_argument(
         "--week",
         type=int,
-        default=-1,
-        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.",
+        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Leave blank for year-round species list.",
     )
     p.add_argument(
         "--sf_thresh",
@@ -235,6 +244,7 @@ def min_conf_args():
         - Ensures that the provided value is clamped between 0.01 and 0.99.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "--min_conf",
         default=cfg.MIN_CONFIDENCE,
@@ -259,8 +269,9 @@ def locale_args():
     p.add_argument(
         "-l",
         "--locale",
-        default="en",
-        help="Locale for translated species common names. Values in ['af', 'en_UK', 'de', 'it', ...].",
+        default=cast("str", MODEL_LANGUAGE_EN_US),
+        choices=cast("list[str]", MODEL_LANGUAGES),
+        help="Locale for translated species common names.",
     )
 
     return p
@@ -329,6 +340,7 @@ def analyzer_parser():
     from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS_MAP
 
     parents = [
+        birdnet_arg(),
         io_args(),
         bandpass_args(),
         species_args(),
@@ -377,6 +389,11 @@ def analyzer_parser():
         "--classifier",
         default=cfg.CUSTOM_CLASSIFIER,
         help="Path to custom trained classifier. If set, --lat, --lon and --locale are ignored.",
+    )
+
+    parser.add_argument(
+        "--cc_species_list",
+        help="Path to custom species list file for the custom classifier. The default search path is <custom_classifier_without_extension>_Labels.txt in the same directory.",
     )
 
     parser.add_argument(

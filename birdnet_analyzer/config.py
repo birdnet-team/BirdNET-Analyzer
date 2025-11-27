@@ -1,6 +1,6 @@
 import os
 
-from birdnet.globals import MODEL_LANGUAGES
+from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -144,7 +144,7 @@ SKIP_EXISTING_RESULTS: bool = False
 
 COMBINE_RESULTS: bool = False
 
-LABEL_LANGUAGE: MODEL_LANGUAGES = "en"
+LABEL_LANGUAGE: MODEL_LANGUAGES = MODEL_LANGUAGE_EN_US
 
 #####################
 # Training settings #

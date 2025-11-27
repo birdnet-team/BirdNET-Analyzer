@@ -21,9 +21,12 @@ def main():
     except Exception:
         pass
 
-    if "additional_columns" in args and args.additional_columns and "csv" not in args.rtype:
+    if args.additional_columns and "csv" not in args.rtype:
         import warnings
 
         warnings.warn("The --additional_columns argument is only valid for CSV output. It will be ignored.", stacklevel=1)
+
+    if args.use_perch and args.classifier:
+        raise ValueError("The --use_perch and --classifier arguments cannot be used together.")
 
     analyze(**vars(args))

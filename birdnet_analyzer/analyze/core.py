@@ -1,31 +1,38 @@
 import os
+from collections.abc import Collection
+from pathlib import Path
 from typing import Literal
+
+import birdnet as bn
+from birdnet.globals import MODEL_LANGUAGES
 
 
 def analyze(
     audio_input: str,
     output: str | None = None,
     *,
+    birdnet: str = "2.4",
     min_conf: float = 0.25,
     classifier: str | None = None,
-    lat: float = -1,
-    lon: float = -1,
-    week: int = -1,
-    slist: str | None = None,
+    cc_species_list: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    week: int | None = None,
+    slist: str | Path | Collection[str] | None = None,
     sensitivity: float = 1.0,
     overlap: float = 0,
     fmin: int = 0,
     fmax: int = 15000,
     audio_speed: float = 1.0,
     batch_size: int = 1,
-    combine_results: bool = False,
+    combine_results: bool = False,  # TODO: aktuell useless
     rtype: Literal["table", "audacity", "kaleidoscope", "csv"] | list[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
-    skip_existing_results: bool = False,
+    skip_existing_results: bool = False,  # TODO: aktuell useless
     sf_thresh: float = 0.03,
     top_n: int | None = None,
-    merge_consecutive: int = 1,
-    threads: int = 8,
-    locale: str = "en",
+    merge_consecutive: int = 1,  # TODO: aktuell useless
+    threads: int = 8,  # TODO: aktuell useless
+    locale: MODEL_LANGUAGES = "en_us",
     additional_columns: list[str] | None = None,
     use_perch: bool = False,
 ):
@@ -36,8 +43,8 @@ def analyze(
         output (str | None, optional): Path to the output directory for results. Defaults to None.
         min_conf (float, optional): Minimum confidence threshold for detections. Defaults to 0.25.
         classifier (str | None, optional): Path to a custom classifier file. Defaults to None.
-        lat (float, optional): Latitude for location-based filtering. Defaults to -1.
-        lon (float, optional): Longitude for location-based filtering. Defaults to -1.
+        lat (float | None, optional): Latitude for location-based filtering. Defaults to None.
+        lon (float | None, optional): Longitude for location-based filtering. Defaults to None.
         week (int, optional): Week of the year for seasonal filtering. Defaults to -1.
         slist (str | None, optional): Path to a species list file for filtering. Defaults to None.
         sensitivity (float, optional): Sensitivity of the detection algorithm. Defaults to 1.0.
@@ -66,65 +73,40 @@ def analyze(
         - Results can be combined into a single file if `combine_results` is True.
         - Analysis parameters are saved to a file in the output directory.
     """
-    from multiprocessing import Pool
 
     import birdnet_analyzer.config as cfg
-    from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params
-    from birdnet_analyzer.analyze.utils import combine_results as combine
+    from birdnet_analyzer.analyze.utils import save_analysis_params
+    from birdnet_analyzer.model_utils import run_interference
 
-    flist = _set_params(
-        audio_input=audio_input,
-        output=output,
-        min_conf=min_conf,
-        custom_classifier=classifier,
-        lat=lat,
-        lon=lon,
-        week=week,
-        slist=slist,
-        sensitivity=sensitivity,
-        locale=locale,
-        overlap=overlap,
-        fmin=fmin,
-        fmax=fmax,
-        audio_speed=audio_speed,
-        bs=batch_size,
-        combine_results=combine_results,
-        rtype=rtype,
-        sf_thresh=sf_thresh,
-        top_n=top_n,
-        merge_consecutive=merge_consecutive,
-        skip_existing_results=skip_existing_results,
-        threads=threads,
-        labels_file=cfg.LABELS_FILE,
-        additional_columns=additional_columns,
-        use_perch=use_perch,
+    if (lat is not None and lon is None) or (lat is None and lon is not None):
+        raise ValueError("Both latitude and longitude must be provided for location-based filtering.")
+
+    if lat is not None and lon is not None:
+        if slist is not None:
+            raise ValueError("Cannot use both location (lat/lon) and custom species list (slist) together.")
+
+        geomodel = bn.load("geo", "2.4", "tf", lang=locale)
+        slist = geomodel.predict(lat, lon, week=week, min_confidence=sf_thresh).to_set()
+
+    predictions = run_interference(
+        audio_input,
+        top_k=top_n,
+        batch_size=batch_size,
+        prefetch_ratio=2,
+        overlap_duration_s=overlap,
+        bandpass_fmin=fmin,
+        bandpass_fmax=fmax,
+        apply_sigmoid=True,  # TODO: check condition
+        sigmoid_sensitivity=sensitivity,
+        speed=audio_speed,
+        min_confidence=min_conf,
+        custom_species_list=slist,
+        label_language=locale,
+        classifier=classifier,
+        cc_species_list=cc_species_list,
     )
 
-    print(f"Found {len(cfg.FILE_LIST)} files to analyze")
-
-    if not cfg.SPECIES_LIST:
-        print(f"Species list contains {len(cfg.LABELS)} species")
-    else:
-        print(f"Species list contains {len(cfg.SPECIES_LIST)} species")
-
-    result_files = []
-
-    # Analyze files
-    if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        result_files.extend(analyze_file(f) for f in flist)
-    else:
-        with Pool(cfg.CPU_THREADS) as p:
-            # Map analyzeFile function to each entry in flist
-            results = p.map_async(analyze_file, flist)
-            # Wait for all tasks to complete
-            results.wait()
-            result_files = results.get()
-
-    # Combine results?
-    if cfg.COMBINE_RESULTS:
-        print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
-        combine(result_files)
-        print("done!", flush=True)
+    predictions.to_csv(os.path.join(cfg.OUTPUT_PATH, cfg.OUTPUT_CSV_FILENAME))
 
     save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
 
@@ -161,13 +143,7 @@ def _set_params(
     from birdnet_analyzer.species.utils import get_species_list
     from birdnet_analyzer.utils import collect_audio_files, ensure_model_exists, read_lines
 
-    ensure_model_exists(check_perch=use_perch)
-
-    if not isinstance(overlap, int | float):
-        raise ValueError("Overlap must be a numeric value.")
-
-    if overlap < 0:
-        raise ValueError("Overlap must be a non-negative value.")
+    # ensure_model_exists(check_perch=use_perch)
 
     if not use_perch and overlap > 2.9:
         raise ValueError("Overlap must be less than or equal to 2.9 seconds for BirdNET model.")
@@ -175,20 +151,14 @@ def _set_params(
     if use_perch and overlap > 4.9:
         raise ValueError("Overlap must be less than or equal to 4.9 seconds for Perch model.")
 
-    if not isinstance(audio_speed, int | float):
-        raise ValueError("Audio speed must be a numeric value.")
-
-    if audio_speed <= 0:
-        raise ValueError("Audio speed must be a positive value.")
-
     if use_perch and sensitivity != 1.0:
         print("Warning: Sensitivity setting is ignored when using the Perch model.")
 
     cfg.CODES = load_codes()
-    cfg.SKIP_EXISTING_RESULTS = skip_existing_results
+    # cfg.SKIP_EXISTING_RESULTS = skip_existing_results
     cfg.LOCATION_FILTER_THRESHOLD = sf_thresh
     cfg.TOP_N = top_n
-    cfg.MERGE_CONSECUTIVE = merge_consecutive
+    # cfg.MERGE_CONSECUTIVE = merge_consecutive
     cfg.INPUT_PATH = audio_input.replace("/", os.sep)
     cfg.MIN_CONFIDENCE = min_conf
     cfg.SIGMOID_SENSITIVITY = sensitivity
@@ -214,85 +184,70 @@ def _set_params(
     else:
         cfg.OUTPUT_PATH = output
 
-    if os.path.isdir(cfg.INPUT_PATH):
-        cfg.FILE_LIST = collect_audio_files(cfg.INPUT_PATH)
-    else:
-        cfg.FILE_LIST = [cfg.INPUT_PATH]
+    # if cfg.USE_PERCH:
+    #     cfg.MODEL_PATH = cfg.PERCH_V2_MODEL_PATH
+    #     cfg.LABELS_FILE = cfg.perch_labels_file()
+    #     cfg.SAMPLE_RATE = cfg.PERCH_SAMPLE_RATE
+    #     cfg.SIG_LENGTH = cfg.PERCH_SIG_LENGTH
+    #     cfg.LABELS = read_lines(cfg.LABELS_FILE)
+    #     cfg.LABELS = cfg.LABELS[1:]  # it's a csv with header
+    # else:
+    #     cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
+    #     cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
+    #     cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
+    #     cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+    #     cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
 
-    if os.path.isdir(cfg.INPUT_PATH):
-        cfg.CPU_THREADS = threads
-        cfg.TFLITE_THREADS = 1
-    else:
-        cfg.CPU_THREADS = 1
-        cfg.TFLITE_THREADS = threads
+    # cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
+    # cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
 
-    if cfg.USE_PERCH:
-        cfg.MODEL_PATH = cfg.PERCH_V2_MODEL_PATH
-        cfg.LABELS_FILE = cfg.perch_labels_file()
-        cfg.SAMPLE_RATE = cfg.PERCH_SAMPLE_RATE
-        cfg.SIG_LENGTH = cfg.PERCH_SIG_LENGTH
-        cfg.LABELS = read_lines(cfg.LABELS_FILE)
-        cfg.LABELS = cfg.LABELS[1:]  # it's a csv with header
-    else:
-        cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
-        cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
-        cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
-        cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
-        cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
+    # # TODO: Should really be None instead of -1
+    # if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
+    #     if not slist:
+    #         cfg.SPECIES_LIST_FILE = None
+    #     else:
+    #         cfg.SPECIES_LIST_FILE = slist
 
-    if overlap >= cfg.SIG_LENGTH:
-        raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
+    #         if os.path.isdir(cfg.SPECIES_LIST_FILE):
+    #             cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
 
-    cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
-    cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
+    #     cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
+    # else:
+    #     # TODO: What if only one of the two is given?
+    #     cfg.SPECIES_LIST_FILE = None
+    #     cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
 
-    # TODO: Should really be None instead of -1
-    if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
-        if not slist:
-            cfg.SPECIES_LIST_FILE = None
-        else:
-            cfg.SPECIES_LIST_FILE = slist
+    # if custom_classifier:
+    #     if custom_classifier.endswith(".tflite"):
+    #         cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
 
-            if os.path.isdir(cfg.SPECIES_LIST_FILE):
-                cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
+    #         if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is not found, an old birdnet model might be used
+    #             cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
 
-        cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
-    else:
-        # TODO: What if only one of the two is given?
-        cfg.SPECIES_LIST_FILE = None
-        cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
+    #         if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is still not found, dont use labels
+    #             cfg.LABELS_FILE = None
+    #             cfg.LABELS = None
+    #         else:
+    #             cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
+    #     else:
+    #         cfg.APPLY_SIGMOID = False
+    #         # our output format
+    #         cfg.LABELS_FILE = os.path.join(custom_classifier, "labels", "label_names.csv")
 
-    if custom_classifier:
-        if custom_classifier.endswith(".tflite"):
-            cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
+    #         if not os.path.isfile(cfg.LABELS_FILE):
+    #             cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
+    #             cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
+    #         else:
+    #             cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)]
 
-            if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is not found, an old birdnet model might be used
-                cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
+    # if cfg.LABELS_FILE:
+    #     lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
 
-            if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is still not found, dont use labels
-                cfg.LABELS_FILE = None
-                cfg.LABELS = None
-            else:
-                cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
-        else:
-            cfg.APPLY_SIGMOID = False
-            # our output format
-            cfg.LABELS_FILE = os.path.join(custom_classifier, "labels", "label_names.csv")
+    #     if locale not in ["en"] and os.path.isfile(lfile):
+    #         cfg.TRANSLATED_LABELS = read_lines(lfile)
+    #     else:
+    #         cfg.TRANSLATED_LABELS = cfg.LABELS
+    # else:
+    #     cfg.TRANSLATED_LABELS = cfg.LABELS
 
-            if not os.path.isfile(cfg.LABELS_FILE):
-                cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
-                cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
-            else:
-                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)]
-
-    if cfg.LABELS_FILE:
-        lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
-
-        if locale not in ["en"] and os.path.isfile(lfile):
-            cfg.TRANSLATED_LABELS = read_lines(lfile)
-        else:
-            cfg.TRANSLATED_LABELS = cfg.LABELS
-    else:
-        cfg.TRANSLATED_LABELS = cfg.LABELS
-
-    return [(f, cfg.get_config()) for f in cfg.FILE_LIST]
+    # return [(f, cfg.get_config()) for f in cfg.FILE_LIST]
