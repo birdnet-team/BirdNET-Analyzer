@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
@@ -128,12 +129,14 @@ USE_NOISE: bool = False
 # Specifies the output format. 'table' denotes a Raven selection table,
 # 'audacity' denotes a TXT file with the same format as Audacity timeline labels
 # 'csv' denotes a generic CSV file with start, end, species and confidence.
-RESULT_TYPES: set[str] | list[str] = {"table"}
+RESULT_TYPES = Literal["table", "audacity", "kaleidoscope", "csv"]
+# RESULT_TYPES: set[str] | list[str] = {"table"}
 ADDITIONAL_COLUMNS: list[str] | None = None
 OUTPUT_RAVEN_FILENAME: str = "BirdNET_SelectionTable.txt"  # this is for combined Raven selection tables only
 # OUTPUT_RTABLE_FILENAME: str = "BirdNET_RTable.csv"
 OUTPUT_KALEIDOSCOPE_FILENAME: str = "BirdNET_Kaleidoscope.csv"
 OUTPUT_CSV_FILENAME: str = "BirdNET_CombinedTable.csv"
+OUTPUT_AUDACITY_FILENAME: str = "BirdNET_AudacityLabels.txt"
 
 # File name of the settings csv for batch analysis
 ANALYSIS_PARAMS_FILENAME: str = "BirdNET_analysis_params.csv"
