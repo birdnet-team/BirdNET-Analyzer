@@ -37,9 +37,31 @@ ASCII_LOGO = r"""
 """  # noqa: W291
 
 
+def store_model_action(model_name: str):
+    class StoreModelAction(argparse.Action):
+        def __init__(self, option_strings, dest, default=False, required=False, help=None):
+            super().__init__(option_strings=option_strings, dest=dest, nargs=0, const=True, default=default, required=required, help=help)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, True)
+            namespace.model = model_name
+
+    return StoreModelAction
+
+
+def set_model_action(model_name: str):
+    class SetModelAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, values)
+
+            namespace.model = model_name
+
+    return SetModelAction
+
+
 def birdnet_arg():
     p = argparse.ArgumentParser(add_help=False)
-    p.add_argument("--birdnet", default="2.4", const="2.4", nargs="?", help="Use the BirdNET model. Specify the version to use.")
+    p.add_argument("--birdnet", default="2.4", const="2.4", nargs="?", action=set_model_action("birdnet"), help="Use the BirdNET model. Specify the version to use.")
 
     return p
 
@@ -347,7 +369,6 @@ def analyzer_parser():
         sigmoid_args(),
         overlap_args(),
         audio_speed_args(),
-        threads_args(),
         min_conf_args(),
         locale_args(),
         bs_args(),
@@ -415,7 +436,9 @@ def analyzer_parser():
         help="Maximum number of consecutive detections above MIN_CONF to merge for each detected species. This will result in fewer entires in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. Set to None to include all consecutive detections. We use the mean of the top 3 scores from all consecutive detections for merging.",
     )
 
-    parser.add_argument("--use_perch", action="store_true", help="Use the Perch model for detection.")
+    parser.add_argument("--use_perch", action=store_model_action("perch"), help="Use the Perch model for detection.")
+
+    parser.set_defaults(model="birdnet")
 
     return parser
 

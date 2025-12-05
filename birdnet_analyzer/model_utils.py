@@ -25,9 +25,11 @@ def run_interference(
             cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
 
         model = birdnet.load_custom("acoustic", version, "tf", classifier, cc_species_list)
-    else:
+    elif model == "birdnet":
         model = birdnet.load("acoustic", version, "tf", lang=label_language)
-    
+    elif model == "perch":
+        model = birdnet.load_perch_v2()
+
     return model.predict(
         path,
         top_k=top_k,
@@ -45,6 +47,4 @@ def run_interference(
 
 def run_geomodel(lat, lon, week=None, language: MODEL_LANGUAGES = "en_us", threshold: float = 0.03):
     model = birdnet.load("geo", "2.4", "tf", lang=language)
-    predictions = model.predict(lat, lon, week=week, min_confidence=threshold)
-
-    return predictions
+    return model.predict(lat, lon, week=week, min_confidence=threshold)

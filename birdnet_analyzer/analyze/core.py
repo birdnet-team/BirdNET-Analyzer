@@ -1,7 +1,7 @@
 from collections.abc import Collection
 from pathlib import Path
 
-from birdnet.globals import MODEL_LANGUAGES
+from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGES
 
 from birdnet_analyzer.config import RESULT_TYPES
 
@@ -10,7 +10,8 @@ def analyze(
     audio_input: str,
     output: str | None = None,
     *,
-    birdnet: str = "2.4",
+    model: str = "birdnet",
+    birdnet: ACOUSTIC_MODEL_VERSIONS = "2.4",
     min_conf: float = 0.25,
     classifier: str | None = None,
     cc_species_list: str | None = None,
@@ -24,16 +25,16 @@ def analyze(
     fmax: int = 15000,
     audio_speed: float = 1.0,
     batch_size: int = 1,
-    combine_results: bool = False,  # TODO: aktuell useless
+    combine_results: bool = False,  # TODO: aktuell useless, ist inzwischen der default
     rtype: RESULT_TYPES | list[RESULT_TYPES] = "table",
-    skip_existing_results: bool = False,  # TODO: aktuell useless
+    skip_existing_results: bool = False,  # TODO: aktuell useless, müsste man nochmal ganz neu implementieren, basierend auf den files in einem resultfile
     sf_thresh: float = 0.03,
     top_n: int | None = None,
-    merge_consecutive: int = 1,  # TODO: aktuell useless
-    threads: int = 8,  # TODO: aktuell useless
+    merge_consecutive: int = 1,  # TODO: aktuell useless, muss wahrscheinlich manuell mit pandas gemacht werden
     locale: MODEL_LANGUAGES = "en_us",
     additional_columns: list[str] | None = None,
-    use_perch: bool = False,  # TODO: aktuell useless
+    use_perch: bool = False,  # TODO: aktuell useless, kann eigentlich weg, weil model param
+    _return_only=False
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
@@ -93,6 +94,7 @@ def analyze(
 
     predictions = run_interference(
         audio_input,
+        model=model,
         top_k=top_n,
         batch_size=batch_size,
         prefetch_ratio=3,
@@ -106,7 +108,11 @@ def analyze(
         label_language=locale,
         classifier=classifier,
         cc_species_list=cc_species_list,
+        version=birdnet,
     )
+
+    if _return_only:
+        return predictions
 
     output: Path = Path(audio_input).parent if Path(audio_input).is_file() else Path(audio_input)
 
@@ -155,7 +161,7 @@ def analyze(
             "High Freq (Hz)",
             "Begin Path",
         ]
-        # TODO: still missing "File Offset (s)" and "Species Code"
+        # TODO: still missing "File Offset (s)"
         df = df[cols]
         df.to_csv(output / cfg.OUTPUT_RAVEN_FILENAME, sep="\t", index=False)
 
@@ -250,3 +256,5 @@ def analyze(
             classifier if classifier else "",
         ),
     )
+
+    return None

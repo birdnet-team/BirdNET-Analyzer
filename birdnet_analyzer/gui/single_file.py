@@ -46,7 +46,7 @@ def run_single_file_analysis(
     if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
-    result_filepath = run_analysis(
+    predictions = run_analysis(
         input_path=input_path,
         output_path=None,
         use_top_n=use_top_n,
@@ -70,7 +70,7 @@ def run_single_file_analysis(
         output_types="csv",
         additional_columns=None,
         combine_tables=False,
-        locale=locale if locale else "en",
+        locale=locale if locale else "en_us",
         batch_size=1,
         threads=4,
         input_dir=None,
@@ -79,27 +79,26 @@ def run_single_file_analysis(
         progress=None,
     )
 
-    if isinstance(result_filepath, list):
-        raise gr.Error(loc.localize("single-tab-analyze-file-error") + f": {result_filepath[0]}")
+    table = predictions.to_dataframe()
 
-    # read the result file to return the data to be displayed.
-    with open(result_filepath, encoding="utf-8") as f:
-        reader = csv.reader(f)
-        data = list(reader)
-        data = [lc[0:-1] for lc in data[1:]]  # remove last column (file path) and first row (header)
+    # # read the result file to return the data to be displayed.
+    # with open(result_filepath, encoding="utf-8") as f:
+    #     reader = csv.reader(f)
+    #     data = list(reader)
+    #     data = [lc[0:-1] for lc in data[1:]]  # remove last column (file path) and first row (header)
 
-        for row in data:
-            for col_idx in range(2):
-                seconds = float(row[col_idx])
-                time_str = str(timedelta(seconds=seconds))
+    #     for row in data:
+    #         for col_idx in range(2):
+    #             seconds = float(row[col_idx])
+    #             time_str = str(timedelta(seconds=seconds))
 
-                if "." in time_str:
-                    time_str = time_str[: time_str.index(".") + 2]
+    #             if "." in time_str:
+    #                 time_str = time_str[: time_str.index(".") + 2]
 
-                row[col_idx] = time_str
-            row.insert(0, "▶")
+    #             row[col_idx] = time_str
+    #         row.insert(0, "▶")
 
-    return data, gr.update(visible=True), result_filepath
+    return table, gr.update(visible=True), predictions
 
 
 def build_single_analysis_tab():
@@ -114,7 +113,7 @@ def build_single_analysis_tab():
                 info=loc.localize("single-tab-spectrogram-checkbox-info"),
             )
         audio_path_state = gr.State()
-        table_path_state = gr.State()
+        last_prediction_state = gr.State()
         sample_settings, species_settings, model_settings = gu.sample_species_model_settings(opened=False)
         locale_radio = gu.locale()
 
@@ -234,8 +233,8 @@ def build_single_analysis_tab():
                         dst.write(src.read())
 
         output_dataframe.select(get_selected_audio, inputs=audio_path_state, outputs=segment_audio)
-        single_file_analyze.click(run_single_file_analysis, inputs=inputs, outputs=[output_dataframe, action_row, table_path_state])
-        table_download_button.click(download_table, inputs=table_path_state)
+        single_file_analyze.click(run_single_file_analysis, inputs=inputs, outputs=[output_dataframe, action_row, last_prediction_state])
+        table_download_button.click(download_table, inputs=last_prediction_state)
 
     return species_settings["lat_number"], species_settings["lon_number"], species_settings["map_plot"]
 
