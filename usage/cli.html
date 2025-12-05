@@ -1,0 +1,774 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Command line interface &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="GUI" href="gui.html" />
+    <link rel="prev" title="Usage" href="../usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../usage.html">Usage</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Command line interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.html">GUI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker.html">Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="projects-map.html">Projects Map</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best-practices.html">Best practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../usage.html">Usage</a></li>
+      <li class="breadcrumb-item active">Command line interface</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="command-line-interface">
+<h1>Command line interface<a class="headerlink" href="#command-line-interface" title="Link to this heading"></a></h1>
+<section id="birdnet-analyzer-analyze">
+<span id="cli-docs"></span><h2>birdnet_analyzer.analyze<a class="headerlink" href="#birdnet-analyzer-analyze" title="Link to this heading"></a></h2>
+<p>Run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.analyze</span></code> to analyze an audio file or a directory containing audio files.
+You need to set paths for the audio file and selection table output. Here is an example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/path/to/audio/folder<span class="w"> </span>-o<span class="w"> </span>/path/to/output/folder
+</pre></div>
+</div>
+<p>Here are two example commands to run this BirdNET version:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--slist<span class="w"> </span>example/<span class="w"> </span>--min_conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--threads<span class="w"> </span><span class="m">4</span>
+
+python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--lat<span class="w"> </span><span class="m">42</span>.5<span class="w"> </span>--lon<span class="w"> </span>-76.45<span class="w"> </span>--week<span class="w"> </span><span class="m">4</span><span class="w"> </span>--sensitivity<span class="w"> </span><span class="m">1</span>.0
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">analyze</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fmin</span> <span class="n">FMIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fmax</span> <span class="n">FMAX</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">lat</span> <span class="n">LAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lon</span> <span class="n">LON</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">week</span> <span class="n">WEEK</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">sf_thresh</span> <span class="n">SF_THRESH</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">slist</span> <span class="n">SLIST</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">sensitivity</span> <span class="n">SENSITIVITY</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">audio_speed</span> <span class="n">AUDIO_SPEED</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="n">THREADS</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">min_conf</span> <span class="n">MIN_CONF</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOCALE</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">-</span><span class="n">b</span> <span class="n">BATCH_SIZE</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">rtype</span> <span class="p">{</span><span class="n">table</span><span class="p">,</span><span class="n">audacity</span><span class="p">,</span><span class="n">kaleidoscope</span><span class="p">,</span><span class="n">csv</span><span class="p">}</span> <span class="p">[{</span><span class="n">table</span><span class="p">,</span><span class="n">audacity</span><span class="p">,</span><span class="n">kaleidoscope</span><span class="p">,</span><span class="n">csv</span><span class="p">}</span> <span class="o">...</span><span class="p">]]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">additional_columns</span> <span class="p">{</span><span class="n">lat</span><span class="p">,</span><span class="n">lon</span><span class="p">,</span><span class="n">week</span><span class="p">,</span><span class="n">overlap</span><span class="p">,</span><span class="n">sensitivity</span><span class="p">,</span><span class="n">min_conf</span><span class="p">,</span><span class="n">species_list</span><span class="p">,</span><span class="n">model</span><span class="p">}</span> <span class="p">[{</span><span class="n">lat</span><span class="p">,</span><span class="n">lon</span><span class="p">,</span><span class="n">week</span><span class="p">,</span><span class="n">overlap</span><span class="p">,</span><span class="n">sensitivity</span><span class="p">,</span><span class="n">min_conf</span><span class="p">,</span><span class="n">species_list</span><span class="p">,</span><span class="n">model</span><span class="p">}</span> <span class="o">...</span><span class="p">]]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">combine_results</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">c</span> <span class="n">CLASSIFIER</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">skip_existing_results</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">top_n</span> <span class="n">TOP_N</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">merge_consecutive</span> <span class="n">MERGE_CONSECUTIVE</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">use_perch</span><span class="p">]</span>
+                                <span class="n">INPUT</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-analyzer_parser-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#birdnet_analyzer.cli-analyzer_parser-positional-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Path to input file or folder.</p>
+</dd>
+</dl>
+</section>
+<section id="birdnet_analyzer.cli-analyzer_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-analyzer_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>-o, --output</kbd></dt>
+<dd><p>Path to output folder. Defaults to the input path.</p>
+</dd>
+<dt><kbd>--fmin</kbd></dt>
+<dd><p>Minimum frequency for bandpass filter in Hz.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--fmax</kbd></dt>
+<dd><p>Maximum frequency for bandpass filter in Hz.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">15000</span></code></p>
+</dd>
+<dt><kbd>--lat</kbd></dt>
+<dd><p>Recording location latitude. Set -1 to ignore.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--lon</kbd></dt>
+<dd><p>Recording location longitude. Set -1 to ignore.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--week</kbd></dt>
+<dd><p>Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--sf_thresh</kbd></dt>
+<dd><p>Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.03</span></code></p>
+</dd>
+<dt><kbd>--slist</kbd></dt>
+<dd><p>Path to species list file or folder. If folder is provided, species list needs to be named “species_list.txt”. If lat and lon are provided, this list will be ignored.</p>
+</dd>
+<dt><kbd>--sensitivity</kbd></dt>
+<dd><p>Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid functionon the x-axis. Use complementary to the cut-off threshold.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>--overlap</kbd></dt>
+<dd><p>Overlap of prediction segments. Values in [0.0, 2.9].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--audio_speed</kbd></dt>
+<dd><p>Speed factor for audio playback. Values &lt; 1.0 will slow down the audio, values &gt; 1.0 will speed it up. At a 10x decrease (audio speed 0.1), a 384 kHz recording becomes a 38.4 kHz recording.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>-t, --threads</kbd></dt>
+<dd><p>Number of CPU threads.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>--min_conf</kbd></dt>
+<dd><p>Minimum confidence threshold. Values in [0.00001, 0.99].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.25</span></code></p>
+</dd>
+<dt><kbd>-l, --locale</kbd></dt>
+<dd><p>Locale for translated species common names. Values in [‘af’, ‘en_UK’, ‘de’, ‘it’, …].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'en'</span></code></p>
+</dd>
+<dt><kbd>-b, --batch_size</kbd></dt>
+<dd><p>Number of samples to process at the same time.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+</dd>
+<dt><kbd>--rtype</kbd></dt>
+<dd><p>Possible choices: table, audacity, kaleidoscope, csv</p>
+<p>Specifies output format. Values in <cite>[‘table’, ‘audacity’,  ‘kaleidoscope’, ‘csv’]</cite>.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">{'table'}</span></code></p>
+</dd>
+<dt><kbd>--additional_columns</kbd></dt>
+<dd><p>Possible choices: lat, lon, week, overlap, sensitivity, min_conf, species_list, model</p>
+<p>Additional columns to include in the output, only applied to the csv output format. Values in [lat,lon,week,overlap,sensitivity,min_conf,species_list,model].</p>
+</dd>
+<dt><kbd>--combine_results</kbd></dt>
+<dd><p>Also outputs a combined file for all the selected result types. If not set combined tables will be generated.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>-c, --classifier</kbd></dt>
+<dd><p>Path to custom trained classifier. If set, –lat, –lon and –locale are ignored.</p>
+</dd>
+<dt><kbd>--skip_existing_results</kbd></dt>
+<dd><p>Skip files that have already been analyzed.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--top_n</kbd></dt>
+<dd><p>Saves only the top N predictions for each segment independent of their score. Threshold will be ignored.</p>
+</dd>
+<dt><kbd>--merge_consecutive</kbd></dt>
+<dd><p>Maximum number of consecutive detections above MIN_CONF to merge for each detected species. This will result in fewer entires in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. Set to None to include all consecutive detections. We use the mean of the top 3 scores from all consecutive detections for merging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+</dd>
+<dt><kbd>--use_perch</kbd></dt>
+<dd><p>Use the Perch model for detection.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-client">
+<h2>birdnet_analyzer.client<a class="headerlink" href="#birdnet-analyzer-client" title="Link to this heading"></a></h2>
+<p>This script will read an audio file, generate metadata from command line arguments and send it to the server.
+The server will then analyze the audio file and send back the detection results which will be stored as a JSON file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">client</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lat</span> <span class="n">LAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lon</span> <span class="n">LON</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">week</span> <span class="n">WEEK</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sf_thresh</span> <span class="n">SF_THRESH</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">slist</span> <span class="n">SLIST</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sensitivity</span> <span class="n">SENSITIVITY</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">host</span> <span class="n">HOST</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">p</span> <span class="n">PORT</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">pmode</span> <span class="n">PMODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">num_results</span> <span class="n">NUM_RESULTS</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">save</span><span class="p">]</span>
+                               <span class="n">INPUT</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-client_parser-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#birdnet_analyzer.cli-client_parser-positional-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Path to input file or folder.</p>
+</dd>
+</dl>
+</section>
+<section id="birdnet_analyzer.cli-client_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-client_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>-o, --output</kbd></dt>
+<dd><p>Path to output folder. Defaults to the input path.</p>
+</dd>
+<dt><kbd>--lat</kbd></dt>
+<dd><p>Recording location latitude. Set -1 to ignore.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--lon</kbd></dt>
+<dd><p>Recording location longitude. Set -1 to ignore.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--week</kbd></dt>
+<dd><p>Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--sf_thresh</kbd></dt>
+<dd><p>Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.03</span></code></p>
+</dd>
+<dt><kbd>--slist</kbd></dt>
+<dd><p>Path to species list file or folder. If folder is provided, species list needs to be named “species_list.txt”. If lat and lon are provided, this list will be ignored.</p>
+</dd>
+<dt><kbd>--sensitivity</kbd></dt>
+<dd><p>Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid functionon the x-axis. Use complementary to the cut-off threshold.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>--overlap</kbd></dt>
+<dd><p>Overlap of prediction segments. Values in [0.0, 2.9].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--host</kbd></dt>
+<dd><p>Host name or IP address of API endpoint server.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'localhost'</span></code></p>
+</dd>
+<dt><kbd>-p, --port</kbd></dt>
+<dd><p>Port of API endpoint server.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">8080</span></code></p>
+</dd>
+<dt><kbd>--pmode</kbd></dt>
+<dd><p>Score pooling mode. Values in [‘avg’, ‘max’].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'avg'</span></code></p>
+</dd>
+<dt><kbd>--num_results</kbd></dt>
+<dd><p>Number of results per request.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">5</span></code></p>
+</dd>
+<dt><kbd>--save</kbd></dt>
+<dd><p>Define if files should be stored on server.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-embeddings">
+<h2>birdnet_analyzer.embeddings<a class="headerlink" href="#birdnet-analyzer-embeddings" title="Link to this heading"></a></h2>
+<p>Run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings</span></code> to extract feature embeddings instead of class predictions.
+Result file will contain timestamps and lists of float values representing the embedding for a particular 3-second segment.
+Embeddings can be used for clustering or similarity analysis. Here is an example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.embeddings<span class="w"> </span>example/<span class="w"> </span>--threads<span class="w"> </span><span class="m">4</span><span class="w"> </span>--batch_size<span class="w"> </span><span class="m">16</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">embeddings</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">db</span> <span class="n">DATABASE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fmin</span> <span class="n">FMIN</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">fmax</span> <span class="n">FMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">audio_speed</span> <span class="n">AUDIO_SPEED</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="n">THREADS</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">-</span><span class="n">b</span> <span class="n">BATCH_SIZE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">i</span> <span class="n">AUDIO_INPUT</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">file_output</span> <span class="n">FILE_OUTPUT</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-embeddings_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-embeddings_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>-db, --database</kbd></dt>
+<dd><p>Path to the database folder.</p>
+</dd>
+<dt><kbd>--fmin</kbd></dt>
+<dd><p>Minimum frequency for bandpass filter in Hz.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--fmax</kbd></dt>
+<dd><p>Maximum frequency for bandpass filter in Hz.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">15000</span></code></p>
+</dd>
+<dt><kbd>--audio_speed</kbd></dt>
+<dd><p>Speed factor for audio playback. Values &lt; 1.0 will slow down the audio, values &gt; 1.0 will speed it up. At a 10x decrease (audio speed 0.1), a 384 kHz recording becomes a 38.4 kHz recording.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>--overlap</kbd></dt>
+<dd><p>Overlap of prediction segments. Values in [0.0, 2.9].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>-t, --threads</kbd></dt>
+<dd><p>Number of CPU threads.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>-b, --batch_size</kbd></dt>
+<dd><p>Number of samples to process at the same time.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">8</span></code></p>
+</dd>
+<dt><kbd>-i, --input</kbd></dt>
+<dd><p>Path to input file or folder.</p>
+</dd>
+<dt><kbd>--file_output</kbd></dt>
+<dd><p>Saves all embeddings contained in the database in a csv file.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-segments">
+<span id="cli-segments"></span><h2>birdnet_analyzer.segments<a class="headerlink" href="#birdnet-analyzer-segments" title="Link to this heading"></a></h2>
+<p>After the analysis, run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.segments</span></code> to extract short audio segments for species detections to verify results.
+This way, it might be easier to review results instead of loading hundreds of result files manually.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">segments</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">audio_speed</span> <span class="n">AUDIO_SPEED</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="n">THREADS</span><span class="p">]</span>
+                                 <span class="p">[</span><span class="o">--</span><span class="n">min_conf</span> <span class="n">MIN_CONF</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">r</span> <span class="n">RESULTS</span><span class="p">]</span>
+                                 <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">max_segments</span> <span class="n">MAX_SEGMENTS</span><span class="p">]</span>
+                                 <span class="p">[</span><span class="o">--</span><span class="n">seg_length</span> <span class="n">SEG_LENGTH</span><span class="p">]</span>
+                                 <span class="p">[</span><span class="o">--</span><span class="n">max_conf</span> <span class="n">MAX_CONF</span><span class="p">]</span>
+                                 <span class="p">[</span><span class="o">--</span><span class="n">collection_mode</span> <span class="p">{</span><span class="n">random</span><span class="p">,</span><span class="n">confidence</span><span class="p">,</span><span class="n">balanced</span><span class="p">}]</span>
+                                 <span class="p">[</span><span class="o">--</span><span class="n">n_bins</span> <span class="n">N_BINS</span><span class="p">]</span>
+                                 <span class="n">INPUT</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-segments_parser-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#birdnet_analyzer.cli-segments_parser-positional-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Path to folder containing audio files.</p>
+</dd>
+</dl>
+</section>
+<section id="birdnet_analyzer.cli-segments_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-segments_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>--audio_speed</kbd></dt>
+<dd><p>Speed factor for audio playback. Values &lt; 1.0 will slow down the audio, values &gt; 1.0 will speed it up. At a 10x decrease (audio speed 0.1), a 384 kHz recording becomes a 38.4 kHz recording.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>-t, --threads</kbd></dt>
+<dd><p>Number of CPU threads.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>--min_conf</kbd></dt>
+<dd><p>Minimum confidence threshold. Values in [0.00001, 0.99].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.25</span></code></p>
+</dd>
+<dt><kbd>-r, --results</kbd></dt>
+<dd><p>Path to folder containing result files. Defaults to the <cite>input</cite> path.</p>
+</dd>
+<dt><kbd>-o, --output</kbd></dt>
+<dd><p>Output folder path for extracted segments. Defaults to the <cite>input</cite> path.</p>
+</dd>
+<dt><kbd>--max_segments</kbd></dt>
+<dd><p>Number of randomly extracted segments per species.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">100</span></code></p>
+</dd>
+<dt><kbd>--seg_length</kbd></dt>
+<dd><p>Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">3.0</span></code></p>
+</dd>
+<dt><kbd>--max_conf</kbd></dt>
+<dd><p>Maximum confidence threshold. Values in [0.00001, 1.0].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>--collection_mode</kbd></dt>
+<dd><p>Possible choices: random, confidence, balanced</p>
+<p>Collection mode for selecting the segments. Can be ‘random’ or ‘confidence’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'random'</span></code></p>
+</dd>
+<dt><kbd>--n_bins</kbd></dt>
+<dd><p>Number of bins to use for the balanced collection mode</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">10</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-species">
+<span id="cli-species"></span><h2>birdnet_analyzer.species<a class="headerlink" href="#birdnet-analyzer-species" title="Link to this heading"></a></h2>
+<p>The year-round list may contain some species, that are not included in any list for a specific week. See <a class="reference external" href="https://github.com/birdnet-team/BirdNET-Analyzer/issues/211#issuecomment-1849833360">birdnet-team#211</a> for more details.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">species</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lat</span> <span class="n">LAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lon</span> <span class="n">LON</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">week</span> <span class="n">WEEK</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">sf_thresh</span> <span class="n">SF_THRESH</span><span class="p">]</span>
+                                <span class="p">[</span><span class="o">--</span><span class="n">sortby</span> <span class="p">{</span><span class="n">freq</span><span class="p">,</span><span class="n">alpha</span><span class="p">}]</span>
+                                <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-species_parser-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#birdnet_analyzer.cli-species_parser-positional-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Path to output file or folder. If this is a folder, file will be named ‘species_list.txt’.</p>
+</dd>
+</dl>
+</section>
+<section id="birdnet_analyzer.cli-species_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-species_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>--lat</kbd></dt>
+<dd><p>Recording location latitude. Set -1 to ignore.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--lon</kbd></dt>
+<dd><p>Recording location longitude. Set -1 to ignore.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--week</kbd></dt>
+<dd><p>Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">-1</span></code></p>
+</dd>
+<dt><kbd>--sf_thresh</kbd></dt>
+<dd><p>Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.03</span></code></p>
+</dd>
+<dt><kbd>--sortby</kbd></dt>
+<dd><p>Possible choices: freq, alpha</p>
+<p>Sort species by occurrence frequency or alphabetically. Values in [‘freq’, ‘alpha’].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'freq'</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-server">
+<h2>birdnet_analyzer.server<a class="headerlink" href="#birdnet-analyzer-server" title="Link to this heading"></a></h2>
+<p>You can host your own analysis service and API by launching the <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.server</span></code> script.
+This will allow you to send files to this server, store submitted files, analyze them and send detection results back to a client.
+This could be a local service, running on a desktop PC, or a remote server.
+The API can be accessed locally or remotely through a browser or Python client (or any other client implementation).</p>
+<p>Install one additional package with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">bottle</span></code>.</p>
+<p>Start the server with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">birdnet_analyzer.server</span></code>.
+You can also specify a host name or IP and port number, e.g., <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">birdnet_analyzer.server</span> <span class="pre">--host</span> <span class="pre">localhost</span> <span class="pre">--port</span> <span class="pre">8080</span></code>.</p>
+<p>The server is single-threaded, so you’ll need to start multiple instances for higher throughput. This service is intented for short audio files (e.g., 1-10 seconds).</p>
+<p>Query the API with a client.
+You can use the provided Python client or any other client implementation.
+Request payload needs to be <code class="docutils literal notranslate"><span class="pre">multipart/form-data</span></code> with the following fields:
+<code class="docutils literal notranslate"><span class="pre">audio</span></code> for raw audio data as byte code, and <code class="docutils literal notranslate"><span class="pre">meta</span></code> for additional information on the audio file.
+Take a look at our example client implementation in the <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.client</span></code> script.</p>
+<p>Parse results from the server. The server will send back a JSON response with the detection results. The response also contains a msg field, indicating success or error. Results consist of a sorted list of (species, score) tuples.</p>
+<p>This is an example response:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">   </span><span class="nt">&quot;msg&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="nt">&quot;results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">[</span>
+<span class="w">            </span><span class="s2">&quot;Poecile atricapillus_Black-capped Chickadee&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="mf">0.7889</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="p">[</span>
+<span class="w">            </span><span class="s2">&quot;Spinus tristis_American Goldfinch&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="mf">0.5028</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="p">[</span>
+<span class="w">            </span><span class="s2">&quot;Junco hyemalis_Dark-eyed Junco&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="mf">0.4943</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="p">[</span>
+<span class="w">            </span><span class="s2">&quot;Baeolophus bicolor_Tufted Titmouse&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="mf">0.4345</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="p">[</span>
+<span class="w">            </span><span class="s2">&quot;Haemorhous mexicanus_House Finch&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="mf">0.2301</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">   </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">server</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="n">THREADS</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOCALE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">host</span> <span class="n">HOST</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">-</span><span class="n">p</span> <span class="n">PORT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">spath</span> <span class="n">SPATH</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-server_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-server_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>-t, --threads</kbd></dt>
+<dd><p>Number of CPU threads.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>-l, --locale</kbd></dt>
+<dd><p>Locale for translated species common names. Values in [‘af’, ‘en_UK’, ‘de’, ‘it’, …].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'en'</span></code></p>
+</dd>
+<dt><kbd>--host</kbd></dt>
+<dd><p>Host name or IP address of API endpoint server.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'0.0.0.0'</span></code></p>
+</dd>
+<dt><kbd>-p, --port</kbd></dt>
+<dd><p>Port of API endpoint server.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">8080</span></code></p>
+</dd>
+<dt><kbd>--spath</kbd></dt>
+<dd><p>Path to folder where uploaded files should be stored.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'uploads/'</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-train">
+<h2>birdnet_analyzer.train<a class="headerlink" href="#birdnet-analyzer-train" title="Link to this heading"></a></h2>
+<p>You can train your own custom classifier on top of BirdNET.
+This is useful if you want to detect species that are not included in the default species list.
+You can also use this to train a classifier for a specific location or season.</p>
+<p>All you need is a dataset of labeled audio files, organized in folders by species (we use folder names as labels).
+This also works for non-bird species, as long as you have a dataset of labeled audio files.</p>
+<p>Audio files will be resampled to 48 kHz and converted into 3-second segments (we support different crop segemnattion modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).</p>
+<p>You can download a sample training data set <a class="reference external" href="https://drive.google.com/file/d/16hgka5aJ4U69ane9RQn_quVmgjVY2AY5/edit">here</a>.</p>
+<ol class="arabic simple">
+<li><p>Collect training data and organize in folders based on species names.</p></li>
+<li><p>Species labels should be in the format <code class="docutils literal notranslate"><span class="pre">&lt;scientific</span> <span class="pre">name&gt;_&lt;species</span> <span class="pre">common</span> <span class="pre">name&gt;</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee</span></code>), but other formats work as well.</p></li>
+<li><p>It can be helpful to include a non-event class. If you name a folder ‘Noise’, ‘Background’, ‘Other’ or ‘Silence’, it will be treated as a non-event class.</p></li>
+<li><p>Run the training script with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">birdnet_analyzer.train</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">training</span> <span class="pre">data</span> <span class="pre">folder&gt;</span> <span class="pre">-o</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">trained</span> <span class="pre">classifier</span> <span class="pre">model</span> <span class="pre">output&gt;</span></code>.</p></li>
+</ol>
+<p><strong>The script saves the trained classifier model based on the best validation loss achieved during training. This ensures that the model saved is optimized for performance according to the chosen metric.</strong></p>
+<p>After training, you can use the custom trained classifier with the <code class="docutils literal notranslate"><span class="pre">--classifier</span></code> argument of the <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.analyze</span></code> script.
+If you want to use the custom classifier in Raven, make sure to set <code class="docutils literal notranslate"><span class="pre">--model_format</span> <span class="pre">raven</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Adjusting hyperparameters (e.g., number of hidden units, learning rate, etc.) can have a big impact on the performance of the classifier.
+We recommend trying different hyperparameter settings. If you want to automate this process, you can use the <code class="docutils literal notranslate"><span class="pre">--autotune</span></code> argument (in that case, make sure to install <code class="docutils literal notranslate"><span class="pre">keras_tuner</span></code> with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">keras-tuner</span></code>).</p>
+</div>
+<p><strong>Example usage</strong> (when downloading and unzipping the sample training data set):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.train<span class="w"> </span>train_data/<span class="w"> </span>-o<span class="w"> </span>checkpoints/custom/Custom_Classifier.tflite
+python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--classifier<span class="w"> </span>checkpoints/custom/Custom_Classifier.tflite
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Setting a custom classifier will also set the new labels file. Due to these custom labels, the location filter and locale will be disabled.</p>
+</div>
+<p><strong>Negative samples</strong></p>
+<p>You can include negative samples for classes by prefixing the folder names with a ‘-’ (e.g., <code class="docutils literal notranslate"><span class="pre">-Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee</span></code>).
+Do this with samples that definitely do not contain the species.
+Negative samples will only be used for training and not for validation.
+Also keep in mind that negative samples will only be used when a corresponding folder with positive samples exists.
+Negative samples cannot be used for binary classification, instead include these samples in the non-event folder.</p>
+<p><strong>Multi-label data</strong></p>
+<p>To train with multi-label data separate the class labels with commas in the folder names (e.g., <code class="docutils literal notranslate"><span class="pre">Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee,Cardinalis</span> <span class="pre">cardinalis_Northern</span> <span class="pre">Cardinal</span></code>).
+This can also be combined with negative samples as described above.
+The validation split will be performed combination of classes, so you might want to ensure sufficient data for each combination of classes.
+When using multi-label data the upsampling mode will be limited to ‘repeat’.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Custom classifiers trained with BirdNET-Analyzer are licensed under the <a class="reference external" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)</a>.</p>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">train</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fmin</span> <span class="n">FMIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fmax</span> <span class="n">FMAX</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">audio_speed</span> <span class="n">AUDIO_SPEED</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="n">THREADS</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">-</span><span class="n">b</span> <span class="n">BATCH_SIZE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">test_data</span> <span class="n">TEST_DATA</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">crop_mode</span> <span class="p">{</span><span class="n">center</span><span class="p">,</span><span class="n">first</span><span class="p">,</span><span class="n">segments</span><span class="p">,</span><span class="n">smart</span><span class="p">}]</span>
+                              <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">epochs</span> <span class="n">EPOCHS</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">val_split</span> <span class="n">VAL_SPLIT</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">learning_rate</span> <span class="n">LEARNING_RATE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">focal</span><span class="o">-</span><span class="n">loss</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">focal</span><span class="o">-</span><span class="n">loss</span><span class="o">-</span><span class="n">gamma</span> <span class="n">FOCAL_LOSS_GAMMA</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">focal</span><span class="o">-</span><span class="n">loss</span><span class="o">-</span><span class="n">alpha</span> <span class="n">FOCAL_LOSS_ALPHA</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">hidden_units</span> <span class="n">HIDDEN_UNITS</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">dropout</span> <span class="n">DROPOUT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">label_smoothing</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">mixup</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">upsampling_ratio</span> <span class="n">UPSAMPLING_RATIO</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">upsampling_mode</span> <span class="p">{</span><span class="n">repeat</span><span class="p">,</span><span class="n">linear</span><span class="p">,</span><span class="n">mean</span><span class="p">,</span><span class="n">smote</span><span class="p">}]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">model_format</span> <span class="p">{</span><span class="n">tflite</span><span class="p">,</span><span class="n">raven</span><span class="p">,</span><span class="n">both</span><span class="p">}]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">model_save_mode</span> <span class="p">{</span><span class="n">replace</span><span class="p">,</span><span class="n">append</span><span class="p">}]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">cache_mode</span> <span class="p">{</span><span class="n">load</span><span class="p">,</span><span class="n">save</span><span class="p">}]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">cache_file</span> <span class="n">CACHE_FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">autotune</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">autotune_trials</span> <span class="n">AUTOTUNE_TRIALS</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">autotune_executions_per_trial</span> <span class="n">AUTOTUNE_EXECUTIONS_PER_TRIAL</span><span class="p">]</span>
+                              <span class="n">INPUT</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.cli-train_parser-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#birdnet_analyzer.cli-train_parser-positional-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Path to training data folder. Subfolder names are used as labels.</p>
+</dd>
+</dl>
+</section>
+<section id="birdnet_analyzer.cli-train_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.cli-train_parser-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>--fmin</kbd></dt>
+<dd><p>Minimum frequency for bandpass filter in Hz.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--fmax</kbd></dt>
+<dd><p>Maximum frequency for bandpass filter in Hz.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">15000</span></code></p>
+</dd>
+<dt><kbd>--audio_speed</kbd></dt>
+<dd><p>Speed factor for audio playback. Values &lt; 1.0 will slow down the audio, values &gt; 1.0 will speed it up. At a 10x decrease (audio speed 0.1), a 384 kHz recording becomes a 38.4 kHz recording.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>-t, --threads</kbd></dt>
+<dd><p>Number of CPU threads.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>-b, --batch_size</kbd></dt>
+<dd><p>Number of samples to process at the same time.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">32</span></code></p>
+</dd>
+<dt><kbd>--overlap</kbd></dt>
+<dd><p>Overlap of training data segments in seconds if crop_mode is ‘segments’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--test_data</kbd></dt>
+<dd><p>Path to test data folder. If not specified, a random validation split will be used.</p>
+</dd>
+<dt><kbd>--crop_mode</kbd></dt>
+<dd><p>Possible choices: center, first, segments, smart</p>
+<p>Crop mode for training data. Can be ‘center’, ‘first’, ‘segments’ or ‘smart’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'center'</span></code></p>
+</dd>
+<dt><kbd>-o, --output</kbd></dt>
+<dd><p>Path to trained classifier model output.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'checkpoints/custom/Custom_Classifier'</span></code></p>
+</dd>
+<dt><kbd>--epochs</kbd></dt>
+<dd><p>Number of training epochs.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
+</dd>
+<dt><kbd>--val_split</kbd></dt>
+<dd><p>Validation split ratio. Will be ignored if test_data is set.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.2</span></code></p>
+</dd>
+<dt><kbd>--learning_rate</kbd></dt>
+<dd><p>Learning rate.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0001</span></code></p>
+</dd>
+<dt><kbd>--focal-loss</kbd></dt>
+<dd><p>Use focal loss for training (helps with imbalanced classes and hard examples).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--focal-loss-gamma</kbd></dt>
+<dd><p>Focal loss gamma parameter (focusing parameter). Higher values give more weight to hard examples.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2.0</span></code></p>
+</dd>
+<dt><kbd>--focal-loss-alpha</kbd></dt>
+<dd><p>Focal loss alpha parameter (balancing parameter). Controls weight between positive and negative examples.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.25</span></code></p>
+</dd>
+<dt><kbd>--hidden_units</kbd></dt>
+<dd><p>Number of hidden units. If set to &gt;0, a two-layer classifier is used.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--dropout</kbd></dt>
+<dd><p>Dropout rate. Higher values result in more regularization. Values in [0.0, 0.9].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--label_smoothing</kbd></dt>
+<dd><p>Whether to use label smoothing for training.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--mixup</kbd></dt>
+<dd><p>Whether to use mixup for training.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--upsampling_ratio</kbd></dt>
+<dd><p>Balance train data and upsample minority classes. Values between 0 and 1.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--upsampling_mode</kbd></dt>
+<dd><p>Possible choices: repeat, linear, mean, smote</p>
+<p>Upsampling mode.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'repeat'</span></code></p>
+</dd>
+<dt><kbd>--model_format</kbd></dt>
+<dd><p>Possible choices: tflite, raven, both</p>
+<p>Model output format.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'tflite'</span></code></p>
+</dd>
+<dt><kbd>--model_save_mode</kbd></dt>
+<dd><p>Possible choices: replace, append</p>
+<p>Model save mode. ‘replace’ will overwrite the original classification layer and ‘append’ will combine the original classification layer with the new one.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'replace'</span></code></p>
+</dd>
+<dt><kbd>--cache_mode</kbd></dt>
+<dd><p>Possible choices: load, save</p>
+<p>Cache mode. Can be ‘load’ or ‘save’.</p>
+</dd>
+<dt><kbd>--cache_file</kbd></dt>
+<dd><p>Path to cache file.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'train_cache.npz'</span></code></p>
+</dd>
+<dt><kbd>--autotune</kbd></dt>
+<dd><p>Whether to use automatic hyperparameter tuning (this will execute multiple training runs to search for optimal hyperparameters).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--autotune_trials</kbd></dt>
+<dd><p>Number of training runs for hyperparameter tuning.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
+</dd>
+<dt><kbd>--autotune_executions_per_trial</kbd></dt>
+<dd><p>The number of times a training run with a set of hyperparameters is repeated during hyperparameter tuning (this reduces the variance).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="gui.html" class="btn btn-neutral float-right" title="GUI" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

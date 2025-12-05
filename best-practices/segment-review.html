@@ -1,0 +1,251 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Segment Review &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Training Custom Classifiers" href="training.html" />
+    <link rel="prev" title="Creating Your Own Species List" href="species-lists.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../best-practices.html">Best practices</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="species-lists.html">Creating Your Own Species List</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Segment Review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html">Training Custom Classifiers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="evaluation-tool.html">Evaluation Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="embeddings.html">Embedding Extraction and Search</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../best-practices.html">Best practices</a></li>
+      <li class="breadcrumb-item active">Segment Review</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="segment-review">
+<h1>Segment Review<a class="headerlink" href="#segment-review" title="Link to this heading"></a></h1>
+<p>This document provides a quick overview of the segment review process in BirdNET-Analyzer, which is essential for validating species detection results.
+You can also listen to an AI-generated summary of this guide in the audio player below.</p>
+<audio controls>
+  <source src="../_static/BirdNET_Guide-Segment_review-NotebookLM.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio><div class="line-block">
+<div class="line"><br /></div>
+<div class="line"><cite>Source: Google NotebookLM</cite></div>
+</div>
+<section id="prepare-audio-and-result-files">
+<h2>Prepare Audio and Result Files<a class="headerlink" href="#prepare-audio-and-result-files" title="Link to this heading"></a></h2>
+<p>The BirdNET Analyzer uses the batch analysis result tables, such as the output formats “table”, “kaleidoscope” or “csv”.
+To obtain batch analysis result tables, run the analysis via the GUI or the <a class="reference internal" href="../usage/cli.html#cli-docs"><span class="std std-ref">command line</span></a>, which automatically generates the result files.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The output format “audacity” is not supported for the segments tool since it is missing certain columns. Use “table”, “kaleidoscope”, or “csv” formats instead.</p>
+</div>
+</section>
+<section id="using-the-segments-tool-in-the-gui-or-command-line">
+<h2>Using the “Segments” Tool in the GUI or Command Line<a class="headerlink" href="#using-the-segments-tool-in-the-gui-or-command-line" title="Link to this heading"></a></h2>
+<p>The BirdNET Analyzer provides the “segments” tool to extract short audio segments from the result files and place them into separate species-specific folders.
+This tool is available in the graphical user interface (GUI) under the “segments” tab or via the <a class="reference internal" href="../usage/cli.html#cli-segments"><span class="std std-ref">birdnet_analyzer.segments</span></a> script in the command line.</p>
+</section>
+<section id="setting-parameters">
+<h2>Setting Parameters<a class="headerlink" href="#setting-parameters" title="Link to this heading"></a></h2>
+<p>The GUI and command line tool allow you to set various parameters to customize the segment extraction process:</p>
+<ul>
+<li><p><strong>Minimum Confidence</strong> (<code class="docutils literal notranslate"><span class="pre">min_conf</span></code>): Set a minimum confidence value for predictions to be considered.</p></li>
+<li><p><strong>Maximum Confidence</strong> (<code class="docutils literal notranslate"><span class="pre">max_conf</span></code>): Set a maximum confidence value for predictions to be considered.</p></li>
+<li><p><strong>Maximum Number of Segments</strong> (<code class="docutils literal notranslate"><span class="pre">num_seq</span></code>): Specify how many segments per species should be extracted.</p></li>
+<li><p><strong>Audio Speed</strong> (<code class="docutils literal notranslate"><span class="pre">audio_speed</span></code>): Adjust the playback speed. Extracted segments will be saved with the adjusted speed (e.g., to listen to ultrasonic calls).</p></li>
+<li><p><strong>Segment Length</strong> (<code class="docutils literal notranslate"><span class="pre">seq_length</span></code>): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.</p></li>
+<li><p><strong>Segment Collection Mode</strong> (<code class="docutils literal notranslate"><span class="pre">collection_mode</span></code>): Choose how segments are selected. Following options are available:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>random</strong>: Select segments randomly.</p></li>
+<li><p><strong>confidence</strong>: Select segments based on confidence values, starting with the highest confidence scores.</p></li>
+<li><p><strong>balanced</strong>: Select segments equally distributed across confidence values.</p></li>
+<li><p><a class="reference internal" href="../implementation-details/segment-collection-mode.html"><span class="doc">More details on segment collection modes</span></a></p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="extracting-segments">
+<h2>Extracting Segments<a class="headerlink" href="#extracting-segments" title="Link to this heading"></a></h2>
+<p>After setting all parameters, start the extraction process. BirdNET will create subfolders for each identified species and save audio clips of the corresponding recordings.
+The progress of the process will be displayed.
+The resulting audio segments will be saved in the following format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="n">c</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">i</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">fname</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">start</span><span class="p">}</span><span class="n">s_</span><span class="p">{</span><span class="n">end</span><span class="p">}</span><span class="n">s</span><span class="o">.</span><span class="n">wav</span>
+</pre></div>
+</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">{c}</span></code>: confidence value of the prediction (e.g., 0.835)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{i}</span></code>: index of the segment inside the file</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{fname}</span></code>: name of the original audio file without the extension</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{start}</span></code>: start time of the segment inside the file in seconds</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{end}</span></code>: end time of the segment inside the file in seconds</p></li>
+</ul>
+</section>
+<section id="using-the-review-tab-in-the-gui">
+<h2>Using the Review Tab in the GUI<a class="headerlink" href="#using-the-review-tab-in-the-gui" title="Link to this heading"></a></h2>
+<p>The resulting audio segments can be manually reviewed to assess the accuracy of the predictions.
+It is important to note that BirdNET <em>confidence values are not probabilities</em> but a measure of the algorithm’s prediction reliability.
+We recommended to start with the highest confidence scores and work down to the lower scores.</p>
+<p>The review tab in the GUI allows you to systematically review and label the extracted segments.
+It provides tools for visualizing spectrograms, listening to audio segments, and categorizing them as positive or negative detections.
+The review tab can generate a logistic regression plot to visualize the relationship between confidence values and the likelihood of correct detections.</p>
+<p>In the GUI select the “Review” tab and select the segments directory you want to review.
+You can now either select the parent directory containing all the different species subfolders or a specific species subfolder to review.
+If you select the parent directory, the GUI will automatically select the first species subfolder, but you can switch between species via a dropdown menu.</p>
+<p>Depending on your selection the segments will be shuffled or sorted by confidence value.
+Each segment will be displayed with an audio player and its spectrogram.
+After listening to a segment, you can either mark it as a positive detection (if you hear the species) or a negative detection (if you do not hear the species).
+The BirdNET Analyzer will create two directories: one for positive detections and one for negative detections, and move the marked segments accordingly.
+The “Undo” button allows you to revert the last action if needed.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You can also use the up (positive) and down (negative) arrow keys to assign labels. The left arrow key will undo the last action and the right arrow key will skip to the next segment without labeling it.</p>
+</div>
+<p>With the number of segments reviewed, the GUI will also display a logistic regression plot.
+This plot shows the relationship between the confidence values and the likelihood of correct detections.
+All of the plots including the spectrogram can be downloaded as PNG files for further analysis or documentation.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The review tab can be used on any directory containing audio files, not just those created by the segments tool. This allows you to review any set of audio files, including those from other sources.</p>
+</div>
+</section>
+<section id="alternative-approaches">
+<h2>Alternative Approaches<a class="headerlink" href="#alternative-approaches" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Raven Pro</strong>: BirdNET result tables can be imported into Raven Pro and reviewed using the selection review function.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Converting Confidence Values to Probabilities</strong>: Another approach is converting confidence values to probabilities using logistic regression in R. However, this still requires manual evaluation of predictions.</div>
+</div>
+</li>
+</ul>
+</section>
+<section id="important-notes">
+<h2>Important Notes<a class="headerlink" href="#important-notes" title="Link to this heading"></a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Non-Transferability of Confidence Values</strong>: BirdNET confidence values are not easily transferable between species.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Audio Quality</strong>: The accuracy of results heavily depends on the quality of audio recordings, such as sample rate and microphone quality.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Environmental Factors</strong>: Results can be influenced by the recording environment, such as wind or rain.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><strong>Standardized Test Data</strong>: Using standardized test data for evaluation is important to make results comparable.</div>
+</div>
+</li>
+</ul>
+<p>This guide summarizes the best practices for using the “segments” function of BirdNET-Analyzer and emphasizes the need for careful interpretation of the results.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="species-lists.html" class="btn btn-neutral float-left" title="Creating Your Own Species List" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="training.html" class="btn btn-neutral float-right" title="Training Custom Classifiers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

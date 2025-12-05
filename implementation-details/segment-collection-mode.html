@@ -1,0 +1,148 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Segment Collection Modes &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Sensitivity" href="sensitivity.html" />
+    <link rel="prev" title="Hyperparameters for Custom Classifier Training" href="training-hyperparameters.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best-practices.html">Best practices</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../implementation-details.html">Implementation details</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="crop-modes.html">Crop Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training-hyperparameters.html">Hyperparameters for Custom Classifier Training</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Segment Collection Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sensitivity.html">Sensitivity</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../implementation-details.html">Implementation details</a></li>
+      <li class="breadcrumb-item active">Segment Collection Modes</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="segment-collection-modes">
+<h1>Segment Collection Modes<a class="headerlink" href="#segment-collection-modes" title="Link to this heading"></a></h1>
+<p>This page describes the different segment collection modes available for the segment-extraction feature in the BirdNET-Analyzer.
+In general the segments feature collects all detections from the provided result files according to the specified confidence range.
+Then segments are selected for each species up to the specified maximum number segments.
+If there are more detections than the maximum for a species, the segment collection mode gives you control over which segments are selected.
+The goal of this is to get a more representative set of segments to use in the review feature or to get only high confidence segments to use as training data.</p>
+<section id="random">
+<h2>Random<a class="headerlink" href="#random" title="Link to this heading"></a></h2>
+<p>This mode will select segments randomly from the detections that are within the specified confidence range.
+Therefore it will mirror the distribution of the confidence values in the detections.</p>
+</section>
+<section id="confidence">
+<h2>Confidence<a class="headerlink" href="#confidence" title="Link to this heading"></a></h2>
+<p>This mode will select segments based on confidence values, starting with the highest confidence scores.</p>
+</section>
+<section id="balanced">
+<h2>Balanced<a class="headerlink" href="#balanced" title="Link to this heading"></a></h2>
+<p>This mode will select segments equally distributed across the specified confidence range.
+In more detail, we divide the confidence range into a specified number of bins (10 by default) and sort the detections into them.
+Then total number of segments is divided by the number of bins to get the maximum number of segments per bin.
+Finally for each bin we randomly select the up to the maximum number of segments from each bin.
+Due to rounding and the distribution of confidence values, the total number of segments might be less than the specified maximum even if there are more segments available.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="training-hyperparameters.html" class="btn btn-neutral float-left" title="Hyperparameters for Custom Classifier Training" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="sensitivity.html" class="btn btn-neutral float-right" title="Sensitivity" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

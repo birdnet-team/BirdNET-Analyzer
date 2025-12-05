@@ -1,0 +1,160 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GUI &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Docker" href="docker.html" />
+    <link rel="prev" title="Command line interface" href="cli.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../usage.html">Usage</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cli.html">Command line interface</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">GUI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker.html">Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="projects-map.html">Projects Map</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best-practices.html">Best practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../usage.html">Usage</a></li>
+      <li class="breadcrumb-item active">GUI</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="gui">
+<h1>GUI<a class="headerlink" href="#gui" title="Link to this heading"></a></h1>
+<p>We provide a stand-alone GUI which lets you launch the analysis through a web interface.</p>
+<img alt="BirdNET-Analyzer GUI" class="align-center" src="../_images/gui.png" />
+<p>You need to install two additional packages in order to use the GUI with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pywebview</span> <span class="pre">gradio</span></code></p>
+<p>Launch the GUI with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">birdnet_analyzer.gui</span></code>.</p>
+<p>Set all folders and parameters, after that, click ‘Analyze’. GUI items represent the command line arguments.
+For more information about the command line arguments, please refer to the <a class="reference internal" href="cli.html#cli-docs"><span class="std std-ref">Command line interface documentation</span></a>.</p>
+<p><cite>Alternatively download the installer to run the GUI on your system</cite>.</p>
+<section id="segment-review">
+<h2>Segment review<a class="headerlink" href="#segment-review" title="Link to this heading"></a></h2>
+<p>Please read the paper from <a class="reference external" href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=Uwta4wYAAAAJ&amp;sortby=pubdate&amp;citation_for_view=Uwta4wYAAAAJ:j3f4tGmQtD8C">Connor M. Wood and Stefan Kahl: Guidelines for appropriate use of BirdNET scores and other detector outputs</a>.</p>
+<p>The <strong>Review</strong> tab in the GUI is an implementation of the workflow described in the paper.
+It allows you to review the segments that were detected by BirdNET and to verify the segments manually.
+This can help you to choose an appropriate cut-off threshold for your specific use case.</p>
+<p>General workflow:</p>
+<ol class="arabic simple">
+<li><p>Use the <strong>Segments</strong> tab in the GUI or the <a class="reference internal" href="cli.html#cli-segments"><span class="std std-ref">birdnet_analyzer.segments</span></a> script to extract short audio segments for species detections.</p></li>
+<li><p>Open the <strong>Review</strong> tab in the GUI and select the parent directory containing the directories for all the species you want to review.</p></li>
+<li><p>Review the segments and manually check “positive” if the segment does contain target species or “negative” if it does not.</p></li>
+</ol>
+<p>For each selected sample the logistic regression curve is fitted and the threshold is calculated.</p>
+</section>
+<section id="gui-language">
+<h2>GUI Language<a class="headerlink" href="#gui-language" title="Link to this heading"></a></h2>
+<p>The default language of the GUI is English, but you can change it to German, French, Chinese or Portuguese in the Settings tab of the GUI.
+If you want to contribute a translation to another language you, use the files inside the lang folder as a template.
+You can then send us the translated files or create a pull request.
+To check your translation, place your file inside the <code class="docutils literal notranslate"><span class="pre">lang</span></code> folder and start the GUI, your language should now be available in the <strong>Settings</strong> tab.
+After selecting your language, you should restart the GUI to apply the changes.</p>
+<p>We thank our collaborators for contributing translations:</p>
+<p>Chinese: Sunny Tseng (<a class="reference external" href="https://github.com/SunnyTseng">&#64;Sunny Tseng</a>)</p>
+<p>French: <a class="reference external" href="https://github.com/FranciumSoftware">&#64;FranciumSoftware</a></p>
+<p>Portuguese: Larissa Sugai (<a class="reference external" href="https://github.com/LSMSugai">&#64;LSMSugai</a>)</p>
+<p>Russian: Александр Цветков (<a class="reference external" href="mailto:cau&#37;&#52;&#48;yandex&#46;ru">cau<span>&#64;</span>yandex<span>&#46;</span>ru</a>, radio call sign: R1BAF)</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cli.html" class="btn btn-neutral float-left" title="Command line interface" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="docker.html" class="btn btn-neutral float-right" title="Docker" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

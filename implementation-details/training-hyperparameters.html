@@ -1,0 +1,180 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hyperparameters for Custom Classifier Training &mdash; BirdNET-Analyzer  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Segment Collection Modes" href="segment-collection-mode.html" />
+    <link rel="prev" title="Crop Modes" href="crop-modes.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best-practices.html">Best practices</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../implementation-details.html">Implementation details</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="crop-modes.html">Crop Modes</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Hyperparameters for Custom Classifier Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segment-collection-mode.html">Segment Collection Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sensitivity.html">Sensitivity</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../implementation-details.html">Implementation details</a></li>
+      <li class="breadcrumb-item active">Hyperparameters for Custom Classifier Training</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="hyperparameters-for-custom-classifier-training">
+<h1>Hyperparameters for Custom Classifier Training<a class="headerlink" href="#hyperparameters-for-custom-classifier-training" title="Link to this heading"></a></h1>
+<p>This document provides detailed information on the hyperparameters used during the training of custom classifiers in the BirdNET-Analyzer.</p>
+<section id="epochs">
+<h2>Epochs<a class="headerlink" href="#epochs" title="Link to this heading"></a></h2>
+<p>Determines the maximum number of times the entire training dataset is passed through the model.
+If the validation performance does not improve for a certain number of epochs, training will stop before reaching the specified number of epochs.</p>
+</section>
+<section id="batch-size">
+<h2>Batch Size<a class="headerlink" href="#batch-size" title="Link to this heading"></a></h2>
+<p>Specifies the number of training samples processed at the same time.
+This values is very dependent on the available hardware (RAM/VRAM), if you are not sure, leave it at the default value.</p>
+</section>
+<section id="learning-rate">
+<h2>Learning Rate<a class="headerlink" href="#learning-rate" title="Link to this heading"></a></h2>
+<p>Controls how much to change the model parameters in response to the estimated error each time the model weights are updated.
+A smaller learning rate means the model learns more slowly but can lead to better convergence, while a higher learning rate speeds up training but may overshoot optimal solutions.</p>
+</section>
+<section id="hidden-units">
+<h2>Hidden Units<a class="headerlink" href="#hidden-units" title="Link to this heading"></a></h2>
+<p>Specifies the number of hidden units in the classifier. If this is set to 0, a single layer classifier will be trained.
+A high number of hidden units improves the model’s ability to learn complex patterns but may lead to overfitting.</p>
+</section>
+<section id="dropout-rate">
+<h2>Dropout Rate<a class="headerlink" href="#dropout-rate" title="Link to this heading"></a></h2>
+<p>Specify a rate to randomly disable a fraction of the hidden units during training to prevent overfitting.</p>
+</section>
+<section id="label-smoothing">
+<h2>Label Smoothing<a class="headerlink" href="#label-smoothing" title="Link to this heading"></a></h2>
+<p>Label smoothing is a technique used to prevent the model from becoming overconfident by adjusting the target labels.
+It subtracts a small value (alpha) from the correct label and distributes it among the other labels.</p>
+</section>
+<section id="upsampling">
+<h2>Upsampling<a class="headerlink" href="#upsampling" title="Link to this heading"></a></h2>
+<p>Upsampling can be used to balance the dataset by using samples from underrepresented classes to create additional synthetic examples.
+The upsampling factor determines the minimum number of samples for each class based on the number of samples in the largest class.
+For example, if the largest class has 100 samples and the upsampling factor is set to 0.5, classes with fewer than 50 samples will be upsampled to have 50 samples.</p>
+<dl class="simple">
+<dt>Upsampling modes:</dt><dd><ul class="simple">
+<li><p><strong>Repeat</strong>: Uses existing samples multiple times.</p></li>
+<li><p><strong>Mean</strong>: Creates new samples by averaging two random existing samples.</p></li>
+<li><p><strong>Linear</strong>: Creates new samples by interpolating between two random existing samples.</p></li>
+<li><p><strong>SMOTE</strong>: SMOTE (Synthetic Minority Over-sampling Technique) is similar to linear interpolation but creates synthetic samples between a random sample and one of its nearest neighbors.</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="mixup">
+<h2>Mixup<a class="headerlink" href="#mixup" title="Link to this heading"></a></h2>
+<p>Mixup is a data augmentation technique that replaces existing training samples and their labels with a randomly weighted combination between itself and another random sample.
+This can help improve the model’s robustness and generalization as the combination is not limited to samples from the same class.</p>
+</section>
+<section id="focal-loss">
+<h2>Focal loss<a class="headerlink" href="#focal-loss" title="Link to this heading"></a></h2>
+<p>Focal loss is a loss function that helps the model focus on hard-to-classify examples by down-weighting the loss contribution from easy-to-classify examples.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="crop-modes.html" class="btn btn-neutral float-left" title="Crop Modes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="segment-collection-mode.html" class="btn btn-neutral float-right" title="Segment Collection Modes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
