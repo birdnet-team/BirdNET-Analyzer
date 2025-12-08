@@ -58,6 +58,7 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
                 + f"{settings['BANDPASS_FMIN']}, fmax: {settings['BANDPASS_FMAX']}, audio_speed: {settings['AUDIO_SPEED']}"
             )
     except KeyError:
+        # --> ERROR here, cfg is not passed to consumer process
         settings = ConfigDict({"BANDPASS_FMIN": cfg.BANDPASS_FMIN, "BANDPASS_FMAX": cfg.BANDPASS_FMAX, "AUDIO_SPEED": cfg.AUDIO_SPEED})
         db.insert_metadata("birdnet_analyzer_settings", settings)
         db.commit()
