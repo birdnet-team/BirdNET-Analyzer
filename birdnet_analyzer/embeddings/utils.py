@@ -58,7 +58,6 @@ def check_database_settings(db: sqlite_usearch_impl.SQLiteUsearchDB):
                 + f"{settings['BANDPASS_FMIN']}, fmax: {settings['BANDPASS_FMAX']}, audio_speed: {settings['AUDIO_SPEED']}"
             )
     except KeyError:
-        # --> ERROR here, cfg is not passed to consumer process
         settings = ConfigDict({"BANDPASS_FMIN": cfg.BANDPASS_FMIN, "BANDPASS_FMAX": cfg.BANDPASS_FMAX, "AUDIO_SPEED": cfg.AUDIO_SPEED})
         db.insert_metadata("birdnet_analyzer_settings", settings)
         db.commit()
@@ -151,7 +150,8 @@ def consume_embedding(fpath, s_start, s_end, embeddings, db: sqlite_usearch_impl
     return False
 
 
-def consumer(q: mp.Queue, stop_at, database: str):
+def consumer(q: mp.Queue, stop_at, database: str, config):
+    cfg.set_config(config)
     batchsize = COMMIT_BS_SIZE
     batch = 0
     break_signal = True
@@ -244,7 +244,7 @@ def extract_embeddings(audio_input, database, overlap, audio_speed, fmin, fmax, 
     else:
         chunksize = 2
         queue = mp.Queue(maxsize=10_000)
-        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database))
+        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, cfg.get_config()))
         consumer_process.start()
 
         # One less process for the pool, because we use one extra for the consumer
