@@ -150,7 +150,8 @@ def consume_embedding(fpath, s_start, s_end, embeddings, db: sqlite_usearch_impl
     return False
 
 
-def consumer(q: mp.Queue, stop_at, database: str):
+def consumer(q: mp.Queue, stop_at, database: str, config):
+    cfg.set_config(config)
     batchsize = COMMIT_BS_SIZE
     batch = 0
     break_signal = True
@@ -243,7 +244,7 @@ def extract_embeddings(audio_input, database, overlap, audio_speed, fmin, fmax, 
     else:
         chunksize = 2
         queue = mp.Queue(maxsize=10_000)
-        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database))
+        consumer_process = mp.Process(target=consumer, args=(queue, "STOP", database, cfg.get_config()))
         consumer_process.start()
 
         # One less process for the pool, because we use one extra for the consumer

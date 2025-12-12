@@ -96,7 +96,7 @@ def build_search_tab():
         results_state = gr.State([])
         page_state = gr.State(0)
         export_state = gr.State({})
-        hidden_audio = gr.Audio(visible=False, autoplay=True, type="numpy")
+        hidden_audio = gr.Audio(visible="hidden", autoplay=True, type="numpy")
 
         with gr.Row():
             with gr.Column():
