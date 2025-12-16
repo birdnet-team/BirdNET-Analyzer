@@ -14,7 +14,7 @@ from birdnet_analyzer import audio, model, utils
 RAVEN_TABLE_HEADER = (
     "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"
 )
-KALEIDOSCOPE_HEADER = "INDIR,FOLDER,IN FILE,OFFSET,DURATION,DATE,TOP1MATCH,TOP1DIST\n"
+KALEIDOSCOPE_HEADER = "INDIR,FOLDER,IN FILE,OFFSET,DURATION,TOP1MATCH,TOP1DIST\n"
 CSV_HEADER = "Start (s),End (s),Scientific name,Common name,Confidence,File\n"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -177,7 +177,6 @@ def generate_kaleidoscope(timestamps: list[str], result: dict[str, list], afile_
                 filename,
                 start,
                 float(end) - float(start),
-                cfg.WEEK,  # DATE
                 common,  # TOP1MATCH (common name)
                 c[1],  # TOP1DIST (confidence)
             )
