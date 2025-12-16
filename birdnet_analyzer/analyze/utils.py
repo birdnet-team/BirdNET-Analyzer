@@ -14,7 +14,7 @@ from birdnet_analyzer import audio, model, utils
 RAVEN_TABLE_HEADER = (
     "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\tHigh Freq (Hz)\tCommon Name\tSpecies Code\tConfidence\tBegin Path\tFile Offset (s)\n"
 )
-KALEIDOSCOPE_HEADER = "INDIR,FOLDER,IN FILE,OFFSET,DURATION,scientific_name,common_name,confidence,lat,lon,week,overlap,sensitivity\n"
+KALEIDOSCOPE_HEADER = "INDIR,FOLDER,IN FILE,OFFSET,DURATION,DATE,TOP1MATCH,TOP1DIST\n"
 CSV_HEADER = "Start (s),End (s),Scientific name,Common name,Confidence,File\n"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -170,20 +170,16 @@ def generate_kaleidoscope(timestamps: list[str], result: dict[str, list], afile_
                 split_label = label.split("_", 1)
                 scientific, common = split_label[0], split_label[-1]
 
-            rstring += "{},{},{},{},{},{},{},{:.4f},{:.4f},{:.4f},{},{},{}\n".format(
+            # Use new KALEIDOSCOPE_HEADER: INDIR,FOLDER,IN FILE,OFFSET,DURATION,DATE,TOP1MATCH,TOP1DIST
+            rstring += "{},{},{},{},{},{},{},{:.4f}\n".format(
                 parent_folder.rstrip("/"),
                 folder_name,
                 filename,
                 start,
                 float(end) - float(start),
-                scientific,
-                common,
-                c[1],
-                cfg.LATITUDE,
-                cfg.LONGITUDE,
-                cfg.WEEK,
-                cfg.SIG_OVERLAP,
-                cfg.SIGMOID_SENSITIVITY,
+                cfg.WEEK,  # DATE
+                common,  # TOP1MATCH (common name)
+                c[1],  # TOP1DIST (confidence)
             )
 
         # Write result string to file
@@ -376,7 +372,7 @@ def combine_kaleidoscope_files(saved_results: list[str]):
                     lines = rf.readlines()
 
                     # make sure it's a selection table
-                    if "INDIR" not in lines[0] or "sensitivity" not in lines[0]:
+                    if "INDIR" not in lines[0] or "TOP1MATCH" not in lines[0]:
                         continue
 
                     # skip header and add to file
