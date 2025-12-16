@@ -1,36 +1,6 @@
 import os
 from tqdm import tqdm
 from typing import Literal
-import multiprocessing as mp
-import threading
-import functools
-
-
-def queue_listener(q):
-    """Listens for messages on the queue and prints them using tqdm.write or print."""
-    import birdnet_analyzer.config as cfg
-
-    while True:
-        try:
-            message = q.get()
-            if message is None:  # Sentinel value to stop the thread
-                break
-            if cfg.SHOW_PROGRESS:
-                tqdm.write(message)
-            else:
-                print(message, flush=True)
-        except Exception as e:
-            if cfg.SHOW_PROGRESS:
-                tqdm.write(f"Listener error: {e}")
-            else:
-                print(f"Listener error: {e}", flush=True)
-            break
-
-
-def worker_wrapper(output_queue, item):
-    from birdnet_analyzer.analyze.utils import analyze_file
-
-    return analyze_file(item, output_queue)
 
 
 def analyze(
@@ -49,6 +19,7 @@ def analyze(
     fmax: int = 15000,
     audio_speed: float = 1.0,
     batch_size: int = 1,
+    show_progress: bool = True,
     combine_results: bool = False,
     rtype: Literal["table", "audacity", "kaleidoscope", "csv"] | list[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
     skip_existing_results: bool = False,
@@ -59,7 +30,6 @@ def analyze(
     locale: str = "en",
     additional_columns: list[str] | None = None,
     use_perch: bool = False,
-    show_progress: bool = True,
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
@@ -145,28 +115,16 @@ def analyze(
     # Analyze files
     if cfg.CPU_THREADS < 2 or len(flist) < 2:
         if cfg.SHOW_PROGRESS:
-            result_files.extend(tqdm.tqdm((analyze_file(f) for f in flist), total=len(flist)))
+            result_files.extend(tqdm((analyze_file(f) for f in flist), total=len(flist)))
         else:
             result_files.extend(analyze_file(f) for f in flist)
     else:
-        # Set up multiprocessing with queue for messages
-        manager = mp.Manager()
-        output_queue = manager.Queue()
-        listener_thread = threading.Thread(target=queue_listener, args=(output_queue,))
-        listener_thread.start()
-
-        worker = functools.partial(worker_wrapper, output_queue)
-
         with Pool(cfg.CPU_THREADS) as p:
-            # Map analyze_file function to each entry in flist
+            # Map analyzeFile function to each entry in flist
             if cfg.SHOW_PROGRESS:
-                result_files = list(tqdm(p.imap(worker, flist), total=len(flist)))
+                result_files = list(tqdm(p.imap(analyze_file, flist), total=len(flist)))
             else:
-                result_files = list(p.imap(worker, flist))
-
-        # Stop the listener thread
-        output_queue.put(None)
-        listener_thread.join()
+                result_files = list(p.imap(analyze_file, flist))
 
     # Combine results?
     if cfg.COMBINE_RESULTS:
