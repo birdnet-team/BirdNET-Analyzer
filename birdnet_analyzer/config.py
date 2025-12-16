@@ -141,6 +141,9 @@ ANALYSIS_PARAMS_FILENAME: str = "BirdNET_analysis_params.csv"
 SKIP_EXISTING_RESULTS: bool = False
 
 COMBINE_RESULTS: bool = False
+
+SHOW_PROGRESS: bool = False
+
 #####################
 # Training settings #
 #####################
@@ -263,6 +266,7 @@ def set_config(c: dict):
 #####################
 # Convenience funcs #
 #####################
+
 
 def perch_labels_file():
     return os.path.join(PERCH_V2_MODEL_PATH, "assets", "labels.csv")

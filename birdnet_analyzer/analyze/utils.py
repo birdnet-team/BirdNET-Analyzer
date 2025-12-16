@@ -5,8 +5,10 @@ import json
 import operator
 import os
 from collections.abc import Sequence
+from multiprocessing import Queue
 
 import numpy as np
+from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, model, utils
@@ -648,12 +650,13 @@ def get_result_file_names(fpath: str):
     return result_names
 
 
-def analyze_file(item) -> dict[str, str] | None:
+def analyze_file(item, queue: Queue = None) -> dict[str, str] | None:
     """
     Analyzes an audio file and generates prediction results.
 
     Args:
         item (tuple): A tuple containing the file path (str) and configuration settings.
+        queue (Queue, optional): A multiprocessing queue for sending messages. Defaults to None.
 
     Returns:
         dict or None: A dictionary of result file names if analysis is successful,
@@ -668,7 +671,11 @@ def analyze_file(item) -> dict[str, str] | None:
     result_file_names = get_result_file_names(fpath)
 
     if cfg.SKIP_EXISTING_RESULTS and all(os.path.exists(f) for f in result_file_names.values()):
-        print(f"Skipping {fpath} as it has already been analyzed", flush=True)
+        message = f"Skipping {fpath} as it has already been analyzed"
+        if queue:
+            queue.put(message)
+        else:
+            print(message, flush=True)
         return None  # or return path to combine later? TODO
 
     # Start time
@@ -676,7 +683,14 @@ def analyze_file(item) -> dict[str, str] | None:
     results = {}
 
     # Status
-    print(f"Analyzing {fpath}", flush=True)
+    message = f"Analyzing {fpath}"
+    if queue:
+        queue.put(message)
+    else:
+        if cfg.SHOW_PROGRESS:
+            tqdm.write(message)
+        else:
+            print(message, flush=True)
 
     # Process each chunk
     try:
@@ -701,7 +715,14 @@ def analyze_file(item) -> dict[str, str] | None:
 
     except Exception as ex:
         # Write error log
-        print(f"Error: Cannot analyze audio file {fpath}.\n", flush=True)
+        message = f"Error: Cannot analyze audio file {fpath}.\n"
+        if queue:
+            queue.put(message)
+        else:
+            if cfg.SHOW_PROGRESS:
+                tqdm.write(message)
+            else:
+                print(message, flush=True)
         utils.write_error_log(ex)
         msg = str(ex)
 
@@ -713,12 +734,26 @@ def analyze_file(item) -> dict[str, str] | None:
 
     except Exception as ex:
         # Write error log
-        print(f"Error: Cannot save result for {fpath}.\n", flush=True)
+        message = f"Error: Cannot save result for {fpath}.\n"
+        if queue:
+            queue.put(message)
+        else:
+            if cfg.SHOW_PROGRESS:
+                tqdm.write(message)
+            else:
+                print(message, flush=True)
         utils.write_error_log(ex)
 
         return str(ex)
 
     delta_time = (datetime.datetime.now() - start_time).total_seconds()
-    print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
+    message = f"Finished {fpath} in {delta_time:.2f} seconds"
+    if queue:
+        queue.put(message)
+    else:
+        if cfg.SHOW_PROGRESS:
+            tqdm.write(message)
+        else:
+            print(message, flush=True)
 
     return result_file_names

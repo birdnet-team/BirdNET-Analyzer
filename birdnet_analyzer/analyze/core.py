@@ -1,5 +1,36 @@
 import os
+from tqdm import tqdm
 from typing import Literal
+import multiprocessing as mp
+import threading
+import functools
+
+
+def queue_listener(q):
+    """Listens for messages on the queue and prints them using tqdm.write or print."""
+    import birdnet_analyzer.config as cfg
+
+    while True:
+        try:
+            message = q.get()
+            if message is None:  # Sentinel value to stop the thread
+                break
+            if cfg.SHOW_PROGRESS:
+                tqdm.write(message)
+            else:
+                print(message, flush=True)
+        except Exception as e:
+            if cfg.SHOW_PROGRESS:
+                tqdm.write(f"Listener error: {e}")
+            else:
+                print(f"Listener error: {e}", flush=True)
+            break
+
+
+def worker_wrapper(output_queue, item):
+    from birdnet_analyzer.analyze.utils import analyze_file
+
+    return analyze_file(item, output_queue)
 
 
 def analyze(
@@ -28,6 +59,7 @@ def analyze(
     locale: str = "en",
     additional_columns: list[str] | None = None,
     use_perch: bool = False,
+    show_progress: bool = True,
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
@@ -98,6 +130,7 @@ def analyze(
         labels_file=cfg.LABELS_FILE,
         additional_columns=additional_columns,
         use_perch=use_perch,
+        show_progress=show_progress,
     )
 
     print(f"Found {len(cfg.FILE_LIST)} files to analyze")
@@ -111,14 +144,29 @@ def analyze(
 
     # Analyze files
     if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        result_files.extend(analyze_file(f) for f in flist)
+        if cfg.SHOW_PROGRESS:
+            result_files.extend(tqdm.tqdm((analyze_file(f) for f in flist), total=len(flist)))
+        else:
+            result_files.extend(analyze_file(f) for f in flist)
     else:
+        # Set up multiprocessing with queue for messages
+        manager = mp.Manager()
+        output_queue = manager.Queue()
+        listener_thread = threading.Thread(target=queue_listener, args=(output_queue,))
+        listener_thread.start()
+
+        worker = functools.partial(worker_wrapper, output_queue)
+
         with Pool(cfg.CPU_THREADS) as p:
-            # Map analyzeFile function to each entry in flist
-            results = p.map_async(analyze_file, flist)
-            # Wait for all tasks to complete
-            results.wait()
-            result_files = results.get()
+            # Map analyze_file function to each entry in flist
+            if cfg.SHOW_PROGRESS:
+                result_files = list(tqdm(p.imap(worker, flist), total=len(flist)))
+            else:
+                result_files = list(p.imap(worker, flist))
+
+        # Stop the listener thread
+        output_queue.put(None)
+        listener_thread.join()
 
     # Combine results?
     if cfg.COMBINE_RESULTS:
@@ -155,6 +203,7 @@ def _set_params(
     labels_file=None,
     additional_columns=None,
     use_perch=False,
+    show_progress=True,
 ):
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.utils import load_codes
@@ -201,6 +250,7 @@ def _set_params(
     cfg.BATCH_SIZE = bs
     cfg.ADDITIONAL_COLUMNS = additional_columns
     cfg.USE_PERCH = use_perch
+    cfg.SHOW_PROGRESS = show_progress
 
     if cfg.USE_PERCH and custom_classifier:
         raise ValueError("Selected custom classifier and Perch model, please select only one.")

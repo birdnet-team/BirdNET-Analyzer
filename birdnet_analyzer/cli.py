@@ -400,6 +400,13 @@ def analyzer_parser():
 
     parser.add_argument("--use_perch", action="store_true", help="Use the Perch model for detection.")
 
+    parser.add_argument(
+        "--show_progress",
+        action="store_true",
+        default=False,
+        help="Show progress bar during analysis.",
+    )
+
     return parser
 
 
