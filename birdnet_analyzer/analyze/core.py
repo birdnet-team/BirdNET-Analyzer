@@ -1,6 +1,7 @@
 import os
-from tqdm import tqdm
 from typing import Literal
+
+from tqdm import tqdm
 
 
 def analyze(
