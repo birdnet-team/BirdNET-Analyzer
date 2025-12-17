@@ -110,7 +110,7 @@ def test_analyze_directory_multiprocess(mock_save_params: MagicMock, mock_pool, 
     # Verify behavior
     mock_set_params.assert_called_once()
     mock_pool.assert_called_once_with(2)
-    pool_instance.map_async.assert_called_once()
+    pool_instance.imap.assert_called_once()
     mock_save_params.assert_called_once()
 
 
@@ -263,6 +263,7 @@ def test_analyze_with_real_custom_classifier(setup_test_environment):
         for row in reader:
             assert row["Common Name"] in labels, f"Unexpected label found: {row['Common Name']}"
 
+
 def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environment):
     """Test analyzing with a real custom classifier and species list."""
     env = setup_test_environment
@@ -286,6 +287,7 @@ def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environ
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             assert row["Common Name"] in valid_species, f"Label not in species list: {row['Common Name']}"
+
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")
 def test_analyze_with_negative_speed(setup_test_environment):
@@ -369,6 +371,7 @@ def test_analyze_with_too_high_overlap(setup_test_environment):
     # Call function under test
     with pytest.raises(ValueError, match=rf"Overlap must be less than or equal to {cfg.BIRDNET_SIG_LENGTH - 0.1} seconds for BirdNET model."):
         analyze(soundscape_path, env["output_dir"], audio_speed=1.0, top_n=1, overlap=3.0)
+
 
 @pytest.mark.skipif(platform.system() == "Darwin", reason="Don't ask me why it times out on macOS.")
 @pytest.mark.parametrize(
