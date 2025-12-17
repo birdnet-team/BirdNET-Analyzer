@@ -165,13 +165,13 @@ def generate_kaleidoscope(timestamps: list[str], result: dict[str, list], afile_
             label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(c[0])] if cfg.TRANSLATED_LABELS else c[0]
 
             if cfg.USE_PERCH:
-                common = scientific = label
+                common = label
             else:
                 split_label = label.split("_", 1)
-                scientific, common = split_label[0], split_label[-1]
+                _, common = split_label[0], split_label[-1]
 
             # Use new KALEIDOSCOPE_HEADER: INDIR,FOLDER,IN FILE,OFFSET,DURATION,DATE,TOP1MATCH,TOP1DIST
-            rstring += "{},{},{},{},{},{},{},{:.4f}\n".format(
+            rstring += "{},{},{},{},{},{},{:.4f}\n".format(
                 parent_folder.rstrip("/"),
                 folder_name,
                 filename,
