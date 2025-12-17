@@ -114,7 +114,7 @@ def analyze(
 
     # Analyze files
     if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        result_files.extend(tqdm(analyze_file(f) for f in flist, total=len(flist), desc="Processing audio files...", disable=not cfg.SHOW_PROGRESS))
+        result_files.extend(tqdm((analyze_file(f) for f in flist), total=len(flist), desc="Processing audio files...", disable=not cfg.SHOW_PROGRESS))
     else:
         with Pool(cfg.CPU_THREADS) as p:
             # Map analyzeFile function to each entry in flist
