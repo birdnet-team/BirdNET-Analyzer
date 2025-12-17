@@ -20,7 +20,7 @@ def analyze(
     fmax: int = 15000,
     audio_speed: float = 1.0,
     batch_size: int = 1,
-    show_progress: bool = True,
+    show_progress: bool = False,
     combine_results: bool = False,
     rtype: Literal["table", "audacity", "kaleidoscope", "csv"] | list[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
     skip_existing_results: bool = False,

@@ -668,9 +668,8 @@ def analyze_file(item) -> dict[str, str] | None:
     result_file_names = get_result_file_names(fpath)
 
     if cfg.SKIP_EXISTING_RESULTS and all(os.path.exists(f) for f in result_file_names.values()):
-        message = f"Skipping {fpath} as it has already been analyzed"
         if not cfg.SHOW_PROGRESS:
-            print(message, flush=True)
+            print(f"Skipping {fpath} as it has already been analyzed", flush=True)
         return None  # or return path to combine later? TODO
 
     # Start time
@@ -678,9 +677,8 @@ def analyze_file(item) -> dict[str, str] | None:
     results = {}
 
     # Status
-    message = f"Analyzing {fpath}"
     if not cfg.SHOW_PROGRESS:
-        print(message, flush=True)
+        print(f"Analyzing {fpath}", flush=True)
 
     # Process each chunk
     try:
@@ -705,9 +703,8 @@ def analyze_file(item) -> dict[str, str] | None:
 
     except Exception as ex:
         # Write error log
-        message = f"Error: Cannot analyze audio file {fpath}.\n"
         if not cfg.SHOW_PROGRESS:
-            print(message, flush=True)
+            print(f"Error: Cannot analyze audio file {fpath}.\n", flush=True)
         utils.write_error_log(ex)
         msg = str(ex)
 
@@ -719,16 +716,14 @@ def analyze_file(item) -> dict[str, str] | None:
 
     except Exception as ex:
         # Write error log
-        message = f"Error: Cannot save result for {fpath}.\n"
         if not cfg.SHOW_PROGRESS:
-            print(message, flush=True)
+            print(f"Error: Cannot save result for {fpath}.\n", flush=True)
         utils.write_error_log(ex)
 
         return str(ex)
 
     delta_time = (datetime.datetime.now() - start_time).total_seconds()
-    message = f"Finished {fpath} in {delta_time:.2f} seconds"
     if not cfg.SHOW_PROGRESS:
-        print(message, flush=True)
+        print(f"Finished {fpath} in {delta_time:.2f} seconds", flush=True)
 
     return result_file_names
