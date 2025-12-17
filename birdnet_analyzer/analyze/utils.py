@@ -5,10 +5,8 @@ import json
 import operator
 import os
 from collections.abc import Sequence
-from multiprocessing import Queue
 
 import numpy as np
-from tqdm import tqdm
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, model, utils
@@ -650,13 +648,12 @@ def get_result_file_names(fpath: str):
     return result_names
 
 
-def analyze_file(item, queue: Queue = None) -> dict[str, str] | None:
+def analyze_file(item) -> dict[str, str] | None:
     """
     Analyzes an audio file and generates prediction results.
 
     Args:
         item (tuple): A tuple containing the file path (str) and configuration settings.
-        queue (Queue, optional): A multiprocessing queue for sending messages. Defaults to None.
 
     Returns:
         dict or None: A dictionary of result file names if analysis is successful,

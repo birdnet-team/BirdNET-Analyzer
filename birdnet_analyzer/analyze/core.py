@@ -114,18 +114,11 @@ def analyze(
 
     # Analyze files
     if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        if cfg.SHOW_PROGRESS:
-            result_files.extend(tqdm((analyze_file(f) for f in flist), total=len(flist)))
-        else:
-            result_files.extend(analyze_file(f) for f in flist)
+        result_files.extend(tqdm(analyze_file(f) for f in flist, total=len(flist), desc="Processing audio files...", disable=not cfg.SHOW_PROGRESS))
     else:
         with Pool(cfg.CPU_THREADS) as p:
             # Map analyzeFile function to each entry in flist
-            if cfg.SHOW_PROGRESS:
-                result_files = list(tqdm(p.imap(analyze_file, flist), total=len(flist)))
-            else:
-                result_files = list(p.imap(analyze_file, flist))
-
+            result_files = list(tqdm(p.imap(analyze_file, flist), total=len(flist), desc="Processing audio files...", disable=not cfg.SHOW_PROGRESS))
     # Combine results?
     if cfg.COMBINE_RESULTS:
         print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
