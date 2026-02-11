@@ -123,10 +123,7 @@ class PerformanceAssessor:
             raise ValueError(f"The number of columns in predictions ({predictions.shape[1]}) " + f"must match num_classes ({self.num_classes}).")
 
         # Determine the averaging method for metrics
-        if per_class_metrics and self.num_classes == 1:
-            averaging_method = "macro"
-        else:
-            averaging_method = None if per_class_metrics else "macro"
+        averaging_method = None if per_class_metrics or self.num_classes == 1 else "macro"
 
         # Dictionary to store the results of each metric
         metrics_results = {}
