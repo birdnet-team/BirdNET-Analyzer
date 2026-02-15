@@ -7,6 +7,9 @@ import os
 from collections.abc import Sequence
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
+from pyarrow import dataset as ds
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, model, utils
@@ -187,6 +190,97 @@ def generate_kaleidoscope(timestamps: list[str], result: dict[str, list], afile_
     utils.save_result_file(result_path, out_string)
 
 
+def generate_parquet(timestamps: list[str], result: dict[str, list], afile_path: str, result_path: str):
+    """
+    Generates a Parquet file from the given timestamps and results.
+
+    Args:
+        timestamps (list[str]): A list of timestamp strings in the format "start-end".
+        result (dict[str, list): A dictionary where keys are timestamp strings and values are lists of tuples.
+                                  Each tuple contains a label and a confidence score.
+        afile_path (str): The file path of the audio file being analyzed.
+        result_path (str): The file path where the resulting parquet file will be saved.
+
+    Returns:
+        None
+    """
+    from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS_MAP
+
+    # standard fields for output
+    fields = [
+        pa.field("start_s", pa.float32()),
+        pa.field("end_s", pa.float32()),
+        pa.field("scientific_name", pa.string()),
+        pa.field("common_name", pa.string()),
+        pa.field("confidence", pa.float32()),
+        pa.field("file", pa.string()),
+    ]
+
+    extra_columns_map = {}
+
+    if cfg.ADDITIONAL_COLUMNS:
+        for col in POSSIBLE_ADDITIONAL_COLUMNS_MAP:
+            if col in cfg.ADDITIONAL_COLUMNS:
+                extra_columns_map[col] = POSSIBLE_ADDITIONAL_COLUMNS_MAP[col]()
+                # TODO: get the correct dtype for the extra columns
+                fields.append(pa.field(col, pa.string()))
+
+    # define the parquet schema, including the extra columns
+    parquet_schema = pa.schema(fields)
+
+    writer = pq.ParquetWriter(result_path, parquet_schema)
+
+    for timestamp in timestamps:
+        # create a single table per timestamp
+        # larger tables allow for better compression, but larger tables mean more memory
+        start_times: list[float] = []
+        end_times: list[float] = []
+        scientific_names: list[str] = []
+        common_names: list[str] = []
+        scores: list[float] = []
+        files: list[str] = []
+
+        # taken from generate_csv function
+        for raw_label, score in result[timestamp]:
+            start, end = timestamp.split("-", 1)
+            label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(raw_label)] if cfg.TRANSLATED_LABELS else raw_label
+
+            if cfg.USE_PERCH:
+                common = scientific = label
+            else:
+                split_label = label.split("_", 1)
+                scientific = split_label[0]
+                common = split_label[-1]
+
+            start_times.append(float(start))
+            end_times.append(float(end))
+            scientific_names.append(scientific)
+            common_names.append(common)
+            scores.append(score)
+            files.append(afile_path)
+
+        # match the schema
+        table_vals = {
+            "start_s": start_times,
+            "end_s": end_times,
+            "scientific_name": scientific_names,
+            "common_name": common_names,
+            "confidence": scores,
+            "file": files,
+        }
+
+        for extra_col_key, extra_col_value in extra_columns_map.items():
+            table_vals[extra_col_key] = [str(extra_col_value) for _ in range(len(start_times))]
+
+        print(table_vals)
+
+        table = pa.table(table_vals, schema=parquet_schema)
+
+        writer.write_table(table)
+
+    writer.close()
+
+
 def generate_csv(timestamps: list[str], result: dict[str, list], afile_path: str, result_path: str):
     """
     Generates a CSV file from the given timestamps and results.
@@ -275,6 +369,9 @@ def save_result_files(r: dict[str, list], result_files: dict[str, str], afile_pa
 
     if "csv" in cfg.RESULT_TYPES:
         generate_csv(timestamps, r_merged, afile_path, result_files["csv"])
+
+    if "parquet" in cfg.RESULT_TYPES:
+        generate_parquet(timestamps, r_merged, afile_path, result_files["parquet"])
 
 
 def combine_raven_tables(saved_results: list[str]):
@@ -405,6 +502,23 @@ def combine_csv_files(saved_results: list[str]):
         f.write(out_string)
 
 
+def combine_parquet_files(saved_results: list[str]):
+    """
+    Combines multiple parquet files into a single parquet file.
+
+    Args:
+        saved_results (list[str]): A list of file paths to the parquet files to be combined.
+    """
+    # create a pyarrow dataset from the list of filenames, then write to a single file
+    dataset = ds.dataset(saved_results, format="parquet")
+    table = dataset.to_table()
+
+    # Write as one parquet file
+    output_path = os.path.join(cfg.OUTPUT_PATH, cfg.OUTPUT_PARQUET_FILENAME)
+
+    pq.write_table(table, output_path)
+
+
 def combine_results(saved_results: Sequence[dict[str, str] | str]):
     """
     Combines various types of result files based on the configuration settings.
@@ -427,6 +541,9 @@ def combine_results(saved_results: Sequence[dict[str, str] | str]):
 
     if "csv" in cfg.RESULT_TYPES:
         combine_csv_files([f["csv"] for f in saved_results if isinstance(f, dict)])
+
+    if "parquet" in cfg.RESULT_TYPES:
+        combine_parquet_files([f["parquet"] for f in saved_results if isinstance(f, dict)])
 
 
 def merge_consecutive_detections(results: dict[str, list], max_consecutive: int | None = None):
@@ -639,6 +756,8 @@ def get_result_file_names(fpath: str):
         result_names["kaleidoscope"] = os.path.join(cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.kaleidoscope.csv")
     if "csv" in cfg.RESULT_TYPES:
         result_names["csv"] = os.path.join(cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.csv")
+    if "parquet" in cfg.RESULT_TYPES:
+        result_names["parquet"] = os.path.join(cfg.OUTPUT_PATH, file_shorthand + ".BirdNET.results.parquet")
 
     return result_names
 

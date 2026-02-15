@@ -132,6 +132,7 @@ OUTPUT_RAVEN_FILENAME: str = "BirdNET_SelectionTable.txt"  # this is for combine
 # OUTPUT_RTABLE_FILENAME: str = "BirdNET_RTable.csv"
 OUTPUT_KALEIDOSCOPE_FILENAME: str = "BirdNET_Kaleidoscope.csv"
 OUTPUT_CSV_FILENAME: str = "BirdNET_CombinedTable.csv"
+OUTPUT_PARQUET_FILENAME: str = "BirdNET_CombinedTable.parquet"
 
 # File name of the settings csv for batch analysis
 ANALYSIS_PARAMS_FILENAME: str = "BirdNET_analysis_params.csv"

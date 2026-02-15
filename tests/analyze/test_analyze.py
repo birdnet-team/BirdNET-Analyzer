@@ -5,6 +5,7 @@ import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
 import birdnet_analyzer.config as cfg
@@ -207,12 +208,12 @@ def test_analyze_with_multiple_result_types(mock_analyze_file: MagicMock, mock_s
     mock_analyze_file.return_value = f"{env['test_file1']}_results.txt"
 
     # Call function under test
-    analyze(env["test_file1"], env["output_dir"], rtype=["table", "csv", "audacity"])
+    analyze(env["test_file1"], env["output_dir"], rtype=["table", "csv", "audacity", "parquet"])
 
     # Verify parameter passing
     mock_set_params.assert_called_once()
     _, kwargs = mock_set_params.call_args
-    assert kwargs["rtype"] == ["table", "csv", "audacity"]
+    assert kwargs["rtype"] == ["table", "csv", "audacity", "parquet"]
 
 
 @patch("birdnet_analyzer.analyze.core._set_params")
@@ -430,6 +431,54 @@ def test_analyze_with_speed_up_and_overlap(setup_test_environment, use_perch, au
             actual_end = float(parts[4])
             assert float(actual_start) == expected_start, "Start time does not match expected value"
             assert float(actual_end) == expected_end, "End time does not match expected value"
+
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_additional_columns_parquet(mock_ensure_model, setup_test_environment):
+    """Test analyzing with additional columns."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(
+        soundscape_path,
+        env["output_dir"],
+        top_n=1,
+        min_conf=0,
+        additional_columns=["lat", "lon", "week", "model", "overlap", "sensitivity", "species_list", "min_conf"],
+        lat=42.5,
+        lon=-76.45,
+        week=20,
+        rtype=["parquet"],
+    )
+
+    mock_ensure_model.assert_called_once()
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.results.parquet")
+    assert os.path.exists(output_file)
+
+    output_df = pd.read_parquet(output_file)
+
+    assert "lat" in output_df.columns, "Latitude column not found in output"
+    assert "lon" in output_df.columns, "Longitude column not found in output"
+    assert "week" in output_df.columns, "Week column not found in output"
+    assert "model" in output_df.columns, "Model column not found in output"
+    assert "overlap" in output_df.columns, "Overlap column not found in output"
+    assert "sensitivity" in output_df.columns, "Sensitivity column not found in output"
+    assert "species_list" in output_df.columns, "Species list column not found in output"
+    assert "min_conf" in output_df.columns, "Min confidence column not found in output"
+
+    for _, row in output_df.iterrows():
+        assert float(row["lat"]) == 42.5, "Latitude value does not match expected value"
+        assert float(row["lon"]) == -76.45, "Longitude value does not match expected value"
+        assert int(row["week"]) == 20, "Week value does not match expected value"
+        assert row["model"] == os.path.basename(cfg.MODEL_PATH), "Model value does not match expected value"
+        assert float(row["overlap"]) == cfg.SIG_OVERLAP, "Overlap value does not match expected value"
+        assert float(row["sensitivity"]) == cfg.SIGMOID_SENSITIVITY, "Sensitivity value does not match expected value"
+        assert row["species_list"] == "", "Species list value does not match expected value"
+        assert float(row["min_conf"]) == 0, "Min confidence value does not match expected value"
 
 
 @patch("birdnet_analyzer.utils.ensure_model_exists")

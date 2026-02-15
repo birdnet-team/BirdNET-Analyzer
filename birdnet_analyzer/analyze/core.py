@@ -22,7 +22,7 @@ def analyze(
     batch_size: int = 1,
     show_progress: bool = False,
     combine_results: bool = False,
-    rtype: Literal["table", "audacity", "kaleidoscope", "csv"] | list[Literal["table", "audacity", "kaleidoscope", "csv"]] = "table",
+    rtype: Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] | list[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]] = "table",
     skip_existing_results: bool = False,
     sf_thresh: float = 0.03,
     top_n: int | None = None,
@@ -50,7 +50,7 @@ def analyze(
         audio_speed (float, optional): Speed factor for audio playback during analysis. Defaults to 1.0.
         batch_size (int, optional): Batch size for processing. Defaults to 1.
         combine_results (bool, optional): Whether to combine results into a single file. Defaults to False.
-        rtype (Literal["table", "audacity", "kaleidoscope", "csv"] | List[Literal["table", "audacity", "kaleidoscope", "csv"]], optional):
+        rtype (Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] | List[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]], optional):
             Output format(s) for results. Defaults to "table".
         skip_existing_results (bool, optional): Whether to skip analysis for files with existing results. Defaults to False.
         sf_thresh (float, optional): Threshold for species filtering. Defaults to 0.03.
