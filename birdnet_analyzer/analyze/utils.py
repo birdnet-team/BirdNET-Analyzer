@@ -272,8 +272,6 @@ def generate_parquet(timestamps: list[str], result: dict[str, list], afile_path:
         for extra_col_key, extra_col_value in extra_columns_map.items():
             table_vals[extra_col_key] = [str(extra_col_value) for _ in range(len(start_times))]
 
-        print(table_vals)
-
         table = pa.table(table_vals, schema=parquet_schema)
 
         writer.write_table(table)
