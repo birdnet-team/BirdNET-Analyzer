@@ -230,16 +230,15 @@ def generate_parquet(timestamps: list[str], result: dict[str, list], afile_path:
 
     writer = pq.ParquetWriter(result_path, parquet_schema)
 
-    for timestamp in timestamps:
-        # create a single table per timestamp
-        # larger tables allow for better compression, but larger tables mean more memory
-        start_times: list[float] = []
-        end_times: list[float] = []
-        scientific_names: list[str] = []
-        common_names: list[str] = []
-        scores: list[float] = []
-        files: list[str] = []
+    # create a single table per file
+    start_times: list[float] = []
+    end_times: list[float] = []
+    scientific_names: list[str] = []
+    common_names: list[str] = []
+    scores: list[float] = []
+    files: list[str] = []
 
+    for timestamp in timestamps:
         # taken from generate_csv function
         for raw_label, score in result[timestamp]:
             start, end = timestamp.split("-", 1)
@@ -259,23 +258,21 @@ def generate_parquet(timestamps: list[str], result: dict[str, list], afile_path:
             scores.append(score)
             files.append(afile_path)
 
-        # match the schema
-        table_vals = {
-            "start_s": start_times,
-            "end_s": end_times,
-            "scientific_name": scientific_names,
-            "common_name": common_names,
-            "confidence": scores,
-            "file": files,
-        }
+    # match the schema
+    table_vals = {
+        "start_s": start_times,
+        "end_s": end_times,
+        "scientific_name": scientific_names,
+        "common_name": common_names,
+        "confidence": scores,
+        "file": files,
+    }
+    # add extra cols, which are just repeated for all rows
+    for extra_col_key, extra_col_value in extra_columns_map.items():
+        table_vals[extra_col_key] = [str(extra_col_value) for _ in range(len(start_times))]
 
-        for extra_col_key, extra_col_value in extra_columns_map.items():
-            table_vals[extra_col_key] = [str(extra_col_value) for _ in range(len(start_times))]
-
-        table = pa.table(table_vals, schema=parquet_schema)
-
-        writer.write_table(table)
-
+    table = pa.table(table_vals, schema=parquet_schema)
+    writer.write_table(table)
     writer.close()
 
 
