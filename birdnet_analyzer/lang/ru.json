@@ -117,6 +117,8 @@
     "eval-tab-title": "Оценка",
     "eval-tab-upload-mapping-file-label": "Загрузить файл сопоставления",
     "eval-tab-warning-error-reading-file": "Ошибка чтения файла",
+    "eval-tab-warning-unmatched-predictions": "Следующие файлы прогнозов не имеют соответствующего файла аннотаций",
+    "eval-tab-warning-unmatched-predictions-info": "для этих файлов аннотации будут считаться пустыми",
     "footer-help": "Для получения документации и поддержки посетите",
     "footer-support": "Поддержите нашу работу",
     "inference-settings-accordion-label": "Настройки вывода",

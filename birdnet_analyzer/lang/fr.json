@@ -117,6 +117,8 @@
     "eval-tab-title": "Évaluation",
     "eval-tab-upload-mapping-file-label": "Téléverser le fichier de correspondance",
     "eval-tab-warning-error-reading-file": "Erreur lors de la lecture du fichier",
+    "eval-tab-warning-unmatched-predictions": "Les fichiers de prédiction suivants n'ont pas de fichier d'annotation correspondant",
+    "eval-tab-warning-unmatched-predictions-info": "pour ces fichiers, les annotations seront supposées vides",
     "footer-help": "Pour de la documentation, visiter",
     "footer-support": "Soutenez notre travail",
     "inference-settings-accordion-label": "Paramètres d'inférence",

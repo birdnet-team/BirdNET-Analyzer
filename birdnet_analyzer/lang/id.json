@@ -117,6 +117,8 @@
     "eval-tab-title": "Evaluasi",
     "eval-tab-upload-mapping-file-label": "Unggah file pemetaan",
     "eval-tab-warning-error-reading-file": "Error saat membaca file",
+    "eval-tab-warning-unmatched-predictions": "File prediksi berikut tidak memiliki file anotasi yang sesuai",
+    "eval-tab-warning-unmatched-predictions-info": "untuk file-file ini, anotasi akan dianggap kosong",
     "footer-help": "Untuk dokumen dan dukungan kunjungi",
     "footer-support": "Dukung Pekerjaan Kami",
     "inference-settings-accordion-label": "Pengaturan inferensi",

@@ -117,6 +117,8 @@
     "eval-tab-title": "qel",
     "eval-tab-upload-mapping-file-label": "map wav yIchel",
     "eval-tab-warning-error-reading-file": "wav qelHa'",
+    "eval-tab-warning-unmatched-predictions": "nota' wav ghajbe' nob wav vaj",
+    "eval-tab-warning-unmatched-predictions-info": "wav vaj chISHa' nota' lupoQ",
     "footer-help": "qaSmo' chutmey chu' yIchoH 'e' QaH",
     "footer-support": "Qapma' yIQan",
     "inference-settings-accordion-label": "poj chut mutlh",

@@ -100,6 +100,9 @@ class DataProcessor:
         self.predictions_df: pd.DataFrame = pd.DataFrame()
         self.annotations_df: pd.DataFrame = pd.DataFrame()
 
+        # To track prediction files without matching annotation files
+        self.umatched_prediction_files: set[str] = set()
+
         # Placeholder for unique classes across predictions and annotations
         self.classes: tuple[str, ...] = ()
 
@@ -173,6 +176,9 @@ class DataProcessor:
         Raises:
             ValueError: If file reading fails or data preparation encounters issues.
         """
+
+        self.umatched_prediction_files = set()  # Reset unmatched prediction files
+
         if self.prediction_file_name is None or self.annotation_file_name is None:
             # Case: No specific files provided; load all files in directories.
             self.predictions_df = read_and_concatenate_files_in_directory(self.prediction_directory_path)
@@ -193,6 +199,16 @@ class DataProcessor:
             if self.class_mapping:
                 class_col_pred = self.get_column_name("Class", prediction=True)
                 self.predictions_df[class_col_pred] = self.predictions_df[class_col_pred].apply(lambda x: self.class_mapping.get(x, x))
+
+            prediction_filenames = self.predictions_df["recording_filename"].unique()
+            annotation_filenames = self.annotations_df["recording_filename"].unique()
+            self.umatched_prediction_files = set(prediction_filenames) - set(annotation_filenames)
+            if self.umatched_prediction_files:
+                warnings.warn(
+                    f"Prediction files without matching annotation files: {', '.join(self.umatched_prediction_files)}. "
+                    "These recordings will not be processed.",
+                    stacklevel=2,
+                )
         else:
             # Case: Specific files are provided for predictions and annotations.
             # Ensure filenames correspond to the same recording (heuristic check).

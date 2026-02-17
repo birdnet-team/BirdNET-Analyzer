@@ -117,6 +117,8 @@
     "eval-tab-title": "Utvärdering",
     "eval-tab-upload-mapping-file-label": "Ladda upp mappningsfil",
     "eval-tab-warning-error-reading-file": "Fel vid läsning av fil",
+    "eval-tab-warning-unmatched-predictions": "Följande prediktionsfiler har ingen motsvarande annotationsfil",
+    "eval-tab-warning-unmatched-predictions-info": "för dessa filer kommer annotationerna antas vara tomma",
     "footer-help": "För dokumentation och support besök",
     "footer-support": "Stöd vårt arbete",
     "inference-settings-accordion-label": "Inferensinställningar",
