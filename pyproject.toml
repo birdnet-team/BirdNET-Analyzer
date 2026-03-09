@@ -50,7 +50,7 @@ embeddings = ["perch-hoplite>=0.1.1"]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout", "pytest-order"]
-dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff"]
+dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.14.0"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
