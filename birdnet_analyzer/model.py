@@ -490,6 +490,7 @@ def train_linear_classifier(
     is_multi_label=False,
     is_binary_classification=False,
     on_epoch_end=None,
+    additional_callbacks=None,
 ):
     """Trains a custom classifier.
 
@@ -578,6 +579,11 @@ def train_linear_classifier(
         ),
         FunctionCallback(on_epoch_end=on_epoch_end),
     ]
+
+    if additional_callbacks:
+        for callback in additional_callbacks:
+            callbacks.insert(0, callback)
+
     warmup_epochs = min(5, int(epochs * 0.1))
 
     def lr_schedule(epoch, lr):

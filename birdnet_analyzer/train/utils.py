@@ -431,6 +431,8 @@ def train_model(
         study = optuna.create_study(
             direction=optuna.study.StudyDirection.MAXIMIZE,
             study_name="birdnet_analyzer",
+            sampler=optuna.samplers.TPESampler(multivariate=True, seed=42),
+            pruner=optuna.pruners.MedianPruner(n_warmup_steps=5, interval_steps=1),
         )
 
         def objective(trial: optuna.trial.Trial):
@@ -439,10 +441,9 @@ def train_model(
                 "hidden_units", [0, 128, 256, 512, 1024, 2048]
             )
             dr = trial.suggest_categorical("dropout", [0.0, 0.25, 0.33, 0.5, 0.75, 0.9])
-            upsampling_choices = ["repeat", "mean", "linear"]
-
-            if is_multi_label:
-                upsampling_choices = ["repeat"]
+            upsampling_choices = (
+                ["repeat"] if is_multi_label else ["repeat", "mean", "linear"]
+            )
 
             # Create stratified k-fold splits for cross-validation
             # For multi-label, create a pseudo-label based on number of active labels
@@ -516,52 +517,36 @@ def train_model(
                 autotune_n_repeats,
             ):
                 bs = trial.suggest_categorical("batch_size", [8, 16, 32, 64, 128])
-                # trial.suggest_loguniform
-
-                if bs == 8:
-                    lr = trial.suggest_categorical(
-                        "learning_rate", [0.0005, 0.0002, 0.0001]
-                    )
-                elif bs == 16:
-                    lr = trial.suggest_categorical(
-                        "learning_rate", [0.005, 0.002, 0.001, 0.0005, 0.0002]
-                    )
-                elif bs == 32:
-                    lr = trial.suggest_categorical(
-                        "learning_rate", [0.01, 0.005, 0.001, 0.0005, 0.0001]
-                    )
-                elif bs == 64:
-                    lr = trial.suggest_categorical(
-                        "learning_rate", [0.01, 0.005, 0.002, 0.001]
-                    )
-                else:
-                    lr = trial.suggest_categorical("learning_rate", [0.1, 0.01, 0.005])
-
-                up_ratio = trial.suggest_categorical(
-                    "upsampling_ratio", [0.0, 0.25, 0.33, 0.5, 0.75, 1.0]
+                lr = trial.suggest_float("learning_rate", 1e-4, 1e-1, log=True)
+                up_ratio = trial.suggest_float("upsampling_ratio", 0.0, 1.0, step=0.25)
+                up_mode_suggested = trial.suggest_categorical(
+                    "upsampling_mode", upsampling_choices
                 )
 
                 if up_ratio > 0:
-                    up_mode = trial.suggest_categorical(
-                        "upsampling_mode", upsampling_choices
-                    )
+                    up_mode = up_mode_suggested
                 else:
                     up_mode = upsampling_mode
 
                 mix = trial.suggest_categorical("mixup", [True, False])
                 ls = trial.suggest_categorical("label_smoothing", [True, False])
                 focal = trial.suggest_categorical("focal_loss", [True, False])
-                fg = focal_loss_gamma
-                fa = focal_loss_alpha
+                fg_suggested = trial.suggest_float(
+                    "focal_loss_gamma", 0.5, 4.0, step=0.5
+                )
+                fa_suggested = trial.suggest_float(
+                    "focal_loss_alpha", 0.1, 0.9, step=0.05
+                )
 
                 if focal:
-                    fg = trial.suggest_categorical(
-                        "focal_loss_gamma", [0.5, 1.0, 2.0, 3.0, 4.0]
-                    )
-                    fa = trial.suggest_categorical(
-                        "focal_loss_alpha", [0.1, 0.25, 0.5, 0.75, 0.9]
-                    )
+                    fg, fa = fg_suggested, fa_suggested
+                else:
+                    fg, fa = focal_loss_gamma, focal_loss_alpha
 
+                # For k-Folds this will only really work for the first fold
+                additional_callbacks = [
+                    optuna.integration.KerasPruningCallback(trial, "val_loss")
+                ]
                 classifier = model.build_linear_classifier(
                     y_train.shape[1],
                     x_train.shape[1],
@@ -587,6 +572,7 @@ def train_model(
                     focal_loss_alpha=fa,
                     is_binary_classification=is_binary,
                     is_multi_label=is_multi_label,
+                    additional_callbacks=additional_callbacks,
                 )
                 best_score = history.history[autotune_metric][
                     np.argmax(history.history[autotune_metric])
