@@ -61,7 +61,7 @@ def save_sample_counts(labels, y_train, output_dir: str):
         )
         samples_per_label[label] = np.sum(np.all(y_train == label_combination, axis=1))
 
-    csv_file_path = os.path.join(output_dir, "sample_counts.csv")
+    csv_file_path = output_dir + "_sample_counts.csv"
 
     with open(csv_file_path, mode="w", newline="") as csv_file:
         writer = csv.writer(csv_file)
