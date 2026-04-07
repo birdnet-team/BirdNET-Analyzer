@@ -114,8 +114,6 @@ def start_training(
 
     from birdnet_analyzer.train.utils import train_model
 
-    cc_output_path = str(Path(output_dir) / classifier_name)
-
     if cache_mode != "load":
         gu.validate(data_dir, loc.localize("validation-no-training-data-selected"))
 
@@ -123,6 +121,8 @@ def start_training(
         output_dir, loc.localize("validation-no-directory-for-classifier-selected")
     )
     gu.validate(classifier_name, loc.localize("validation-no-valid-classifier-name"))
+
+    cc_output_path = str(Path(output_dir) / classifier_name)
 
     if not epochs or epochs < 0:
         raise gr.Error(loc.localize("validation-no-valid-epoch-number"))
@@ -410,22 +410,24 @@ def build_train_tab():
                     gr.update(interactive=value != "load"),
                 )
 
-        with gr.Row():
-            fmin_number = gr.Number(
-                0,
-                minimum=0,
-                label=loc.localize("inference-settings-fmin-number-label"),
-                info=loc.localize("inference-settings-fmin-number-info"),
-            )
+        with gr.Accordion(
+            open=False, label=loc.localize("training-tab-preprocessing-accordion-label")
+        ):
+            with gr.Row():
+                fmin_number = gr.Number(
+                    0,
+                    minimum=0,
+                    label=loc.localize("inference-settings-fmin-number-label"),
+                    info=loc.localize("inference-settings-fmin-number-info"),
+                )
 
-            fmax_number = gr.Number(
-                15000,
-                minimum=0,
-                label=loc.localize("inference-settings-fmax-number-label"),
-                info=loc.localize("inference-settings-fmax-number-info"),
-            )
+                fmax_number = gr.Number(
+                    15000,
+                    minimum=0,
+                    label=loc.localize("inference-settings-fmax-number-label"),
+                    info=loc.localize("inference-settings-fmax-number-info"),
+                )
 
-        with gr.Row():
             audio_speed_slider = gr.Slider(
                 minimum=-10,
                 maximum=10,
@@ -435,44 +437,46 @@ def build_train_tab():
                 info=loc.localize("training-tab-audio-speed-slider-info"),
             )
 
-        with gr.Row():
-            crop_mode = gr.Radio(
-                [
-                    (
-                        loc.localize("training-tab-crop-mode-radio-option-center"),
-                        "center",
-                    ),
-                    (
-                        loc.localize("training-tab-crop-mode-radio-option-first"),
-                        "first",
-                    ),
-                    (
-                        loc.localize("training-tab-crop-mode-radio-option-segments"),
-                        "segments",
-                    ),
-                    (
-                        loc.localize("training-tab-crop-mode-radio-option-smart"),
-                        "smart",
-                    ),
-                ],
-                value="center",
-                label=loc.localize("training-tab-crop-mode-radio-label"),
-                info=loc.localize("training-tab-crop-mode-radio-info"),
-            )
+            with gr.Row():
+                crop_mode = gr.Radio(
+                    [
+                        (
+                            loc.localize("training-tab-crop-mode-radio-option-center"),
+                            "center",
+                        ),
+                        (
+                            loc.localize("training-tab-crop-mode-radio-option-first"),
+                            "first",
+                        ),
+                        (
+                            loc.localize(
+                                "training-tab-crop-mode-radio-option-segments"
+                            ),
+                            "segments",
+                        ),
+                        (
+                            loc.localize("training-tab-crop-mode-radio-option-smart"),
+                            "smart",
+                        ),
+                    ],
+                    value="center",
+                    label=loc.localize("training-tab-crop-mode-radio-label"),
+                    info=loc.localize("training-tab-crop-mode-radio-info"),
+                )
 
-            crop_overlap = gr.Slider(
-                minimum=0,
-                maximum=2.99,
-                value=0.0,
-                step=0.01,
-                label=loc.localize("training-tab-crop-overlap-number-label"),
-                info=loc.localize("training-tab-crop-overlap-number-info"),
-                visible=False,
-            )
+                crop_overlap = gr.Slider(
+                    minimum=0,
+                    maximum=2.99,
+                    value=0.0,
+                    step=0.01,
+                    label=loc.localize("training-tab-crop-overlap-number-label"),
+                    info=loc.localize("training-tab-crop-overlap-number-info"),
+                    visible=False,
+                )
 
             def on_crop_select(new_crop_mode):
                 # Make overlap slider visible for both "segments" and "smart" crop modes
-                return gr.Number(
+                return gr.update(
                     visible=new_crop_mode in ["segments", "smart"],
                     interactive=new_crop_mode in ["segments", "smart"],
                 )
@@ -498,33 +502,36 @@ def build_train_tab():
                 show_progress="hidden",
             )
 
-        autotune_cb = gr.Checkbox(
-            False,
-            label=loc.localize("training-tab-autotune-checkbox-label"),
-            info=loc.localize("training-tab-autotune-checkbox-info"),
-        )
-
-        with gr.Column(visible=False) as autotune_params, gr.Row():
-            autotune_trials = gr.Number(
-                50,
-                label=loc.localize("training-tab-autotune-trials-number-label"),
-                info=loc.localize("training-tab-autotune-trials-number-info"),
-                minimum=1,
-            )
-            autotune_folds = gr.Number(
-                5,
-                minimum=1,
-                label=loc.localize("training-tab-autotune-folds-number-label"),
-                info=loc.localize("training-tab-autotune-folds-number-info"),
-            )
-            autotune_repeats = gr.Number(
-                1,
-                minimum=1,
-                label=loc.localize("training-tab-autotune-repeats-number-label"),
-                info=loc.localize("training-tab-autotune-repeats-number-info"),
+        with gr.Group():
+            autotune_cb = gr.Checkbox(
+                False,
+                label=loc.localize("training-tab-autotune-checkbox-label"),
+                info=loc.localize("training-tab-autotune-checkbox-info"),
             )
 
-        with gr.Column() as custom_params:
+            with gr.Column(visible=False) as autotune_params, gr.Row():
+                autotune_trials = gr.Number(
+                    50,
+                    label=loc.localize("training-tab-autotune-trials-number-label"),
+                    info=loc.localize("training-tab-autotune-trials-number-info"),
+                    minimum=1,
+                )
+                autotune_folds = gr.Number(
+                    5,
+                    minimum=1,
+                    label=loc.localize("training-tab-autotune-folds-number-label"),
+                    info=loc.localize("training-tab-autotune-folds-number-info"),
+                )
+                autotune_repeats = gr.Number(
+                    1,
+                    minimum=1,
+                    label=loc.localize("training-tab-autotune-repeats-number-label"),
+                    info=loc.localize("training-tab-autotune-repeats-number-info"),
+                )
+
+        with gr.Accordion(
+            open=False, label=loc.localize("training-tab-custom-params-accordion-label")
+        ) as custom_params:
             with gr.Row():
                 epoch_number = gr.Number(
                     50,

@@ -39,11 +39,11 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=0.2.11",                           # 0.2.13
+    "birdnet>=0.2.13",
 ]
 
 [project.optional-dependencies]
-train = ["optuna"]
+train = ["optuna", "optuna-integration"]
 server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",

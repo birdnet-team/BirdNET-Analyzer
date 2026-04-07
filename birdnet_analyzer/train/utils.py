@@ -351,6 +351,7 @@ def train_model(
     batch_size: int = 32,
     val_split: float = 0.2,
     learning_rate: float = 0.0001,
+    weight_decay: float = 0.004,
     use_focal_loss: bool = False,
     focal_loss_gamma: float = 2.0,
     focal_loss_alpha: float = 0.25,
@@ -432,7 +433,7 @@ def train_model(
             direction=optuna.study.StudyDirection.MAXIMIZE,
             study_name="birdnet_analyzer",
             sampler=optuna.samplers.TPESampler(multivariate=True, seed=42),
-            pruner=optuna.pruners.MedianPruner(n_warmup_steps=5, interval_steps=1),
+            pruner=optuna.pruners.MedianPruner(n_warmup_steps=3, interval_steps=1),
         )
 
         def objective(trial: optuna.trial.Trial):
@@ -528,6 +529,7 @@ def train_model(
                 else:
                     up_mode = upsampling_mode
 
+                wd = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
                 mix = trial.suggest_categorical("mixup", [True, False])
                 ls = trial.suggest_categorical("label_smoothing", [True, False])
                 focal = trial.suggest_categorical("focal_loss", [True, False])
@@ -544,6 +546,7 @@ def train_model(
                     fg, fa = focal_loss_gamma, focal_loss_alpha
 
                 # For k-Folds this will only really work for the first fold
+                # But makes sense if the trial produces "nan"
                 additional_callbacks = [
                     optuna.integration.KerasPruningCallback(trial, "val_loss")
                 ]
@@ -573,6 +576,7 @@ def train_model(
                     is_binary_classification=is_binary,
                     is_multi_label=is_multi_label,
                     additional_callbacks=additional_callbacks,
+                    weight_decay=wd,
                 )
                 best_score = history.history[autotune_metric][
                     np.argmax(history.history[autotune_metric])
@@ -622,14 +626,15 @@ def train_model(
         dropout = best_params["dropout"]
         batch_size = best_params["batch_size"]
         learning_rate = best_params.get("learning_rate", learning_rate)
-
         upsampling_ratio = best_params["upsampling_ratio"]
+
         if upsampling_ratio > 0:
             upsampling_mode = best_params["upsampling_mode"]
 
         mixup = best_params["mixup"]
         label_smoothing = best_params["label_smoothing"]
         use_focal_loss = best_params["focal_loss"]
+        weight_decay = best_params["weight_decay"]
 
         if use_focal_loss:
             focal_loss_alpha = best_params["focal_loss_alpha"]
@@ -660,6 +665,7 @@ def train_model(
             on_epoch_end=on_epoch_end,
             is_binary_classification=is_binary,
             is_multi_label=is_multi_label,
+            weight_decay=weight_decay,
         )
     except model.get_empty_class_exception() as e:
         e.message = (
@@ -680,6 +686,7 @@ def train_model(
                 "Dropout",
                 "Batchsize",
                 "Learning rate",
+                "Weight decay",
                 "Crop mode",
                 "Crop overlap",
                 "Audio speed",
@@ -697,6 +704,7 @@ def train_model(
                 dropout,
                 batch_size,
                 learning_rate,
+                weight_decay,
                 crop_mode,
                 overlap,
                 audio_speed,

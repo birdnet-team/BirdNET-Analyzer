@@ -12,9 +12,7 @@ from typing import TYPE_CHECKING, Literal
 import keras
 import numpy as np
 import tensorflow as tf
-
-# from birdnet.acoustic.models.v2_4.pb import AcousticPBDownloaderV2_4 # 0.2.13
-from birdnet.acoustic_models.v2_4.pb import AcousticPBDownloaderV2_4
+from birdnet.acoustic.models.v2_4.pb import AcousticPBDownloaderV2_4
 
 from birdnet_analyzer import utils
 from birdnet_analyzer.config import RANDOM_SEED
@@ -491,6 +489,7 @@ def train_linear_classifier(
     is_binary_classification=False,
     on_epoch_end=None,
     additional_callbacks=None,
+    weight_decay=0.004,
 ):
     """Trains a custom classifier.
 
@@ -567,22 +566,18 @@ def train_linear_classifier(
         y_train = label_smoothing(y_train)
 
     patience = min(10, max(5, int(epochs / 10)))
-    min_delta = 0.001
     callbacks = [
+        *(additional_callbacks or []),
+        FunctionCallback(on_epoch_end=on_epoch_end),
         keras.callbacks.EarlyStopping(
             monitor="val_loss",
             mode="min",
             patience=patience,
             verbose=1,
-            min_delta=min_delta,  # type: ignore
+            min_delta=0.001,  # type: ignore
             restore_best_weights=True,
         ),
-        FunctionCallback(on_epoch_end=on_epoch_end),
     ]
-
-    if additional_callbacks:
-        for callback in additional_callbacks:
-            callbacks.insert(0, callback)
 
     warmup_epochs = min(5, int(epochs * 0.1))
 
@@ -590,7 +585,7 @@ def train_linear_classifier(
         if epoch < warmup_epochs:
             return learning_rate * (epoch + 1) / warmup_epochs
 
-        progress = (epoch - warmup_epochs) / (epochs - warmup_epochs)
+        progress = (epoch - warmup_epochs) / max(1, epochs - warmup_epochs)
 
         return learning_rate * (0.1 + 0.9 * (1 + np.cos(np.pi * progress)) / 2)
 
@@ -604,7 +599,9 @@ def train_linear_classifier(
     loss_function = _focal_loss if train_with_focal_loss else custom_loss
 
     classifier.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),  # type: ignore
+        optimizer=keras.optimizers.AdamW(
+            learning_rate=learning_rate, weight_decay=weight_decay
+        ),
         loss=loss_function,
         metrics=[
             keras.metrics.AUC(
