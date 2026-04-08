@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import birdnet
+import keras
+import tensorflow as tf
+from birdnet.acoustic_models.v2_4.pb import AcousticPBDownloaderV2_4
+
+from birdnet_analyzer.model import WrappedSavedModel
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,7 +44,6 @@ GLOBAL_PREFETCH_RATIO = 2
 # session to avoid reinitialising the underlying encoder.
 _CACHED_SESSION: tuple[AcousticModelBase, dict, AcousticEncodingSession] | None = None
 
-
 def run_inference(
     path,
     model="birdnet",
@@ -59,19 +65,52 @@ def run_inference(
     cc_species_list: str | None = None,
     callback: Callable[[AcousticProgressStats], None] | None = None,
 ) -> AcousticFilePredictionResult:
-    if classifier:
-        if not cc_species_list:
-            cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
+    merged_classifier = None
 
-        model = birdnet.load_custom(
-            "acoustic", version, "tf", classifier, cc_species_list
-        )
+    if classifier:
+        if os.path.isdir(classifier):
+            # Reconstruct full model from detached classifier.
+            if not cc_species_list:
+                cc_species_list = classifier.replace("_detached", "_Labels.txt", 1)
+
+            saved_model_path, _ = (
+                AcousticPBDownloaderV2_4.get_model_path_and_labels("en_us")
+            )
+            saved_model = tf.saved_model.load(saved_model_path)
+            inputs = keras.Input(shape=(144000,), dtype=tf.float32, name="input_audio")
+            wrapper = WrappedSavedModel(saved_model.signatures["embeddings"])(inputs)
+
+            detached_model_path = classifier
+            detached_model = keras.layers.TFSMLayer(detached_model_path,
+                                                    call_endpoint="serving_default")
+            outputs = list(detached_model(wrapper).values())[0]
+
+            merged_model = keras.Model(inputs=inputs, outputs=outputs,
+                                       name="birdnet_custom")
+            with tempfile.NamedTemporaryFile(suffix=".tflite", delete=False) as tmp:
+                merged_classifier = tmp.name
+
+                converter = tf.lite.TFLiteConverter.from_keras_model(merged_model)
+                with open(merged_classifier, "wb") as f:
+                    f.write(converter.convert())
+
+            model = birdnet.load_custom(
+                "acoustic", version, "tf", merged_classifier, cc_species_list
+            )
+
+        else:
+            if not cc_species_list:
+                cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
+
+            model = birdnet.load_custom(
+                "acoustic", version, "tf", classifier, cc_species_list
+            )
     elif model == "birdnet":
         model = birdnet.load("acoustic", version, "tf", lang=label_language)
     elif model == "perch":
         model = birdnet.load_perch_v2("CPU")
 
-    return model.predict(
+    result = model.predict(
         path,
         top_k=top_k,
         batch_size=batch_size,
@@ -90,6 +129,11 @@ def run_inference(
         n_feeders=n_producers,
         apply_sigmoid=model != "perch",
     )
+
+    if merged_classifier:
+        os.remove(merged_classifier)
+
+    return result
 
 
 def run_geomodel(

@@ -101,7 +101,8 @@ def run_analysis(
 
     locale = locale.lower()
     custom_classifier = (
-        custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
+        custom_classifier_file if
+        selected_model in (gu._CUSTOM_CLASSIFIER, gu._DETACHED_CLASSIFIER) else None
     )
     use_perch = selected_model == gu._USE_PERCH
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
@@ -115,7 +116,7 @@ def run_analysis(
     )
     on_update = partial(on_progress, progress=progress) if callable(progress) else None
 
-    if selected_model == gu._CUSTOM_CLASSIFIER and custom_classifier_file is None:
+    if selected_model in (gu._CUSTOM_CLASSIFIER, gu._DETACHED_CLASSIFIER) and custom_classifier_file is None:
         raise gr.Error(loc.localize("validation-no-custom-classifier-selected"))
 
     if progress is not None:

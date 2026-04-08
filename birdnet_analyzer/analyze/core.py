@@ -455,9 +455,9 @@ def save_as_rtable(
     )
     df["Low Freq (Hz)"] = [max(model_fmin, int(bandpass_fmin / audio_speed))] * n_rows
     df["File Offset (s)"] = df["start_time"]
-    df[["Scientific Name", "Common Name"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
-    )
+    split_names = df["species_name"].str.split("_", n=1, expand=True)
+    df["Scientific Name"] = split_names[0]
+    df["Common Name"] = split_names[1] if 1 in split_names.columns else split_names[0]
     df["Species Code"] = df["species_name"].map(lambda x: codes.get(str(x), str(x)))
 
     df.rename(
@@ -542,9 +542,10 @@ def save_as_csv(
             if col in additional_columns:
                 df[col] = possible_cols[col] * n_rows
 
-    df[["Scientific name", "Common name"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
-    )
+
+    split_names = df["species_name"].str.split("_", n=1, expand=True)
+    df["Scientific Name"] = split_names[0]
+    df["Common Name"] = split_names[1] if 1 in split_names.columns else split_names[0]
 
     df.rename(
         columns={
@@ -559,8 +560,8 @@ def save_as_csv(
     order = [
         "Start (s)",
         "End (s)",
-        "Scientific name",
-        "Common name",
+        "Scientific Name",
+        "Common Name",
         "Confidence",
         "File",
     ]
@@ -576,9 +577,9 @@ def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
     df["FOLDER"] = df["input"].map(lambda x: Path(x).parent.name)
     df["IN FILE"] = df["input"].map(lambda x: Path(x).name)
     df["DURATION"] = df["end_time"] - df["start_time"]
-    df[["scientific_name", "TOP1MATCH"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
-    )
+    split_names = df["species_name"].str.split("_", n=1, expand=True)
+    df["scientific_name"] = split_names[0]
+    df["TOP1MATCH"] = split_names[1] if 1 in split_names.columns else split_names[0]
 
     df.rename(
         columns={

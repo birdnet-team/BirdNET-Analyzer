@@ -631,6 +631,28 @@ def train_linear_classifier(
 
     return classifier, history
 
+def save_detached_classifier(
+    classifier,
+    model_path: str,
+):
+    """Saves the detached classifier head as a pb model.
+
+    Args:
+        classifier: The custom classifier.
+        model_path: Path the model will be saved at.
+    """
+    if model_path.endswith(".tflite"):
+        model_path = model_path.removesuffix(".tflite")
+
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+    detached_classifier_path = model_path + "_detached"
+
+    detached_model_inputs = keras.Input(shape=(1024,), dtype=tf.float32, name="detached_input")
+    detached_model_outputs = classifier(detached_model_inputs)
+    detached_model = keras.Model(inputs=detached_model_inputs, outputs=detached_model_outputs, name="detached_classifier")
+
+    detached_model.export(detached_classifier_path)
 
 def save_linear_classifier(
     classifier,
@@ -685,7 +707,6 @@ def save_linear_classifier(
 
     if params:
         utils.save_params_to_file(model_path.replace(".tflite", "_Params.csv"), *params)
-
 
 def save_raven_model(
     classifier,

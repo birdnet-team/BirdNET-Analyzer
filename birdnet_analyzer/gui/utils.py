@@ -26,6 +26,7 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
+_DETACHED_CLASSIFIER = loc.localize("species-list-radio-option-detached-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
 _USE_PERCH = loc.localize("species-list-radio-option-use-perch")
 _USE_BIRDNET_2_4 = "BirdNET 2.4"
@@ -289,7 +290,7 @@ def build_settings():
                             "light",
                         ),
                     ],
-                    value=lambda: settings.theme(),  # noqa: PLW0108
+                    value=lambda: settings.theme(),
                     label=loc.localize("settings-tab-theme-dropdown-label"),
                     info="⚠️" + loc.localize("settings-tab-theme-dropdown-info"),
                     interactive=True,
@@ -698,7 +699,7 @@ def model_selection(opened=True):
         gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened),
     ):
         with gr.Row():
-            values = [_USE_BIRDNET_2_4, _CUSTOM_CLASSIFIER, _USE_PERCH]
+            values = [_USE_BIRDNET_2_4, _CUSTOM_CLASSIFIER, _USE_PERCH, _DETACHED_CLASSIFIER]
 
             if platform.system() == "Darwin":
                 values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
@@ -710,9 +711,10 @@ def model_selection(opened=True):
                 info=loc.localize("model-selection-radio-info"),
             )
 
-            with gr.Column(visible=False) as custom_classifier_selector:
+            with gr.Column(visible=True):
                 classifier_selection_button = gr.Button(
-                    loc.localize(
+                    visible=False,
+                    value=loc.localize(
                         "species-list-custom-classifier-selection-button-label"
                     )
                 )
@@ -722,41 +724,87 @@ def model_selection(opened=True):
                     interactive=False,
                     show_label=False,
                 )
+                detached_classifier_tb = gr.Textbox(
+                    visible=False,
+                    interactive=False,
+                    show_label=False,
+                )
                 selected_classifier_state = gr.State()
 
-                def on_custom_classifier_selection_click():
-                    file = select_file(
-                        ("TFLite classifier (*.tflite)",),
-                        state_key="custom_classifier_file",
-                    )
+                def on_custom_classifier_selection_click(model_selection):
+                    if model_selection not in (
+                        _CUSTOM_CLASSIFIER,
+                        _DETACHED_CLASSIFIER,
+                    ):
+                        return None, None, None, None
 
-                    if not file:
-                        return None, None, None
-
-                    base_name = os.path.splitext(file)[0]
-                    labels = base_name + "_Labels.txt"
-
-                    if not os.path.isfile(labels):
-                        labels = file.replace("Model_FP32.tflite", "Labels.txt")
-
-                    if not os.path.isfile(labels):
-                        gr.Warning(
-                            loc.localize(
-                                "species-list-custom-classifier-no-labelfile-warning"
-                            )
+                    if model_selection == _CUSTOM_CLASSIFIER:
+                        file = select_file(
+                            ("TFLite classifier (*.tflite)",),
+                            state_key="custom_classifier_file",
                         )
+
+                        if not file:
+                            return None, None, None, None
+
+                        base_name = os.path.splitext(file)[0]
+                        labels = base_name + "_Labels.txt"
+
+                        if not os.path.isfile(labels):
+                            labels = file.replace("Model_FP32.tflite", "Labels.txt")
+
+                        if not os.path.isfile(labels):
+                            gr.Warning(
+                                loc.localize(
+                                    "species-list-custom-classifier-no-labelfile-warning"
+                                )
+                            )
+
+                            return (
+                                file,
+                                gr.update(value=file, visible=True),
+                                gr.update(value=None, visible=False),
+                                gr.update(visible=False),
+                            )
 
                         return (
                             file,
                             gr.update(value=file, visible=True),
-                            gr.update(visible=False),
+                            gr.update(value=None, visible=False),
+                            gr.update(value=utils.read_lines(labels), visible=True),
+                        )
+                    if model_selection == _DETACHED_CLASSIFIER:
+                        folder = select_folder(
+                            state_key="detached_classifier_folder",
                         )
 
-                    return (
-                        file,
-                        gr.update(value=file, visible=True),
-                        gr.update(value=utils.read_lines(labels), visible=True),
-                    )
+                        if not folder:
+                            return None, None, None, None
+
+                        labels = folder.replace("_detached", "_Labels.txt")
+
+                        if not os.path.isfile(labels):
+                            gr.Warning(
+                                loc.localize(
+                                    "species-list-custom-classifier-no-labelfile-warning"
+                                )
+                            )
+
+                            return (
+                                folder,
+                                gr.update(value=None, visible=False),
+                                gr.update(value=folder, visible=True),
+                                gr.update(visible=False),
+                            )
+
+                        return (
+                            folder,
+                            gr.update(value=None, visible=False),
+                            gr.update(value=folder, visible=True),
+                            gr.update(value=utils.read_lines(labels), visible=True),
+                        )
+
+                    return None, None, None, None
 
         species_list_df = gr.List(
             value=[],
@@ -768,20 +816,27 @@ def model_selection(opened=True):
 
     classifier_selection_button.click(
         on_custom_classifier_selection_click,
-        outputs=[selected_classifier_state, classifier_file_input, species_list_df],
+        inputs=[model_selection_radio],
+        outputs=[
+            selected_classifier_state,
+            classifier_file_input,
+            detached_classifier_tb,
+            species_list_df],
         show_progress="hidden",
     )
 
-    def on_model_selection_change(choice: str, cc_state):
+    def on_model_selection_change(choice: str):
         if choice == _CUSTOM_CLASSIFIER:
-            return gr.update(visible=True), gr.update(visible=cc_state is not None)
+            return gr.update(visible=True), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True, value=[])
+        if choice == _DETACHED_CLASSIFIER:
+            return gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True, value=[])
 
-        return gr.update(visible=False), gr.update(visible=False)
+        return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)
 
     model_selection_radio.change(
         on_model_selection_change,
-        inputs=[model_selection_radio, selected_classifier_state],
-        outputs=[custom_classifier_selector, species_list_df],
+        inputs=[model_selection_radio],
+        outputs=[classifier_selection_button, classifier_file_input, detached_classifier_tb, species_list_df],
         show_progress="hidden",
     )
 

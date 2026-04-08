@@ -375,6 +375,7 @@ def train_model(
     on_epoch_end=None,
     on_trial_result=None,
     on_data_load_end=None,
+    save_detached_classifier: bool = False,
 ):
     """Trains a custom classifier.
 
@@ -383,6 +384,7 @@ def train_model(
         on_trial_result: A callback function for hyperparameter tuning.
         on_data_load_end: A callback function for data loading progress.
         autotune_directory: Directory for autotune results.
+        save_detached_classifier: Whether to save the detached classifier.
 
     Returns:
         A keras `History` object, whose `history` property contains all the metrics.
@@ -742,6 +744,12 @@ def train_model(
             )
         else:
             raise ValueError(f"Unknown model output format: {model_format}")
+
+        if save_detached_classifier:
+            model.save_detached_classifier(
+                classifier, output,
+            )
+
     except Exception as e:
         raise Exception("Error saving model") from e
 

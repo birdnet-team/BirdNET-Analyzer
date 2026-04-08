@@ -41,6 +41,8 @@ def train(
     autotune: bool = False,
     autotune_trials: int = 50,
     autotune_kfolds: int = 1,
+    save_detached_classifier: bool = False,
+
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
@@ -94,6 +96,8 @@ def train(
                                          Defaults to 50.
         autotune_kfolds (int, optional): Number of folds for cross-validation during
                                          hyperparameter tuning. Defaults to 1.
+        save_detached_classifier (bool, optional): Whether to save the detached classifier.
+                                                   Defaults to False.
     Returns:
         None
     """
@@ -128,4 +132,5 @@ def train(
         autotune=autotune,
         autotune_trials=autotune_trials,
         autotune_kfolds=autotune_kfolds,
+        save_detached_classifier=save_detached_classifier,
     )

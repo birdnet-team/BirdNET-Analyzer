@@ -69,6 +69,7 @@ def start_training(
     upsampling_mode,
     model_format,
     audio_speed,
+    save_detached_classifier,
     progress=gr.Progress(),
 ):
     """Starts the training of a custom classifier.
@@ -219,6 +220,7 @@ def start_training(
             autotune_trials=int(autotune_trials),
             autotune_n_splits=int(autotune_folds),
             autotune_n_repeats=int(autotune_repeats),
+            save_detached_classifier=save_detached_classifier,
         )
     except Exception as e:
         if e.args and len(e.args) > 1:
@@ -309,22 +311,27 @@ def build_train_tab():
                         info=loc.localize("training-tab-output-format-radio-info"),
                         visible=False,
                     )
+                    save_detached_classifier_checkbox = gr.Checkbox(
+                        False,
+                        label=loc.localize("training-tab-save-detached-classifier-checkbox-label"),
+                        info=loc.localize("training-tab-save-detached-classifier-checkbox-info"),
+                        visible=False,
+                    )
 
                 def select_directory_and_update_tb():
                     dir_name = gu.select_folder(state_key="train-output-dir")
 
                     if dir_name:
-                        return (
-                            dir_name,
-                            gr.Textbox(label=dir_name, visible=True),
-                            gr.Radio(visible=True, interactive=True),
-                        )
+                        return dir_name, gr.Textbox(label=dir_name, visible=True), gr.Radio(visible=True, interactive=True), gr.Checkbox(visible=True),
 
-                    return None, None
+                    return None, None, None, None
 
                 select_classifier_directory_btn.click(
                     select_directory_and_update_tb,
-                    outputs=[output_directory_state, classifier_name, output_format],
+                    outputs=[
+                        output_directory_state,
+                        classifier_name, output_format,
+                        save_detached_classifier_checkbox],
                     show_progress="hidden",
                 )
 
@@ -769,6 +776,7 @@ def build_train_tab():
                 upsampling_mode,
                 output_format,
                 audio_speed_slider,
+                save_detached_classifier_checkbox,
             ],
             outputs=[train_history_plot, metrics_table],
         )
