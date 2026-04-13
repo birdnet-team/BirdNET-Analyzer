@@ -436,6 +436,7 @@ def save_as_rtable(
         high_freq = min(high_freq, int(sig_fmax / audio_speed))
         return int(min(high_freq, int(bandpass_fmax / audio_speed)))
 
+    df = df.copy()
     codes = load_codes()
     files = df["input"].unique()
     file_infos = {file: get_audio_info(file) for file in files}
@@ -523,6 +524,7 @@ def save_as_csv(
     species_list_file=None,
     model_path=None,
 ):
+    df = df.copy()
     n_rows = df.shape[0]
 
     if additional_columns:
@@ -572,6 +574,7 @@ def save_as_csv(
 
 
 def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
+    df = df.copy()
     df["INDIR"] = df["input"].map(lambda x: str(Path(x).parent.parent).rstrip("/"))
     df["FOLDER"] = df["input"].map(lambda x: Path(x).parent.name)
     df["IN FILE"] = df["input"].map(lambda x: Path(x).name)
