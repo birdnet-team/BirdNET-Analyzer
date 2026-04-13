@@ -47,9 +47,8 @@ train = ["optuna", "optuna-integration"]
 server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio>=6.8.0,<7.0.0",
-    "pywebview>=6.0",
-    "pyobjc-framework-UniformTypeIdentifiers;platform_system=='Darwin'", # macOS only, until pywebview adds it as dependency
+    "gradio>=6.8.0,<6.11.0",              # 6.11.0 has tab-switching freeze bug (gradio-app/gradio#13198)
+    "pywebview>=6.1,<7.0",
     "plotly[express]",
     "pywin32;platform_system=='Windows'",
     "qtpy;platform_system=='Linux'",
@@ -59,7 +58,7 @@ embeddings = ["perch-hoplite>=1.0.0"]
 all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout", "pytest-order"]
-dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.5"]
+dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.10"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"

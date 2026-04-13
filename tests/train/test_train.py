@@ -52,7 +52,7 @@ def test_train_cli(mock_train_model, setup_test_environment):
 
 def _make_dummy_history():
     class DummyHistory:
-        history = {"val_AUPRC": [0.123]}
+        history = {"val_AUPRC": [0.123]}  # noqa: RUF012
 
     return DummyHistory()
 

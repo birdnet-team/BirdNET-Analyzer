@@ -29,7 +29,8 @@ def species(
                                      Defaults to None (no filtering by time).
         sf_thresh (float, optional): Species frequency threshold for filtering.
                                      Defaults to 0.03.
-        locale (MODEL_LANGUAGES, optional): Locale for species names. Defaults to "en_us".
+        locale (MODEL_LANGUAGES, optional): Locale for species names.
+                                            Defaults to "en_us".
     Raises:
         FileNotFoundError: If the required model files are not found.
         ValueError: If invalid parameters are provided.
@@ -45,7 +46,7 @@ def species(
         lon=-1 if lon is None else lon,
         week=week,
         threshold=sf_thresh,
-        lang=locale
+        lang=locale,
     )
 
     if os.path.isdir(output):
