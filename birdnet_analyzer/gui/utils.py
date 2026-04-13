@@ -671,24 +671,24 @@ def show_species_choice(choice: str, file_input):
     """
     if choice == _CUSTOM_SPECIES:
         return [
-            gr.Row(visible=False),
-            gr.File(visible=True),
-            gr.Column(visible=False),
-            gr.Row(visible=bool(file_input)),
+            gr.update(visible=False),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(visible=bool(file_input)),
         ]
     if choice == _PREDICT_SPECIES:
         return [
-            gr.Row(visible=True),
-            gr.File(visible=False),
-            gr.Column(visible=False),
-            gr.Row(visible=False),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
         ]
 
     return [
-        gr.Row(visible=False),
-        gr.File(visible=False),
-        gr.Column(visible=True),
-        gr.Row(visible=False),
+        gr.update(visible=False),
+        gr.update(visible=True),
+        gr.update(visible=False),
+        gr.update(visible=False),
     ]
 
 
@@ -755,12 +755,15 @@ def model_selection(opened=True):
                     return (
                         file,
                         gr.update(value=file, visible=True),
-                        gr.update(value=utils.read_lines(labels), visible=True),
+                        gr.update(
+                            value=utils.read_lines(labels, fail_on_blank_lines=True),
+                            visible=True,
+                        ),
                     )
 
         species_list_df = gr.List(
             value=[],
-            headers=["Species"],
+            headers=["Species"],  # TODO: internationalize header
             max_height=200,
             show_label=False,
             visible=False,
@@ -803,7 +806,7 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
         gr.Accordion(loc.localize("species-list-accordion-label"), open=opened),
     ):
         with gr.Row():
-            values = [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
+            values = [_ALL_SPECIES, _CUSTOM_SPECIES, _PREDICT_SPECIES]
 
             species_list_radio = gr.Radio(
                 values,
@@ -830,7 +833,7 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
 
         list_df = gr.List(
             value=[],
-            headers=["Species"],
+            headers=["Species"],  # TODO: internationalize header
             max_height=200,
             show_label=False,
             visible=False,
@@ -847,14 +850,15 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
         if not file:
             return gr.update(value=[], visible=False)
 
-        species_list = utils.read_lines(file)
+        species_list = utils.read_lines(file, fail_on_blank_lines=True)
+        print(species_list)
 
         return gr.update(value=species_list, visible=True)
 
     species_file_input.change(
         on_species_file_change,
         inputs=species_file_input,
-        outputs=[list_df],
+        outputs=list_df,
         show_progress="hidden",
     )
 
@@ -1013,12 +1017,7 @@ def open_window(builder: list[Callable] | Callable):
     global _URL
     multiprocessing.freeze_support()
 
-    with gr.Blocks(
-        css=open(os.path.join(SCRIPT_DIR, "assets/gui.css")).read(),
-        js=open(os.path.join(SCRIPT_DIR, "assets/gui.js")).read(),
-        theme=gr.themes.Default(),
-        analytics_enabled=False,
-    ) as demo:
+    with gr.Blocks(analytics_enabled=False) as demo:
         build_header()
 
         map_plots = []
@@ -1048,12 +1047,20 @@ def open_window(builder: list[Callable] | Callable):
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
-    _URL = demo.queue(api_open=False).launch(
-        prevent_thread_lock=True,
-        quiet=True,
-        enable_monitoring=False,
-        allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
-    )[1]
+    with (
+        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
+        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+    ):
+        _URL = demo.queue(api_open=False).launch(
+            css=css_file.read(),
+            js=js_file.read(),
+            theme=gr.themes.Default(),
+            prevent_thread_lock=True,
+            quiet=True,
+            enable_monitoring=False,
+            allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
+            footer_links=[],
+        )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
@@ -1083,4 +1090,4 @@ def open_window(builder: list[Callable] | Callable):
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False)
+    webview.start(private_mode=False, debug=True)

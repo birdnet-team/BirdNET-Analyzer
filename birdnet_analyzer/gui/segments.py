@@ -57,7 +57,7 @@ def _extract_segments(
     )
 
     skipped_files = [
-        [os.path.relpath(r[0], audio_dir)] for r in segments_list if not r[1]
+        os.path.relpath(r[0], audio_dir) for r in segments_list if not r[1]
     ]
     header = (
         [loc.localize("multi-tab-result-dataframe-column-invalid-file-header")]
@@ -222,7 +222,7 @@ def build_segments_tab():
         extract_segments_btn = gr.Button(
             loc.localize("segments-tab-extract-button-label"), variant="huggingface"
         )
-        result_grid = gr.Matrix(headers=[""], col_count=1)
+        result_grid = gr.List(headers=[""])
 
         extract_segments_btn.click(
             _extract_segments,

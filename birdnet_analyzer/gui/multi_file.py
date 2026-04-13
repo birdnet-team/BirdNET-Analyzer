@@ -87,7 +87,7 @@ def run_batch_analysis(
         n_producers=producers_number,
         n_workers=workers_number,
     )
-    skipped_files = [[results.inputs[ui]] for ui in results.unprocessable_inputs]
+    skipped_files = [results.inputs[ui] for ui in results.unprocessable_inputs]
     header = (
         [loc.localize("multi-tab-result-dataframe-column-invalid-file-header")]
         if skipped_files
@@ -192,7 +192,7 @@ def build_multi_analysis_tab():
         start_batch_analysis_btn = gr.Button(
             loc.localize("analyze-start-button-label"), variant="huggingface"
         )
-        result_grid = gr.Matrix(headers=[""], col_count=1)
+        result_grid = gr.List(headers=[""])
         inputs = [
             output_directory_predict_state,
             sample_settings["use_top_n_checkbox"],

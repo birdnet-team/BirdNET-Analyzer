@@ -19,13 +19,21 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def on_progress(update: AcousticProgressStats, progress: gr.Progress):
-    if progress is not None and update.progress_current and update.progress_total:
+    if progress is None:
+        return
+
+    # TODO: desc String with translation
+    # TODO: unit translation (exists already?)
+
+    if update.processed_segments and update.total_segments:
         progress(
-            (update.progress_current, update.progress_total),
-            total=update.progress_total,
+            (update.processed_segments, update.total_segments),
+            total=update.total_segments,
             unit="files",
             desc="es war einmal",
         )
+    else:
+        progress(update.progress_pct, desc="es war einmal", unit="%")
 
 
 def run_analysis(
