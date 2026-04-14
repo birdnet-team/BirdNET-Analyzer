@@ -109,7 +109,7 @@ def analyze(
     from birdnet_analyzer.utils import save_params_to_file
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
-    rtypes: list[str] = [rtype] if isinstance(rtype, str) else rtype
+    rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype
 
     if lat is not None and lon is not None:
         if slist is not None:
@@ -543,7 +543,7 @@ def save_as_rtable(
 def save_as_csv(
     df: pd.DataFrame,
     output: Path,
-    additional_columns: list[str] | None = None,
+    additional_columns: list[ADDITIONAL_COLUMNS] | None = None,
     lat=None,
     lon=None,
     week=None,

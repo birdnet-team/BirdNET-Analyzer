@@ -44,8 +44,8 @@ def run_export(export_state: dict):
                 # TODO @mamau: Missing audio speed?
                 sig, rate = audio.open_audio_file(
                     file[0], offset=file[1], duration=file[2], sample_rate=None
-                )  # type: ignore
-                audio.save_signal(sig, dest, rate)  # type: ignore
+                )
+                audio.save_signal(sig, dest, rate)
 
         gr.Info(
             f"{loc.localize('embeddings-search-export-finish-info')} {export_folder}"
@@ -88,9 +88,9 @@ def run_search(
         query_path,
         db,
         max_samples,
-        settings["AUDIO_SPEED"],  # type: ignore
-        settings["BANDPASS_FMIN"],  # type: ignore
-        settings["BANDPASS_FMAX"],  # type: ignore
+        settings["AUDIO_SPEED"],
+        settings["BANDPASS_FMIN"],
+        settings["BANDPASS_FMAX"],
         score_fn,
         crop_mode,
         crop_overlap,
@@ -102,7 +102,7 @@ def run_search(
     return chunks, 0, gr.Button(interactive=True), {}
 
 
-def build_search_tab():
+def build_search_tab() -> gu.TAB_BUILDER_RESULT:
     from birdnet_analyzer import audio, utils
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
 
@@ -256,12 +256,12 @@ def build_search_tab():
                                             audio_root, recording.filename
                                         )
                                         offset = window.offsets[0]
-                                        duration = 3.0 * settings["AUDIO_SPEED"]  # type: ignore
+                                        duration = 3.0 * settings["AUDIO_SPEED"]
                                         spec = utils.spectrogram_from_file(
                                             file,
                                             offset=offset,
                                             duration=duration,
-                                            speed=settings["AUDIO_SPEED"],  # type: ignore
+                                            speed=settings["AUDIO_SPEED"],
                                             fmin=settings["BANDPASS_FMIN"],
                                             fmax=settings["BANDPASS_FMAX"],
                                             fig_size=(6, 3),

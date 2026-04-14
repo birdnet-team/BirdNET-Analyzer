@@ -140,12 +140,26 @@ def run_single_file_analysis(
     )
 
 
-def build_single_analysis_tab():
+def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("single-tab-title")):
+        with gr.Group(), gr.Row(equal_height=True):
+            select_file_button = gr.Button(
+                loc.localize("single-tab-select-file-button-label"),
+                variant="primary",
+            )
+            selected_file_label = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize("single-tab-no-file-selected-placeholder"),
+                scale=3,
+            )
+
         audio_input = gr.Audio(
-            type="filepath",
+            type="numpy",
             label=loc.localize("single-audio-label"),
-            sources=["upload"],
+            interactive=False,
+            visible=False,
+            editable=False,
         )
 
         with gr.Group():
@@ -206,30 +220,58 @@ def build_single_analysis_tab():
             interactive=False,
         )
 
-        def get_audio_path(i, generate_spectrogram):
-            if i:
+        def select_and_load_audio_file(generate_spectrogram):
+            """Use webview dialog to select audio file and load it."""
+            file_path = gu.select_file(
+                filetypes=(
+                    "Audio files (*.wav;*.flac;*.mp3;*.ogg;*.m4a;*.wma;*.aiff;*.aif)",
+                ),
+                state_key="single_file_audio",
+            )
+
+            if file_path:
                 try:
-                    return (
-                        i["path"],
-                        gr.Audio(label=os.path.basename(i["path"])),
-                        gr.Plot(
+                    # Load the entire audio file
+                    data, sr = audio.open_audio_file(file_path)
+
+                    # Generate spectrogram if requested
+                    spectrogram = (
+                        gr.update(
                             visible=True,
                             value=utils.spectrogram_from_file(
-                                i["path"],
+                                file_path,
                                 fig_size=(20, 4),
                                 fig_num=MATPLOTLIB_FIGURE_NUM,
                             ),
                         )
                         if generate_spectrogram
-                        else gr.Plot(visible=False),
-                        gr.Button(interactive=True),
+                        else gr.Plot(visible=False)
+                    )
+
+                    return (
+                        file_path,  # audio_path_state
+                        os.path.basename(file_path),  # selected_file_label
+                        gr.update(
+                            visible=True,
+                            value=(sr, data),
+                            label=os.path.basename(file_path),
+                        ),  # audio_input
+                        spectrogram,  # spectogram_output
+                        gr.update(interactive=True),  # single_file_analyze
                     )
                 except Exception as e:
                     raise gr.Error(
                         loc.localize("single-tab-generate-spectrogram-error")
                     ) from e
-            else:
-                return None, None, gr.Plot(visible=False), gr.update(interactive=False)
+
+            # No file selected
+            return (
+                None,
+                "",
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(interactive=False),
+            )
 
         def try_generate_spectrogram(audio_path, generate_spectrogram):
             if audio_path and generate_spectrogram:
@@ -237,7 +279,7 @@ def build_single_analysis_tab():
                     return gr.Plot(
                         visible=True,
                         value=utils.spectrogram_from_file(
-                            audio_path["path"],
+                            audio_path,
                             fig_size=(20, 4),
                             fig_num=MATPLOTLIB_FIGURE_NUM,
                         ),
@@ -247,25 +289,24 @@ def build_single_analysis_tab():
                         loc.localize("single-tab-generate-spectrogram-error")
                     ) from e
             else:
-                return gr.Plot()
+                return gr.Plot(visible=False)
 
         generate_spectrogram_cb.change(
             try_generate_spectrogram,
-            inputs=[audio_input, generate_spectrogram_cb],
+            inputs=[audio_path_state, generate_spectrogram_cb],
             outputs=spectogram_output,
-            preprocess=False,
         )
 
-        audio_input.change(
-            get_audio_path,
-            inputs=[audio_input, generate_spectrogram_cb],
+        select_file_button.click(
+            select_and_load_audio_file,
+            inputs=[generate_spectrogram_cb],
             outputs=[
                 audio_path_state,
+                selected_file_label,
                 audio_input,
                 spectogram_output,
                 single_file_analyze,
             ],
-            preprocess=False,
         )
 
         inputs = [

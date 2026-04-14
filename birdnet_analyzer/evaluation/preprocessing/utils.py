@@ -29,7 +29,7 @@ def extract_recording_filename(path_column: pd.Series) -> pd.Series:
     # Apply a lambda function to extract the base filename without extension
     return path_column.apply(
         lambda x: os.path.splitext(os.path.basename(x))[0] if isinstance(x, str) else x
-    )
+    )  # ty:ignore[invalid-return-type]
 
 
 def extract_recording_filename_from_filename(filename_series: pd.Series) -> pd.Series:
@@ -46,7 +46,7 @@ def extract_recording_filename_from_filename(filename_series: pd.Series) -> pd.S
         pd.Series: A pandas Series containing the extracted recording filenames.
     """
     # Apply a lambda function to split filenames and remove the extension
-    return filename_series.apply(lambda x: x.split(".")[0] if isinstance(x, str) else x)
+    return filename_series.apply(lambda x: x.split(".")[0] if isinstance(x, str) else x)  # ty:ignore[invalid-return-type]
 
 
 def read_and_concatenate_files_in_directory(directory_path: str) -> pd.DataFrame:

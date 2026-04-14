@@ -101,7 +101,7 @@ def run_batch_analysis(
     )
 
 
-def build_multi_analysis_tab():
+def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("multi-tab-title")):
         input_directory_state = gr.State()
         output_directory_predict_state = gr.State()

@@ -17,6 +17,7 @@ Functions:
         multilabel tasks.
 """
 
+from collections.abc import Sequence
 from typing import Literal
 
 import matplotlib.pyplot as plt
@@ -337,7 +338,7 @@ def plot_metrics_across_thresholds_per_class(
 def plot_confusion_matrices(
     conf_mat: np.ndarray,
     task: Literal["binary", "multiclass", "multilabel"],
-    class_names: list[str],
+    class_names: Sequence[str],
 ):
     """
     Plots confusion matrices for each class in a single figure with multiple subplots.
@@ -347,7 +348,7 @@ def plot_confusion_matrices(
             a single 2x2 matrix. For multilabel or multiclass, an array of shape
             (num_classes, 2, 2).
         task (Literal["binary", "multiclass", "multilabel"]): Task type.
-        class_names (List[str]): List of class names.
+        class_names (Sequence[str]): Sequence of class names.
 
     Raises:
         TypeError: If inputs are not of expected types.

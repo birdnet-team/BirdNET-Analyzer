@@ -243,7 +243,7 @@ def start_training(
     return fig, metrics
 
 
-def build_train_tab():
+def build_train_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("training-tab-title")):
         input_directory_state = gr.State()
         output_directory_state = gr.State()
@@ -332,10 +332,10 @@ def build_train_tab():
             cache_file_state = gr.State()
             cache_mode = gr.Radio(
                 [
-                    (loc.localize("training-tab-cache-mode-radio-option-none"), None),  # type: ignore
+                    (loc.localize("training-tab-cache-mode-radio-option-none"), None),
                     (loc.localize("training-tab-cache-mode-radio-option-load"), "load"),
                     (loc.localize("training-tab-cache-mode-radio-option-save"), "save"),
-                ],
+                ],  # ty:ignore[invalid-argument-type]
                 value=None,
                 label=loc.localize("training-tab-cache-mode-radio-label"),
                 info=loc.localize("training-tab-cache-mode-radio-info"),

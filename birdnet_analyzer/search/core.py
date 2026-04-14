@@ -88,7 +88,7 @@ def search(
             output,
             f"{r.sort_score:.5f}_{filebasename}_{offset}_{offset + duration}.wav",
         )
-        audio.save_signal(sig, result_path, rate)  # type: ignore
+        audio.save_signal(sig, result_path, rate)
 
     db.db.close()
 

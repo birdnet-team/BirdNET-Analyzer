@@ -27,7 +27,7 @@ def run_species_list(
     gr.Info(f"{loc.localize('species-tab-finish-info')} {out_path}")
 
 
-def build_species_tab():
+def build_species_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("species-tab-title")) as species_tab:
         output_directory_state = gr.State()
         select_directory_btn = gr.Button(

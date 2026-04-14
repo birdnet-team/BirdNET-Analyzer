@@ -211,7 +211,9 @@ class PerformanceAssessor:
         metrics_data = {
             key: np.atleast_1d(value) for key, value in metrics_results.items()
         }
-        return pd.DataFrame.from_dict(metrics_data, orient="index", columns=columns)
+        return pd.DataFrame.from_dict(
+            metrics_data, orient="index", columns=pd.Index(columns)
+        )
 
     def plot_metrics(
         self,
@@ -309,6 +311,14 @@ class PerformanceAssessor:
             # Restore the original threshold
             self.threshold = original_threshold
 
+            # Convert lists to NumPy arrays
+            metric_values_dict_per_class = {
+                class_name: {
+                    metric: np.array(values) for metric, values in metrics_dict.items()
+                }
+                for class_name, metrics_dict in metric_values_dict_per_class.items()
+            }
+
             # Plot metrics across thresholds per class
             fig = plotting.plot_metrics_across_thresholds_per_class(
                 thresholds,
@@ -336,6 +346,12 @@ class PerformanceAssessor:
 
             # Restore the original threshold
             self.threshold = original_threshold
+
+            # Convert lists to NumPy arrays
+            metric_values_dict = {
+                metric_name: np.array(values)
+                for metric_name, values in metric_values_dict.items()
+            }
 
             # Plot metrics across thresholds
             fig = plotting.plot_metrics_across_thresholds(
@@ -393,7 +409,7 @@ class PerformanceAssessor:
             conf_mat = confusion_matrix(y_true, y_pred, normalize="true")
             conf_mat = np.round(conf_mat, 2)
 
-            return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)
+            return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)  # ty:ignore[invalid-argument-type]
 
         if self.task == "multilabel":
             # Binarize predictions for multilabel classification

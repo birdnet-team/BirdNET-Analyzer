@@ -5,7 +5,7 @@ from math import isclose
 import librosa
 import numpy as np
 import soundfile as sf
-from scipy.signal import find_peaks, firwin, kaiserord, lfilter
+from scipy.signal import find_peaks, lfilter
 
 import birdnet_analyzer.config as cfg
 
@@ -106,7 +106,7 @@ def get_audio_file_length(path):
     """
     # Open file with librosa (uses ffmpeg or libav)
 
-    return librosa.get_duration(path=path, sr=None)
+    return librosa.get_duration(path=path, sr=None)  # ty:ignore[invalid-argument-type]
 
 
 def get_sample_rate(path: str):
@@ -358,7 +358,7 @@ def bandpass(sig, rate, fmin, fmax, order=5, sig_fmin=0, sig_fmax=15000):
     if (fmin == sig_fmin and fmax == sig_fmax) or fmin > fmax:
         return sig
 
-    from scipy.signal import butter, lfilter
+    from scipy.signal import butter
 
     nyquist = 0.5 * rate
 
@@ -380,59 +380,5 @@ def bandpass(sig, rate, fmin, fmax, order=5, sig_fmin=0, sig_fmax=15000):
         high = fmax / nyquist
         b, a = butter(order, [low, high], btype="band")
         sig = lfilter(b, a, sig)
-
-    return sig.astype("float32")
-
-
-# Raven is using Kaiser window FIR filter, so we try to emulate it.
-# Raven uses the Window method for FIR filter design.
-# A Kaiser window is used with a default transition bandwidth of 0.02 times
-# the Nyquist frequency and a default stop band attenuation of 100 dB.
-# For a complete description of this method, see Discrete-Time Signal Processing
-# (Second Edition), by Alan Oppenheim, Ronald Schafer, and John Buck,
-# Prentice Hall 1998, pp. 474-476.
-# TODO: deprecated, but not used anywhere
-# If neeeded in the future, replace the config values with fuction arguments
-def bandpass_kaiser_fir(sig, rate, fmin, fmax, width=0.02, stopband_attenuation_db=100):
-    """
-    Applies a bandpass filter to the given signal using a Kaiser window FIR filter.
-    Args:
-        sig (numpy.ndarray): The input signal to be filtered.
-        rate (int): The sample rate of the input signal.
-        fmin (float): The minimum frequency of the bandpass filter.
-        fmax (float): The maximum frequency of the bandpass filter.
-        width (float, optional): The transition width of the filter. Default is 0.02.
-        stopband_attenuation_db (float, optional): The desired attenuation in the
-            stopband, in decibels. Default is 100.
-    Returns:
-        numpy.ndarray: The filtered signal as a float32 numpy array.
-    """
-    # Check if we have to bandpass at all
-    if (fmin == cfg.SIG_FMIN and fmax == cfg.SIG_FMAX) or fmin > fmax:
-        return sig
-
-    nyquist = 0.5 * rate
-
-    # Calculate the order and Kaiser parameter for the desired specifications.
-    N, beta = kaiserord(stopband_attenuation_db, width)
-
-    # Highpass?
-    if fmin > cfg.SIG_FMIN and fmax == cfg.SIG_FMAX:
-        low = fmin / nyquist
-        taps = firwin(N, low, window=("kaiser", beta), pass_zero=False)
-
-    # Lowpass?
-    elif fmin == cfg.SIG_FMIN and fmax < cfg.SIG_FMAX:
-        high = fmax / nyquist
-        taps = firwin(N, high, window=("kaiser", beta), pass_zero=True)
-
-    # Bandpass?
-    elif fmin > cfg.SIG_FMIN and fmax < cfg.SIG_FMAX:
-        low = fmin / nyquist
-        high = fmax / nyquist
-        taps = firwin(N, [low, high], window=("kaiser", beta), pass_zero=False)
-
-    # Apply the filter to the signal.
-    sig = lfilter(taps, 1.0, sig)
 
     return sig.astype("float32")

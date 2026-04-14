@@ -32,20 +32,24 @@ def _search_ann_ip(
     ]
 
 
-def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
-    if a.ndim == 2:
-        return np.array([cosine_sim(a[i], b) for i in range(a.shape[0])])
-    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+def cosine_sim(data: np.ndarray, query: np.ndarray) -> float | np.ndarray:
+    if data.ndim == 2:
+        return np.array([cosine_sim(data[i], query) for i in range(data.shape[0])])
+    return np.dot(data, query) / (np.linalg.norm(data) * np.linalg.norm(query))
 
 
-def euclidean_scoring(a: np.ndarray, b: np.ndarray) -> float:
-    if a.ndim == 2:
-        return np.array([euclidean_scoring(a[i], b) for i in range(a.shape[0])])
-    return euclidean(a, b)
+def euclidean_scoring(data: np.ndarray, query: np.ndarray) -> float | np.ndarray:
+    if data.ndim == 2:
+        return np.array(
+            [euclidean_scoring(data[i], query) for i in range(data.shape[0])]
+        )
+    return euclidean(data, query)
 
 
-def euclidean_scoring_inverse(a, b):
-    return -euclidean_scoring(a, b)
+def euclidean_scoring_inverse(
+    data: np.ndarray, query: np.ndarray
+) -> float | np.ndarray:
+    return -euclidean_scoring(data, query)
 
 
 def get_query_embedding(
@@ -143,7 +147,10 @@ def get_search_results(
             sorted_results = _search_ann_ip(db, embedding, n_results)
         else:
             results, scores = brutalism.threaded_brute_search(
-                db, embedding, n_results, score_fn
+                db,
+                embedding,
+                n_results,
+                score_fn,  # ty:ignore[invalid-argument-type]
             )
             sorted_results = results.search_results
 

@@ -25,7 +25,7 @@ class ProcessorState(typing.NamedTuple):
     prediction_dir: str
 
 
-def build_evaluation_tab():
+def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
     # Default columns for annotations
     annotation_default_columns = {
         "Start Time": "Begin Time (s)",

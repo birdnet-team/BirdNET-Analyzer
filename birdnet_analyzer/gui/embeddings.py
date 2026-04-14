@@ -74,9 +74,9 @@ def run_embeddings(
             n_producers=producers_number,
             n_workers=workers_number,
             batch_size=batch_size,
-            audio_speed=settings["AUDIO_SPEED"],  # type: ignore
-            fmin=settings["BANDPASS_FMIN"],  # type: ignore
-            fmax=settings["BANDPASS_FMAX"],  # type: ignore
+            audio_speed=settings["AUDIO_SPEED"],
+            fmin=settings["BANDPASS_FMIN"],
+            fmax=settings["BANDPASS_FMAX"],
             file_output=file_output,
         )
     except Exception as e:
@@ -110,7 +110,7 @@ def run_embeddings(
     )
 
 
-def build_embeddings_tab():
+def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
 
     with gr.Tab(loc.localize("embeddings-tab-title")):
@@ -240,15 +240,15 @@ def build_embeddings_tab():
                                 dir_name,
                                 gr.Textbox(value=dir_name),
                                 gr.Slider(
-                                    value=settings["AUDIO_SPEED"],  # type: ignore
+                                    value=settings["AUDIO_SPEED"],
                                     interactive=False,
                                 ),
                                 gr.Number(
-                                    value=settings["BANDPASS_FMIN"],  # type: ignore
+                                    value=settings["BANDPASS_FMIN"],
                                     interactive=False,
                                 ),
                                 gr.Number(
-                                    value=settings["BANDPASS_FMAX"],  # type: ignore
+                                    value=settings["BANDPASS_FMAX"],
                                     interactive=False,
                                 ),
                                 gr.update(visible=True),

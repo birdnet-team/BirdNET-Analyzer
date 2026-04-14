@@ -448,8 +448,8 @@ def analyzer_parser():
     )
 
     class UniqueSetAction(argparse.Action):
-        def __call__(self, parser, args, values, option_string=None):
-            setattr(args, self.dest, {v.lower() for v in values})
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, {v.lower() for v in values})
 
     parser.add_argument(
         "--rtype",

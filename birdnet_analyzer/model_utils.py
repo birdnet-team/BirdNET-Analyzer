@@ -80,12 +80,12 @@ def run_inference(
         n_workers=n_workers,
         n_producers=n_producers,
         apply_sigmoid=model != "perch",
-    )
+    )  # ty:ignore[invalid-return-type]
 
 
 def run_geomodel(
     lat, lon, week=None, language: MODEL_LANGUAGES = "en_us", threshold: float = 0.03
-):
+) -> birdnet.GeoPredictionResult:
     model = birdnet.load("geo", "2.4", "tf", lang=language)
     return model.predict(lat, lon, week=week, min_confidence=threshold)
 
@@ -115,7 +115,7 @@ def get_embeddings(
         progress_callback=callback,
         n_workers=n_workers,
         n_producers=n_producers,
-    )
+    )  # ty:ignore[invalid-return-type]
 
 
 def _get_cached_encode_session(
@@ -202,15 +202,3 @@ def get_embeddings_array(
     # Each input signal is a single segment, so squeeze the middle dim.
     # Return shape: (n_inputs, embed_dim)
     return result.embeddings[:, 0, :]
-
-
-def get_species_list(
-    lat: float,
-    lon: float,
-    week: int | None,
-    lang: MODEL_LANGUAGES = "en_us",
-    threshold: float = 0.03,
-) -> list[str]:
-    model = birdnet.load("geo", "2.4", "tf", lang=lang)
-
-    return model.predict(lat, lon, week=week, min_confidence=threshold)

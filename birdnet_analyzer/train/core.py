@@ -40,7 +40,8 @@ def train(
     audio_speed: float = 1.0,
     autotune: bool = False,
     autotune_trials: int = 50,
-    autotune_kfolds: int = 1,
+    autotune_n_repeats: int = 1,
+    autotune_n_splits: int = 3,
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
@@ -92,8 +93,10 @@ def train(
                                    Defaults to False.
         autotune_trials (int, optional): Number of trials for autotuning.
                                          Defaults to 50.
-        autotune_kfolds (int, optional): Number of folds for cross-validation during
-                                         hyperparameter tuning. Defaults to 1.
+        autotune_n_repeats (int, optional): Number of times to repeat each trial during
+                                           hyperparameter tuning. Defaults to 1.
+        autotune_n_splits (int, optional): Number of splits for cross-validation during
+                                          hyperparameter tuning. Defaults to 3.
     Returns:
         None
     """
@@ -127,5 +130,6 @@ def train(
         audio_speed=audio_speed,
         autotune=autotune,
         autotune_trials=autotune_trials,
-        autotune_kfolds=autotune_kfolds,
+        autotune_n_repeats=autotune_n_repeats,
+        autotune_n_splits=autotune_n_splits,
     )

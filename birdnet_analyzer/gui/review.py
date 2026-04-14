@@ -1,6 +1,7 @@
 import os
 import random
 from functools import partial
+from typing import TYPE_CHECKING
 
 import gradio as gr
 
@@ -9,6 +10,9 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
 
+if TYPE_CHECKING:
+    from ty_extensions import Unknown
+
 POSITIVE_LABEL_DIR = "Positive"
 NEGATIVE_LABEL_DIR = "Negative"
 MATPLOTLIB_FIGURE_ID = "review-tab-spectrogram-plot"
@@ -16,7 +20,7 @@ MATPLOTLIB_FIGURE_ID = "review-tab-spectrogram-plot"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
-def build_review_tab():
+def build_review_tab() -> gu.TAB_BUILDER_RESULT:
     def collect_segments(directory, shuffle=False):
         segments = (
             [
@@ -218,7 +222,7 @@ def build_review_tab():
                 regression_dl_btn = gr.Button("Download regression", size="sm")
 
         def update_values(next_review_state, skip_plot=False):
-            update_dict = {review_state: next_review_state}
+            update_dict: dict[gr.Component, Unknown] = {review_state: next_review_state}
 
             if not skip_plot:
                 update_dict |= {
@@ -416,7 +420,7 @@ def build_review_tab():
                 }
 
             update_dict[regression_dl_btn] = gr.Button(
-                visible=update_dict[species_regression_plot].constructor_args["visible"]
+                visible=update_dict[species_regression_plot].constructor_args["visible"]  # ty:ignore[unresolved-attribute]
             )
 
             return update_dict

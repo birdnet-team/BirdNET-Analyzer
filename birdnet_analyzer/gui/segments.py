@@ -72,7 +72,7 @@ def _extract_segments(
     )
 
 
-def build_segments_tab():
+def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
     import psutil
 
     with gr.Tab(loc.localize("segments-tab-title")):

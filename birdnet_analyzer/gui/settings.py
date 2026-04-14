@@ -62,7 +62,7 @@ def get_state_dict() -> dict:
             return {}
 
 
-def get_state(key: str, default=None):
+def get_state(key: str, default=None) -> str:
     """
     Retrieves the value associated with the given key from the state dictionary.
 

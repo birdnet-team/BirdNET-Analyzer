@@ -54,6 +54,7 @@ _SPECIES_KEYS = Literal[
     "selected_classifier_state",
     "map_plot",
 ]
+TAB_BUILDER_RESULT = tuple[gr.Component, gr.Component, gr.Component] | None
 
 
 def gui_runtime_error_handler(f):
@@ -614,16 +615,18 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    assert _WINDOW is not None
+
     initial_selection = settings.get_state(state_key, "") if state_key else ""
     file = _WINDOW.create_file_dialog(
         webview.FileDialog.SAVE,
         file_types=filetypes,
         directory=initial_selection,
         save_filename=default_filename,
-    )  # type: ignore
+    )
 
     if file:
-        file: str = file[0] if isinstance(file, list | tuple) else file
+        file: str = file[0] if isinstance(file, list | tuple) else file  # ty:ignore[invalid-assignment]
 
         if state_key:
             settings.set_state(state_key, os.path.dirname(file))
@@ -642,10 +645,12 @@ def select_file(filetypes=(), state_key=None):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    assert _WINDOW is not None
+
     initial_selection = settings.get_state(state_key, "") if state_key else ""
     files = _WINDOW.create_file_dialog(
         webview.FileDialog.OPEN, file_types=filetypes, directory=initial_selection
-    )  # type: ignore
+    )
 
     if files:
         if state_key:
@@ -877,7 +882,7 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
 def download_plot(plot, filename=""):
     from PIL import Image
 
-    res = _WINDOW.create_file_dialog(  # type: ignore
+    res: str = _WINDOW.create_file_dialog(  # type: ignore
         webview.FileDialog.SAVE,
         file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
         save_filename=filename,
@@ -918,12 +923,12 @@ def _get_network_shortcuts():
         - Errors encountered while resolving shortcuts are printed to the console.
     """
     import pythoncom
-    from win32com.shell import shell, shellcon  # type: ignore[import]
+    from win32com.shell import shell, shellcon  # type: ignore
 
     try:
         # https://learn.microsoft.com/de-de/windows/win32/shell/csidl
         # CSIDL_NETHOOD: Path to folder containing network shortcuts
-        network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)  # type: ignore
+        network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)  # pyright: ignore[reportArgumentType]
         shortcuts = []
 
         for item in os.listdir(network_shortcuts):
@@ -937,17 +942,17 @@ def _get_network_shortcuts():
                     try:
                         # https://learn.microsoft.com/de-de/windows/win32/shell/links
                         # CLSID_ShellLink: Class ID for Shell Link object
-                        shell_link = pythoncom.CoCreateInstance(
+                        shell_link = pythoncom.CoCreateInstance(  # ty:ignore[unresolved-attribute]
                             shell.CLSID_ShellLink,
                             None,
-                            pythoncom.CLSCTX_INPROC_SERVER,
+                            pythoncom.CLSCTX_INPROC_SERVER,  # ty:ignore[unresolved-attribute]
                             shell.IID_IShellLink,
                         )
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
                         # Query IPersistFile interface used to
                         persist_file = shell_link.QueryInterface(
-                            pythoncom.IID_IPersistFile
+                            pythoncom.IID_IPersistFile  # ty:ignore[unresolved-attribute]
                         )
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nf-objidl-ipersistfile-load
@@ -1007,7 +1012,9 @@ def slider_to_value(value: float):
     return max(0.1, 1.0 / (value * -1)) if value < 0 else max(1.0, float(value))
 
 
-def open_window(builder: list[Callable] | Callable):
+def open_window(
+    builder: list[Callable[[], TAB_BUILDER_RESULT]] | Callable[[], TAB_BUILDER_RESULT],
+):
     """
     Opens a GUI window using the Gradio library and the webview module.
     Args:
@@ -1023,7 +1030,7 @@ def open_window(builder: list[Callable] | Callable):
         map_plots = []
 
         if callable(builder):
-            map_plots.append(builder())
+            map_plots.append(builder())  # ty:ignore[call-top-callable]
         elif isinstance(builder, tuple | set | list):
             map_plots.extend(build() for build in builder)
 

@@ -574,7 +574,7 @@ def train_linear_classifier(
             mode="min",
             patience=patience,
             verbose=1,
-            min_delta=0.001,  # type: ignore
+            min_delta=0.001,
             restore_best_weights=True,
         ),
     ]

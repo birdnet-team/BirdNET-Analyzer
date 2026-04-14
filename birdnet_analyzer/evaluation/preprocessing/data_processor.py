@@ -9,6 +9,7 @@ training or evaluation.
 
 import os
 import warnings
+from collections.abc import Sequence
 from typing import ClassVar
 
 import numpy as np
@@ -239,7 +240,7 @@ class DataProcessor:
                 class_col_pred = self.get_column_name("Class", prediction=True)
                 self.predictions_df[class_col_pred] = self.predictions_df[
                     class_col_pred
-                ].apply(lambda x: self.class_mapping.get(x, x))
+                ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
         else:
             # Case: Specific files are provided for predictions and annotations.
             # Ensure filenames correspond to the same recording (heuristic check).
@@ -281,7 +282,7 @@ class DataProcessor:
                 class_col_pred = self.get_column_name("Class", prediction=True)
                 self.predictions_df[class_col_pred] = self.predictions_df[
                     class_col_pred
-                ].apply(lambda x: self.class_mapping.get(x, x))
+                ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
 
         # Consolidate all unique classes from predictions and annotations
         class_col_pred = self.get_column_name("Class", prediction=True)
@@ -693,7 +694,7 @@ class DataProcessor:
 
     def get_filtered_tensors(
         self,
-        selected_classes: list[str] | None = None,
+        selected_classes: Sequence[str] | None = None,
         selected_recordings: list[str] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, tuple[str, ...]]:
         """

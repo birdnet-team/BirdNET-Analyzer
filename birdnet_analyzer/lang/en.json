@@ -233,6 +233,8 @@
     "settings-tab-theme-dropdown-light-option": "Light",
     "settings-tab-title": "Settings",
     "single-audio-label": "file",
+    "single-tab-select-file-button-label": "Select Audio File",
+    "single-tab-no-file-selected-placeholder": "No file selected",
     "single-tab-analyze-file-error": "Could not analyze file",
     "single-tab-download-csv-button-label": "Download CSV",
     "single-tab-download-kaleidoscope-button-label": "Download Kaleidoscope table",

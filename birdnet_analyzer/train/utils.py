@@ -238,7 +238,6 @@ def _load_training_data(
         n_workers=None,
         progress_callback=None,
         prefetch_ratio=GLOBAL_PREFETCH_RATIO,
-        n_feeders=1,
     ) as session:
 
         def load_data(data_path, allowed_folders):
@@ -487,8 +486,8 @@ def train_model(
                         yield (
                             x_train[train_idx],
                             y_train[train_idx],
-                            [],
-                            [],
+                            np.array([]),
+                            np.array([]),
                             val_split,
                         )
                 else:
@@ -615,7 +614,7 @@ def train_model(
             study.optimize(objective, n_trials=autotune_trials)
         except model.get_empty_class_exception() as e:
             e.message = (
-                f"Class with label {labels[e.index]} is empty. "  # type: ignore
+                f"Class with label {labels[e.index]} is empty. "
                 "Please remove it from the training data."
             )
             e.args = (e.message,)
@@ -669,7 +668,7 @@ def train_model(
         )
     except model.get_empty_class_exception() as e:
         e.message = (
-            f"Class with label {labels[e.index]} is empty. "  # type: ignore
+            f"Class with label {labels[e.index]} is empty. "
             "Please remove it from the training data."
         )
         e.args = (e.message,)
