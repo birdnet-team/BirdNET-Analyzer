@@ -654,6 +654,12 @@ def save_detached_classifier(
 
     detached_model.export(detached_classifier_path)
 
+    converter = tf.lite.TFLiteConverter.from_keras_model(detached_model)
+    tflite_model: bytes = converter.convert()
+
+    with open(detached_classifier_path + ".tflite", "wb") as f:
+        f.write(tflite_model)
+
 def save_linear_classifier(
     classifier,
     model_path: str,
