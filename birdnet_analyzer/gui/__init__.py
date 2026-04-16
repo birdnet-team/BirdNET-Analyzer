@@ -18,7 +18,7 @@ def main():
             mfa.build_multi_analysis_tab,
             train.build_train_tab,
             gs.build_segments_tab,
-            review.build_review_tab,
+            # review.build_review_tab,
             species.build_species_tab,
             embeddings.build_embeddings_tab,
             search.build_search_tab,

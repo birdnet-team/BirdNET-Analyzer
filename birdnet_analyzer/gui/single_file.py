@@ -162,17 +162,16 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             editable=False,
         )
 
-        with gr.Group():
-            spectogram_output = gr.Plot(
+        with gr.Group(visible=False) as spectrogram_group:
+            spectrogram_output = gr.Plot(
                 label=loc.localize("review-tab-spectrogram-plot-label"),
-                visible=False,
                 show_label=False,
             )
-            generate_spectrogram_cb = gr.Checkbox(
-                value=False,
-                label=loc.localize("single-tab-spectrogram-checkbox-label"),
-                info=loc.localize("single-tab-spectrogram-checkbox-info"),
-            )
+        generate_spectrogram_cb = gr.Checkbox(
+            value=False,
+            label=loc.localize("single-tab-spectrogram-checkbox-label"),
+            info=loc.localize("single-tab-spectrogram-checkbox-info"),
+        )
         audio_path_state = gr.State()
         last_prediction_state = gr.State()
         sample_settings, species_settings, model_settings = (
@@ -200,10 +199,11 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             segment_audio = gr.Audio(
                 autoplay=True,
                 type="numpy",
-                buttons=["download"],
+                # buttons=["download"], # gradio>=6
                 show_label=False,
                 editable=False,
                 visible=False,
+                show_download_button=True,
             )
 
         output_dataframe = gr.Dataframe(
@@ -220,7 +220,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             interactive=False,
         )
 
-        def select_and_load_audio_file(generate_spectrogram):
+        def select_and_load_audio_file(generate_spectrogram=False):
             """Use webview dialog to select audio file and load it."""
             file_path = gu.select_file(
                 filetypes=(
@@ -245,19 +245,20 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                             ),
                         )
                         if generate_spectrogram
-                        else gr.Plot(visible=False)
+                        else gr.update(visible=False)
                     )
 
                     return (
-                        file_path,  # audio_path_state
-                        os.path.basename(file_path),  # selected_file_label
+                        file_path,
+                        os.path.basename(file_path),
                         gr.update(
                             visible=True,
                             value=(sr, data),
                             label=os.path.basename(file_path),
-                        ),  # audio_input
-                        spectrogram,  # spectogram_output
-                        gr.update(interactive=True),  # single_file_analyze
+                        ),
+                        gr.update(visible=generate_spectrogram),
+                        spectrogram,
+                        gr.update(interactive=True),
                     )
                 except Exception as e:
                     raise gr.Error(
@@ -270,18 +271,21 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 "",
                 gr.update(visible=False),
                 gr.update(visible=False),
+                None,
                 gr.update(interactive=False),
             )
 
         def try_generate_spectrogram(audio_path, generate_spectrogram):
             if audio_path and generate_spectrogram:
                 try:
-                    return gr.Plot(
-                        visible=True,
-                        value=utils.spectrogram_from_file(
-                            audio_path,
-                            fig_size=(20, 4),
-                            fig_num=MATPLOTLIB_FIGURE_NUM,
+                    return (
+                        gr.update(visible=True),
+                        gr.update(
+                            value=utils.spectrogram_from_file(
+                                audio_path,
+                                fig_size=(20, 4),
+                                fig_num=MATPLOTLIB_FIGURE_NUM,
+                            ),
                         ),
                     )
                 except Exception as e:
@@ -289,12 +293,12 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                         loc.localize("single-tab-generate-spectrogram-error")
                     ) from e
             else:
-                return gr.Plot(visible=False)
+                return (gr.update(visible=False), None)
 
         generate_spectrogram_cb.change(
             try_generate_spectrogram,
             inputs=[audio_path_state, generate_spectrogram_cb],
-            outputs=spectogram_output,
+            outputs=[spectrogram_group, spectrogram_output],
         )
 
         select_file_button.click(
@@ -304,7 +308,8 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 audio_path_state,
                 selected_file_label,
                 audio_input,
-                spectogram_output,
+                spectrogram_group,
+                spectrogram_output,
                 single_file_analyze,
             ],
         )
@@ -422,6 +427,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         species_settings["lon_number"],
         species_settings["map_plot"],
     )
+    return None
 
 
 if __name__ == "__main__":

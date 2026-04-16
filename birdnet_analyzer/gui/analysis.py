@@ -105,15 +105,15 @@ def run_analysis(
             species_list_file, loc.localize("validation-no-species-list-selected")
         )
 
-    locale = locale.lower()
+    locale = locale.lower()  # ty:ignore[invalid-assignment]
     custom_classifier = (
         custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
     )
     use_perch = selected_model == gu._USE_PERCH
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
-    lat = lat if species_list_choice == gu._PREDICT_SPECIES else None
-    lon = lon if species_list_choice == gu._PREDICT_SPECIES else None
-    week = None if use_yearlong else week
+    lat = lat if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
+    lon = lon if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
+    week = None if use_yearlong else week  # ty:ignore[invalid-assignment]
     audio_speed = (
         max(0.1, 1.0 / (audio_speed * -1))
         if audio_speed < 0

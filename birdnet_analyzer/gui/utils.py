@@ -314,7 +314,8 @@ def build_settings():
             ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
-            buttons=["copy"],
+            # buttons=["copy"], # gradio>=6
+            show_copy_button=True,
         )
 
         def on_language_change(value):
@@ -856,9 +857,8 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
             return gr.update(value=[], visible=False)
 
         species_list = utils.read_lines(file, fail_on_blank_lines=True)
-        print(species_list)
 
-        return gr.update(value=species_list, visible=True)
+        return gr.update(value=[[el] for el in species_list], visible=True)
 
     species_file_input.change(
         on_species_file_change,
@@ -1024,7 +1024,16 @@ def open_window(
     global _URL
     multiprocessing.freeze_support()
 
-    with gr.Blocks(analytics_enabled=False) as demo:
+    with (
+        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,  # gradio>=6
+        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+        gr.Blocks(
+            theme=gr.themes.Default(),
+            analytics_enabled=False,
+            css=css_file.read(),
+            js=js_file.read(),
+        ) as demo,
+    ):
         build_header()
 
         map_plots = []
@@ -1054,20 +1063,16 @@ def open_window(
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
-    with (
-        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
-        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
-    ):
-        _URL = demo.queue(api_open=False).launch(
-            css=css_file.read(),
-            js=js_file.read(),
-            theme=gr.themes.Default(),
-            prevent_thread_lock=True,
-            quiet=True,
-            enable_monitoring=False,
-            allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
-            footer_links=[],
-        )[1]
+    _URL = demo.queue(api_open=False).launch(
+        # css=css_file.read(), # gradio>=6
+        # js=js_file.read(),
+        # theme=gr.themes.Default(),
+        prevent_thread_lock=True,
+        quiet=True,
+        enable_monitoring=False,
+        allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
+        # footer_links=[], # gradio>=6
+    )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
