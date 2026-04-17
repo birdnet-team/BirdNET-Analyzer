@@ -769,7 +769,7 @@ def model_selection(opened=True):
 
         species_list_df = gr.List(
             value=[],
-            headers=["Species"],  # TODO: internationalize header
+            headers=[loc.localize("species-list-header")],
             max_height=200,
             show_label=False,
             visible=False,
@@ -839,7 +839,7 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
 
         list_df = gr.List(
             value=[],
-            headers=["Species"],  # TODO: internationalize header
+            headers=[loc.localize("species-list-header")],
             max_height=200,
             show_label=False,
             visible=False,

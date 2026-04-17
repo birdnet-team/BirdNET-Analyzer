@@ -631,12 +631,24 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             gr.Row(),
         ):
             metric_info = {
-                "AUROC": loc.localize("eval-tab-auroc-checkbox-info"),
-                "Precision": loc.localize("eval-tab-precision-checkbox-info"),
-                "Recall": loc.localize("eval-tab-recall-checkbox-info"),
-                "F1 Score": loc.localize("eval-tab-f1-score-checkbox-info"),
-                "Average Precision (AP)": loc.localize("eval-tab-ap-checkbox-info"),
-                "Accuracy": loc.localize("eval-tab-accuracy-checkbox-info"),
+                loc.localize("eval-tab-metric-auroc-label"): loc.localize(
+                    "eval-tab-auroc-checkbox-info"
+                ),
+                loc.localize("eval-tab-metric-precision-label"): loc.localize(
+                    "eval-tab-precision-checkbox-info"
+                ),
+                loc.localize("eval-tab-metric-recall-label"): loc.localize(
+                    "eval-tab-recall-checkbox-info"
+                ),
+                loc.localize("eval-tab-metric-f1-score-label"): loc.localize(
+                    "eval-tab-f1-score-checkbox-info"
+                ),
+                loc.localize("eval-tab-metric-ap-label"): loc.localize(
+                    "eval-tab-ap-checkbox-info"
+                ),
+                loc.localize("eval-tab-metric-accuracy-label"): loc.localize(
+                    "eval-tab-accuracy-checkbox-info"
+                ),
             }
             metrics_checkboxes = {}
 
@@ -683,7 +695,10 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         with gr.Group(visible=False) as plot_group:
             plot_output = gr.Plot(show_label=False)
-            plot_output_dl_btn = gr.Button("Download plot", size="sm")
+            plot_output_dl_btn = gr.Button(
+                loc.localize("eval-tab-download-plot-button-label"),
+                size="sm",
+            )
 
         # Update available selections (classes and recordings) and the processor state
         # when files or mapping file change.

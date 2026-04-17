@@ -312,7 +312,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                                                 outputs=hidden_audio,
                                             )
                                             checkbox = gr.Checkbox(
-                                                label="Export", value=(index in exports)
+                                                label=loc.localize("embeddings-search-export-checkbox-label"), value=(index in exports)
                                             )
                                             checkbox.change(
                                                 update_export_state,
@@ -328,9 +328,9 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                                 db.db.close()
 
                         with gr.Row():
-                            prev_btn = gr.Button("Previous Page", interactive=page > 0)
+                            prev_btn = gr.Button(loc.localize("embeddings-search-previous-page-button-label"), interactive=page > 0)
                             next_btn = gr.Button(
-                                "Next Page", interactive=page < len(results) - 1
+                                loc.localize("embeddings-search-next-page-button-label"), interactive=page < len(results) - 1
                             )
 
                         def prev_page(page):

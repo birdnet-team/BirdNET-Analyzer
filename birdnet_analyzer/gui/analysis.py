@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import gradio as gr
 
+import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 
 if TYPE_CHECKING:
@@ -22,18 +23,15 @@ def on_progress(update: AcousticProgressStats, progress: gr.Progress):
     if progress is None:
         return
 
-    # TODO: desc String with translation
-    # TODO: unit translation (exists already?)
-
     if update.processed_segments and update.total_segments:
         progress(
             (update.processed_segments, update.total_segments),
             total=update.total_segments,
-            unit="files",
-            desc="es war einmal",
+            unit=loc.localize("progress-unit-files"),
+            desc=loc.localize("progress-analyzing"),
         )
     else:
-        progress(update.progress_pct, desc="es war einmal", unit="%")
+        progress(update.progress_pct, desc=loc.localize("progress-analyzing"), unit="%")
 
 
 def run_analysis(

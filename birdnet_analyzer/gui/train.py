@@ -685,7 +685,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                             loc.localize("training-tab-upsampling-radio-option-linear"),
                             "linear",
                         ),
-                        ("SMOTE", "smote"),
+                        (loc.localize("training-tab-upsampling-radio-option-smote"), "smote"),
                     ],
                     value="repeat",
                     label=loc.localize("training-tab-upsampling-radio-label"),
@@ -777,16 +777,16 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         train_history_plot = gr.Plot(show_label=False)
         metrics_table = gr.Dataframe(
             headers=[
-                "Class",
-                "Precision",
-                "Recall",
-                "F1 Score",
-                "AUPRC",
-                "AUROC",
-                "Samples",
+                loc.localize("training-tab-metrics-class-header"),
+                loc.localize("training-tab-metrics-precision-header"),
+                loc.localize("training-tab-metrics-recall-header"),
+                loc.localize("training-tab-metrics-f1-header"),
+                loc.localize("training-tab-metrics-auprc-header"),
+                loc.localize("training-tab-metrics-auroc-header"),
+                loc.localize("training-tab-metrics-samples-header"),
             ],
             visible=False,
-            label="Model Performance Metrics (Default Threshold 0.5)",
+            label=loc.localize("training-tab-metrics-table-label"),
         )
         start_training_button = gr.Button(
             loc.localize("training-tab-start-training-button-label"),
@@ -801,7 +801,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
 
                 table_data.append(
                     [
-                        "OVERALL (Macro-avg)",
+                        loc.localize("training-tab-metrics-overall-label"),
                         f"{metrics['macro_precision_default']:.4f}",
                         f"{metrics['macro_recall_default']:.4f}",
                         f"{metrics['macro_f1_default']:.4f}",

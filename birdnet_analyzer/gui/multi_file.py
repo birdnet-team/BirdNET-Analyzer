@@ -4,22 +4,26 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 
-OUTPUT_TYPE_MAP = {
-    "Raven selection table": "table",
-    "Audacity": "audacity",
-    "CSV": "csv",
-    "Kaleidoscope": "kaleidoscope",
-}
-ADDITIONAL_COLUMNS_MAP = {
-    "Latitude": "lat",
-    "Longitude": "lon",
-    "Week": "week",
-    "Overlap": "overlap",
-    "Sensitivity": "sensitivity",
-    "Minimum confidence": "min_conf",
-    "Species list file": "species_list",
-    "Model file": "model",
-}
+def _output_type_map():
+    return {
+        loc.localize("multi-tab-output-type-raven-label"): "table",
+        loc.localize("multi-tab-output-type-audacity-label"): "audacity",
+        loc.localize("multi-tab-output-type-csv-label"): "csv",
+        loc.localize("multi-tab-output-type-kaleidoscope-label"): "kaleidoscope",
+    }
+
+
+def _additional_columns_map():
+    return {
+        loc.localize("multi-tab-additional-column-latitude-label"): "lat",
+        loc.localize("multi-tab-additional-column-longitude-label"): "lon",
+        loc.localize("multi-tab-additional-column-week-label"): "week",
+        loc.localize("multi-tab-additional-column-overlap-label"): "overlap",
+        loc.localize("multi-tab-additional-column-sensitivity-label"): "sensitivity",
+        loc.localize("multi-tab-additional-column-min-confidence-label"): "min_conf",
+        loc.localize("multi-tab-additional-column-species-list-label"): "species_list",
+        loc.localize("multi-tab-additional-column-model-file-label"): "model",
+    }
 
 
 @gu.gui_runtime_error_handler
@@ -142,7 +146,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                         folder,
                         [
                             *files_and_durations[:100],
-                            (f"{len(files_and_durations) - 100} more...", "..."),
+                            (f"{len(files_and_durations) - 100} {loc.localize('multi-tab-more-files-label')}", "..."),
                         ],
                     ]
                 if not files_and_durations:
@@ -199,13 +203,13 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True),
         ):
             output_type_radio = gr.CheckboxGroup(
-                list(OUTPUT_TYPE_MAP.items()),
+                list(_output_type_map().items()),
                 value="table",
                 label=loc.localize("multi-tab-output-radio-label"),
                 info=loc.localize("multi-tab-output-radio-info"),
             )
             additional_columns_ = gr.CheckboxGroup(
-                list(ADDITIONAL_COLUMNS_MAP.items()),
+                list(_additional_columns_map().items()),
                 visible=False,
                 label=loc.localize("multi-tab-additional-columns-checkbox-label"),
                 info=loc.localize("multi-tab-additional-columns-checkbox-info"),
