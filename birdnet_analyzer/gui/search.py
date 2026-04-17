@@ -114,19 +114,24 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
 
         with gr.Row():
             with gr.Column():
-                db_selection_button = gr.Button(
-                    loc.localize("embeddings-search-db-selection-button-label")
-                )
+                with gr.Group(), gr.Row(equal_height=True):
+                    db_selection_button = gr.Button(
+                        loc.localize("embeddings-search-db-selection-button-label"),
+                        variant="primary",
+                    )
+                    db_selection_tb = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "embeddings-search-db-selection-textbox-placeholder"
+                        ),
+                        scale=3,
+                        max_lines=1,
+                        rtl=True,
+                        elem_classes="path-textbox",
+                    )
                 with gr.Group():
                     with gr.Row():
-                        db_selection_tb = gr.Textbox(
-                            label=loc.localize(
-                                "embeddings-search-db-selection-textbox-label"
-                            ),
-                            max_lines=3,
-                            interactive=False,
-                            visible=False,
-                        )
                         db_embedding_count_number = gr.Number(
                             interactive=False,
                             visible=False,
@@ -149,31 +154,43 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                                 "embeddings-search-db-audio-speed-number-label"
                             ),
                         )
-                with gr.Row():
+                with gr.Group(), gr.Row(equal_height=True):
                     audio_root_selection_button = gr.Button(
                         loc.localize(
                             "embeddings-search-audio-root-selection-button-label"
-                        )
-                    )
-                with gr.Row():
-                    audio_root_selection_tb = gr.Textbox(
-                        label=loc.localize(
-                            "embeddings-search-audio-root-selection-textbox-label"
                         ),
-                        max_lines=3,
+                        variant="primary",
+                    )
+                    audio_root_selection_tb = gr.Textbox(
+                        show_label=False,
                         interactive=False,
-                        visible=False,
+                        placeholder=loc.localize(
+                            "embeddings-search-audio-root-selection-textbox-placeholder"
+                        ),
+                        scale=3,
+                        max_lines=1,
+                        elem_classes="path-textbox",
+                        rtl=True,
                     )
 
                 query_spectrogram = gr.Plot(show_label=False)
-                select_query_btn = gr.Button(
-                    loc.localize("embeddings-search-select-query-button-label")
-                )
-                query_sample_tb = gr.Textbox(
-                    label=loc.localize("embeddings-search-query-sample-textbox-label"),
-                    visible=False,
-                    interactive=False,
-                )
+
+                with gr.Group(), gr.Row(equal_height=True):
+                    select_query_btn = gr.Button(
+                        loc.localize("embeddings-search-select-query-button-label"),
+                        variant="primary",
+                    )
+                    query_sample_tb = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "embeddings-search-query-sample-textbox-placeholder"
+                        ),
+                        scale=3,
+                        rtl=True,
+                        max_lines=1,
+                        elem_classes="path-textbox",
+                    )
 
                 crop_mode = gr.Radio(
                     [
@@ -338,24 +355,32 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
     def on_db_selection_click():
         folder = gu.select_folder(state_key="embeddings_search_db")
 
-        error_result = (
-            gr.Textbox(visible=False),
-            gr.Textbox(),
-            gr.Textbox(visible=False),
-            gr.Textbox(visible=False),
-            gr.Textbox(visible=False),
-            [],
-            {},
-            gr.Button(visible=False),
-            gr.Textbox(visible=False),
-        )
-
         if not folder:
-            return error_result
+            return (
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            )
 
         if not os.path.exists(os.path.join(folder, "hoplite.sqlite")):
             raise gr.Error(loc.localize("embeddings-search-db-selection-error"))
-            return error_result
+            return (
+                "",
+                "",
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                [],
+                {},
+                gr.update(visible=False),
+                "",
+            )
 
         try:
             db = get_embeddings_database(folder)
@@ -370,28 +395,25 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
         db.db.close()
 
         return (
-            gr.Textbox(value=folder, visible=True),
-            gr.Textbox(value=audio_root, visible=True),
-            gr.Number(value=embedding_count, visible=True),
-            gr.Textbox(visible=True, value=frequencies),
-            gr.Number(visible=True, value=speed),
+            folder,
+            audio_root,
+            gr.update(value=embedding_count, visible=True),
+            gr.update(visible=True, value=frequencies),
+            gr.update(visible=True, value=speed),
             [],
             {},
-            gr.Button(visible=True),
-            gr.Textbox(value=None, visible=True),
+            gr.update(visible=True),
+            "",  # TODO @mamau: warum überhaupt hier?
         )
 
     def on_audio_root_selection_click():
         folder = gu.select_folder(state_key="embeddings_search_audio_root")
 
-        if folder:
-            return gr.Textbox(value=folder, visible=True)
-
-        return gr.Textbox(visible=False)
+        return folder or gr.update()
 
     def select_query_sample():
         file = gu.select_file(state_key="query_sample")
-        return gr.Textbox(file, visible=True)
+        return file or gr.update()
 
     select_query_btn.click(select_query_sample, outputs=[query_sample_tb])
 

@@ -127,10 +127,19 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
 
         with gr.Group(), gr.Row(equal_height=True):
             select_audio_directory_btn = gr.Button(
-                loc.localize("embeddings-tab-select-input-directory-button-label")
+                loc.localize("embeddings-tab-select-input-directory-button-label"),
+                variant="primary",
             )
             selected_audio_directory_tb = gr.Textbox(
-                show_label=False, interactive=False, scale=2
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "embeddings-tab-select-input-directory-textbox-placeholder"
+                ),
+                scale=3,
+                rtl=True,
+                max_lines=1,
+                elem_classes="path-textbox",
             )
             select_audio_directory_btn.click(
                 partial(
@@ -143,7 +152,8 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
 
         with gr.Group(), gr.Row(equal_height=True):
             select_db_directory_btn = gr.Button(
-                loc.localize("embeddings-tab-select-db-directory-button-label")
+                loc.localize("embeddings-tab-select-db-directory-button-label"),
+                variant="primary",
             )
             db_path_tb = gr.Textbox(
                 show_label=False,
@@ -151,7 +161,12 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
                 show_copy_button=True,
                 interactive=False,
                 info="⚠️ " + loc.localize("embeddings-tab-dp-path-textbox-info"),
-                scale=2,
+                placeholder=loc.localize(
+                    "embeddings-tab-select-db-directory-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
             )
 
         with gr.Group(visible=False) as file_output_row, gr.Row(equal_height=True):
@@ -239,16 +254,16 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
 
                             return (
                                 dir_name,
-                                gr.Textbox(value=dir_name),
-                                gr.Slider(
+                                gr.update(value=dir_name),
+                                gr.update(
                                     value=settings["AUDIO_SPEED"],
                                     interactive=False,
                                 ),
-                                gr.Number(
+                                gr.update(
                                     value=settings["BANDPASS_FMIN"],
                                     interactive=False,
                                 ),
-                                gr.Number(
+                                gr.update(
                                     value=settings["BANDPASS_FMAX"],
                                     interactive=False,
                                 ),
@@ -261,17 +276,15 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
 
                 return (
                     dir_name,
-                    gr.Textbox(value=dir_name),
-                    gr.Slider(interactive=True),
-                    gr.Number(interactive=True),
-                    gr.Number(interactive=True),
+                    gr.update(value=dir_name),
+                    gr.update(interactive=True),
+                    gr.update(interactive=True),
+                    gr.update(interactive=True),
                     gr.update(visible=True),
                 )
 
-            value = current_state or None
-
             return (
-                value,
+                gr.update(),
                 gr.update(),
                 gr.update(),
                 gr.update(),

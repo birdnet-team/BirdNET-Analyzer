@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-from functools import partial
 from pathlib import Path
 
 import gradio as gr
@@ -249,84 +248,137 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         output_directory_state = gr.State()
         test_data_dir_state = gr.State()
 
-        with gr.Row():
-            with gr.Column():
-                select_directory_btn = gr.Button(
-                    loc.localize("training-tab-input-selection-button-label")
-                )
-                directory_input = gr.List(
-                    headers=[
-                        loc.localize(
-                            "training-tab-classes-dataframe-column-classes-header"
-                        )
-                    ],
-                    interactive=False,
-                    max_height=_GRID_MAX_HEIGHT,
-                )
-                select_directory_btn.click(
-                    partial(select_subdirectories, state_key="train-data-dir"),
-                    outputs=[input_directory_state, directory_input],
-                    show_progress="hidden",
+        with gr.Group(), gr.Row(equal_height=True):
+            select_directory_btn = gr.Button(
+                loc.localize("training-tab-input-selection-button-label"),
+                variant="primary",
+            )
+            selected_input_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "training-tab-input-selection-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                rtl=True,
+                elem_classes="path-textbox",
+            )
+
+        directory_input = gr.List(
+            headers=[
+                loc.localize("training-tab-classes-dataframe-column-classes-header")
+            ],
+            interactive=False,
+            max_height=_GRID_MAX_HEIGHT,
+        )
+
+        def select_directory(state_key):
+            def selection_fn():
+                result = select_subdirectories(state_key=state_key)
+
+                if result[0]:
+                    return result[0], result[0], result[1]
+
+                return gr.update(), gr.update(), gr.update()
+
+            return selection_fn
+
+        select_directory_btn.click(
+            select_directory("train-data-dir"),
+            outputs=[input_directory_state, selected_input_textbox, directory_input],
+            show_progress="hidden",
+        )
+
+        with gr.Group(), gr.Row(equal_height=True):
+            select_test_directory_btn = gr.Button(
+                loc.localize("training-tab-test-data-selection-button-label"),
+                variant="primary",
+            )
+            selected_test_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "training-tab-test-data-selection-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
+                rtl=True,
+            )
+
+        test_directory_input = gr.List(
+            headers=[
+                loc.localize("training-tab-classes-dataframe-column-classes-header")
+            ],
+            interactive=False,
+            max_height=_GRID_MAX_HEIGHT,
+        )
+
+        select_test_directory_btn.click(
+            select_directory("test-data-dir"),
+            outputs=[test_data_dir_state, selected_test_textbox, test_directory_input],
+            show_progress="hidden",
+        )
+
+        with gr.Group(), gr.Row(equal_height=True):
+            select_classifier_directory_btn = gr.Button(
+                loc.localize("training-tab-select-output-button-label"),
+                variant="primary",
+            )
+            selected_output_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "training-tab-select-output-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
+                rtl=True,
+            )
+
+        with gr.Column():
+            classifier_name = gr.Textbox(
+                "CustomClassifier",
+                visible=False,
+                info=loc.localize("training-tab-classifier-textbox-info"),
+            )
+            output_format = gr.Radio(
+                [
+                    "tflite",
+                    "raven",
+                    (loc.localize("training-tab-output-format-both"), "both"),
+                ],
+                value="tflite",
+                label=loc.localize("training-tab-output-format-radio-label"),
+                info=loc.localize("training-tab-output-format-radio-info"),
+                visible=False,
+            )
+
+        def select_classifier_directory_and_update_tb():
+            dir_name = gu.select_folder(state_key="train-output-dir")
+
+            if dir_name:
+                return (
+                    dir_name,
+                    dir_name,
+                    gr.update(label=dir_name, visible=True),
+                    gr.update(visible=True, interactive=True),
                 )
 
-                select_test_directory_btn = gr.Button(
-                    loc.localize("training-tab-test-data-selection-button-label")
-                )
-                test_directory_input = gr.List(
-                    headers=[
-                        loc.localize(
-                            "training-tab-classes-dataframe-column-classes-header"
-                        )
-                    ],
-                    interactive=False,
-                    max_height=_GRID_MAX_HEIGHT,
-                )
-                select_test_directory_btn.click(
-                    partial(select_subdirectories, state_key="test-data-dir"),
-                    outputs=[test_data_dir_state, test_directory_input],
-                    show_progress="hidden",
-                )
+            return gr.update(), gr.update(), gr.update(), gr.update()
 
-            with gr.Column():
-                select_classifier_directory_btn = gr.Button(
-                    loc.localize("training-tab-select-output-button-label")
-                )
-
-                with gr.Column():
-                    classifier_name = gr.Textbox(
-                        "CustomClassifier",
-                        visible=False,
-                        info=loc.localize("training-tab-classifier-textbox-info"),
-                    )
-                    output_format = gr.Radio(
-                        [
-                            "tflite",
-                            "raven",
-                            (loc.localize("training-tab-output-format-both"), "both"),
-                        ],
-                        value="tflite",
-                        label=loc.localize("training-tab-output-format-radio-label"),
-                        info=loc.localize("training-tab-output-format-radio-info"),
-                        visible=False,
-                    )
-
-                def select_directory_and_update_tb():
-                    dir_name = gu.select_folder(state_key="train-output-dir")
-
-                    if dir_name:
-                        return (
-                            dir_name,
-                            gr.Textbox(label=dir_name, visible=True),
-                            gr.Radio(visible=True, interactive=True),
-                        )
-
-                    return None, None
-
-                select_classifier_directory_btn.click(
-                    select_directory_and_update_tb,
-                    outputs=[output_directory_state, classifier_name, output_format],
-                    show_progress="hidden",
-                )
+        select_classifier_directory_btn.click(
+            select_classifier_directory_and_update_tb,
+            outputs=[
+                output_directory_state,
+                selected_output_textbox,
+                classifier_name,
+                output_format,
+            ],
+            show_progress="hidden",
+        )
 
         with gr.Row():
             cache_file_state = gr.State()
@@ -341,9 +393,24 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 info=loc.localize("training-tab-cache-mode-radio-info"),
             )
             with gr.Column(visible=False) as new_cache_file_row:
-                select_cache_file_directory_btn = gr.Button(
-                    loc.localize("training-tab-cache-select-directory-button-label")
-                )
+                with gr.Group(), gr.Row(equal_height=True):
+                    select_cache_file_directory_btn = gr.Button(
+                        loc.localize(
+                            "training-tab-cache-select-directory-button-label"
+                        ),
+                        variant="primary",
+                    )
+                    selected_cache_dir_textbox = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "training-tab-cache-select-directory-textbox-placeholder"
+                        ),
+                        scale=3,
+                        max_lines=1,
+                        elem_classes="path-textbox",
+                        rtl=True,
+                    )
 
                 with gr.Column():
                     cache_file_name = gr.Textbox(
@@ -352,7 +419,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                         info=loc.localize("training-tab-cache-file-name-textbox-info"),
                     )
 
-                def select_directory_and_update():
+                def select_cache_directory_and_update():
                     dir_name = gu.select_folder(
                         state_key="train-data-cache-file-output"
                     )
@@ -360,21 +427,40 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     if dir_name:
                         return (
                             dir_name,
-                            gr.Textbox(label=dir_name, visible=True),
+                            dir_name,
+                            gr.update(label=dir_name, visible=True),
                         )
 
-                    return None, None
+                    return gr.update(), gr.update(), gr.update()
 
                 select_cache_file_directory_btn.click(
-                    select_directory_and_update,
-                    outputs=[cache_file_state, cache_file_name],
+                    select_cache_directory_and_update,
+                    outputs=[
+                        cache_file_state,
+                        selected_cache_dir_textbox,
+                        cache_file_name,
+                    ],
                     show_progress="hidden",
                 )
 
             with gr.Column(visible=False) as load_cache_file_row:
-                selected_cache_file_btn = gr.Button(
-                    loc.localize("training-tab-cache-select-file-button-label")
-                )
+                with gr.Group(), gr.Row(equal_height=True):
+                    selected_cache_file_btn = gr.Button(
+                        loc.localize("training-tab-cache-select-file-button-label"),
+                        variant="primary",
+                    )
+                    selected_cache_file_textbox = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "training-tab-cache-select-file-textbox-placeholder"
+                        ),
+                        scale=3,
+                        max_lines=1,
+                        elem_classes="path-textbox",
+                        rtl=True,
+                    )
+
                 cache_file_input = gr.File(
                     file_types=[".npz"], visible=False, interactive=False
                 )
@@ -385,13 +471,17 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     )
 
                     if file:
-                        return file, gr.File(value=file, visible=True)
+                        return file, file, gr.update(value=file, visible=True)
 
-                    return None, None
+                    return gr.update(), gr.update(), gr.update()
 
                 selected_cache_file_btn.click(
                     on_cache_file_selection_click,
-                    outputs=[cache_file_state, cache_file_input],
+                    outputs=[
+                        cache_file_state,
+                        selected_cache_file_textbox,
+                        cache_file_input,
+                    ],
                     show_progress="hidden",
                 )
 

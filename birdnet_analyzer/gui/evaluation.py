@@ -426,41 +426,73 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 if folder:
                     files = get_selection_tables(folder)
                     files_to_display = (
-                        [*files[:100], ["..."]] if len(files) > 100 else files
+                        [*files[:100], [f"{len(files) - 100} more..."]]
+                        if len(files) > 100
+                        else files
                     )
                     return [
                         files,
+                        folder,
                         files_to_display,
                         gr.update(visible=True),
                         *on_select(files),
                     ]
 
-                return ["", [[loc.localize("eval-tab-no-files-found")]]]
+                return [
+                    "",
+                    "",
+                    [[loc.localize("eval-tab-no-files-found")]],
+                ]
 
             return select_directory_on_empty
 
-        with gr.Row():
-            with gr.Column():
-                annotation_select_directory_btn = gr.Button(
-                    loc.localize("eval-tab-annotation-selection-button-label")
-                )
-                annotation_directory_input = gr.Matrix(
-                    interactive=False,
-                    headers=[
-                        loc.localize("eval-tab-selections-column-file-header"),
-                    ],
-                )
+        with gr.Group(), gr.Row(equal_height=True):
+            annotation_select_directory_btn = gr.Button(
+                loc.localize("eval-tab-annotation-selection-button-label"),
+                variant="primary",
+            )
+            annotation_selected_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "eval-tab-annotation-selection-textbox-placeholder"
+                ),
+                rtl=True,
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
+            )
 
-            with gr.Column():
-                prediction_select_directory_btn = gr.Button(
-                    loc.localize("eval-tab-prediction-selection-button-label")
-                )
-                prediction_directory_input = gr.Matrix(
-                    interactive=False,
-                    headers=[
-                        loc.localize("eval-tab-selections-column-file-header"),
-                    ],
-                )
+        annotation_directory_input = gr.Matrix(
+            interactive=False,
+            headers=[
+                loc.localize("eval-tab-selections-column-file-header"),
+            ],
+        )
+
+        with gr.Group(), gr.Row(equal_height=True):
+            prediction_select_directory_btn = gr.Button(
+                loc.localize("eval-tab-prediction-selection-button-label"),
+                variant="primary",
+            )
+            prediction_selected_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "eval-tab-prediction-selection-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
+                rtl=True,
+            )
+
+        prediction_directory_input = gr.Matrix(
+            interactive=False,
+            headers=[
+                loc.localize("eval-tab-selections-column-file-header"),
+            ],
+        )
 
         # ----------------------- Annotations Columns Box -----------------------
         with (
@@ -898,6 +930,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             get_selection_func("eval-annotations-dir", update_annotation_columns),
             outputs=[
                 annotation_files_state,
+                annotation_selected_textbox,
                 annotation_directory_input,
                 annotation_group,
             ]
@@ -918,6 +951,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             get_selection_func("eval-predictions-dir", update_prediction_columns),
             outputs=[
                 prediction_files_state,
+                prediction_selected_textbox,
                 prediction_directory_input,
                 prediction_group,
             ]

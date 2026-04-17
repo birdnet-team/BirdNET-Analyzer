@@ -106,65 +106,89 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         input_directory_state = gr.State()
         output_directory_predict_state = gr.State()
 
-        with gr.Row():
-            with gr.Column():
-                select_directory_btn = gr.Button(
-                    loc.localize("multi-tab-input-selection-button-label")
-                )
-                directory_input = gr.Matrix(
-                    interactive=False,
-                    headers=[
-                        loc.localize(
-                            "multi-tab-samples-dataframe-column-subpath-header"
-                        ),
-                        loc.localize(
-                            "multi-tab-samples-dataframe-column-duration-header"
-                        ),
-                    ],
-                )
+        with gr.Group(), gr.Row(equal_height=True):
+            select_directory_btn = gr.Button(
+                loc.localize("multi-tab-input-selection-button-label"),
+                variant="primary",
+            )
+            selected_input_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "multi-tab-input-selection-textbox-placeholder"
+                ),
+                scale=3,
+                rtl=True,
+                max_lines=1,
+                elem_classes="path-textbox",
+            )
 
-                def select_directory_on_empty():
-                    folder = gu.select_folder(state_key="batch-analysis-data-dir")
+        directory_input = gr.Matrix(
+            interactive=False,
+            headers=[
+                loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
+                loc.localize("multi-tab-samples-dataframe-column-duration-header"),
+            ],
+        )
 
-                    if folder:
-                        files_and_durations = gu.get_audio_files_and_durations(folder)
-                        if len(files_and_durations) > 100:
-                            return [
-                                folder,
-                                [*files_and_durations[:100], ("...", "...")],
-                            ]
-                        return [folder, files_and_durations]
+        def select_directory_on_empty():
+            folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
+            if folder:
+                files_and_durations = gu.get_audio_files_and_durations(folder)
+                if len(files_and_durations) > 100:
                     return [
-                        "",
+                        folder,
+                        folder,
+                        [
+                            *files_and_durations[:100],
+                            (f"{len(files_and_durations) - 100} more...", "..."),
+                        ],
+                    ]
+                if not files_and_durations:
+                    return [
+                        folder,
+                        folder,
                         [[loc.localize("multi-tab-samples-dataframe-no-files-found")]],
                     ]
+                return [folder, folder, files_and_durations]
 
-                select_directory_btn.click(
-                    select_directory_on_empty,
-                    outputs=[input_directory_state, directory_input],
-                    show_progress="full",
-                )
+            return [
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            ]
 
-            with gr.Column():
-                select_out_directory_btn = gr.Button(
-                    loc.localize("multi-tab-output-selection-button-label")
-                )
-                selected_out_textbox = gr.Textbox(
-                    label=loc.localize("multi-tab-output-textbox-label"),
-                    interactive=False,
-                    placeholder=loc.localize("multi-tab-output-textbox-placeholder"),
-                )
+        select_directory_btn.click(
+            select_directory_on_empty,
+            outputs=[input_directory_state, selected_input_textbox, directory_input],
+            show_progress="full",
+        )
 
-                def select_directory_wrapper():
-                    folder = gu.select_folder(state_key="batch-analysis-output-dir")
-                    return (folder, folder) if folder else ("", "")
+        with gr.Group(), gr.Row(equal_height=True):
+            select_out_directory_btn = gr.Button(
+                loc.localize("multi-tab-output-selection-button-label"),
+                variant="primary",
+            )
+            selected_out_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize("multi-tab-output-textbox-placeholder"),
+                scale=3,
+                max_lines=1,
+                rtl=True,
+                elem_classes="path-textbox",
+            )
 
-                select_out_directory_btn.click(
-                    select_directory_wrapper,
-                    outputs=[output_directory_predict_state, selected_out_textbox],
-                    show_progress="hidden",
-                )
+        def select_directory_wrapper():
+            folder = gu.select_folder(state_key="batch-analysis-output-dir")
+            return (folder, folder) if folder else (gr.update(), gr.update())
+
+        select_out_directory_btn.click(
+            select_directory_wrapper,
+            outputs=[output_directory_predict_state, selected_out_textbox],
+            show_progress="hidden",
+        )
 
         sample_settings, species_settings, model_settings = (
             gu.sample_species_model_settings(opened=False)

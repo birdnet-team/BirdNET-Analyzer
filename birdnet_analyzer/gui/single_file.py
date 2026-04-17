@@ -152,6 +152,9 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 interactive=False,
                 placeholder=loc.localize("single-tab-no-file-selected-placeholder"),
                 scale=3,
+                rtl=True,
+                max_lines=1,
+                elem_classes="path-textbox",
             )
 
         audio_input = gr.Audio(
@@ -250,7 +253,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
                     return (
                         file_path,
-                        os.path.basename(file_path),
+                        file_path,
                         gr.update(
                             visible=True,
                             value=(sr, data),
@@ -267,11 +270,11 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
             # No file selected
             return (
-                None,
-                "",
+                gr.update(),
+                gr.update(),
                 gr.update(visible=False),
                 gr.update(visible=False),
-                None,
+                gr.update(),
                 gr.update(interactive=False),
             )
 

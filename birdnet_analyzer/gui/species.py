@@ -30,9 +30,24 @@ def run_species_list(
 def build_species_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("species-tab-title")) as species_tab:
         output_directory_state = gr.State()
-        select_directory_btn = gr.Button(
-            loc.localize("species-tab-select-output-directory-button-label")
-        )
+
+        with gr.Group(), gr.Row(equal_height=True):
+            select_directory_btn = gr.Button(
+                loc.localize("species-tab-select-output-directory-button-label"),
+                variant="primary",
+            )
+            selected_output_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "species-tab-select-output-directory-textbox-placeholder"
+                ),
+                scale=3,
+                rtl=True,
+                max_lines=1,
+                elem_classes="path-textbox",
+            )
+
         classifier_name = gr.Textbox(
             "species_list.txt",
             visible=False,
@@ -46,15 +61,16 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
                 settings.set_state("species-output-dir", dir_name)
                 return (
                     dir_name,
-                    gr.Textbox(label=dir_name, visible=True, value=name_tb),
+                    dir_name,
+                    gr.update(label=dir_name, visible=True, value=name_tb),
                 )
 
-            return None, name_tb
+            return gr.update(), gr.update(), name_tb
 
         select_directory_btn.click(
             select_directory_and_update_tb,
             inputs=classifier_name,
-            outputs=[output_directory_state, classifier_name],
+            outputs=[output_directory_state, selected_output_textbox, classifier_name],
             show_progress="hidden",
         )
 

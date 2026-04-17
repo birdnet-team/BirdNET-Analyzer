@@ -81,14 +81,27 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
         output_directory_state = gr.State()
 
         def select_directory_to_state_and_tb(state_key):
-            return (gu.select_directory(collect_files=False, state_key=state_key),) * 2
+            selection = gu.select_directory(collect_files=False, state_key=state_key)
+            if selection:
+                return (selection, selection)
 
-        with gr.Row():
+            return gr.update(), gr.update()
+
+        with gr.Group(), gr.Row(equal_height=True):
             select_audio_directory_btn = gr.Button(
-                loc.localize("segments-tab-select-audio-input-directory-button-label")
+                loc.localize("segments-tab-select-audio-input-directory-button-label"),
+                variant="primary",
             )
             selected_audio_directory_tb = gr.Textbox(
-                show_label=False, interactive=False
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "segments-tab-select-audio-input-directory-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                rtl=True,
+                elem_classes="path-textbox",
             )
             select_audio_directory_btn.click(
                 partial(
@@ -98,9 +111,12 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                 show_progress="hidden",
             )
 
-        with gr.Row():
+        with gr.Group(), gr.Row(equal_height=True):
             select_result_directory_btn = gr.Button(
-                loc.localize("segments-tab-select-results-input-directory-button-label")
+                loc.localize(
+                    "segments-tab-select-results-input-directory-button-label"
+                ),
+                variant="primary",
             )
             selected_result_directory_tb = gr.Textbox(
                 show_label=False,
@@ -108,6 +124,10 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                 placeholder=loc.localize(
                     "segments-tab-results-input-textbox-placeholder"
                 ),
+                scale=3,
+                max_lines=1,
+                rtl=True,
+                elem_classes="path-textbox",
             )
             select_result_directory_btn.click(
                 partial(
@@ -117,9 +137,10 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                 show_progress="hidden",
             )
 
-        with gr.Row():
+        with gr.Group(), gr.Row(equal_height=True):
             select_output_directory_btn = gr.Button(
-                loc.localize("segments-tab-output-selection-button-label")
+                loc.localize("segments-tab-output-selection-button-label"),
+                variant="primary",
             )
             selected_output_directory_tb = gr.Textbox(
                 show_label=False,
@@ -127,6 +148,9 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                 placeholder=loc.localize(
                     "segments-tab-output-selection-textbox-placeholder"
                 ),
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
             )
             select_output_directory_btn.click(
                 partial(
