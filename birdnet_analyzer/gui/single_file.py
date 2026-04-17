@@ -92,9 +92,11 @@ def run_single_file_analysis(
     n_rows = table.shape[0]
 
     if n_rows > 0:
-        table[[HEADER_SCI_NAME_LBL, HEADER_COMMON_NAME_LBL]] = table[
-            "species_name"
-        ].str.split("_", n=1, expand=True)
+        split_species = table["species_name"].str.split("_", n=1, expand=True)
+        table[HEADER_SCI_NAME_LBL] = split_species[0]
+        table[HEADER_COMMON_NAME_LBL] = (
+            split_species[1] if len(split_species.columns) > 1 else ""
+        )
     else:
         table[HEADER_SCI_NAME_LBL] = []
         table[HEADER_COMMON_NAME_LBL] = []
