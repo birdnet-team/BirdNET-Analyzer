@@ -348,18 +348,22 @@ def upsample_core(x: np.ndarray, y: np.ndarray, min_samples: int, apply, size=2)
             x_temp.append(x_app)
     else:
         for i in range(y.shape[1]):
-            while y[:, i].sum() + len(y_temp) < min_samples:
+            class_x_temp = []
+            class_y_temp = []
+            while y[:, i].sum() + len(class_y_temp) < min_samples:
                 try:
                     # Randomly choose a sample from the minority class
                     random_index = rng.choice(np.where(y[:, i] == 1)[0], size=size)
                 except ValueError as e:
                     raise get_empty_class_exception()(index=i) from e
 
-                # Apply SMOTE
+                # Apply
                 x_app, y_app = apply(x, y, random_index)
-                y_temp.append(y_app)
-                x_temp.append(x_app)
-
+                class_y_temp.append(y_app)
+                class_x_temp.append(x_app)
+            if len(class_y_temp) > 0:
+                x_temp.extend(class_x_temp)
+                y_temp.extend(class_y_temp)
     return x_temp, y_temp
 
 
