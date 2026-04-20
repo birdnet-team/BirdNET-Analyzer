@@ -62,6 +62,11 @@ def run_inference(
         acoustic_model = birdnet.load("acoustic", version, "tf", lang=label_language)
     elif model == "perch":
         acoustic_model = birdnet.load_perch_v2("CPU")
+    else:
+        raise ValueError(
+            f"Unsupported model: {model}\nSupported models are: 'birdnet', 'perch' or "
+            "use a custom classifier."
+        )
 
     return acoustic_model.predict(
         path,

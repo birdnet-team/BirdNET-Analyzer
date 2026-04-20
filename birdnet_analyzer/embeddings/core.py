@@ -94,7 +94,7 @@ def embeddings(
 
     batchsize = COMMIT_BS_SIZE
     pending_since_commit = 0
-    db = _get_or_create_database(database)
+    db = get_or_create_database(database)
     _check_database_settings(
         db, fmin=fmin, fmax=fmax, audio_speed=audio_speed, audio_root=audio_root
     )
@@ -169,7 +169,7 @@ def create_csv_output(output_path: str, database: str):
         database: Path to the database.
     """
 
-    db = _get_or_create_database(database)
+    db = get_or_create_database(database)
     parent_dir = os.path.dirname(output_path)
 
     if parent_dir and not os.path.exists(parent_dir):
@@ -220,7 +220,7 @@ def _ensure_recording(
     return db.insert_recording(filename=fpath, deployment_id=deployment_id)
 
 
-def _get_or_create_database(
+def get_or_create_database(
     db_path: str, embedding_dim: int = 1024
 ) -> sqlite_usearch_impl.SQLiteUSearchDB:
     """Get the database object. Creates or opens the databse.

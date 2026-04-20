@@ -23,7 +23,7 @@ def main():
     if (
         "additional_columns" in args
         and args.additional_columns
-        and ("csv" not in args.rtype or "parquet" not in args.rtype)
+        and ("csv" not in args.rtype and "parquet" not in args.rtype)
     ):
         import warnings
 

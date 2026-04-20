@@ -6,7 +6,7 @@ import gradio as gr
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.embeddings.core import (
-    _get_or_create_database as get_embeddings_database,
+    get_or_create_database as get_embeddings_database,
 )
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
