@@ -20,7 +20,11 @@ def main():
         if os.get_terminal_size().columns >= 64:
             print(cli.ASCII_LOGO, flush=True)
 
-    if args.additional_columns and "csv" not in args.rtype:
+    if (
+        "additional_columns" in args
+        and args.additional_columns
+        and ("csv" not in args.rtype or "parquet" not in args.rtype)
+    ):
         import warnings
 
         warnings.warn(
@@ -37,4 +41,4 @@ def main():
     analyze_args = vars(args)
     analyze_args.pop("use_perch")  # handled via model param
 
-    analyze(**analyze_args)
+    analyze(**analyze_args)  # ty:ignore[missing-argument]

@@ -79,8 +79,8 @@ def analyze(
         audio_speed (float, optional): Speed factor for audio playback during analysis.
             Defaults to 1.0.
         batch_size (int, optional): Batch size for processing. Defaults to 1.
-        rtype (Literal["table", "audacity", "kaleidoscope", "csv"] |
-        List[Literal["table", "audacity", "kaleidoscope", "csv"]], optional):
+        rtype (Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] |
+        List[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]], optional):
             Output format(s) for results. Defaults to "table".
         sf_thresh (float, optional): Threshold for species filtering. Defaults to 0.03.
         top_n (int | None, optional): Limit the number of top detections per file.
@@ -213,6 +213,11 @@ def analyze(
 
     if "audacity" in rtypes:
         save_as_audacity(df, Path(output) / cfg.OUTPUT_AUDACITY_FILENAME)
+
+    if "parquet" in rtypes:
+        save_as_parquet(
+            df, Path(output) / cfg.OUTPUT_PARQUET_FILENAME, additional_columns
+        )
 
     if save_params:
         save_params_to_file(
@@ -633,3 +638,65 @@ def save_as_audacity(df: pd.DataFrame, output: Path):
 
     output.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output, index=False, header=False, sep="\t")
+
+
+def save_as_parquet(
+    df: pd.DataFrame,
+    output: Path,
+    additional_columns: list[ADDITIONAL_COLUMNS] | None = None,
+    lat=None,
+    lon=None,
+    week=None,
+    overlap=None,
+    min_conf=None,
+    sensitivity=None,
+    species_list_file=None,
+    model_path=None,
+):
+    df = df.copy()
+    n_rows = df.shape[0]
+    df[["Scientific name", "Common name"]] = df["species_name"].str.split(
+        "_", n=1, expand=True
+    )
+
+    df.rename(
+        columns={
+            "input": "File",
+            "start_time": "Start (s)",
+            "end_time": "End (s)",
+            "confidence": "Confidence",
+        },
+        inplace=True,
+    )
+
+    order = [
+        "Start (s)",
+        "End (s)",
+        "Scientific name",
+        "Common name",
+        "Confidence",
+        "File",
+    ]
+
+    if additional_columns:
+        possible_cols = {
+            "lat": [lat if lat is not None else ""],
+            "lon": [lon if lon is not None else ""],
+            "week": [week if week is not None else ""],
+            "overlap": [overlap if overlap is not None else ""],
+            "sensitivity": [sensitivity if sensitivity is not None else ""],
+            "min_conf": [min_conf if min_conf is not None else ""],
+            "species_list": [species_list_file],
+            "model": [os.path.basename(model_path or "")],
+        }
+        additional_columns = [col for col in additional_columns if col in possible_cols]
+
+        for col in possible_cols:
+            if col in additional_columns:
+                df[col] = possible_cols[col] * n_rows
+
+    cols = [*order, *additional_columns] if additional_columns else order
+    df: pd.DataFrame = df[cols]
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(output, index=False)

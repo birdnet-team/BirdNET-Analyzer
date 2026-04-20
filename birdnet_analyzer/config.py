@@ -19,7 +19,7 @@ ALLOWED_FILETYPES: list[str] = [
     "aiff",
     "aif",
 ]
-RESULT_TYPES = Literal["table", "audacity", "kaleidoscope", "csv"]
+RESULT_TYPES = Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]
 ADDITIONAL_COLUMNS = Literal[
     "lat", "lon", "week", "overlap", "sensitivity", "min_conf", "species_list", "model"
 ]
@@ -27,6 +27,7 @@ OUTPUT_RAVEN_FILENAME: str = "BirdNET_SelectionTable.txt"
 OUTPUT_KALEIDOSCOPE_FILENAME: str = "BirdNET_Kaleidoscope.csv"
 OUTPUT_CSV_FILENAME: str = "BirdNET_CombinedTable.csv"
 OUTPUT_AUDACITY_FILENAME: str = "BirdNET_AudacityLabels.txt"
+OUTPUT_PARQUET_FILENAME: str = "BirdNET_CombinedTable.parquet"
 ANALYSIS_PARAMS_FILENAME: str = "BirdNET_analysis_params.csv"
 LABEL_LANGUAGE: MODEL_LANGUAGES = MODEL_LANGUAGE_EN_US
 SAMPLE_CROP_MODES = Literal["center", "first", "segments", "smart"]

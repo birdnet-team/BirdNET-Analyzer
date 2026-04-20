@@ -47,7 +47,7 @@ train = ["optuna", "optuna-integration"]
 server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio==5.46.1",              # 6.11.0 has tab-switching freeze bug (gradio-app/gradio#13198), also some components don't refresh anymore
+    "gradio==5.46.1",                     # 6.11.0 has tab-switching freeze bug (gradio-app/gradio#13198), also some components don't refresh anymore
     "pywebview>=6.1,<7.0",
     "plotly[express]",
     "pywin32;platform_system=='Windows'",

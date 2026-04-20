@@ -3,10 +3,12 @@ import os
 import platform
 import shutil
 import tempfile
+from unittest.mock import patch
 
+import birdnet
+import pandas as pd
 import pytest
 
-import birdnet_analyzer.config as cfg
 from birdnet_analyzer.analyze.core import analyze
 
 
@@ -117,7 +119,7 @@ def test_analyze_with_speed_up_and_overlap(
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
     file_length = 120
     precision = 100
-    seq_length = cfg.BIRDNET_SIG_LENGTH
+    seq_length = 3.0
     step_size = round((seq_length - overlap) * audio_speed, precision // 10)
     expected_start_timestamps = [
         e / precision
@@ -167,7 +169,82 @@ def test_analyze_with_speed_up_and_overlap(
             )
 
 
-def test_analyze_with_additional_columns(setup_test_environment):
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_additional_columns_parquet(
+    mock_ensure_model, setup_test_environment
+):
+    """Test analyzing with additional columns."""
+    env = setup_test_environment
+
+    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
+
+    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+
+    # Call function under test
+    analyze(
+        soundscape_path,
+        env["output_dir"],
+        top_n=1,
+        min_conf=0,
+        additional_columns=[
+            "lat",
+            "lon",
+            "week",
+            "model",
+            "overlap",
+            "sensitivity",
+            "species_list",
+            "min_conf",
+        ],
+        lat=42.5,
+        lon=-76.45,
+        week=20,
+        rtype=["parquet"],
+    )
+
+    mock_ensure_model.assert_called_once()
+    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.results.parquet")
+    assert os.path.exists(output_file)
+    model_path = birdnet.load("acoustic", "2.4", "tf").model_path
+
+    output_df = pd.read_parquet(output_file)
+
+    assert "lat" in output_df.columns, "Latitude column not found in output"
+    assert "lon" in output_df.columns, "Longitude column not found in output"
+    assert "week" in output_df.columns, "Week column not found in output"
+    assert "model" in output_df.columns, "Model column not found in output"
+    assert "overlap" in output_df.columns, "Overlap column not found in output"
+    assert "sensitivity" in output_df.columns, "Sensitivity column not found in output"
+    assert "species_list" in output_df.columns, (
+        "Species list column not found in output"
+    )
+    assert "min_conf" in output_df.columns, "Min confidence column not found in output"
+
+    for _, row in output_df.iterrows():
+        assert float(row["lat"]) == 42.5, "Latitude value does not match expected value"
+        assert float(row["lon"]) == -76.45, (
+            "Longitude value does not match expected value"
+        )
+        assert int(row["week"]) == 20, "Week value does not match expected value"
+        assert row["model"] == os.path.basename(model_path), (
+            "Model value does not match expected value"
+        )
+        assert float(row["overlap"]) == 0.0, (
+            "Overlap value does not match expected value"
+        )
+        assert float(row["sensitivity"]) == 1.0, (
+            "Sensitivity value does not match expected value"
+        )
+        assert row["species_list"] == "", (
+            "Species list value does not match expected value"
+        )
+        assert float(row["min_conf"]) == 0, (
+            "Min confidence value does not match expected value"
+        )
+
+
+@patch("birdnet_analyzer.utils.ensure_model_exists")
+def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environment):
     """Test analyzing with additional columns."""
     env = setup_test_environment
 
@@ -203,7 +280,7 @@ def test_analyze_with_additional_columns(setup_test_environment):
 
     with open(output_file) as f:
         reader = csv.DictReader(f)
-        headers: list[str] = reader.fieldnames
+        headers: list[str] = reader.fieldnames  # ty:ignore[invalid-assignment]
         assert "lat" in headers, "Latitude column not found in output"
         assert "lon" in headers, "Longitude column not found in output"
         assert "week" in headers, "Week column not found in output"

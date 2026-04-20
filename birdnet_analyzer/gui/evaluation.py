@@ -258,6 +258,13 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             avail_classes = list(proc.classes)  # Ensure it's a list
             avail_recordings = proc.samples_df["filename"].unique().tolist()
 
+            if len(proc.umatched_prediction_files) > 0:
+                gr.Warning(
+                    f"{loc.localize('eval-tab-warning-unmatched-predictions')}: "
+                    f"{', '.join(proc.umatched_prediction_files)}. "
+                    f"{loc.localize('eval-tab-warning-unmatched-predictions-info')}"
+                )
+
             return avail_classes, avail_recordings, proc, annotation_dir, prediction_dir
         except KeyError as e:
             print(f"Column missing in files: {e}")

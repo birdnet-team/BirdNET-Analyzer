@@ -454,16 +454,16 @@ def analyzer_parser():
     parser.add_argument(
         "--rtype",
         default={"table"},
-        choices=["table", "audacity", "kaleidoscope", "csv"],
+        choices=["table", "audacity", "kaleidoscope", "csv", "parquet"],
         nargs="+",
-        help="Specifies output format. Values in `['table', 'audacity',  'kaleidoscope', 'csv']`.",
+        help="Specifies output format. Values in `['table', 'audacity',  'kaleidoscope', 'csv', 'parquet']`.",
         action=UniqueSetAction,
     )
     parser.add_argument(
         "--additional_columns",
         choices=POSSIBLE_ADDITIONAL_COLUMNS,
         nargs="+",
-        help="Additional columns to include in the output, only applied to the csv output format.",
+        help="Additional columns to include in the output, only applied to the csv and parquet output formats.",
         action=UniqueSetAction,
     )
     parser.add_argument(
