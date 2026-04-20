@@ -170,7 +170,10 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
             with gr.Column() as review_item_col, gr.Row():
                 with gr.Column(), gr.Group():
                     spectrogram_image = gr.Plot(show_label=False)
-                    spectrogram_dl_btn = gr.Button(loc.localize("review-tab-download-spectrogram-button-label"), size="sm")
+                    spectrogram_dl_btn = gr.Button(
+                        loc.localize("review-tab-download-spectrogram-button-label"),
+                        size="sm",
+                    )
 
                 with gr.Column():
                     positive_btn = gr.Button(
@@ -220,7 +223,10 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
                 species_regression_plot = gr.Plot(
                     label=loc.localize("review-tab-regression-plot-label")
                 )
-                regression_dl_btn = gr.Button(loc.localize("review-tab-download-regression-button-label"), size="sm")
+                regression_dl_btn = gr.Button(
+                    loc.localize("review-tab-download-regression-button-label"),
+                    size="sm",
+                )
 
         def update_values(next_review_state, skip_plot=False):
             update_dict: dict[gr.Component, Unknown] = {review_state: next_review_state}

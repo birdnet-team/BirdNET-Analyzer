@@ -4,6 +4,7 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 
+
 def _output_type_map():
     return {
         loc.localize("multi-tab-output-type-raven-label"): "table",
@@ -146,7 +147,11 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                         folder,
                         [
                             *files_and_durations[:100],
-                            (f"{len(files_and_durations) - 100} {loc.localize('multi-tab-more-files-label')}", "..."),
+                            (
+                                f"{len(files_and_durations) - 100} "
+                                f"{loc.localize('multi-tab-more-files-label')}",
+                                "...",
+                            ),
                         ],
                     ]
                 if not files_and_durations:

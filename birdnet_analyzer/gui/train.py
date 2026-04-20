@@ -685,7 +685,10 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                             loc.localize("training-tab-upsampling-radio-option-linear"),
                             "linear",
                         ),
-                        (loc.localize("training-tab-upsampling-radio-option-smote"), "smote"),
+                        (
+                            loc.localize("training-tab-upsampling-radio-option-smote"),
+                            "smote",
+                        ),
                     ],
                     value="repeat",
                     label=loc.localize("training-tab-upsampling-radio-label"),

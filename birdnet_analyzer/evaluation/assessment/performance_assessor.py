@@ -136,7 +136,9 @@ class PerformanceAssessor:
             )
 
         # Determine the averaging method for metrics
-        averaging_method = None if per_class_metrics or self.num_classes == 1 else "macro"
+        averaging_method = (
+            None if per_class_metrics or self.num_classes == 1 else "macro"
+        )
 
         # Dictionary to store the results of each metric
         metrics_results = {}
