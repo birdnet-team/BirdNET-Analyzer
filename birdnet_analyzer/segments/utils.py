@@ -15,7 +15,7 @@ RNG = np.random.default_rng(cfg.RANDOM_SEED)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
-def _detect_rtypee(line: str):
+def _detect_rtype(line: str):
     """Detects the type of result file.
 
     Args:
@@ -47,7 +47,7 @@ def _get_header_mapping(line: str) -> dict:
         dict: A dictionary where the keys are column names and the values are their
               respective indices.
     """
-    rtype = _detect_rtypee(line)
+    rtype = _detect_rtype(line)
 
     sep = "\t" if rtype in ("table", "audacity") else ","
 
@@ -252,7 +252,7 @@ def _find_segments_from_combined(
     lines = utils.read_lines(rfile)
 
     # Auto-detect result type
-    rtype = _detect_rtypee(lines[0])
+    rtype = _detect_rtype(lines[0])
 
     if rtype == "audacity":
         raise Exception("Audacity files are not supported for combined results.")
@@ -351,7 +351,7 @@ def _find_segments(
     lines = utils.read_lines(rfile)
 
     # Auto-detect result type
-    rtype = _detect_rtypee(lines[0])
+    rtype = _detect_rtype(lines[0])
 
     # Get mapping from the header column
     header_mapping = _get_header_mapping(lines[0])
@@ -422,13 +422,16 @@ def extract_segments(
     information.
 
     Args:
-        item (tuple): A tuple containing:
-            - A tuple with:
-                - A string representing the path to the audio file.
-                - A list of dictionaries, each containing segment information with keys
-                "start", "end", "species", "confidence", and "audio".
-            - A float representing the segment length.
-            - A dictionary containing configuration settings.
+        file_path (str): Path to the input audio file.
+        output_path (str): Directory where the extracted segments will be saved.
+        seg_length (float): Desired length of each extracted segment in seconds.
+        segments (list[dict]): A list of dictionaries, each containing information
+            about a segment to be extracted. Each dictionary should have the keys
+            "start", "end", "species", and "confidence".
+        sample_rate (int, optional): Sample rate for reading and saving audio files.
+            Defaults to 48000.
+        audio_speed (float, optional): Speed factor for audio processing. Defaults to
+            1.0.
     Returns:
         tuple[str, bool]: A tuple containing the file path and a boolean indicating if
         segments were successfully extracted.

@@ -177,22 +177,19 @@ def create_csv_output(output_path: str, database: str):
 
     window_ids = db.match_window_ids()
 
-    csv_content = "file_path,start,end,embedding\n"
-
-    for window_id in window_ids:
-        embedding = db.get_embedding(window_id)
-        window = db.get_window(window_id)
-        recording = db.get_recording(window.recording_id)
-
-        start, end = window.offsets
-
-        csv_content += (
-            f"{recording.filename},{start},{end},"
-            f'"{",".join(map(str, embedding.tolist()))}"\n'
-        )
-
     with open(output_path, "w") as f:
-        f.write(csv_content)
+        f.write("file_path,start,end,embedding\n")
+
+        for window_id in window_ids:
+            embedding = db.get_embedding(window_id)
+            window = db.get_window(window_id)
+            recording = db.get_recording(window.recording_id)
+            start, end = window.offsets
+
+            f.write(
+                f"{recording.filename},{start},{end},"
+                f'"{",".join(map(str, embedding.tolist()))}"\n'
+            )
 
 
 def _ensure_deployment(
@@ -223,7 +220,9 @@ def _ensure_recording(
     return db.insert_recording(filename=fpath, deployment_id=deployment_id)
 
 
-def _get_or_create_database(db_path: str, embedding_dim: int = 1024):
+def _get_or_create_database(
+    db_path: str, embedding_dim: int = 1024
+) -> sqlite_usearch_impl.SQLiteUSearchDB:
     """Get the database object. Creates or opens the databse.
     Args:
         db: The path to the database.

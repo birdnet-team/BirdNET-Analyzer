@@ -55,15 +55,15 @@ def run_inference(
         if not cc_species_list:
             cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
 
-        model = birdnet.load_custom(
+        acoustic_model = birdnet.load_custom(
             "acoustic", version, "tf", classifier, cc_species_list
         )
     elif model == "birdnet":
-        model = birdnet.load("acoustic", version, "tf", lang=label_language)
+        acoustic_model = birdnet.load("acoustic", version, "tf", lang=label_language)
     elif model == "perch":
-        model = birdnet.load_perch_v2("CPU")
+        acoustic_model = birdnet.load_perch_v2("CPU")
 
-    return model.predict(
+    return acoustic_model.predict(
         path,
         top_k=top_k,
         batch_size=batch_size,

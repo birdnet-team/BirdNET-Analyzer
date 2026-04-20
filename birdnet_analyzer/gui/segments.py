@@ -68,7 +68,7 @@ def _extract_segments(
     return gr.update(
         value=skipped_files,
         headers=header,
-        elem_classes=None if not skipped_files else "success",
+        elem_classes=None if skipped_files else "success",
     )
 
 

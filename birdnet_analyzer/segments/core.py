@@ -56,7 +56,8 @@ def segments(
         the "balanced" collection mode.
 
     Returns:
-        None
+        list[tuple[str, bool]]: A list of tuples containing the path to the extracted
+        segment and a boolean indicating whether the extraction was successful.
     Notes:
         - The function uses multiprocessing for parallel processing if `threads` is
         greater than 1.

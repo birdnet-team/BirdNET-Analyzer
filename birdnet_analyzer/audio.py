@@ -83,8 +83,8 @@ def get_audio_info(path):
         path (str): The file path to the audio file.
 
     Returns:
-        dict: A dictionary containing audio file information such as sample rate,
-            channels, duration, etc.
+        dict: A dictionary containing audio file information such as sample rate and
+        duration.
     """
     info = sf.info(path)
 
@@ -154,7 +154,7 @@ def pad(sig, seconds, srate, amount=None, use_noise=False):
     if len(sig) < target_len:
         noise_shape = target_len - len(sig)
 
-        if not use_noise:
+        if use_noise:
             if amount is None:
                 amount = RANDOM.uniform(0.1, 0.5)
 
@@ -225,7 +225,7 @@ def split_signal(
         lastchunkpos = lastchunkpos - stepsize
 
     # Append noise or empty signal of chunk duration, so all splits have desired length
-    if not use_noise_for_padding:
+    if use_noise_for_padding:
         # Random noise intensity
         if amount is None:
             amount = RANDOM.uniform(0.1, 0.5)

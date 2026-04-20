@@ -432,7 +432,6 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         species_settings["lon_number"],
         species_settings["map_plot"],
     )
-    return None
 
 
 if __name__ == "__main__":

@@ -124,7 +124,7 @@ def analyze(
 
     predictions = run_inference(
         audio_input,
-        model=model,
+        acoustic_model=model,
         top_k=top_n,
         batch_size=batch_size,
         prefetch_ratio=3,

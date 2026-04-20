@@ -41,4 +41,4 @@ def main():
     analyze_args = vars(args)
     analyze_args.pop("use_perch")  # handled via model param
 
-    analyze(**analyze_args)  # ty:ignore[missing-argument]
+    analyze(**analyze_args)
