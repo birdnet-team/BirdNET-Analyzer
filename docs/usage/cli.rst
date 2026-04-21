@@ -152,7 +152,7 @@ birdnet_analyzer.train
    1. Collect training data and organize in folders based on species names.
    2. Species labels should be in the format ``<scientific name>_<species common name>`` (e.g., ``Poecile atricapillus_Black-capped Chickadee``), but other formats work as well.
    3. It can be helpful to include a non-event class. If you name a folder 'Noise', 'Background', 'Other' or 'Silence', it will be treated as a non-event class.
-   4. Run the training script with ``python birdnet_analyzer.train <path to training data folder> -o <path to trained classifier model output>``.
+   4. Run the training script with ``python -m birdnet_analyzer.train <path to training data folder> -o <path to trained classifier model output>``.
 
    **The script saves the trained classifier model based on the best validation loss achieved during training. This ensures that the model saved is optimized for performance according to the chosen metric.**
 
