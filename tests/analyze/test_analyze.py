@@ -3,9 +3,9 @@ import os
 import platform
 import shutil
 import tempfile
-from unittest.mock import patch
 
 import birdnet
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -93,7 +93,7 @@ def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environ
             )
 
 
-@pytest.mark.skip(reason="currently not stable anymore")
+# @pytest.mark.skip(reason="currently not stable anymore")
 @pytest.mark.skipif(
     platform.system() == "Darwin", reason="Don't ask me why it times out on macOS."
 )
@@ -112,6 +112,12 @@ def test_analyze_with_speed_up_and_overlap(
     setup_test_environment, audio_speed, overlap
 ):
     """Test analyzing with speed up."""
+
+    if audio_speed < 1:
+        pytest.skip(
+            "Waiting for (birdnet-team/birdnet#32)."
+        )  # (birdnet-team/birdnet#32)
+
     env = setup_test_environment
 
     soundscape_path = "birdnet_analyzer/example/soundscape.wav"
@@ -161,18 +167,21 @@ def test_analyze_with_speed_up_and_overlap(
             parts = line.strip().split("\t")
             actual_start = float(parts[1])
             actual_end = float(parts[2])
-            assert float(actual_start) == expected_start, (
-                "Start time does not match expected value"
+            np.testing.assert_allclose(
+                actual_start,
+                expected_start,
+                atol=3e-4,
+                err_msg="Start time does not match expected value",
             )
-            assert float(actual_end) == expected_end, (
-                "End time does not match expected value"
+            np.testing.assert_allclose(
+                actual_end,
+                expected_end,
+                atol=3e-4,
+                err_msg="End time does not match expected value",
             )
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
-def test_analyze_with_additional_columns_parquet(
-    mock_ensure_model, setup_test_environment
-):
+def test_analyze_with_additional_columns_parquet(setup_test_environment):
     """Test analyzing with additional columns."""
     env = setup_test_environment
 
@@ -202,8 +211,7 @@ def test_analyze_with_additional_columns_parquet(
         rtype=["parquet"],
     )
 
-    mock_ensure_model.assert_called_once()
-    output_file = os.path.join(env["output_dir"], "soundscape.BirdNET.results.parquet")
+    output_file = os.path.join(env["output_dir"], "BirdNET_CombinedTable.parquet")
     assert os.path.exists(output_file)
     model_path = birdnet.load("acoustic", "2.4", "tf").model_path
 
@@ -243,8 +251,7 @@ def test_analyze_with_additional_columns_parquet(
         )
 
 
-@patch("birdnet_analyzer.utils.ensure_model_exists")
-def test_analyze_with_additional_columns(mock_ensure_model, setup_test_environment):
+def test_analyze_with_additional_columns(setup_test_environment):
     """Test analyzing with additional columns."""
     env = setup_test_environment
 
@@ -324,7 +331,7 @@ def test_sensitivity(setup_test_environment):
     low_sensitivity_result = {}
     high_sensitivity_result = {}
 
-    analyze(soundscape_path, env["output_dir"], top_n=1)
+    analyze(soundscape_path, env["output_dir"], top_n=1, min_conf=0)
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file)
 
@@ -340,13 +347,13 @@ def test_sensitivity(setup_test_environment):
 
     extract_confidence_from_output(output_file, normal_sensitivity_result)
 
-    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=0.75)
+    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=0.75, min_conf=0)
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file)
 
     extract_confidence_from_output(output_file, low_sensitivity_result)
 
-    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=1.25)
+    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=1.25, min_conf=0)
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file)
 

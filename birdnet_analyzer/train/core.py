@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from birdnet_analyzer.config import (
+        AUTOTUNE_METRICS,
         SAMPLE_CROP_MODES,
         TRAINED_MODEL_OUTPUT_FORMATS,
         TRAINED_MODEL_SAVE_MODES,
@@ -42,6 +43,7 @@ def train(
     autotune_trials: int = 50,
     autotune_n_repeats: int = 1,
     autotune_n_splits: int = 3,
+    autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
@@ -132,4 +134,5 @@ def train(
         autotune_trials=autotune_trials,
         autotune_n_repeats=autotune_n_repeats,
         autotune_n_splits=autotune_n_splits,
+        autotune_metric=autotune_metric,
     )

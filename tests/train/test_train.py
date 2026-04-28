@@ -110,6 +110,9 @@ def test_autotune_uses_optuna(
             def suggest_categorical(self, name, choices):
                 return choices[0]
 
+            def suggest_float(self, name, low, high, **kwargs):
+                return low
+
         obj(DummyTrial())
         dummy_study.best_params = {
             "hidden_units": 0,
@@ -120,6 +123,7 @@ def test_autotune_uses_optuna(
             "mixup": False,
             "label_smoothing": False,
             "focal_loss": False,
+            "weight_decay": 0.0,
         }
 
     dummy_study.optimize = fake_optimize
@@ -142,9 +146,9 @@ def test_autotune_uses_optuna(
     except Exception as e:  # pragma: no cover - we want failure message
         pytest.fail(f"train_model raised during autotune: {e!r}")
 
-    mock_optuna.create_study.assert_called_once_with(
-        direction="maximize", study_name="birdnet_analyzer"
-    )
+    mock_optuna.create_study.assert_called_once()
+    create_study_kwargs = mock_optuna.create_study.call_args[1]
+    assert create_study_kwargs["study_name"] == "birdnet_analyzer"
     assert calls.get("optimized") == 3
     # build_linear_classifier should be called at least once (during tuning)
     assert mock_build.called

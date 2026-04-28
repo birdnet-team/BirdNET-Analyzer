@@ -307,10 +307,12 @@ def smart_crop_signal(sig, rate, sig_length, sig_overlap, sig_minlen):
         # Also consider peak values
         peak = np.max(np.abs(split))
         # Combine both metrics
+        # TODO: Hardcoded weights, could be optimized or made configurable
         energies.append(energy * 0.7 + peak * 0.3)  # Weighted combination
 
     # Find peaks in the energy curve
     # Smooth energies first to avoid small fluctuations
+    # TODO: kernel size is hardcoded, make it configurable?
     smoothed_energies = np.convolve(energies, np.ones(3) / 3, mode="same")
     peaks, _ = find_peaks(
         smoothed_energies, height=np.mean(smoothed_energies), distance=2

@@ -182,30 +182,20 @@ def parse_files(
             species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
             species_segments[s] = species_segments[s][:max_segments]
         elif collection_mode == "balanced":
-            confidence_bins = []
-            bin_threshholds = np.linspace(min_conf, max_conf, num=n_bins)
+            bin_thresholds = np.linspace(min_conf, max_conf, num=n_bins)
+            max_segments_per_bin = max_segments // n_bins
+            segments_by_bin: list[list] = [[] for _ in range(n_bins)]
 
-            for i in range(len(bin_threshholds)):
-                if i == 0:
-                    confidence_bins.append((0, bin_threshholds[i]))
-                else:
-                    confidence_bins.append((bin_threshholds[i - 1], bin_threshholds[i]))
+            confidences = np.array([seg["confidence"] for seg in species_segments[s]])
+            bin_indices = np.digitize(confidences, bin_thresholds, right=False)
 
-            max_segments_per_bin = max_segments // len(confidence_bins)
-            segments_by_bin = {confidence_bin: [] for confidence_bin in confidence_bins}
-
-            species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
-
-            for seg in species_segments[s]:
-                for confidence_bin in confidence_bins:
-                    if seg["confidence"] >= confidence_bin[1]:
-                        continue  # skip to next bin if confidence is too high
-                    if seg["confidence"] >= confidence_bin[0]:
-                        segments_by_bin[confidence_bin].append(seg)
+            for seg, bin_idx in zip(species_segments[s], bin_indices, strict=False):
+                if bin_idx < n_bins:
+                    segments_by_bin[bin_idx].append(seg)
 
             species_segments[s] = []
 
-            for bin_segments in segments_by_bin.values():
+            for bin_segments in segments_by_bin:
                 if len(bin_segments) > max_segments_per_bin:
                     RNG.shuffle(bin_segments)
                     species_segments[s].extend(bin_segments[:max_segments_per_bin])

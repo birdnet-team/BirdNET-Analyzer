@@ -413,7 +413,7 @@ def train_model(
     )
     print(
         f"...Done. Loaded {x_train_full.shape[0]} training samples "
-        + f"and {y_train_full.shape[1]} labels.",
+        f"and {y_train_full.shape[1]} labels.",
         flush=True,
     )
     if len(x_val_full) > 0:
@@ -464,7 +464,7 @@ def train_model(
             ) -> Generator[
                 tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float], None, None
             ]:
-                if x_test:
+                if x_test.size > 0:
                     # If test data is available, use a single split with the test data
                     splits = [
                         (

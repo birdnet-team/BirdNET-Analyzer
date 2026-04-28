@@ -34,15 +34,14 @@ def _search_ann_ip(
 
 def cosine_sim(data: np.ndarray, query: np.ndarray) -> float | np.ndarray:
     if data.ndim == 2:
-        return np.array([cosine_sim(data[i], query) for i in range(data.shape[0])])
+        norms = np.linalg.norm(data, axis=1) * np.linalg.norm(query)
+        return data @ query / norms
     return np.dot(data, query) / (np.linalg.norm(data) * np.linalg.norm(query))
 
 
 def euclidean_scoring(data: np.ndarray, query: np.ndarray) -> float | np.ndarray:
     if data.ndim == 2:
-        return np.array(
-            [euclidean_scoring(data[i], query) for i in range(data.shape[0])]
-        )
+        return np.linalg.norm(data - query, axis=1)
     return euclidean(data, query)
 
 

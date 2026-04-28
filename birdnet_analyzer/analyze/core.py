@@ -216,7 +216,17 @@ def analyze(
 
     if "parquet" in rtypes:
         save_as_parquet(
-            df, Path(output) / cfg.OUTPUT_PARQUET_FILENAME, additional_columns
+            df,
+            Path(output) / cfg.OUTPUT_PARQUET_FILENAME,
+            additional_columns,
+            lat=lat,
+            lon=lon,
+            week=week,
+            overlap=overlap,
+            min_conf=min_conf,
+            sensitivity=sensitivity,
+            species_list_file=species_list_file,
+            model_path=predictions.model_path,
         )
 
     if save_params:
@@ -445,11 +455,7 @@ def _merge_consecutive_segments(
             i += 1
 
     merged_df = pd.DataFrame.from_records(merged_records, columns=df.columns)
-    merged_df.sort_values(
-        by=["input", "start_time", "end_time", "species_name"], inplace=True
-    )
-
-    return merged_df
+    return merged_df.sort_values(by=["input", "start_time", "end_time", "species_name"])
 
 
 def save_as_rtable(
@@ -496,14 +502,13 @@ def save_as_rtable(
     )
     df["Species Code"] = df["species_name"].map(lambda x: codes.get(str(x), str(x)))
 
-    df.rename(
+    df = df.rename(
         columns={
             "start_time": "Begin Time (s)",
             "end_time": "End Time (s)",
             "input": "Begin Path",
             "confidence": "Confidence",
         },
-        inplace=True,
     )
 
     acumulated_start_times = []
@@ -583,14 +588,13 @@ def save_as_csv(
         "_", n=1, expand=True
     )
 
-    df.rename(
+    df = df.rename(
         columns={
             "input": "File",
             "start_time": "Start (s)",
             "end_time": "End (s)",
             "confidence": "Confidence",
-        },
-        inplace=True,
+        }
     )
 
     order = [
@@ -618,17 +622,14 @@ def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
         "_", n=1, expand=True
     )
 
-    df.rename(
+    df = df.rename(
         columns={
             "start_time": "OFFSET",
             "TOP1DIST": "confidence",
-        },
-        inplace=True,
+        }
     )
 
-    df.drop(
-        columns=["input", "species_name", "end_time", "scientific_name"], inplace=True
-    )
+    df = df.drop(columns=["input", "species_name", "end_time", "scientific_name"])
     output.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output, index=False)
 
@@ -659,14 +660,13 @@ def save_as_parquet(
         "_", n=1, expand=True
     )
 
-    df.rename(
+    df = df.rename(
         columns={
             "input": "File",
             "start_time": "Start (s)",
             "end_time": "End (s)",
             "confidence": "Confidence",
-        },
-        inplace=True,
+        }
     )
 
     order = [
@@ -691,9 +691,8 @@ def save_as_parquet(
         }
         additional_columns = [col for col in additional_columns if col in possible_cols]
 
-        for col in possible_cols:
-            if col in additional_columns:
-                df[col] = possible_cols[col] * n_rows
+        for col in additional_columns:
+            df[col] = possible_cols[col] * n_rows
 
     cols = [*order, *additional_columns] if additional_columns else order
     df: pd.DataFrame = df[cols]

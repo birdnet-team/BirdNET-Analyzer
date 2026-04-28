@@ -37,4 +37,6 @@ def test_species_cli(mock_get_species_list, setup_test_environment):
 
     species(**kwargs)
 
-    mock_get_species_list.assert_called_once_with(-1, -1, None, 0.03, "en_us")
+    mock_get_species_list.assert_called_once_with(
+        lat=-1, lon=-1, week=None, threshold=0.03, lang="en_us"
+    )
