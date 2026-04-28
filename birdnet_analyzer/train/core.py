@@ -8,6 +8,7 @@ if TYPE_CHECKING:
         TRAINED_MODEL_OUTPUT_FORMATS,
         TRAINED_MODEL_SAVE_MODES,
         UPSAMPLING_MODES,
+        AUTOTUNE_METRICS,
     )
 
 
@@ -40,7 +41,9 @@ def train(
     audio_speed: float = 1.0,
     autotune: bool = False,
     autotune_trials: int = 50,
-    autotune_kfolds: int = 1,
+    autotune_n_splits: int = 1,
+    autotune_n_repeats: int = 1,
+    autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
     save_detached_classifier: bool = False,
 
 ):
@@ -131,6 +134,8 @@ def train(
         audio_speed=audio_speed,
         autotune=autotune,
         autotune_trials=autotune_trials,
-        autotune_kfolds=autotune_kfolds,
+        autotune_n_splits=autotune_n_splits,
+        autotune_n_repeats=autotune_n_repeats,
+        autotune_metric=autotune_metric,
         save_detached_classifier=save_detached_classifier,
     )

@@ -918,7 +918,7 @@ def train_parser():
 
     parser.add_argument(
         "--save-detached-classifier",
-        default=False,
+        action="store_true",
         help="Whether to save a detached version of the classifier.",
     )
 

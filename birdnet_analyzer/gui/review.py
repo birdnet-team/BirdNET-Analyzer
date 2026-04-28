@@ -198,7 +198,7 @@ def build_review_tab():
                         review_audio = gr.Audio(
                             type="filepath",
                             sources=[],
-                            buttons=["download"],
+                            #buttons=["download"],
                             autoplay=True,
                         )
                         autoplay_checkbox = gr.Checkbox(

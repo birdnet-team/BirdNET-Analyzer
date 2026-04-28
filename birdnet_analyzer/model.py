@@ -634,12 +634,14 @@ def train_linear_classifier(
 def save_detached_classifier(
     classifier,
     model_path: str,
+    mode: Literal["replace", "append"] = "replace",
 ):
     """Saves the detached classifier head as a pb model.
 
     Args:
         classifier: The custom classifier.
         model_path: Path the model will be saved at.
+        mode: The mode for saving the model.
     """
     if model_path.endswith(".tflite"):
         model_path = model_path.removesuffix(".tflite")
@@ -649,7 +651,22 @@ def save_detached_classifier(
     detached_classifier_path = model_path + "_detached"
 
     detached_model_inputs = keras.Input(shape=(1024,), dtype=tf.float32, name="detached_input")
-    detached_model_outputs = classifier(detached_model_inputs)
+
+    if mode == "replace":
+        detached_model_outputs = classifier(detached_model_inputs)
+    elif mode == "append":
+        saved_model_path, original_labels = (
+            AcousticPBDownloaderV2_4.get_model_path_and_labels("en_us")
+        )
+        saved_model = tf.saved_model.load(saved_model_path)
+        inputs = keras.Input(shape=(144000,), dtype=tf.float32, name="input_audio")
+        wrapper = WrappedSavedModel(saved_model.signatures["embeddings"])(inputs) # --> takes audio input and produces embeddings
+        basic = WrappedSavedModel(saved_model.signatures["basic"])(inputs) # --> takes audio input and produces class outputs
+
+        detached_model_outputs = keras.layers.concatenate(
+            [basic, classifier(wrapper)], name="combined_output"
+        )
+
     detached_model = keras.Model(inputs=detached_model_inputs, outputs=detached_model_outputs, name="detached_classifier")
 
     detached_model.export(detached_classifier_path)

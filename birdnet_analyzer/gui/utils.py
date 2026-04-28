@@ -314,7 +314,7 @@ def build_settings():
             ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
-            buttons=["copy"],
+            #buttons=["copy"],
         )
 
         def on_language_change(value):

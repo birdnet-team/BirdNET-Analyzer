@@ -747,7 +747,7 @@ def train_model(
 
         if save_detached_classifier:
             model.save_detached_classifier(
-                classifier, output,
+                classifier, output, mode=model_save_mode
             )
 
     except Exception as e:

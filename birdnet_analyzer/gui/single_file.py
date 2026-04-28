@@ -188,7 +188,7 @@ def build_single_analysis_tab():
             segment_audio = gr.Audio(
                 autoplay=True,
                 type="numpy",
-                buttons=["download"],
+                #buttons=["download"],
                 show_label=False,
                 editable=False,
                 visible=False,
