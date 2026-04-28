@@ -78,7 +78,7 @@ def run_single_file_analysis(
         input_dir=None,
         save_params=False,
         n_producers=1,
-        n_workers=None,
+        n_workers=1,
         progress=None,
     )
 
