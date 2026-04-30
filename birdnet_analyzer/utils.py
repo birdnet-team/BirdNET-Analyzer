@@ -119,9 +119,7 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None):
     D = librosa.stft(s, n_fft=1024, hop_length=512)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
 
-    plot = librosa.display.specshow(S_db, ax=ax, n_fft=1024, hop_length=512).figure
-
-    return plot
+    return librosa.display.specshow(S_db, ax=ax, n_fft=1024, hop_length=512).figure
 
 
 def collect_audio_files(path: str, max_files: int | None = None):

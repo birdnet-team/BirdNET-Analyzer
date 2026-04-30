@@ -262,7 +262,7 @@ class TestBinAssignmentCorrectness:
     def test_boundary_at_bin_threshold_same_bin_in_both(self):
         """A confidence exactly at a threshold must go to the same bin in both."""
         n_bins = 4
-        thresholds = np.linspace(0.25, 1.0, n_bins)  # [0.25, 0.5, 0.75, 1.0]
+        # thresholds = np.linspace(0.25, 1.0, n_bins)  # [0.25, 0.5, 0.75, 1.0]
         # 0.5 is exactly thresholds[1]
         segs = _make_segments([0.5])
         new_bins = _get_bin_contents(segs, 0.25, 1.0, n_bins)

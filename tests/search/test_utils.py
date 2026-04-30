@@ -14,10 +14,10 @@ from scipy.spatial.distance import euclidean as scipy_euclidean
 
 from birdnet_analyzer.search.utils import cosine_sim, euclidean_scoring
 
-
 # ---------------------------------------------------------------------------
 # Reference implementations (original loop-based code)
 # ---------------------------------------------------------------------------
+
 
 def _cosine_sim_ref(data: np.ndarray, query: np.ndarray):
     if data.ndim == 2:
@@ -53,6 +53,7 @@ def n_rows(request):
 # ---------------------------------------------------------------------------
 # Correctness: cosine_sim
 # ---------------------------------------------------------------------------
+
 
 class TestCosineSim:
     def test_1d_matches_reference(self, dim):
@@ -108,11 +109,14 @@ class TestCosineSim:
 # Correctness: euclidean_scoring
 # ---------------------------------------------------------------------------
 
+
 class TestEuclideanScoring:
     def test_1d_matches_reference(self, dim):
         a = RNG.random(dim)
         q = RNG.random(dim)
-        assert euclidean_scoring(a, q) == pytest.approx(_euclidean_scoring_ref(a, q), rel=1e-6)
+        assert euclidean_scoring(a, q) == pytest.approx(
+            _euclidean_scoring_ref(a, q), rel=1e-6
+        )
 
     def test_2d_matches_reference(self, n_rows, dim):
         data = RNG.random((n_rows, dim))
@@ -164,9 +168,7 @@ _bench_query = RNG.random(BENCH_DIM).astype(np.float32)
 
 def _time(fn, *args, number=BENCH_NUMBER, repeat=BENCH_REPEATS) -> float:
     """Return best-of-repeat wall time in seconds for `number` calls."""
-    return min(
-        timeit.repeat(lambda: fn(*args), number=number, repeat=repeat)
-    ) / number
+    return min(timeit.repeat(lambda: fn(*args), number=number, repeat=repeat)) / number
 
 
 def test_benchmark_cosine_sim(capsys):
@@ -175,14 +177,14 @@ def test_benchmark_cosine_sim(capsys):
 
     with capsys.disabled():
         print(
-            f"\ncosine_sim ({BENCH_ROWS}×{BENCH_DIM}): "
-            f"new={t_new*1000:.2f}ms  ref={t_ref*1000:.2f}ms  "
-            f"speedup={t_ref/t_new:.1f}×"
+            f"\ncosine_sim ({BENCH_ROWS}x{BENCH_DIM}): "
+            f"new={t_new * 1000:.2f}ms  ref={t_ref * 1000:.2f}ms  "
+            f"speedup={t_ref / t_new:.1f}x"
         )
 
     assert t_new < t_ref, (
-        f"Vectorized cosine_sim ({t_new*1000:.2f}ms) should be faster than "
-        f"loop-based reference ({t_ref*1000:.2f}ms)"
+        f"Vectorized cosine_sim ({t_new * 1000:.2f}ms) should be faster than "
+        f"loop-based reference ({t_ref * 1000:.2f}ms)"
     )
 
 
@@ -192,12 +194,12 @@ def test_benchmark_euclidean_scoring(capsys):
 
     with capsys.disabled():
         print(
-            f"\neuclidean_scoring ({BENCH_ROWS}×{BENCH_DIM}): "
-            f"new={t_new*1000:.2f}ms  ref={t_ref*1000:.2f}ms  "
-            f"speedup={t_ref/t_new:.1f}×"
+            f"\neuclidean_scoring ({BENCH_ROWS}x{BENCH_DIM}): "
+            f"new={t_new * 1000:.2f}ms  ref={t_ref * 1000:.2f}ms  "
+            f"speedup={t_ref / t_new:.1f}x"
         )
 
     assert t_new < t_ref, (
-        f"Vectorized euclidean_scoring ({t_new*1000:.2f}ms) should be faster than "
-        f"loop-based reference ({t_ref*1000:.2f}ms)"
+        f"Vectorized euclidean_scoring ({t_new * 1000:.2f}ms) should be faster than "
+        f"loop-based reference ({t_ref * 1000:.2f}ms)"
     )
