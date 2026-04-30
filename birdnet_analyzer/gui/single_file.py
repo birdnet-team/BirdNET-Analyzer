@@ -182,7 +182,6 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         sample_settings, species_settings, model_settings = (
             gu.sample_species_model_settings(opened=False)
         )
-        locale_radio = gu.locale()
 
         single_file_analyze = gr.Button(
             loc.localize("analyze-start-button-label"),
@@ -305,6 +304,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             try_generate_spectrogram,
             inputs=[audio_path_state, generate_spectrogram_cb],
             outputs=[spectrogram_group, spectrogram_output],
+            show_progress_on=generate_spectrogram_cb
         )
 
         select_file_button.click(
@@ -340,7 +340,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             species_settings["sf_thresh_number"],
             model_settings["model_selection_radio"],
             model_settings["selected_classifier_state"],
-            locale_radio,
+            model_settings["locale_dropdown"],
         ]
 
         def time_to_seconds(time_str: str):

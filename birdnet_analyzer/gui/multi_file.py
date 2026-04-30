@@ -221,7 +221,6 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             )
 
         bs_number, producers_number, workers_number = gu.computing_settings()
-        locale_radio = gu.locale()
         start_batch_analysis_btn = gr.Button(
             loc.localize("analyze-start-button-label"), variant="huggingface"
         )
@@ -248,7 +247,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             model_settings["selected_classifier_state"],
             output_type_radio,
             additional_columns_,
-            locale_radio,
+            model_settings["locale_dropdown"],
             bs_number,
             producers_number,
             workers_number,

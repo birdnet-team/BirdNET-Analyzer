@@ -767,6 +767,8 @@ def model_selection(opened=True):
                         ),
                     )
 
+        locale_settings = locale()
+
         species_list_df = gr.List(
             value=[],
             headers=[loc.localize("species-list-header")],
@@ -783,20 +785,29 @@ def model_selection(opened=True):
 
     def on_model_selection_change(choice: str, cc_state):
         if choice == _CUSTOM_CLASSIFIER:
-            return gr.update(visible=True), gr.update(visible=cc_state is not None)
+            return (
+                gr.update(visible=True),
+                gr.update(visible=cc_state is not None),
+                gr.update(visible=False),
+            )
 
-        return gr.update(visible=False), gr.update(visible=False)
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=choice == _USE_BIRDNET_2_4),
+        )
 
     model_selection_radio.change(
         on_model_selection_change,
         inputs=[model_selection_radio, selected_classifier_state],
-        outputs=[custom_classifier_selector, species_list_df],
+        outputs=[custom_classifier_selector, species_list_df, locale_settings],
         show_progress="hidden",
     )
 
     return {
         "model_selection_radio": model_selection_radio,
         "selected_classifier_state": selected_classifier_state,
+        "locale_dropdown": locale_settings,
     }
 
 
