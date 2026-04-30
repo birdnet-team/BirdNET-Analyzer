@@ -1,19 +1,26 @@
-import os
+from birdnet_analyzer.analyze.core import (
+    analyze,
+    save_as_audacity,
+    save_as_csv,
+    save_as_kaleidoscope,
+    save_as_rtable,
+)
 
-import birdnet_analyzer.config as cfg
-from birdnet_analyzer.analyze.core import analyze
-
-POSSIBLE_ADDITIONAL_COLUMNS_MAP = {
-    "lat": lambda: cfg.LATITUDE,
-    "lon": lambda: cfg.LONGITUDE,
-    "week": lambda: cfg.WEEK,
-    "overlap": lambda: cfg.SIG_OVERLAP,
-    "sensitivity": lambda: cfg.SIGMOID_SENSITIVITY,
-    "min_conf": lambda: cfg.MIN_CONFIDENCE,
-    "species_list": lambda: cfg.SPECIES_LIST_FILE or "",
-    "model": lambda: os.path.basename(cfg.MODEL_PATH),
-}
+POSSIBLE_ADDITIONAL_COLUMNS = [
+    "lat",
+    "lon",
+    "week",
+    "overlap",
+    "sensitivity",
+    "min_conf",
+    "species_list",
+    "model",
+]
 
 __all__ = [
     "analyze",
+    "save_as_audacity",
+    "save_as_csv",
+    "save_as_kaleidoscope",
+    "save_as_rtable",
 ]

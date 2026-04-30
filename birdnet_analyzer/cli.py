@@ -1,8 +1,15 @@
 # ruff: noqa: E501
 import argparse
 import os
+from typing import cast, get_args
 
-import birdnet_analyzer.config as cfg
+from birdnet.globals import (
+    ACOUSTIC_MODEL_VERSIONS,
+    MODEL_LANGUAGE_EN_US,
+    MODEL_LANGUAGES,
+)
+
+from birdnet_analyzer.config import AUTOTUNE_METRICS
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ASCII_LOGO = r"""                        
@@ -34,22 +41,77 @@ ASCII_LOGO = r"""
 """  # noqa: W291
 
 
+def store_model_action(model_name: str):
+    class StoreModelAction(argparse.Action):
+        def __init__(
+            self,
+            option_strings,
+            dest,
+            default=False,
+            required=False,
+            help=None,  # noqa: A002
+        ):
+            super().__init__(
+                option_strings=option_strings,
+                dest=dest,
+                nargs=0,
+                const=True,
+                default=default,
+                required=required,
+                help=help,
+            )
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, True)
+            namespace.model = model_name
+
+    return StoreModelAction
+
+
+def set_model_action(model_name: str):
+    class SetModelAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, values)
+
+            namespace.model = model_name
+
+    return SetModelAction
+
+
+def birdnet_arg():
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument(
+        "--birdnet",
+        default="2.4",
+        const="2.4",
+        nargs="?",
+        choices=get_args(ACOUSTIC_MODEL_VERSIONS),
+        action=set_model_action("birdnet"),
+        help="Use the BirdNET model. Specify the version to use.",
+    )
+
+    return p
+
+
 def io_args():
     """
     Creates an argument parser for input and output paths.
     Returns:
         argparse.ArgumentParser: The argument parser with input and output path arguments.
     Arguments:
-        input (str): Path to the input file or folder. Defaults to the value specified in cfg.INPUT_PATH.
+        input (str): Path to the input file or folder.
         output (str): Path to the output folder. Defaults to the input path if not specified.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "audio_input",
         metavar="INPUT",
         help="Path to input file or folder.",
     )
-    p.add_argument("-o", "--output", help="Path to output folder. Defaults to the input path.")
+    p.add_argument(
+        "-o", "--output", help="Path to output folder. Defaults to the input path."
+    )
 
     return p
 
@@ -60,21 +122,22 @@ def bandpass_args():
     This function sets up an argument parser with two arguments:
     --fmin and --fmax, which define the minimum and maximum frequencies
     for the bandpass filter, respectively. The values are constrained
-    to be within the range defined by cfg.SIG_FMIN and cfg.SIG_FMAX.
+    to be within the range [0, 15000].
     Returns:
         argparse.ArgumentParser: The configured argument parser.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "--fmin",
-        type=lambda a: max(0, min(cfg.SIG_FMAX, int(a))),
-        default=cfg.SIG_FMIN,
+        type=lambda a: max(0, min(15000, int(a))),
+        default=0,
         help="Minimum frequency for bandpass filter in Hz.",
     )
     p.add_argument(
         "--fmax",
-        type=lambda a: max(cfg.SIG_FMIN, min(cfg.SIG_FMAX, int(a))),
-        default=cfg.SIG_FMAX,
+        type=lambda a: max(0, min(15000, int(a))),
+        default=15000,
         help="Maximum frequency for bandpass filter in Hz.",
     )
 
@@ -93,23 +156,23 @@ def species_list_args():
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
                            "species_list.txt". If lat and lon are provided, this list will be ignored.
             --sf_thresh (float): Minimum species occurrence frequency threshold for location filter. Values in [0.01, 0.99].
-                                 Defaults to cfg.LOCATION_FILTER_THRESHOLD.
     """
     p = argparse.ArgumentParser(add_help=False)
-    p.add_argument("--lat", type=float, default=-1, help="Recording location latitude. Set -1 to ignore.")
-    p.add_argument("--lon", type=float, default=-1, help="Recording location longitude. Set -1 to ignore.")
+
+    p.add_argument("--lat", type=float, help="Recording location latitude.")
+    p.add_argument("--lon", type=float, help="Recording location longitude.")
     p.add_argument(
         "--week",
         type=int,
-        default=-1,
-        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.",
+        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Leave blank for year-round species list.",
     )
     p.add_argument(
         "--sf_thresh",
         type=lambda a: max(0.0001, min(0.99, float(a))),
-        default=cfg.LOCATION_FILTER_THRESHOLD,
+        default=0.03,
         help="Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].",
     )
+
     return p
 
 
@@ -123,15 +186,16 @@ def species_args():
             --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
                           Set -1 for year-round species list. Default is -1.
             --sf_thresh (float): Minimum species occurrence frequency threshold for location filter. Values in [0.01, 0.99].
-                                 Defaults to cfg.LOCATION_FILTER_THRESHOLD.
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
                            "species_list.txt". If lat and lon are provided, this list will be ignored.
     """
     p = species_list_args()
+
     p.add_argument(
         "--slist",
         help='Path to species list file or folder. If folder is provided, species list needs to be named "species_list.txt". If lat and lon are provided, this list will be ignored.',
     )
+
     return p
 
 
@@ -140,16 +204,16 @@ def sigmoid_args():
     Creates an argument parser for sigmoid sensitivity.
     This function sets up an argument parser with a single argument `--sensitivity`.
     The sensitivity value is constrained to be within the range [0.5, 1.5], where higher
-    values result in higher detection sensitivity. The default value is taken from
-    `cfg.SIGMOID_SENSITIVITY`.
+    values result in higher detection sensitivity.
     Returns:
         argparse.ArgumentParser: The argument parser with the sensitivity argument configured.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "--sensitivity",
         type=lambda a: min(1.5, max(0.5, float(a))),
-        default=cfg.SIGMOID_SENSITIVITY,
+        default=1.0,
         help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid functionon the x-axis. Use complementary to the cut-off threshold.",
     )
 
@@ -161,11 +225,12 @@ def overlap_args(help_string="Overlap of prediction segments. Values in [0.0, 2.
     Creates an argument parser for the overlap of prediction segments.
     Args:
         help_string (str): A custom help string for the overlap argument. Defaults to a formatted string
-                           indicating the range [0.0, 2.9] and the default value from cfg.SIG_OVERLAP.
+                           indicating the range [0.0, 2.9].
     Returns:
         argparse.ArgumentParser: An argument parser with the overlap argument configured.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "--overlap",
         type=lambda a: max(0.0, min(4.9, float(a))),
@@ -183,15 +248,16 @@ def audio_speed_args():
     which allows the user to specify a speed factor for audio playback. The speed factor
     must be a float value where values less than 1.0 will slow down the audio and values
     greater than 1.0 will speed it up. The minimum allowed value is 0.01. The default
-    value is taken from the configuration (`cfg.AUDIO_SPEED`).
+    value is 1.0.
     Returns:
         argparse.ArgumentParser: The argument parser with the `--audio_speed` argument configured.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "--audio_speed",
         type=lambda a: max(0.01, float(a)),
-        default=cfg.AUDIO_SPEED,
+        default=1.0,
         help="Speed factor for audio playback. Values < 1.0 will slow down the audio, values > 1.0 will speed it up. At a 10x decrease (audio speed 0.1), a 384 kHz recording becomes a 38.4 kHz recording.",
     )
 
@@ -210,6 +276,7 @@ def threads_args():
     import multiprocessing
 
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "-t",
         "--threads",
@@ -231,13 +298,14 @@ def min_conf_args():
     The --min_conf argument:
         - Sets the minimum confidence threshold for predictions.
         - Accepts float values in the range [0.01, 0.99].
-        - Defaults to the value specified in cfg.MIN_CONFIDENCE.
+        - Defaults to 0.25.
         - Ensures that the provided value is clamped between 0.01 and 0.99.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "--min_conf",
-        default=cfg.MIN_CONFIDENCE,
+        default=0.25,
         type=lambda a: max(0.00001, min(0.99, float(a))),
         help="Minimum confidence threshold. Values in [0.00001, 0.99].",
     )
@@ -256,26 +324,30 @@ def locale_args():
         argparse.ArgumentParser: An argument parser with the locale argument.
     """
     p = argparse.ArgumentParser(add_help=False)
+
+    locale_choices = get_args(get_args(MODEL_LANGUAGES)[0])
     p.add_argument(
         "-l",
         "--locale",
-        default="en",
-        help="Locale for translated species common names. Values in ['af', 'en_UK', 'de', 'it', ...].",
+        default=cast("str", MODEL_LANGUAGE_EN_US),
+        choices=locale_choices,
+        help="Locale for translated species common names.",
     )
 
     return p
 
 
-def bs_args(default=cfg.BATCH_SIZE):
+def bs_args(default=1):
     """
     Creates an argument parser for batch size configuration.
     Returns:
         argparse.ArgumentParser: An argument parser with a batch size argument.
     The parser includes the following argument:
         -b, --batch_size: An integer specifying the number of samples to process at the same time.
-                         The value must be at least 1. Defaults to the value of cfg.BATCH_SIZE.
+                         The value must be at least 1. Defaults to the value of 1.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "-b",
         "--batch_size",
@@ -287,19 +359,49 @@ def bs_args(default=cfg.BATCH_SIZE):
     return p
 
 
+def computing_resources_args():
+    """
+    Creates an argument parser for computing resource configuration.
+    Notes:
+        The parser includes the following arguments:
+        --n_workers: Number of worker processes for audio processing. Defaults to number of CPU cores.
+        --n_producers: Number of producer processes for audio processing. Defaults to 1.
+    Returns:
+        argparse.ArgumentParser: An argument parser with arguments for worker and producer processes.
+    """
+    p = argparse.ArgumentParser(add_help=False)
+
+    p.add_argument(
+        "--n_workers",
+        type=int,
+        help="Number of worker processes for audio processing. Defaults to number of CPU cores.",
+    )
+    p.add_argument(
+        "--n_producers",
+        type=int,
+        default=1,
+        help="Number of producer processes for audio processing. Defaults to 1.",
+    )
+
+    return p
+
+
 def db_args():
     """
     Creates an arguments parser for the database path.
+    Notes:
+        The parser includes the following argument:
+        -db, --database: Path to the database folder.
     Returns:
         argparse.ArgumentParser: An argument parser with a database size argument.
-    The parser includes the following argument:
-        -db, --database: Path to the database folder.
     """
     p = argparse.ArgumentParser(add_help=False)
+
     p.add_argument(
         "-db",
         "--database",
         help="Path to the database folder.",
+        required=True,
     )
 
     return p
@@ -318,27 +420,26 @@ def analyzer_parser():
     argument values are stored as a set of unique, lowercase strings.
     Arguments:
         --rtype: Specifies output format. Accepts multiple values from ['table', 'audacity', 'kaleidoscope', 'csv'].
-        --combine_results: Outputs a combined file for all selected result types if set.
         -c, --classifier: Path to a custom trained classifier. Overrides --lat, --lon, and --locale if set.
-        --skip_existing_results: Skips files that have already been analyzed if set.
         --top_n: Saves only the top N predictions for each segment. Threshold will be ignored.
         --merge_consecutive: Maximum number of consecutive detections to merge for each species.
     Returns:
         argparse.ArgumentParser: Configured argument parser for the BirdNET Analyzer CLI.
     """
-    from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS_MAP
+    from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS
 
     parents = [
+        birdnet_arg(),
         io_args(),
         bandpass_args(),
         species_args(),
         sigmoid_args(),
         overlap_args(),
         audio_speed_args(),
-        threads_args(),
         min_conf_args(),
         locale_args(),
         bs_args(),
+        computing_resources_args(),
     ]
 
     parser = argparse.ArgumentParser(
@@ -347,8 +448,8 @@ def analyzer_parser():
     )
 
     class UniqueSetAction(argparse.Action):
-        def __call__(self, parser, args, values, option_string=None):
-            setattr(args, self.dest, {v.lower() for v in values})
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, {v.lower() for v in values})
 
     parser.add_argument(
         "--rtype",
@@ -360,52 +461,42 @@ def analyzer_parser():
     )
     parser.add_argument(
         "--additional_columns",
-        choices=POSSIBLE_ADDITIONAL_COLUMNS_MAP.keys(),
+        choices=POSSIBLE_ADDITIONAL_COLUMNS,
         nargs="+",
-        help="Additional columns to include in the output, only applied to the csv and parquet output formats. "
-        + f"Values in [{','.join(POSSIBLE_ADDITIONAL_COLUMNS_MAP.keys())}].",
+        help="Additional columns to include in the output, only applied to the csv and parquet output formats.",
         action=UniqueSetAction,
     )
     parser.add_argument(
-        "--combine_results",
-        help="Also outputs a combined file for all the selected result types. If not set combined tables will be generated.",
-        action="store_true",
-    )
-
-    parser.add_argument(
         "-c",
         "--classifier",
-        default=cfg.CUSTOM_CLASSIFIER,
         help="Path to custom trained classifier. If set, --lat, --lon and --locale are ignored.",
     )
-
     parser.add_argument(
-        "--skip_existing_results",
-        action="store_true",
-        help="Skip files that have already been analyzed.",
+        "--cc_species_list",
+        help="Path to custom species list file for the custom classifier. The default search path is <custom_classifier_without_extension>_Labels.txt in the same directory.",
     )
-
     parser.add_argument(
         "--top_n",
         type=lambda a: max(1, int(a)),
         help="Saves only the top N predictions for each segment independent of their score. Threshold will be ignored.",
     )
-
     parser.add_argument(
         "--merge_consecutive",
         type=int,
         default=1,
         help="Maximum number of consecutive detections above MIN_CONF to merge for each detected species. This will result in fewer entires in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. Set to None to include all consecutive detections. We use the mean of the top 3 scores from all consecutive detections for merging.",
     )
-
-    parser.add_argument("--use_perch", action="store_true", help="Use the Perch model for detection.")
-
     parser.add_argument(
-        "--show_progress",
-        action="store_true",
-        default=False,
-        help="Show progress bar during analysis.",
+        "--use_perch",
+        action=store_model_action("perch"),
+        help="Use the Perch model for detection.",
     )
+    parser.add_argument(
+        "--split_tables",
+        action="store_true",
+        help="Saves separate result tables for each input audio file in the output.",
+    )
+    parser.set_defaults(model="birdnet")
 
     return parser
 
@@ -419,15 +510,21 @@ def embeddings_parser():
     - bandpass_args(): Handles bandpass filter arguments.
     - audio_speed_args(): Handles audio speed arguments.
     - overlap_args(): Handles overlap arguments.
-    - threads_args(): Handles threading arguments.
+    - computing_resources_args(): Handles computing resource arguments.
     - bs_args(): Handles batch size arguments.
 
     Returns:
         argparse.ArgumentParser: Configured argument parser for extracting feature embeddings.
     """
 
-    parents = [db_args(), bandpass_args(), audio_speed_args(), overlap_args(), threads_args(), bs_args(default=8)]
-
+    parents = [
+        db_args(),
+        bandpass_args(),
+        audio_speed_args(),
+        overlap_args(),
+        bs_args(default=8),
+        computing_resources_args(),
+    ]
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=parents,
@@ -437,10 +534,13 @@ def embeddings_parser():
         "-i",
         "--input",
         dest="audio_input",
-        help="Path to input file or folder.",
+        help="Path to input file or folder, relative to the audio root.",
     )
 
-    parser.add_argument("--file_output", help="Saves all embeddings contained in the database in a csv file.")
+    parser.add_argument(
+        "--file_output",
+        help="Saves all embeddings contained in the database in a csv file.",
+    )
 
     return parser
 
@@ -462,11 +562,15 @@ def search_parser():
     """
 
     parents = [overlap_args(), db_args()]
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents
+    )
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents)
     parser.add_argument("-q", "--queryfile", help="Path to the query file.")
     parser.add_argument("-o", "--output", help="Path to the output folder.")
-    parser.add_argument("--n_results", default=10, type=int, help="Number of results to return.")
+    parser.add_argument(
+        "--n_results", default=10, type=int, help="Number of results to return."
+    )
 
     # TODO: use choice argument.
     parser.add_argument(
@@ -477,9 +581,14 @@ def search_parser():
     )
     parser.add_argument(
         "--crop_mode",
-        default=cfg.SAMPLE_CROP_MODE,
+        default="center",
         choices=["center", "first", "segments"],
         help="Crop mode for the query sample. Can be 'center', 'first' or 'segments'.",
+    )
+
+    parser.add_argument(
+        "--audio_root",
+        help="Path to the root directory of audio files.",
     )
 
     return parser
@@ -506,10 +615,21 @@ def client_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[io_args(), species_args(), sigmoid_args(), overlap_args()],
     )
-    parser.add_argument("--host", default="localhost", help="Host name or IP address of API endpoint server.")
-    parser.add_argument("-p", "--port", type=int, default=8080, help="Port of API endpoint server.")
-    parser.add_argument("--pmode", default="avg", help="Score pooling mode. Values in ['avg', 'max'].")
-    parser.add_argument("--num_results", type=int, default=5, help="Number of results per request.")
+
+    parser.add_argument(
+        "--host",
+        default="localhost",
+        help="Host name or IP address of API endpoint server.",
+    )
+    parser.add_argument(
+        "-p", "--port", type=int, default=8080, help="Port of API endpoint server."
+    )
+    parser.add_argument(
+        "--pmode", default="avg", help="Score pooling mode. Values in ['avg', 'max']."
+    )
+    parser.add_argument(
+        "--num_results", type=int, default=5, help="Number of results per request."
+    )
     parser.add_argument(
         "--save",
         action="store_true",
@@ -528,43 +648,50 @@ def segments_parser():
             - results (str, optional): Path to folder containing result files. Defaults to the `input` path.
             - output (str, optional): Output folder path for extracted segments. Defaults to the `input` path.
             - max_segments (int, optional): Number of randomly extracted segments per species. Defaults to 100.
-            - seg_length (float, optional): Length of extracted segments in seconds. Defaults to cfg.SIG_LENGTH.
+            - seg_length (float, optional): Length of extracted segments in seconds.
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[audio_speed_args(), threads_args(), min_conf_args()],
     )
-    parser.add_argument("audio_input", metavar="INPUT", help="Path to folder containing audio files.")
-    parser.add_argument("-r", "--results", help="Path to folder containing result files. Defaults to the `input` path.")
-    parser.add_argument("-o", "--output", help="Output folder path for extracted segments. Defaults to the `input` path.")
+
+    parser.add_argument(
+        "audio_input", metavar="INPUT", help="Path to folder containing audio files."
+    )
+    parser.add_argument(
+        "-r",
+        "--results",
+        help="Path to folder containing result files. Defaults to the `input` path.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Output folder path for extracted segments. Defaults to the `input` path.",
+    )
     parser.add_argument(
         "--max_segments",
         type=lambda a: max(1, int(a)),
         default=100,
         help="Number of randomly extracted segments per species.",
     )
-
     parser.add_argument(
         "--seg_length",
         type=lambda a: max(1.0, float(a)),
-        default=cfg.BIRDNET_SIG_LENGTH,
+        default=3.0,
         help="Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.",
     )
-
     parser.add_argument(
         "--max_conf",
-        default=cfg.MAX_CONFIDENCE,
+        default=1.0,
         type=lambda a: max(0.00001, min(1.0, float(a))),
         help="Maximum confidence threshold. Values in [0.00001, 1.0].",
     )
-
     parser.add_argument(
         "--collection_mode",
-        default=cfg.SEGMENTS_COLLECTION_MODE,
+        default="random",
         choices=["random", "confidence", "balanced"],
         help="Collection mode for selecting the segments. Can be 'random' or 'confidence'.",
     )
-
     parser.add_argument(
         "--n_bins",
         type=lambda a: max(2, int(a)),
@@ -588,11 +715,19 @@ def server_parser():
         parents=[threads_args(), locale_args()],
     )
 
-    parser.add_argument("--host", default="0.0.0.0", help="Host name or IP address of API endpoint server.")
-    parser.add_argument("-p", "--port", type=int, default=8080, help="Port of API endpoint server.")
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host name or IP address of API endpoint server.",
+    )
+    parser.add_argument(
+        "-p", "--port", type=int, default=8080, help="Port of API endpoint server."
+    )
     parser.add_argument(
         "--spath",
-        default="uploads/" if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true" else os.path.join(SCRIPT_DIR, "uploads"),
+        default="uploads/"
+        if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true"
+        else os.path.join(SCRIPT_DIR, "uploads"),
         help="Path to folder where uploaded files should be stored.",
     )
 
@@ -604,25 +739,19 @@ def species_parser():
     Creates an argument parser for retrieving a list of species for a given location using BirdNET.
     The parser includes the following arguments:
     - output: Path to the output file or folder. If a folder is provided, the file will be named 'species_list.txt'.
-    - --sortby: Optional argument to sort species by occurrence frequency ('freq') or alphabetically ('alpha'). Defaults to 'freq'.
+    - --locale: Locale for species names. Defaults to 'en_us'.
     Returns:
         argparse.ArgumentParser: Configured argument parser for species retrieval.
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[species_list_args()],
+        parents=[species_list_args(), locale_args()],
     )
+
     parser.add_argument(
         "output",
         metavar="OUTPUT",
         help="Path to output file or folder. If this is a folder, file will be named 'species_list.txt'.",
-    )
-
-    parser.add_argument(
-        "--sortby",
-        default="freq",
-        choices=["freq", "alpha"],
-        help="Sort species by occurrence frequency or alphabetically. Values in ['freq', 'alpha'].",
     )
 
     return parser
@@ -644,8 +773,10 @@ def train_parser():
             bandpass_args(),
             audio_speed_args(),
             threads_args(),
-            bs_args(cfg.TRAIN_BATCH_SIZE),
-            overlap_args(help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."),
+            bs_args(32),
+            overlap_args(
+                help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."
+            ),
         ],
     )
     c = (
@@ -653,35 +784,41 @@ def train_parser():
         if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true"
         else os.path.join(SCRIPT_DIR, "checkpoints/custom/Custom_Classifier")
     )
+
     parser.add_argument(
         "audio_input",
         metavar="INPUT",
-        help="Path to training data folder. Subfolder names are used as labels.",
+        help="Path to training data folder. Subfolder names are used as labels. Can also be path to cache file",
     )
-    parser.add_argument("--test_data", help="Path to test data folder. If not specified, a random validation split will be used.")
+    parser.add_argument(
+        "--test_data",
+        help="Path to test data folder. If not specified, a random validation split will be used.",
+    )
     parser.add_argument(
         "--crop_mode",
-        default=cfg.SAMPLE_CROP_MODE,
+        default="center",
         choices=["center", "first", "segments", "smart"],
         help="Crop mode for training data. Can be 'center', 'first', 'segments' or 'smart'.",
     )
-    parser.add_argument("-o", "--output", default=c, help="Path to trained classifier model output.")
+    parser.add_argument(
+        "-o", "--output", default=c, help="Path to trained classifier model output."
+    )
     parser.add_argument(
         "--epochs",
         type=int,
-        default=cfg.TRAIN_EPOCHS,
+        default=50,
         help="Number of training epochs.",
     )
     parser.add_argument(
         "--val_split",
         type=float,
-        default=cfg.TRAIN_VAL_SPLIT,
-        help="Validation split ratio. Will be ignored if test_data is set.",
+        default=0.2,
+        help="A small percentage of the training data that is not used for training, but for validation scores during training.",
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=cfg.TRAIN_LEARNING_RATE,
+        default=0.0001,
         help="Learning rate.",
     )
     parser.add_argument(
@@ -692,56 +829,63 @@ def train_parser():
     )
     parser.add_argument(
         "--focal-loss-gamma",
-        default=cfg.FOCAL_LOSS_GAMMA,
+        default=2.0,
         type=float,
         help="Focal loss gamma parameter (focusing parameter). Higher values give more weight to hard examples.",
     )
     parser.add_argument(
         "--focal-loss-alpha",
-        default=cfg.FOCAL_LOSS_ALPHA,
+        default=0.25,
         type=float,
         help="Focal loss alpha parameter (balancing parameter). Controls weight between positive and negative examples.",
     )
     parser.add_argument(
         "--hidden_units",
         type=int,
-        default=cfg.TRAIN_HIDDEN_UNITS,
+        default=0,
         help="Number of hidden units. If set to >0, a two-layer classifier is used.",
     )
     parser.add_argument(
         "--dropout",
         type=lambda a: min(max(0, float(a)), 0.9),
-        default=cfg.TRAIN_DROPOUT,
+        default=0.0,
         help="Dropout rate. Higher values result in more regularization. Values in [0.0, 0.9].",
     )
-    parser.add_argument("--label_smoothing", action="store_true", help="Whether to use label smoothing for training.")
-    parser.add_argument("--mixup", action="store_true", help="Whether to use mixup for training.")
+    parser.add_argument(
+        "--label_smoothing",
+        action="store_true",
+        help="Whether to use label smoothing for training.",
+    )
+    parser.add_argument(
+        "--mixup", action="store_true", help="Whether to use mixup for training."
+    )
     parser.add_argument(
         "--upsampling_ratio",
         type=lambda a: min(max(0, float(a)), 1),
-        default=cfg.UPSAMPLING_RATIO,
+        default=0.0,
         help="Balance train data and upsample minority classes. Values between 0 and 1.",
     )
     parser.add_argument(
         "--upsampling_mode",
-        default=cfg.UPSAMPLING_MODE,
+        default="repeat",
         choices=["repeat", "linear", "mean", "smote"],
         help="Upsampling mode.",
     )
     parser.add_argument(
         "--model_format",
-        default=cfg.TRAINED_MODEL_OUTPUT_FORMAT,
+        default="tflite",
         choices=["tflite", "raven", "both"],
         help="Model output format.",
     )
     parser.add_argument(
         "--model_save_mode",
-        default=cfg.TRAINED_MODEL_SAVE_MODE,
+        default="replace",
         choices=["replace", "append"],
         help="Model save mode. 'replace' will overwrite the original classification layer and 'append' will combine the original classification layer with the new one.",
     )
-    parser.add_argument("--cache_mode", choices=["load", "save"], help="Cache mode. Can be 'load' or 'save'.")
-    parser.add_argument("--cache_file", default=cfg.TRAIN_CACHE_FILE, help="Path to cache file.")
+    parser.add_argument(
+        "--save_cache_to", default="train_cache.npz", help="Path to cache file."
+    )
     parser.add_argument(
         "--autotune",
         action="store_true",
@@ -750,14 +894,26 @@ def train_parser():
     parser.add_argument(
         "--autotune_trials",
         type=int,
-        default=cfg.AUTOTUNE_TRIALS,
+        default=50,
         help="Number of training runs for hyperparameter tuning.",
     )
     parser.add_argument(
-        "--autotune_executions_per_trial",
+        "--autotune_n_splits",
         type=int,
-        default=cfg.AUTOTUNE_EXECUTIONS_PER_TRIAL,
-        help="The number of times a training run with a set of hyperparameters is repeated during hyperparameter tuning (this reduces the variance).",
+        default=1,
+        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. Keep in mind that this will significantly increase the runtime of the hyperparameter tuning process.",
+    )
+    parser.add_argument(
+        "--autotune_n_repeats",
+        type=int,
+        default=1,
+        help="Number of repetitions for each training run during hyperparameter tuning. If set to >1, each training run will be executed multiple times and the average validation score across all repetitions will be used as the score for the training run. This can help to get more robust estimates of the validation scores for each training run, but it will also increase the runtime of the hyperparameter tuning process.",
+    )
+    parser.add_argument(
+        "--autotune_metric",
+        default="val_AUPRC",
+        choices=get_args(AUTOTUNE_METRICS),
+        help="Metric to optimize during hyperparameter tuning. This can be any metric that is returned by the training process and is included in the training history object. Common choices are 'val_loss', 'val_AUPRC' or 'val_AUROC'.",
     )
 
     return parser

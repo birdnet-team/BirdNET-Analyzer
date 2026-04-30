@@ -1,9 +1,9 @@
 """
 Module containing functions to calculate various performance metrics using scikit-learn.
 
-This script includes implementations for calculating accuracy, precision, recall, F1 score,
-average precision, and AUROC for binary and multilabel classification tasks. It supports
-various averaging methods and thresholds for predictions.
+This script includes implementations for calculating accuracy, precision, recall,
+F1 score, average precision, and AUROC for binary and multilabel classification tasks.
+It supports various averaging methods and thresholds for predictions.
 
 Functions:
     - calculate_accuracy: Computes accuracy for binary or multilabel classification.
@@ -11,7 +11,8 @@ Functions:
     - calculate_precision: Computes precision for binary or multilabel classification.
     - calculate_f1_score: Computes the F1 score for binary or multilabel classification.
     - calculate_average_precision: Computes the average precision score (AP).
-    - calculate_auroc: Computes the Area Under the Receiver Operating Characteristic curve (AUROC).
+    - calculate_auroc: Computes the Area Under the Receiver Operating Characteristic
+        curve (AUROC).
 """
 
 from typing import Literal
@@ -44,14 +45,17 @@ def calculate_accuracy(
         task (Literal["binary", "multilabel"]): Type of classification task.
         num_classes (int): Number of classes (only for multilabel tasks).
         threshold (float): Threshold to binarize probabilities.
-        averaging_method (Optional[Literal["micro", "macro", "weighted", "none"]], optional):
-            Averaging method to compute accuracy for multilabel tasks. Defaults to "macro".
+        averaging_method (Optional[Literal["micro", "macro", "weighted", "none"]],
+        optional):
+            Averaging method to compute accuracy for multilabel tasks. Defaults to
+            "macro".
 
     Returns:
         np.ndarray: Accuracy metric(s) based on the task and averaging method.
 
     Raises:
-        ValueError: If inputs are invalid or unsupported task/averaging method is specified.
+        ValueError: If inputs are invalid or unsupported task/averaging method is
+            specified.
     """
     # Input validation for predictions, labels, and threshold
     if predictions.size == 0 or labels.size == 0:
@@ -83,7 +87,9 @@ def calculate_accuracy(
 
         elif averaging_method == "macro":
             # Macro-averaging: Compute accuracy per class and take the mean
-            accuracies = [accuracy_score(y_true[:, i], y_pred[:, i]) for i in range(num_classes)]
+            accuracies = [
+                accuracy_score(y_true[:, i], y_pred[:, i]) for i in range(num_classes)
+            ]
             acc = np.mean(accuracies)
             acc = np.array([acc])
 
@@ -93,12 +99,18 @@ def calculate_accuracy(
             for i in range(num_classes):
                 accuracies.append(accuracy_score(y_true[:, i], y_pred[:, i]))
                 weights.append(np.sum(y_true[:, i]))
-            acc = np.average(accuracies, weights=weights) if sum(weights) > 0 else np.array([0.0])
+            acc = (
+                np.average(accuracies, weights=weights)
+                if sum(weights) > 0
+                else np.array([0.0])
+            )
             acc = np.array([acc])
 
         elif averaging_method in [None, "none"]:
             # No averaging: Return accuracy per class
-            acc = np.array([accuracy_score(y_true[:, i], y_pred[:, i]) for i in range(num_classes)])
+            acc = np.array(
+                [accuracy_score(y_true[:, i], y_pred[:, i]) for i in range(num_classes)]
+            )
 
         else:
             # Unsupported averaging method
@@ -115,7 +127,8 @@ def calculate_recall(
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
     threshold: float,
-    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"] | None = None,
+    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"]
+    | None = None,
 ) -> np.ndarray:
     """
     Calculate recall for the given predictions and labels.
@@ -125,7 +138,8 @@ def calculate_recall(
         labels (np.ndarray): True labels.
         task (Literal["binary", "multilabel"]): Type of classification task.
         threshold (float): Threshold to binarize probabilities.
-        averaging_method (Optional[Literal["binary", "micro", "macro", "weighted", "samples", "none"]], optional):
+        averaging_method (Optional[Literal["binary", "micro", "macro", "weighted",
+        "samples", "none"]], optional):
             Averaging method for multilabel recall. Defaults to None.
 
     Returns:
@@ -172,7 +186,8 @@ def calculate_precision(
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
     threshold: float,
-    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"] | None = None,
+    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"]
+    | None = None,
 ) -> np.ndarray:
     """
     Calculate precision for the given predictions and labels.
@@ -182,7 +197,8 @@ def calculate_precision(
         labels (np.ndarray): True labels.
         task (Literal["binary", "multilabel"]): Type of classification task.
         threshold (float): Threshold to binarize probabilities.
-        averaging_method (Optional[Literal["binary", "micro", "macro", "weighted", "samples", "none"]], optional):
+        averaging_method (Optional[Literal["binary", "micro", "macro", "weighted",
+        "samples", "none"]], optional):
             Averaging method for multilabel precision. Defaults to None.
 
     Returns:
@@ -229,7 +245,8 @@ def calculate_f1_score(
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
     threshold: float,
-    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"] | None = None,
+    averaging_method: Literal["binary", "micro", "macro", "weighted", "samples", "none"]
+    | None = None,
 ) -> np.ndarray:
     """
     Calculate the F1 score for the given predictions and labels.
@@ -239,7 +256,8 @@ def calculate_f1_score(
         labels (np.ndarray): True labels.
         task (Literal["binary", "multilabel"]): Type of classification task.
         threshold (float): Threshold to binarize probabilities.
-        averaging_method (Optional[Literal["binary", "micro", "macro", "weighted", "samples", "none"]], optional):
+        averaging_method (Optional[Literal["binary", "micro", "macro", "weighted",
+        "samples", "none"]], optional):
             Averaging method for multilabel F1 score. Defaults to None.
 
     Returns:
@@ -285,7 +303,8 @@ def calculate_average_precision(
     predictions: np.ndarray,
     labels: np.ndarray,
     task: Literal["binary", "multilabel"],
-    averaging_method: Literal["micro", "macro", "weighted", "samples", "none"] | None = None,
+    averaging_method: Literal["micro", "macro", "weighted", "samples", "none"]
+    | None = None,
 ) -> np.ndarray:
     """
     Calculate the average precision (AP) for the given predictions and labels.
@@ -294,7 +313,8 @@ def calculate_average_precision(
         predictions (np.ndarray): Model predictions as probabilities.
         labels (np.ndarray): True labels.
         task (Literal["binary", "multilabel"]): Type of classification task.
-        averaging_method (Optional[Literal["micro", "macro", "weighted", "samples", "none"]], optional):
+        averaging_method (Optional[Literal["micro", "macro", "weighted", "samples",
+        "none"]], optional):
             Averaging method for AP. Defaults to None.
 
     Returns:
@@ -341,7 +361,8 @@ def calculate_auroc(
         predictions (np.ndarray): Model predictions as probabilities.
         labels (np.ndarray): True labels.
         task (Literal["binary", "multilabel"]): Type of classification task.
-        averaging_method (Optional[Literal["macro", "weighted", "samples", "none"]], optional):
+        averaging_method (Optional[Literal["macro", "weighted", "samples", "none"]],
+        optional):
             Averaging method for multilabel AUROC. Defaults to "macro".
 
     Returns:
@@ -377,7 +398,9 @@ def calculate_auroc(
 
     except ValueError as e:
         # Handle edge cases where AUROC cannot be computed
-        if "Only one class present in y_true" in str(e) or "Number of classes in y_true" in str(e):
+        if "Only one class present in y_true" in str(
+            e
+        ) or "Number of classes in y_true" in str(e):
             auroc = np.nan
         else:
             raise

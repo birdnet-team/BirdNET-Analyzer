@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class CombinedModelBase(tf.keras.Model):
+class CombinedModelBase(tf.keras.Model):  # ty:ignore[unresolved-attribute]
     def __init__(self, pb_model, classifier, name):
         super().__init__(name=name)
         self.pb_model = pb_model

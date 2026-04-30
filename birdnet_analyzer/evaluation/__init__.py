@@ -1,9 +1,10 @@
 """
 Core script for assessing performance of prediction models against annotated data.
 
-This script uses the `DataProcessor` and `PerformanceAssessor` classes to process prediction and
-annotation data, compute metrics, and optionally generate plots. It supports flexible configurations
-for columns, class mappings, and filtering based on selected classes or recordings.
+This script uses the `DataProcessor` and `PerformanceAssessor` classes to process
+prediction and annotation data, compute metrics, and optionally generate plots. It
+supports flexible configurations for columns, class mappings, and filtering based on
+selected classes or recordings.
 """
 
 import argparse
@@ -38,20 +39,28 @@ def process_data(
     Args:
         annotation_path (str): Path to the annotation file or folder.
         prediction_path (str): Path to the prediction file or folder.
-        mapping_path (Optional[str]): Path to the class mapping JSON file, if applicable.
+        mapping_path (Optional[str]): Path to the class mapping JSON file,
+            if applicable.
         sample_duration (float): Duration of each sample interval in seconds.
-        min_overlap (float): Minimum overlap required between predictions and annotations.
-        recording_duration (Optional[float]): Total duration of the recordings, if known.
-        columns_annotations (Optional[Dict[str, str]]): Custom column mappings for annotations.
-        columns_predictions (Optional[Dict[str, str]]): Custom column mappings for predictions.
-        selected_classes (Optional[List[str]]): List of classes to include in the analysis.
-        selected_recordings (Optional[List[str]]): List of recordings to include in the analysis.
+        min_overlap (float): Minimum overlap required between predictions and
+            annotations.
+        recording_duration (Optional[float]): Total duration of the recordings, if
+            known.
+        columns_annotations (Optional[Dict[str, str]]): Custom column mappings for
+            annotations.
+        columns_predictions (Optional[Dict[str, str]]): Custom column mappings for
+            predictions.
+        selected_classes (Optional[List[str]]): List of classes to include in the
+            analysis.
+        selected_recordings (Optional[List[str]]): List of recordings to include in the
+            analysis.
         metrics_list (Tuple[str, ...]): Metrics to compute for performance assessment.
         threshold (float): Confidence threshold for predictions.
         class_wise (bool): Whether to calculate metrics on a per-class basis.
 
     Returns:
-        Tuple: Metrics DataFrame, `PerformanceAssessor` object, predictions tensor, labels tensor.
+        Tuple: Metrics DataFrame, `PerformanceAssessor` object, predictions tensor,
+            labels tensor.
     """
     # Load class mapping if provided
     if mapping_path:
@@ -62,10 +71,14 @@ def process_data(
 
     # Determine directory and file paths for annotations and predictions
     annotation_dir, annotation_file = (
-        (os.path.dirname(annotation_path), os.path.basename(annotation_path)) if os.path.isfile(annotation_path) else (annotation_path, None)
+        (os.path.dirname(annotation_path), os.path.basename(annotation_path))
+        if os.path.isfile(annotation_path)
+        else (annotation_path, None)
     )
     prediction_dir, prediction_file = (
-        (os.path.dirname(prediction_path), os.path.basename(prediction_path)) if os.path.isfile(prediction_path) else (prediction_path, None)
+        (os.path.dirname(prediction_path), os.path.basename(prediction_path))
+        if os.path.isfile(prediction_path)
+        else (prediction_path, None)
     )
 
     # Initialize the DataProcessor to handle and prepare data
@@ -93,7 +106,9 @@ def process_data(
         selected_recordings = available_recordings
 
     # Retrieve predictions and labels tensors for the selected classes and recordings
-    predictions, labels, classes = processor.get_filtered_tensors(selected_classes, selected_recordings)
+    predictions, labels, classes = processor.get_filtered_tensors(
+        selected_classes, selected_recordings
+    )
 
     num_classes = len(classes)
     task = "binary" if num_classes == 1 else "multilabel"
@@ -115,28 +130,68 @@ def process_data(
 
 def main():
     """
-    Entry point for the script. Parses command-line arguments and orchestrates the performance assessment pipeline.
+    Entry point for the script. Parses command-line arguments and orchestrates the
+    performance assessment pipeline.
     """
     import matplotlib.pyplot as plt
 
     # Set up argument parsing
     parser = argparse.ArgumentParser(description="Performance Assessor Core Script")
-    parser.add_argument("--annotation_path", required=True, help="Path to annotation file or folder")
-    parser.add_argument("--prediction_path", required=True, help="Path to prediction file or folder")
-    parser.add_argument("--mapping_path", help="Path to class mapping JSON file (optional)")
-    parser.add_argument("--sample_duration", type=float, default=3.0, help="Sample duration in seconds")
-    parser.add_argument("--min_overlap", type=float, default=0.5, help="Minimum overlap in seconds")
-    parser.add_argument("--recording_duration", type=float, help="Recording duration in seconds")
-    parser.add_argument("--columns_annotations", type=json.loads, help="JSON string for columns_annotations")
-    parser.add_argument("--columns_predictions", type=json.loads, help="JSON string for columns_predictions")
-    parser.add_argument("--selected_classes", nargs="+", help="List of selected classes")
-    parser.add_argument("--selected_recordings", nargs="+", help="List of selected recordings")
-    parser.add_argument("--metrics", nargs="+", default=["accuracy", "precision", "recall"], help="List of metrics")
-    parser.add_argument("--threshold", type=float, default=0.1, help="Threshold value (0-1)")
-    parser.add_argument("--class_wise", action="store_true", help="Calculate class-wise metrics")
+    parser.add_argument(
+        "--annotation_path", required=True, help="Path to annotation file or folder"
+    )
+    parser.add_argument(
+        "--prediction_path", required=True, help="Path to prediction file or folder"
+    )
+    parser.add_argument(
+        "--mapping_path", help="Path to class mapping JSON file (optional)"
+    )
+    parser.add_argument(
+        "--sample_duration", type=float, default=3.0, help="Sample duration in seconds"
+    )
+    parser.add_argument(
+        "--min_overlap", type=float, default=0.5, help="Minimum overlap in seconds"
+    )
+    parser.add_argument(
+        "--recording_duration", type=float, help="Recording duration in seconds"
+    )
+    parser.add_argument(
+        "--columns_annotations",
+        type=json.loads,
+        help="JSON string for columns_annotations",
+    )
+    parser.add_argument(
+        "--columns_predictions",
+        type=json.loads,
+        help="JSON string for columns_predictions",
+    )
+    parser.add_argument(
+        "--selected_classes", nargs="+", help="List of selected classes"
+    )
+    parser.add_argument(
+        "--selected_recordings", nargs="+", help="List of selected recordings"
+    )
+    parser.add_argument(
+        "--metrics",
+        nargs="+",
+        default=["accuracy", "precision", "recall"],
+        help="List of metrics",
+    )
+    parser.add_argument(
+        "--threshold", type=float, default=0.1, help="Threshold value (0-1)"
+    )
+    parser.add_argument(
+        "--class_wise", action="store_true", help="Calculate class-wise metrics"
+    )
     parser.add_argument("--plot_metrics", action="store_true", help="Plot metrics")
-    parser.add_argument("--plot_confusion_matrix", action="store_true", help="Plot confusion matrix")
-    parser.add_argument("--plot_metrics_all_thresholds", action="store_true", help="Plot metrics for all thresholds")
+    parser.add_argument(
+        "--plot_confusion_matrix", action="store_true", help="Plot confusion matrix"
+    )
+    parser.add_argument(
+        "--plot_metrics_all_thresholds",
+        action="store_true",
+        help="Plot metrics for all thresholds",
+    )
     parser.add_argument("--output_dir", help="Directory to save plots")
 
     # Parse arguments
@@ -182,7 +237,9 @@ def main():
             plt.show()
 
     if args.plot_metrics_all_thresholds:
-        pa.plot_metrics_all_thresholds(predictions, labels, per_class_metrics=args.class_wise)
+        pa.plot_metrics_all_thresholds(
+            predictions, labels, per_class_metrics=args.class_wise
+        )
         if args.output_dir:
             plt.savefig(os.path.join(args.output_dir, "metrics_all_thresholds.png"))
         else:

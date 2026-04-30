@@ -35,3 +35,15 @@ footer {
     margin-right: 3px;
     padding: 1px;
 }
+
+.gr-group>div.styler>div.block {
+    border-style: none !important;
+}
+
+.path-textbox input {
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    resize: none !important;
+    text-overflow: ellipsis !important;
+    text-align: left !important;
+}

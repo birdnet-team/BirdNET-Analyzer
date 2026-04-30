@@ -2,10 +2,11 @@ import os
 
 import gradio as gr
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.embeddings.core import get_or_create_database as get_embeddings_database
+from birdnet_analyzer.embeddings.core import (
+    get_or_create_database as get_embeddings_database,
+)
 from birdnet_analyzer.search.core import get_database as get_search_database
 
 PAGE_SIZE = 6
@@ -36,12 +37,19 @@ def run_export(export_state: dict):
             for file in export_state.values():
                 filebasename = os.path.basename(file[0])
                 filebasename = os.path.splitext(filebasename)[0]
-                dest = os.path.join(export_folder, f"{file[4]:.5f}_{filebasename}_{file[1]}_{file[1] + file[2]}.wav")
-                # @mamau: Missing audio speed?
-                sig, rate = audio.open_audio_file(file[0], offset=file[1], duration=file[2], sample_rate=None)
+                dest = os.path.join(
+                    export_folder,
+                    f"{file[4]:.5f}_{filebasename}_{file[1]}_{file[1] + file[2]}.wav",
+                )
+                # TODO @mamau: Missing audio speed?
+                sig, rate = audio.open_audio_file(
+                    file[0], offset=file[1], duration=file[2], sample_rate=None
+                )
                 audio.save_signal(sig, dest, rate)
 
-        gr.Info(f"{loc.localize('embeddings-search-export-finish-info')} {export_folder}")
+        gr.Info(
+            f"{loc.localize('embeddings-search-export-finish-info')} {export_folder}"
+        )
     else:
         gr.Info(loc.localize("embeddings-search-export-no-results-info"))
 
@@ -56,20 +64,25 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
 
 
 @gu.gui_runtime_error_handler
-def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overlap):
+def run_search(
+    db_path, audio_root, query_path, max_samples, score_fn, crop_mode, crop_overlap
+):
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
     from birdnet_analyzer.search.utils import get_search_results
 
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
+    gu.validate(
+        audio_root, loc.localize("embeddings-search-audio-root-validation-message")
+    )
     gu.validate(query_path, loc.localize("embeddings-search-query-validation-message"))
-    gu.validate(max_samples, loc.localize("embeddings-search-max-samples-validation-message"))
-
-    cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
-    cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
-    cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
-    cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
+    gu.validate(
+        max_samples, loc.localize("embeddings-search-max-samples-validation-message")
+    )
 
     db = get_search_database(db_path)
-    settings = db.get_metadata("birdnet_analyzer_settings")
+    settings = db.get_metadata(SETTINGS_KEY)
+    settings["AUDIO_ROOT"] = audio_root
+    db.insert_metadata(SETTINGS_KEY, settings)
 
     results = get_search_results(
         query_path,
@@ -89,8 +102,9 @@ def run_search(db_path, query_path, max_samples, score_fn, crop_mode, crop_overl
     return chunks, 0, gr.Button(interactive=True), {}
 
 
-def build_search_tab():
+def build_search_tab() -> gu.TAB_BUILDER_RESULT:
     from birdnet_analyzer import audio, utils
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
 
     with gr.Tab(loc.localize("embeddings-search-tab-title")):
         results_state = gr.State([])
@@ -100,44 +114,100 @@ def build_search_tab():
 
         with gr.Row():
             with gr.Column():
-                db_selection_button = gr.Button(loc.localize("embeddings-search-db-selection-button-label"))
+                with gr.Group(), gr.Row(equal_height=True):
+                    db_selection_button = gr.Button(
+                        loc.localize("embeddings-search-db-selection-button-label"),
+                        variant="primary",
+                    )
+                    db_selection_tb = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "embeddings-search-db-selection-textbox-placeholder"
+                        ),
+                        scale=3,
+                        max_lines=1,
+                        rtl=True,
+                        elem_classes="path-textbox",
+                    )
                 with gr.Group():
                     with gr.Row():
-                        db_selection_tb = gr.Textbox(
-                            label=loc.localize("embeddings-search-db-selection-textbox-label"),
-                            max_lines=3,
-                            interactive=False,
-                            visible=False,
-                        )
                         db_embedding_count_number = gr.Number(
                             interactive=False,
                             visible=False,
-                            label=loc.localize("embeddings-search-db-embedding-count-number-label"),
+                            label=loc.localize(
+                                "embeddings-search-db-embedding-count-number-label"
+                            ),
                         )
                     with gr.Row():
                         db_bandpass_frequencies_tb = gr.Textbox(
-                            label=loc.localize("embeddings-search-db-bandpass-frequencies-label"),
+                            label=loc.localize(
+                                "embeddings-search-db-bandpass-frequencies-label"
+                            ),
                             interactive=False,
                             visible=False,
                         )
                         db_audio_speed_number = gr.Number(
                             interactive=False,
                             visible=False,
-                            label=loc.localize("embeddings-search-db-audio-speed-number-label"),
+                            label=loc.localize(
+                                "embeddings-search-db-audio-speed-number-label"
+                            ),
                         )
+                with gr.Group(), gr.Row(equal_height=True):
+                    audio_root_selection_button = gr.Button(
+                        loc.localize(
+                            "embeddings-search-audio-root-selection-button-label"
+                        ),
+                        variant="primary",
+                    )
+                    audio_root_selection_tb = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "embeddings-search-audio-root-selection-textbox-placeholder"
+                        ),
+                        scale=3,
+                        max_lines=1,
+                        elem_classes="path-textbox",
+                        rtl=True,
+                    )
+
                 query_spectrogram = gr.Plot(show_label=False)
-                select_query_btn = gr.Button(loc.localize("embeddings-search-select-query-button-label"))
-                query_sample_tb = gr.Textbox(
-                    label=loc.localize("embeddings-search-query-sample-textbox-label"),
-                    visible=False,
-                    interactive=False,
-                )
+
+                with gr.Group(), gr.Row(equal_height=True):
+                    select_query_btn = gr.Button(
+                        loc.localize("embeddings-search-select-query-button-label"),
+                        variant="primary",
+                    )
+                    query_sample_tb = gr.Textbox(
+                        show_label=False,
+                        interactive=False,
+                        placeholder=loc.localize(
+                            "embeddings-search-query-sample-textbox-placeholder"
+                        ),
+                        scale=3,
+                        rtl=True,
+                        max_lines=1,
+                        elem_classes="path-textbox",
+                    )
 
                 crop_mode = gr.Radio(
                     [
-                        (loc.localize("training-tab-crop-mode-radio-option-center"), "center"),
-                        (loc.localize("training-tab-crop-mode-radio-option-first"), "first"),
-                        (loc.localize("training-tab-crop-mode-radio-option-segments"), "segments"),
+                        (
+                            loc.localize("training-tab-crop-mode-radio-option-center"),
+                            "center",
+                        ),
+                        (
+                            loc.localize("training-tab-crop-mode-radio-option-first"),
+                            "first",
+                        ),
+                        (
+                            loc.localize(
+                                "training-tab-crop-mode-radio-option-segments"
+                            ),
+                            "segments",
+                        ),
                     ],
                     value="center",
                     label=loc.localize("training-tab-crop-mode-radio-label"),
@@ -164,28 +234,46 @@ def build_search_tab():
                     value="cosine",
                     interactive=True,
                 )
-                search_btn = gr.Button(loc.localize("embeddings-search-start-button-label"), variant="huggingface")
+                search_btn = gr.Button(
+                    loc.localize("embeddings-search-start-button-label"),
+                    variant="huggingface",
+                )
 
             with gr.Column():
                 with gr.Column(elem_id="embeddings-search-results"):
 
                     @gr.render(
-                        inputs=[results_state, page_state, db_selection_tb, export_state],
-                        triggers=[results_state.change, page_state.change, db_selection_tb.change],
+                        inputs=[
+                            results_state,
+                            page_state,
+                            db_selection_tb,
+                            export_state,
+                            audio_root_selection_tb,
+                        ],
+                        triggers=[
+                            results_state.change,
+                            page_state.change,
+                            db_selection_tb.change,
+                        ],
                     )
-                    def render_results(results, page, db_path, exports):
+                    def render_results(results, page, db_path, exports, audio_root):
                         with gr.Row():
                             if db_path is not None and len(results) > 0:
                                 db = get_search_database(db_path)
-                                settings = db.get_metadata("birdnet_analyzer_settings")
+                                settings = db.get_metadata(SETTINGS_KEY)
 
                                 for i, r in enumerate(results[page]):
                                     with gr.Column():
                                         index = i + page * PAGE_SIZE
-                                        embedding_source = db.get_embedding_source(r.embedding_id)
-                                        file = embedding_source.source_id
-                                        offset = embedding_source.offsets[0]
-                                        duration = cfg.BIRDNET_SIG_LENGTH * settings["AUDIO_SPEED"]
+                                        window = db.get_window(r.window_id)
+                                        recording = db.get_recording(
+                                            window.recording_id
+                                        )
+                                        file = os.path.join(
+                                            audio_root, recording.filename
+                                        )
+                                        offset = window.offsets[0]
+                                        duration = 3.0 * settings["AUDIO_SPEED"]
                                         spec = utils.spectrogram_from_file(
                                             file,
                                             offset=offset,
@@ -208,22 +296,53 @@ def build_search_tab():
                                             ]
                                         )
                                         with gr.Row():
-                                            gr.Plot(spec, label=f"{index + 1}_score: {r.sort_score:.2f}")
+                                            gr.Plot(
+                                                spec,
+                                                label=(
+                                                    f"{index + 1}_score: "
+                                                    f"{r.sort_score:.2f}"
+                                                ),
+                                            )
 
                                         with gr.Row():
                                             play_btn = gr.Button("▶")
-                                            play_btn.click(play_audio, inputs=plot_audio_state, outputs=hidden_audio)
-                                            checkbox = gr.Checkbox(label="Export", value=(index in exports))
+                                            play_btn.click(
+                                                play_audio,
+                                                inputs=plot_audio_state,
+                                                outputs=hidden_audio,
+                                            )
+                                            checkbox = gr.Checkbox(
+                                                label=loc.localize(
+                                                    "embeddings-search-export-checkbox-label"
+                                                ),
+                                                value=(index in exports),
+                                            )
                                             checkbox.change(
                                                 update_export_state,
-                                                inputs=[plot_audio_state, checkbox, export_state],
+                                                inputs=[
+                                                    plot_audio_state,
+                                                    checkbox,
+                                                    export_state,
+                                                ],
                                                 outputs=export_state,
                                             )
-                                db.db.close()  # Close the database connection to avoid having wal/shm files
+                                # Close the database connection to avoid having wal/shm
+                                # files
+                                db.db.close()
 
                         with gr.Row():
-                            prev_btn = gr.Button("Previous Page", interactive=page > 0)
-                            next_btn = gr.Button("Next Page", interactive=page < len(results) - 1)
+                            prev_btn = gr.Button(
+                                loc.localize(
+                                    "embeddings-search-previous-page-button-label"
+                                ),
+                                interactive=page > 0,
+                            )
+                            next_btn = gr.Button(
+                                loc.localize(
+                                    "embeddings-search-next-page-button-label"
+                                ),
+                                interactive=page < len(results) - 1,
+                            )
 
                         def prev_page(page):
                             return page - 1 if page > 0 else 0
@@ -231,13 +350,37 @@ def build_search_tab():
                         def next_page(page):
                             return page + 1
 
-                        prev_btn.click(prev_page, inputs=[page_state], outputs=[page_state])
-                        next_btn.click(next_page, inputs=[page_state], outputs=[page_state])
+                        prev_btn.click(
+                            prev_page, inputs=[page_state], outputs=[page_state]
+                        )
+                        next_btn.click(
+                            next_page, inputs=[page_state], outputs=[page_state]
+                        )
 
-                export_btn = gr.Button(loc.localize("embeddings-search-export-button-label"), variant="huggingface", interactive=False)
+                export_btn = gr.Button(
+                    loc.localize("embeddings-search-export-button-label"),
+                    variant="huggingface",
+                    interactive=False,
+                )
 
     def on_db_selection_click():
         folder = gu.select_folder(state_key="embeddings_search_db")
+
+        if not folder:
+            return (
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            )
+
+        if not os.path.exists(os.path.join(folder, "hoplite.sqlite")):
+            raise gr.Error(loc.localize("embeddings-search-db-selection-error"))
 
         try:
             db = get_embeddings_database(folder)
@@ -245,33 +388,39 @@ def build_search_tab():
             raise gr.Error(loc.localize("embeddings-search-db-selection-error")) from e
 
         embedding_count = db.count_embeddings()
-        settings = db.get_metadata("birdnet_analyzer_settings")
+        settings = db.get_metadata(SETTINGS_KEY)
         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
-        speed = settings["AUDIO_SPEED"]
+        speed: float = settings["AUDIO_SPEED"]
+        audio_root = settings["AUDIO_ROOT"]
         db.db.close()
 
-        if folder:
-            return (
-                gr.Textbox(value=folder, visible=True),
-                gr.Number(value=embedding_count, visible=True),
-                gr.Textbox(visible=True, value=frequencies),
-                gr.Number(visible=True, value=speed),
-                [],
-                {},
-                gr.Button(visible=True),
-                gr.Textbox(value=None, visible=True),
-            )
+        return (
+            folder,
+            audio_root,
+            gr.update(value=embedding_count, visible=True),
+            gr.update(visible=True, value=frequencies),
+            gr.update(visible=True, value=speed),
+            [],
+            {},
+            gr.update(visible=True),
+            "",  # TODO @mamau: warum überhaupt hier?
+        )
 
-        return None, None, None, None, [], {}, gr.Button(visible=False), gr.Textbox(visible=False)
+    def on_audio_root_selection_click():
+        folder = gu.select_folder(state_key="embeddings_search_audio_root")
+
+        return folder or gr.update()
 
     def select_query_sample():
         file = gu.select_file(state_key="query_sample")
-        return gr.Textbox(file, visible=True)
+        return file or gr.update()
 
     select_query_btn.click(select_query_sample, outputs=[query_sample_tb])
 
     def on_crop_select(new_crop_mode):
-        return gr.Number(visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments")
+        return gr.Number(
+            visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments"
+        )
 
     crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
 
@@ -280,15 +429,15 @@ def build_search_tab():
 
         if audiofilepath and db_selection:
             db = get_embeddings_database(db_selection)
-            settings = db.get_metadata("birdnet_analyzer_settings")
-            audio_speed = settings["AUDIO_SPEED"]
+            settings = db.get_metadata(SETTINGS_KEY)
+            audio_speed: float = settings["AUDIO_SPEED"]
             fmin = settings["BANDPASS_FMIN"]
             fmax = settings["BANDPASS_FMAX"]
             db.db.close()
 
             sig, rate = audio.open_audio_file(
                 audiofilepath,
-                duration=cfg.BIRDNET_SIG_LENGTH * audio_speed if crop_mode == "first" else None,
+                duration=3.0 * audio_speed if crop_mode == "first" else None,
                 fmin=fmin,
                 fmax=fmax,
                 speed=audio_speed,
@@ -296,9 +445,9 @@ def build_search_tab():
 
             # Crop query audio
             if crop_mode == "center":
-                sig = [audio.crop_center(sig, rate, cfg.BIRDNET_SIG_LENGTH)][0]
+                sig = [audio.crop_center(sig, rate, 3.0)][0]
             elif crop_mode == "first":
-                sig = [audio.split_signal(sig, rate, cfg.BIRDNET_SIG_LENGTH, crop_overlap, cfg.SIG_MINLEN)[0]][0]
+                sig = [audio.split_signal(sig, rate, 3.0, crop_overlap, 1.0)[0]][0]
 
             sig = np.array(sig, dtype="float32")
             spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))
@@ -325,6 +474,7 @@ def build_search_tab():
         on_db_selection_click,
         outputs=[
             db_selection_tb,
+            audio_root_selection_tb,
             db_embedding_count_number,
             db_bandpass_frequencies_tb,
             db_audio_speed_number,
@@ -336,10 +486,19 @@ def build_search_tab():
         show_progress="hidden",
     )
 
+    audio_root_selection_button.click(
+        on_audio_root_selection_click,
+        outputs=[
+            audio_root_selection_tb,
+        ],
+        show_progress="hidden",
+    )
+
     search_btn.click(
         run_search,
         inputs=[
             db_selection_tb,
+            audio_root_selection_tb,
             query_sample_tb,
             max_samples_number,
             score_fn_select,

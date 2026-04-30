@@ -28,20 +28,26 @@ else:
 
 FALLBACK_LANGUAGE = "en"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-GUI_SETTINGS_PATH = os.path.join(APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json")
+GUI_SETTINGS_PATH = os.path.join(
+    APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json"
+)
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
-STATE_SETTINGS_PATH = os.path.join(APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json")
+STATE_SETTINGS_PATH = os.path.join(
+    APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json"
+)
 
 
 def get_state_dict() -> dict:
     """
     Retrieves the state dictionary from a JSON file specified by STATE_SETTINGS_PATH.
 
-    If the file does not exist, it creates an empty JSON file and returns an empty dictionary.
-    If any other exception occurs during file operations, it logs the error and returns an empty dictionary.
+    If the file does not exist, it creates an empty JSON file and returns an empty
+    dictionary. If any other exception occurs during file operations, it logs the error
+    and returns an empty dictionary.
 
     Returns:
-        dict: The state dictionary loaded from the JSON file, or an empty dictionary if the file does not exist or an error occurs.
+        dict: The state dictionary loaded from the JSON file, or an empty dictionary if
+        the file does not exist or an error occurs.
     """
     try:
         with open(STATE_SETTINGS_PATH, encoding="utf-8") as f:
@@ -56,7 +62,7 @@ def get_state_dict() -> dict:
             return {}
 
 
-def get_state(key: str, default=None):
+def get_state(key: str, default=None) -> str:
     """
     Retrieves the value associated with the given key from the state dictionary.
 
@@ -72,7 +78,8 @@ def get_state(key: str, default=None):
 
 def set_state(key: str, value: str):
     """
-    Updates the state dictionary with the given key-value pair and writes it to a JSON file.
+    Updates the state dictionary with the given key-value pair and writes it to a JSON
+    file.
 
     Args:
         key (str): The key to update in the state dictionary.
@@ -90,8 +97,8 @@ def set_state(key: str, value: str):
 
 def ensure_settings_file():
     """
-    Ensures that the settings file exists at the specified path. If the file does not exist,
-    it creates a new settings file with default settings.
+    Ensures that the settings file exists at the specified path. If the file does not
+    exist, it creates a new settings file with default settings.
 
     If the file creation fails, the error is logged.
     """

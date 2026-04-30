@@ -13,7 +13,8 @@ def test_extract_recording_filename_simple():
     """
     Test extract_recording_filename with simple file paths and extensions.
 
-    Ensures that the function correctly extracts filenames from paths containing extensions.
+    Ensures that the function correctly extracts filenames from paths
+    containing extensions.
     """
     input_series = pd.Series(["/path/to/file1.txt", "/path/to/file2.csv"])
     expected_output = pd.Series(["file1", "file2"])
@@ -25,7 +26,8 @@ def test_extract_recording_filename_no_extension():
     """
     Test extract_recording_filename with file paths without extensions.
 
-    Ensures that the function extracts the filenames from paths that do not contain extensions.
+    Ensures that the function extracts the filenames from paths that do not
+    contain extensions.
     """
     input_series = pd.Series(["/path/to/file1", "/path/to/file2"])
     expected_output = pd.Series(["file1", "file2"])
@@ -37,9 +39,12 @@ def test_extract_recording_filename_multiple_dots():
     """
     Test extract_recording_filename with file paths containing multiple dots.
 
-    Ensures that the function correctly extracts the base filename when there are multiple dots in the filename.
+    Ensures that the function correctly extracts the base filename when there are
+    multiple dots in the filename.
     """
-    input_series = pd.Series(["/path/to/file.name.ext", "/path/to/another.file.name.ext"])
+    input_series = pd.Series(
+        ["/path/to/file.name.ext", "/path/to/another.file.name.ext"]
+    )
     expected_output = pd.Series(["file.name", "another.file.name"])
     output_series = extract_recording_filename(input_series)
     pd.testing.assert_series_equal(output_series, expected_output)
@@ -49,7 +54,8 @@ def test_extract_recording_filename_leading_trailing_slashes():
     """
     Test extract_recording_filename with paths that have leading/trailing slashes.
 
-    Ensures that the function returns an empty string when the file paths have trailing slashes.
+    Ensures that the function returns an empty string when the file paths have trailing
+    slashes.
     """
     input_series = pd.Series(["/path/to/file1/", "/path/to/file2/"])
     expected_output = pd.Series(["", ""])
@@ -61,7 +67,8 @@ def test_extract_recording_filename_empty_strings():
     """
     Test extract_recording_filename with empty strings.
 
-    Ensures that the function handles empty strings by returning an empty string in the output.
+    Ensures that the function handles empty strings by returning an empty string in the
+    output.
     """
     input_series = pd.Series(["", ""])
     expected_output = pd.Series(["", ""])
@@ -85,7 +92,8 @@ def test_extract_recording_filename_nan_values():
     """
     Test extract_recording_filename with NaN values.
 
-    Ensures that the function handles NaN values and passes them through without modification.
+    Ensures that the function handles NaN values and passes them through without
+    modification.
     """
     input_series = pd.Series([np.nan, "/path/to/file1.txt"])
     expected_output = pd.Series([np.nan, "file1"])
@@ -97,7 +105,8 @@ def test_extract_recording_filename_relative_absolute_paths():
     """
     Test extract_recording_filename with both relative and absolute file paths.
 
-    Ensures that filenames are correctly extracted regardless of whether the path is relative or absolute.
+    Ensures that filenames are correctly extracted regardless of whether the path is
+    relative or absolute.
     """
     input_series = pd.Series(["file1.txt", "/absolute/path/to/file2.txt"])
     expected_output = pd.Series(["file1", "file2"])
@@ -134,7 +143,8 @@ def test_extract_recording_filename_from_filename_simple():
     """
     Test extract_recording_filename_from_filename with filenames containing single dots.
 
-    Ensures that the function extracts the base filename correctly when a single dot is present.
+    Ensures that the function extracts the base filename correctly when a single dot is
+    present.
     """
     input_series = pd.Series(["file1.txt", "file2.csv"])
     expected_output = pd.Series(["file1", "file2"])
@@ -144,9 +154,11 @@ def test_extract_recording_filename_from_filename_simple():
 
 def test_extract_recording_filename_from_filename_multiple_dots():
     """
-    Test extract_recording_filename_from_filename with filenames containing multiple dots.
+    Test extract_recording_filename_from_filename with filenames containing multiple
+    dots.
 
-    Ensures that the function extracts the base filename correctly when multiple dots are present.
+    Ensures that the function extracts the base filename correctly when multiple dots
+    are present.
     """
     input_series = pd.Series(["file.name.ext", "another.file.name.ext"])
     expected_output = pd.Series(["file", "another"])
@@ -158,7 +170,8 @@ def test_extract_recording_filename_from_filename_no_extension():
     """
     Test extract_recording_filename_from_filename with filenames that have no extension.
 
-    Ensures that the function correctly extracts the filename when there is no extension.
+    Ensures that the function correctly extracts the filename when there is no
+    extension.
     """
     input_series = pd.Series(["file1", "file2"])
     expected_output = pd.Series(["file1", "file2"])
@@ -170,7 +183,8 @@ def test_extract_recording_filename_from_filename_empty_strings():
     """
     Test extract_recording_filename_from_filename with empty strings.
 
-    Ensures that the function returns an empty string when an empty filename is provided.
+    Ensures that the function returns an empty string when an empty filename is
+    provided.
     """
     input_series = pd.Series(["", ""])
     expected_output = pd.Series(["", ""])
@@ -194,7 +208,8 @@ def test_extract_recording_filename_from_filename_nan_values():
     """
     Test extract_recording_filename_from_filename with NaN values.
 
-    Ensures that the function handles NaN values and passes them through without modification.
+    Ensures that the function handles NaN values and passes them through without
+    modification.
     """
     input_series = pd.Series([np.nan, "file1.txt"])
     expected_output = pd.Series([np.nan, "file1"])
@@ -206,7 +221,8 @@ def test_extract_recording_filename_from_filename_starting_dot():
     """
     Test extract_recording_filename_from_filename with filenames starting with a dot.
 
-    Ensures that the function correctly handles hidden files or filenames that start with a dot.
+    Ensures that the function correctly handles hidden files or filenames that start
+    with a dot.
     """
     input_series = pd.Series([".hiddenfile", ".anotherhiddenfile.txt"])
     expected_output = pd.Series(["", ""])
@@ -242,7 +258,8 @@ def test_extract_recording_filename_from_filename_unicode_characters():
     """
     Test extract_recording_filename_from_filename with Unicode characters in filenames.
 
-    Ensures that the function correctly extracts filenames that contain Unicode characters.
+    Ensures that the function correctly extracts filenames that contain Unicode
+    characters.
     """
     input_series = pd.Series(["файл.txt", "文件.csv"])
     expected_output = pd.Series(["файл", "文件"])
@@ -254,7 +271,8 @@ def test_read_and_concatenate_files_multiple_txt(tmp_path):
     """
     Test read_and_concatenate_files_in_directory with multiple .txt files.
 
-    Ensures that the function reads multiple .txt files with compatible structures and concatenates them.
+    Ensures that the function reads multiple .txt files with compatible structures and
+    concatenates them.
     """
     df1 = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
     df2 = pd.DataFrame({"A": [5, 6], "B": [7, 8]})
@@ -274,7 +292,8 @@ def test_read_and_concatenate_files_no_txt(tmp_path):
     """
     Test read_and_concatenate_files_in_directory when there are no .txt files.
 
-    Ensures that the function returns an empty DataFrame when no .txt files are present in the directory.
+    Ensures that the function returns an empty DataFrame when no .txt files are present
+    in the directory.
     """
     df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
     df.to_csv(tmp_path / "file1.csv", index=False)
@@ -289,14 +308,18 @@ def test_read_and_concatenate_files_different_structures(tmp_path):
     """
     Test read_and_concatenate_files_in_directory with files having different structures.
 
-    Ensures that the function raises a ValueError when attempting to concatenate DataFrames with different structures.
+    Ensures that the function raises a ValueError when attempting to concatenate
+    DataFrames with different structures.
     """
     df1 = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
     df2 = pd.DataFrame({"C": [5, 6], "D": [7, 8]})
     df1.to_csv(tmp_path / "file1.txt", sep="\t", index=False)
     df2.to_csv(tmp_path / "file2.txt", sep="\t", index=False)
 
-    with pytest.raises(ValueError, match=r"File file2.txt has different columns than the previous files."):
+    with pytest.raises(
+        ValueError,
+        match=r"File file2.txt has different columns than the previous files.",
+    ):
         read_and_concatenate_files_in_directory(str(tmp_path))
 
 
@@ -314,14 +337,17 @@ def test_read_and_concatenate_files_ignores_non_txt(tmp_path):
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))
     expected_df = df_txt.assign(source_file="file1.txt")
 
-    pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected_df.reset_index(drop=True))
+    pd.testing.assert_frame_equal(
+        result_df.reset_index(drop=True), expected_df.reset_index(drop=True)
+    )
 
 
 def test_read_and_concatenate_files_nonexistent_directory():
     """
     Test read_and_concatenate_files_in_directory when the directory does not exist.
 
-    Ensures that the function raises a FileNotFoundError when a nonexistent directory is provided.
+    Ensures that the function raises a FileNotFoundError when a nonexistent directory is
+    provided.
     """
     with pytest.raises(FileNotFoundError):
         read_and_concatenate_files_in_directory("nonexistent_directory")
@@ -350,14 +376,17 @@ def test_read_and_concatenate_files_large_files(tmp_path):
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))
     expected_df = df_large.assign(source_file="large_file.txt")
 
-    pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected_df.reset_index(drop=True))
+    pd.testing.assert_frame_equal(
+        result_df.reset_index(drop=True), expected_df.reset_index(drop=True)
+    )
 
 
 def test_read_and_concatenate_files_invalid_path():
     """
     Test read_and_concatenate_files_in_directory with an invalid directory path.
 
-    Ensures that the function raises a FileNotFoundError when an invalid path is provided.
+    Ensures that the function raises a FileNotFoundError when an invalid path is
+    provided.
     """
     with pytest.raises(FileNotFoundError):
         read_and_concatenate_files_in_directory("")
@@ -374,7 +403,9 @@ def test_read_and_concatenate_files_different_encodings(tmp_path):
 
     # Write files with utf-8 encoding
     df_utf8.to_csv(tmp_path / "utf8_file.txt", sep="\t", index=False, encoding="utf-8")
-    df_ascii.to_csv(tmp_path / "ascii_file.txt", sep="\t", index=False, encoding="utf-8")
+    df_ascii.to_csv(
+        tmp_path / "ascii_file.txt", sep="\t", index=False, encoding="utf-8"
+    )
 
     # Call the function to read and concatenate
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))

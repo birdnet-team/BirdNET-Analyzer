@@ -3,11 +3,11 @@ from functools import partial
 
 import gradio as gr
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.embeddings.core import get_or_create_database as get_embeddings_database
-from birdnet_analyzer.embeddings.core import try_get_database
+from birdnet_analyzer.embeddings.core import (
+    get_or_create_database as get_embeddings_database,
+)
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -17,7 +17,8 @@ def run_embeddings_with_tqdm_tracking(
     db_directory,
     overlap,
     batch_size,
-    threads,
+    producers_number,
+    workers_number,
     audio_speed,
     fmin,
     fmax,
@@ -29,7 +30,8 @@ def run_embeddings_with_tqdm_tracking(
         input_path,
         db_directory,
         overlap,
-        threads,
+        producers_number,
+        workers_number,
         batch_size,
         audio_speed,
         fmin,
@@ -44,7 +46,8 @@ def run_embeddings(
     input_path,
     db_directory,
     overlap,
-    threads,
+    producers_number,
+    workers_number,
     batch_size,
     audio_speed,
     fmin,
@@ -52,7 +55,7 @@ def run_embeddings(
     file_output,
     progress,
 ):
-    from birdnet_analyzer.embeddings.utils import extract_embeddings
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY, embeddings
 
     gu.validate(input_path, loc.localize("embeddings-input-dir-validation-message"))
     gu.validate(db_directory, loc.localize("embeddings-db-dir-validation-message"))
@@ -61,78 +64,143 @@ def run_embeddings(
     db = get_embeddings_database(db_directory)
 
     try:
-        settings = db.get_metadata("birdnet_analyzer_settings")
+        settings = db.get_metadata(SETTINGS_KEY)
+
         db.db.close()
-        extract_embeddings(
+        embeddings(
             input_path,
             db_directory,
-            overlap,
-            settings["AUDIO_SPEED"],
-            settings["BANDPASS_FMIN"],
-            settings["BANDPASS_FMAX"],
-            threads,
-            batch_size,
-            file_output,
+            overlap=overlap,
+            n_producers=producers_number,
+            n_workers=workers_number,
+            batch_size=batch_size,
+            audio_speed=settings["AUDIO_SPEED"],
+            fmin=settings["BANDPASS_FMIN"],
+            fmax=settings["BANDPASS_FMAX"],
+            file_output=file_output,
         )
     except Exception as e:
         db.db.close()
-        # Transform audiospeed from slider to float
-        audio_speed = max(0.1, 1.0 / (audio_speed * -1)) if audio_speed < 0 else max(1.0, float(audio_speed))
 
-        if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
-            raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]") from e
+        audio_speed = gu.slider_to_value(audio_speed)
 
-        extract_embeddings(input_path, db_directory, overlap, audio_speed, fmin, fmax, threads, batch_size, file_output)
+        if fmin is None or fmax is None or fmin < 0 or fmax > 15000 or fmin > fmax:
+            raise gr.Error(
+                f"{loc.localize('validation-no-valid-frequency')} [0, 15000]"
+            ) from e
+
+        embeddings(
+            input_path,
+            db_directory,
+            overlap=overlap,
+            audio_speed=audio_speed,
+            fmin=fmin,
+            fmax=fmax,
+            batch_size=batch_size,
+            file_output=file_output,
+        )
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_directory}")
 
-    return gr.Plot(), gr.Slider(interactive=False), gr.Number(interactive=False), gr.Number(interactive=False)
+    return (
+        gr.Plot(),
+        gr.Slider(interactive=False),
+        gr.Number(interactive=False),
+        gr.Number(interactive=False),
+    )
 
 
-def build_embeddings_tab():
+def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
+
     with gr.Tab(loc.localize("embeddings-tab-title")):
         input_directory_state = gr.State()
         db_directory_state = gr.State()
 
         def select_directory_to_state_and_tb(current, state_key=None):
-            path = gu.select_directory(collect_files=False, state_key=state_key) or current or None
+            path = (
+                gu.select_directory(collect_files=False, state_key=state_key)
+                or current
+                or None
+            )
             return path, path
 
         with gr.Group(), gr.Row(equal_height=True):
-            select_audio_directory_btn = gr.Button(loc.localize("embeddings-tab-select-input-directory-button-label"))
-            selected_audio_directory_tb = gr.Textbox(show_label=False, interactive=False, scale=2)
+            select_audio_directory_btn = gr.Button(
+                loc.localize("embeddings-tab-select-input-directory-button-label"),
+                variant="primary",
+            )
+            selected_audio_directory_tb = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "embeddings-tab-select-input-directory-textbox-placeholder"
+                ),
+                scale=3,
+                rtl=True,
+                max_lines=1,
+                elem_classes="path-textbox",
+            )
             select_audio_directory_btn.click(
-                partial(select_directory_to_state_and_tb, state_key="embeddings-input-dir"),
+                partial(
+                    select_directory_to_state_and_tb, state_key="embeddings-input-dir"
+                ),
                 inputs=[input_directory_state],
                 outputs=[selected_audio_directory_tb, input_directory_state],
                 show_progress="hidden",
             )
 
         with gr.Group(), gr.Row(equal_height=True):
-            select_db_directory_btn = gr.Button(loc.localize("embeddings-tab-select-db-directory-button-label"))
+            select_db_directory_btn = gr.Button(
+                loc.localize("embeddings-tab-select-db-directory-button-label"),
+                variant="primary",
+            )
             db_path_tb = gr.Textbox(
                 show_label=False,
+                # buttons=["copy"], # gradio>=6
                 show_copy_button=True,
                 interactive=False,
                 info="⚠️ " + loc.localize("embeddings-tab-dp-path-textbox-info"),
-                scale=2,
+                placeholder=loc.localize(
+                    "embeddings-tab-select-db-directory-textbox-placeholder"
+                ),
+                scale=3,
+                max_lines=1,
+                elem_classes="path-textbox",
             )
 
         with gr.Group(visible=False) as file_output_row, gr.Row(equal_height=True):
-            file_output_cb = gr.Checkbox(label=loc.localize("embeddings-tab-file-output-checkbox-label"), value=False, interactive=True)
+            file_output_cb = gr.Checkbox(
+                label=loc.localize("embeddings-tab-file-output-checkbox-label"),
+                value=False,
+                interactive=True,
+            )
+
             with gr.Column(scale=2), gr.Group():
-                select_file_output_directory_btn = gr.Button(loc.localize("embeddings-select-file-output-directory-button-label"), visible=False)
+                select_file_output_directory_btn = gr.Button(
+                    loc.localize(
+                        "embeddings-select-file-output-directory-button-label"
+                    ),
+                    visible=False,
+                )
                 file_output_tb = gr.Textbox(
                     value=None,
-                    placeholder=loc.localize("embeddings-tab-file-output-directory-textbox-placeholder"),
+                    placeholder=loc.localize(
+                        "embeddings-tab-file-output-directory-textbox-placeholder"
+                    ),
                     interactive=False,
-                    label=loc.localize("embeddings-tab-file-output-directory-textbox-label"),
+                    label=loc.localize(
+                        "embeddings-tab-file-output-directory-textbox-label"
+                    ),
                     visible=False,
                 )
 
             def on_cb_click(status, current, db_dir):
                 if not current:
-                    return gr.update(visible=status), gr.update(visible=status, value=os.path.join(db_dir, "embeddings.csv"))
+                    return gr.update(visible=status), gr.update(
+                        visible=status, value=os.path.join(db_dir, "embeddings.csv")
+                    )
+
                 return gr.update(visible=status), gr.update(visible=status)
 
             file_output_cb.change(
@@ -142,7 +210,12 @@ def build_embeddings_tab():
                 show_progress="hidden",
             )
 
-        with gr.Accordion(loc.localize("embedding-settings-accordion-label"), open=False):
+        with (
+            gr.Group(),
+            gr.Accordion(
+                loc.localize("embedding-settings-accordion-label"), open=False
+            ),
+        ):
             with gr.Row():
                 overlap_slider = gr.Slider(
                     minimum=0,
@@ -152,25 +225,6 @@ def build_embeddings_tab():
                     label=loc.localize("embedding-settings-overlap-slider-label"),
                     info=loc.localize("embedding-settings-overlap-slider-info"),
                 )
-                batch_size_number = gr.Number(
-                    precision=1,
-                    label=loc.localize("embedding-settings-batchsize-number-label"),
-                    value=8,
-                    info=loc.localize("embedding-settings-batchsize-number-info"),
-                    minimum=1,
-                    interactive=True,
-                )
-
-                threads_number = gr.Number(
-                    precision=1,
-                    label=loc.localize("embedding-settings-threads-number-label"),
-                    value=4,
-                    info=loc.localize("embedding-settings-threads-number-info"),
-                    minimum=1,
-                    interactive=True,
-                )
-
-            with gr.Row():
                 audio_speed_slider = gr.Slider(
                     minimum=-10,
                     maximum=10,
@@ -179,40 +233,40 @@ def build_embeddings_tab():
                     label=loc.localize("embedding-settings-audio-speed-slider-label"),
                     info=loc.localize("embedding-settings-audio-speed-slider-info"),
                 )
-            with gr.Row():
-                fmin_number = gr.Number(
-                    cfg.SIG_FMIN,
-                    minimum=0,
-                    label=loc.localize("embedding-settings-fmin-number-label"),
-                    info=loc.localize("embedding-settings-fmin-number-info"),
-                    interactive=True,
-                )
-                fmax_number = gr.Number(
-                    cfg.SIG_FMAX,
-                    minimum=0,
-                    label=loc.localize("embedding-settings-fmax-number-label"),
-                    info=loc.localize("embedding-settings-fmax-number-info"),
-                    interactive=True,
-                )
+
+            bs_number, producers_number, workers_number = gu.computing_settings()
+
+            fmin_number, fmax_number = gu.bandpass_settings()
 
         def select_directory_and_update_tb(current_state):
-            dir_name: str = gu.select_directory(state_key="embeddings-db-dir", collect_files=False)
+            dir_name: str = gu.select_directory(
+                state_key="embeddings-db-dir", collect_files=False
+            )
 
             if dir_name:
                 if os.path.exists(dir_name):
-                    db = try_get_database(dir_name)
+                    db = _try_get_database(dir_name)
 
                     if db:
                         try:
-                            settings = db.get_metadata("birdnet_analyzer_settings")
+                            settings = db.get_metadata(SETTINGS_KEY)
                             gr.Info(loc.localize("embeddings-db-already-exists-info"))
 
                             return (
                                 dir_name,
-                                gr.Textbox(value=dir_name),
-                                gr.Slider(value=settings["AUDIO_SPEED"], interactive=False),
-                                gr.Number(value=settings["BANDPASS_FMIN"], interactive=False),
-                                gr.Number(value=settings["BANDPASS_FMAX"], interactive=False),
+                                gr.update(value=dir_name),
+                                gr.update(
+                                    value=settings["AUDIO_SPEED"],
+                                    interactive=False,
+                                ),
+                                gr.update(
+                                    value=settings["BANDPASS_FMIN"],
+                                    interactive=False,
+                                ),
+                                gr.update(
+                                    value=settings["BANDPASS_FMAX"],
+                                    interactive=False,
+                                ),
                                 gr.update(visible=True),
                             )
                         except KeyError:
@@ -222,21 +276,33 @@ def build_embeddings_tab():
 
                 return (
                     dir_name,
-                    gr.Textbox(value=dir_name),
-                    gr.Slider(interactive=True),
-                    gr.Number(interactive=True),
-                    gr.Number(interactive=True),
+                    gr.update(value=dir_name),
+                    gr.update(interactive=True),
+                    gr.update(interactive=True),
+                    gr.update(interactive=True),
                     gr.update(visible=True),
                 )
 
-            value = current_state or None
-
-            return value, gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+            return (
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            )
 
         select_db_directory_btn.click(
             select_directory_and_update_tb,
             inputs=[db_directory_state],
-            outputs=[db_directory_state, db_path_tb, audio_speed_slider, fmin_number, fmax_number, file_output_row],
+            outputs=[
+                db_directory_state,
+                db_path_tb,
+                audio_speed_slider,
+                fmin_number,
+                fmax_number,
+                file_output_row,
+            ],
             show_progress="hidden",
         )
 
@@ -257,7 +323,9 @@ def build_embeddings_tab():
         )
 
         progress_plot = gr.Plot(show_label=False)
-        start_btn = gr.Button(loc.localize("embeddings-tab-start-button-label"), variant="huggingface")
+        start_btn = gr.Button(
+            loc.localize("embeddings-tab-start-button-label"), variant="huggingface"
+        )
 
         start_btn.click(
             run_embeddings_with_tqdm_tracking,
@@ -265,8 +333,9 @@ def build_embeddings_tab():
                 input_directory_state,
                 db_directory_state,
                 overlap_slider,
-                batch_size_number,
-                threads_number,
+                bs_number,
+                producers_number,
+                workers_number,
                 audio_speed_slider,
                 fmin_number,
                 fmax_number,
@@ -276,3 +345,18 @@ def build_embeddings_tab():
             outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
             show_progress_on=progress_plot,
         )
+
+
+def _try_get_database(db_path: str):
+    """Try to get the database object. Creates or opens the databse.
+    Args:
+        db_path: The path to the database.
+    Returns:
+        The database object or None if it could not be created or opened.
+    """
+    from perch_hoplite.db import sqlite_usearch_impl
+
+    try:
+        return sqlite_usearch_impl.SQLiteUSearchDB.create(db_path=db_path)
+    except ValueError:
+        return None

@@ -1,3 +1,5 @@
+import contextlib
+
 from birdnet_analyzer import analyze
 from birdnet_analyzer.utils import runtime_error_handler
 
@@ -9,21 +11,34 @@ def main():
 
     from birdnet_analyzer import cli
 
-    # Freeze support for executable
     freeze_support()
 
     parser = cli.analyzer_parser()
     args = parser.parse_args()
 
-    try:
+    with contextlib.suppress(Exception):
         if os.get_terminal_size().columns >= 64:
             print(cli.ASCII_LOGO, flush=True)
-    except Exception:
-        pass
 
-    if "additional_columns" in args and args.additional_columns and ("csv" not in args.rtype or "parquet" not in args.rtype):
+    if (
+        "additional_columns" in args
+        and args.additional_columns
+        and ("csv" not in args.rtype and "parquet" not in args.rtype)
+    ):
         import warnings
 
-        warnings.warn("The --additional_columns argument is only valid for CSV output. It will be ignored.", stacklevel=1)
+        warnings.warn(
+            "The --additional_columns argument is only valid for CSV output."
+            "It will be ignored.",
+            stacklevel=1,
+        )
 
-    analyze(**vars(args))
+    if args.use_perch and args.classifier:
+        raise ValueError(
+            "The --use_perch and --classifier arguments cannot be used together."
+        )
+
+    analyze_args = vars(args)
+    analyze_args.pop("use_perch")  # handled via model param
+
+    analyze(**analyze_args)

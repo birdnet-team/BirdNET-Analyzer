@@ -1,36 +1,37 @@
-import concurrent.futures
+from __future__ import annotations
+
 import os
-from pathlib import Path
+from functools import partial
+from typing import TYPE_CHECKING
 
 import gradio as gr
 
-import birdnet_analyzer.config as cfg
+import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import model
-from birdnet_analyzer.analyze.utils import (
-    analyze_file,
-    combine_results,
-    save_analysis_params,
-)
+
+if TYPE_CHECKING:
+    from birdnet.acoustic.inference.core.perf_tracker import AcousticProgressStats
+    from birdnet.globals import MODEL_LANGUAGES
+
+    from birdnet_analyzer.config import ADDITIONAL_COLUMNS, RESULT_TYPES
+
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-ORIGINAL_LABELS_FILE = str(Path(SCRIPT_DIR).parent / cfg.BIRDNET_LABELS_FILE)
 
 
-def analyze_file_wrapper(entry):
-    """
-    Wrapper function for analyzing a file.
+def on_progress(update: AcousticProgressStats, progress: gr.Progress):
+    if progress is None:
+        return
 
-    Args:
-        entry (tuple): A tuple where the first element is the file path and the
-                       remaining elements are arguments to be passed to the
-                       analyze.analyzeFile function.
-
-    Returns:
-        tuple: A tuple where the first element is the file path and the second
-               element is the result of the analyze.analyzeFile function.
-    """
-    return (entry[0], analyze_file(entry))
+    if update.processed_segments and update.total_segments:
+        progress(
+            (update.processed_segments, update.total_segments),
+            total=update.total_segments,
+            unit=loc.localize("progress-unit-files"),
+            desc=loc.localize("progress-analyzing"),
+        )
+    else:
+        progress(update.progress_pct, desc=loc.localize("progress-analyzing"), unit="%")
 
 
 def run_analysis(
@@ -54,15 +55,14 @@ def run_analysis(
     sf_thresh: float,
     selected_model: str,
     custom_classifier_file,
-    output_types: str,
-    additional_columns: list[str] | None,
-    combine_tables: bool,
-    locale: str,
+    output_types: RESULT_TYPES | list[RESULT_TYPES],
+    additional_columns: list[ADDITIONAL_COLUMNS] | None,
+    locale: MODEL_LANGUAGES,
     batch_size: int,
-    threads: int,
     input_dir: str | None,
-    skip_existing: bool,
     save_params: bool,
+    n_producers,
+    n_workers,
     progress: gr.Progress | None,
 ):
     """Starts the analysis.
@@ -90,42 +90,53 @@ def run_analysis(
         output_filename: The filename for the combined output.
         locale: The translation to be used.
         batch_size: The number of samples in a batch.
-        threads: The number of threads to be used.
+        n_producers: The number of producer threads to be used.
+        n_workers: The number of worker threads to be used.
         input_dir: The input directory.
         progress: The gradio progress bar.
     """
     import birdnet_analyzer.gui.localization as loc
+    from birdnet_analyzer.analyze import analyze
 
-    if progress is not None:
-        progress(0, desc=f"{loc.localize('progress-preparing')} ...")
+    if species_list_choice == gu._CUSTOM_SPECIES:
+        gu.validate(
+            species_list_file, loc.localize("validation-no-species-list-selected")
+        )
 
-    from birdnet_analyzer.analyze.core import _set_params
-
-    locale = locale.lower()
-    custom_classifier = custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
+    locale = locale.lower()  # ty:ignore[invalid-assignment]
+    custom_classifier = (
+        custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
+    )
     use_perch = selected_model == gu._USE_PERCH
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
-    lat = lat if species_list_choice == gu._PREDICT_SPECIES else -1
-    lon = lon if species_list_choice == gu._PREDICT_SPECIES else -1
-    week = -1 if use_yearlong else week
+    lat = lat if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
+    lon = lon if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
+    week = None if use_yearlong else week  # ty:ignore[invalid-assignment]
+    audio_speed = (
+        max(0.1, 1.0 / (audio_speed * -1))
+        if audio_speed < 0
+        else max(1.0, float(audio_speed))
+    )
+    on_update = partial(on_progress, progress=progress) if callable(progress) else None
 
-    flist = _set_params(
-        audio_input=input_dir if input_dir else input_path,
-        min_conf=confidence,
-        custom_classifier=custom_classifier,
-        sensitivity=min(1.25, max(0.75, float(sensitivity))),
+    if selected_model == gu._CUSTOM_CLASSIFIER and custom_classifier_file is None:
+        raise gr.Error(loc.localize("validation-no-custom-classifier-selected"))
+
+    if progress is not None:
+        progress(0, desc=f"{loc.localize('progress-starting')} ...")
+
+    return analyze(
+        audio_input=input_dir or input_path,  # type: ignore
+        # TODO: workaround while lib is not ignoring confidence with top_n
+        min_conf=confidence if not use_top_n else 0,
+        sensitivity=sensitivity,
         locale=locale,
-        overlap=max(0.0, min(4.9 if use_perch else 2.9, float(overlap))),
-        merge_consecutive=max(1, int(merge_consecutive)),
-        audio_speed=max(0.1, 1.0 / (audio_speed * -1)) if audio_speed < 0 else max(1.0, float(audio_speed)),
-        fmin=max(0, min(cfg.SIG_FMAX, int(fmin))),
-        fmax=max(cfg.SIG_FMIN, min(cfg.SIG_FMAX, int(fmax))),
-        bs=max(1, int(batch_size)),
-        combine_results=combine_tables,
+        overlap=overlap,
+        audio_speed=audio_speed,
+        fmin=fmin,
+        fmax=fmax,
+        batch_size=batch_size,
         rtype=output_types,
-        skip_existing_results=skip_existing,
-        threads=max(1, int(threads)),
-        labels_file=ORIGINAL_LABELS_FILE,
         sf_thresh=sf_thresh,
         lat=lat,
         lon=lon,
@@ -133,50 +144,15 @@ def run_analysis(
         slist=slist,
         top_n=top_n if use_top_n else None,
         output=output_path,
+        merge_consecutive=merge_consecutive,
         additional_columns=additional_columns,
-        use_perch=use_perch,
-    )
-
-    if selected_model == gu._CUSTOM_CLASSIFIER:
-        if custom_classifier_file is None:
-            raise gr.Error(loc.localize("validation-no-custom-classifier-selected"))
-
-        model.reset_custom_classifier()
-
-    gu.validate(cfg.FILE_LIST, loc.localize("validation-no-audio-files-found"))
-
-    result_list = []
-
-    if progress is not None:
-        progress(0, desc=f"{loc.localize('progress-starting')} ...")
-
-    # Analyze files
-    if cfg.CPU_THREADS < 2:
-        result_list.extend(analyze_file_wrapper(entry) for entry in flist)
-    else:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=cfg.CPU_THREADS) as executor:
-            futures = (executor.submit(analyze_file_wrapper, arg) for arg in flist)
-            for i, f in enumerate(concurrent.futures.as_completed(futures), start=1):
-                if progress is not None:
-                    progress((i, len(flist)), total=len(flist), unit="files")
-                result = f.result()
-
-                result_list.append(result)
-
-    # Combine results?
-    if cfg.COMBINE_RESULTS:
-        combine_list = [[r[1] for r in result_list if r[0] == i[0]][0] for i in flist]
-        print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
-        combine_results(combine_list)
-        print("done!", flush=True)
-
-    if save_params:
-        save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
-
-    return (
-        [[os.path.relpath(r[0], input_dir), r[1] if isinstance(r[1], str) else None] for r in result_list]
-        if input_dir
-        else result_list[0][1]["csv"]
-        if isinstance(result_list[0][1], dict)
-        else [result_list[0][1]]
+        model="perch" if use_perch else "birdnet",
+        birdnet="2.4",
+        classifier=custom_classifier,
+        cc_species_list=None,  # always default search path in GUI currently
+        on_update=on_update,
+        save_params=save_params,
+        n_producers=n_producers,
+        n_workers=n_workers,
+        _return_only=bool(input_path),  # only for single file tab
     )

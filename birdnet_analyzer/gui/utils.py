@@ -8,11 +8,11 @@ import sys
 import warnings
 from collections.abc import Callable
 from contextlib import suppress
-from pathlib import Path
-from typing import Literal
+from typing import Literal, cast, get_args
 
 import gradio as gr
 import webview
+from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
@@ -23,13 +23,12 @@ warnings.filterwarnings("ignore")
 loc.load_local_state()
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-ORIGINAL_TRANSLATED_LABELS_PATH = str(Path(SCRIPT_DIR).parent / cfg.TRANSLATED_LABELS_PATH)
 _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
 _USE_PERCH = loc.localize("species-list-radio-option-use-perch")
-_USE_BIRDNET = "BirdNET " + cfg.MODEL_VERSION
+_USE_BIRDNET_2_4 = "BirdNET 2.4"
 _WINDOW: webview.Window | None = None
 _URL = ""
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
@@ -55,6 +54,7 @@ _SPECIES_KEYS = Literal[
     "selected_classifier_state",
     "map_plot",
 ]
+TAB_BUILDER_RESULT = tuple[gr.Component, gr.Component, gr.Component] | None
 
 
 def gui_runtime_error_handler(f):
@@ -85,16 +85,19 @@ def gui_runtime_error_handler(f):
     return wrapper
 
 
-# Nishant - Following two functions (select_folder and get_files_and_durations) are written for Folder selection
+# Nishant - Following two functions (select_folder and get_files_and_durations) are
+# written for Folder selection
 def select_folder(state_key=None):
     """
     Opens a folder selection dialog and returns the selected folder path.
     On Windows, it uses tkinter's filedialog to open the folder selection dialog.
-    On other platforms, it uses webview's FOLDER_DIALOG to open the folder selection dialog.
-    If a state_key is provided, the initial directory for the dialog is retrieved from the state.
-    If a folder is selected and a state_key is provided, the selected folder path is saved to the state.
+    On other platforms, it uses webview's FOLDER_DIALOG to open the folder selection
+    dialog. If a state_key is provided, the initial directory for the dialog is
+    retrieved from the state. If a folder is selected and a state_key is provided, the
+    selected folder path is saved to the state.
     Args:
-        state_key (str, optional): The key to retrieve and save the folder path in the state. Defaults to None.
+        state_key (str, optional): The key to retrieve and save the folder path in the
+        state. Defaults to None.
     Returns:
         str: The path of the selected folder, or None if no folder was selected.
     """
@@ -110,7 +113,9 @@ def select_folder(state_key=None):
         tk.destroy()
     else:
         initial_dir = settings.get_state(state_key, "") if state_key else ""
-        dirname = _WINDOW.create_file_dialog(webview.FileDialog.FOLDER, directory=initial_dir)
+        dirname = _WINDOW.create_file_dialog(
+            webview.FileDialog.FOLDER, directory=initial_dir
+        )
         folder_selected = dirname[0] if dirname else None
 
     if folder_selected and state_key:
@@ -124,14 +129,16 @@ def get_audio_files_and_durations(folder, max_files=None):
     Collects audio files from a specified folder and retrieves their durations.
     Args:
         folder (str): The path to the folder containing audio files.
-        max_files (int, optional): The maximum number of files to collect. If None, all files are collected.
+        max_files (int, optional): The maximum number of files to collect. If None, all
+            files are collected.
     Returns:
-        list: A list of lists, where each inner list contains the relative file path and its duration as a string.
+        list: A list of lists, where each inner list contains the relative file path and
+            its duration as a string.
     """
     import librosa
 
     files_and_durations = []
-    files = utils.collect_audio_files(folder, max_files=max_files)  # Use the collect_audio_files function
+    files = utils.collect_audio_files(folder, max_files=max_files)
 
     for file_path in files:
         try:
@@ -194,7 +201,8 @@ def select_directory(collect_files=True, max_files=None, state_key=None):
         collect_files: If True, also lists a files inside the directory.
 
     Returns:
-        If collect_files==True, returns (directory path, list of (relative file path, audio length))
+        If collect_files==True, returns
+        (directory path, list of (relative file path, audio length))
         else just the directory path.
         All values will be None of the dialog is cancelled.
     """
@@ -208,17 +216,23 @@ def select_directory(collect_files=True, max_files=None, state_key=None):
 
         files = utils.collect_audio_files(dir_name, max_files=max_files)
 
-        return dir_name, [[os.path.relpath(file, dir_name), format_seconds(librosa.get_duration(filename=file))] for file in files]
+        return dir_name, [
+            [
+                os.path.relpath(file, dir_name),
+                format_seconds(librosa.get_duration(filename=file)),
+            ]
+            for file in files
+        ]
 
     return dir_name or None
 
 
-def build_header():
+def build_header(logo="assets/img/birdnet_logo.png"):
     with gr.Row():
         gr.Markdown(
             f"""
 <div style='display: flex; align-items: center;'>
-    <img src='data:image/png;base64,{utils.img2base64(os.path.join(SCRIPT_DIR, "assets/img/birdnet_logo.png"))}'
+    <img src='data:image/png;base64,{utils.img2base64(os.path.join(SCRIPT_DIR, logo))}'
         style='width: 50px; height: 50px; margin-right: 10px;'>
     <h2>BirdNET Analyzer</h2>
 </div>
@@ -235,7 +249,7 @@ def build_footer():
         <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span
                 id="current-version">{os.environ["GUI_VERSION"] if utils.FROZEN else "main"}</span><span
                 style="display: none" id="update-available"><a>+</a></span></div>
-        <div>Model version: {cfg.MODEL_VERSION}</div>
+        <div>Model version: 2.4</div>
     </div>
     <div>K. Lisa Yang Center for Conservation Bioacoustics<br>Chemnitz University of Technology</div>
     <div>{loc.localize("footer-help")}:&nbsp;<a href='https://birdnet.cornell.edu/analyzer'
@@ -251,7 +265,11 @@ def build_settings():
     with gr.Tab(loc.localize("settings-tab-title")) as settings_tab:
         with gr.Group():
             with gr.Row():
-                options = [lang.rsplit(".", 1)[0] for lang in os.listdir(loc.LANGUAGE_DIR) if lang.endswith(".json")]
+                options = [
+                    lang.rsplit(".", 1)[0]
+                    for lang in os.listdir(loc.LANGUAGE_DIR)
+                    if lang.endswith(".json")
+                ]
                 languages_dropdown = gr.Dropdown(
                     options,
                     value=loc.TARGET_LANGUAGE,
@@ -263,10 +281,16 @@ def build_settings():
             with gr.Row():
                 theme_radio = gr.Radio(
                     [
-                        (loc.localize("settings-tab-theme-dropdown-dark-option"), "dark"),
-                        (loc.localize("settings-tab-theme-dropdown-light-option"), "light"),
+                        (
+                            loc.localize("settings-tab-theme-dropdown-dark-option"),
+                            "dark",
+                        ),
+                        (
+                            loc.localize("settings-tab-theme-dropdown-light-option"),
+                            "light",
+                        ),
                     ],
-                    value=lambda: settings.theme(),
+                    value=lambda: settings.theme(),  # noqa: PLW0108
                     label=loc.localize("settings-tab-theme-dropdown-label"),
                     info="⚠️" + loc.localize("settings-tab-theme-dropdown-info"),
                     interactive=True,
@@ -284,9 +308,13 @@ def build_settings():
 
         error_log_tb = gr.TextArea(
             label=loc.localize("settings-tab-error-log-textbox-label"),
-            info=f"{loc.localize('settings-tab-error-log-textbox-info-path')}: {cfg.ERROR_LOG_FILE}",
+            info=(
+                f"{loc.localize('settings-tab-error-log-textbox-info-path')}: "
+                f"{cfg.ERROR_LOG_FILE}"
+            ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
+            # buttons=["copy"], # gradio>=6
             show_copy_button=True,
         )
 
@@ -298,7 +326,7 @@ def build_settings():
             prev_theme = settings.theme()
             if prev_theme != value:
                 settings.set_setting("theme", value)
-                _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")
+                _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")  # type: ignore
 
         def on_tab_select(value: gr.SelectData):
             if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
@@ -310,7 +338,9 @@ def build_settings():
 
             return ""
 
-        languages_dropdown.input(on_language_change, inputs=languages_dropdown, show_progress="hidden")
+        languages_dropdown.input(
+            on_language_change, inputs=languages_dropdown, show_progress="hidden"
+        )
         theme_radio.input(on_theme_change, inputs=theme_radio, show_progress="hidden")
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
@@ -326,13 +356,22 @@ def sample_species_model_settings(opened=True):
         return (
             gr.update(interactive=not is_perch),
             gr.update(maximum=4.9 if is_perch else 2.9),
-            gr.update(choices=[_CUSTOM_SPECIES, _ALL_SPECIES] if is_perch else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES], value=_ALL_SPECIES),
+            gr.update(
+                choices=[_CUSTOM_SPECIES, _ALL_SPECIES]
+                if is_perch
+                else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES],
+                value=_ALL_SPECIES,
+            ),
         )
 
     model_settings["model_selection_radio"].change(
         on_species_list_change,
         inputs=model_settings["model_selection_radio"],
-        outputs=[sample_settings["sensitivity_slider"], sample_settings["overlap_slider"], species_settings["species_list_radio"]],
+        outputs=[
+            sample_settings["sensitivity_slider"],
+            sample_settings["overlap_slider"],
+            species_settings["species_list_radio"],
+        ],
         show_progress="hidden",
     )
 
@@ -347,7 +386,10 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
     Returns:
         A dict with the created elements.
     """
-    with gr.Group(), gr.Accordion(loc.localize("inference-settings-accordion-label"), open=opened):
+    with (
+        gr.Group(),
+        gr.Accordion(loc.localize("inference-settings-accordion-label"), open=opened),
+    ):
         with gr.Group():
             with gr.Row():
                 use_top_n_checkbox = gr.Checkbox(
@@ -366,14 +408,17 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                 confidence_slider = gr.Slider(
                     minimum=0.05,
                     maximum=0.95,
-                    value=cfg.MIN_CONFIDENCE,
+                    value=0.25,
                     step=0.05,
                     label=loc.localize("inference-settings-confidence-slider-label"),
                     info=loc.localize("inference-settings-confidence-slider-info"),
                 )
 
             use_top_n_checkbox.change(
-                lambda use_top_n: (gr.Number(visible=use_top_n), gr.Slider(visible=not use_top_n)),
+                lambda use_top_n: (
+                    gr.Number(visible=use_top_n),
+                    gr.Slider(visible=not use_top_n),
+                ),
                 inputs=use_top_n_checkbox,
                 outputs=[top_n_input, confidence_slider],
                 show_progress="hidden",
@@ -383,7 +428,7 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                 sensitivity_slider = gr.Slider(
                     minimum=0.5,
                     maximum=1.5,
-                    value=cfg.SIGMOID_SENSITIVITY,
+                    value=1.0,
                     step=0.01,
                     label=loc.localize("inference-settings-sensitivity-slider-label"),
                     info=loc.localize("inference-settings-sensitivity-slider-info"),
@@ -391,7 +436,7 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                 overlap_slider = gr.Slider(
                     minimum=0,
                     maximum=2.9,
-                    value=cfg.SIG_OVERLAP,
+                    value=0.0,
                     step=0.1,
                     label=loc.localize("inference-settings-overlap-slider-label"),
                     info=loc.localize("inference-settings-overlap-slider-info"),
@@ -401,34 +446,25 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                 merge_consecutive_slider = gr.Slider(
                     minimum=1,
                     maximum=10,
-                    value=cfg.MERGE_CONSECUTIVE,
+                    value=1,
                     step=1,
-                    label=loc.localize("inference-settings-merge-consecutive-slider-label"),
-                    info=loc.localize("inference-settings-merge-consecutive-slider-info"),
+                    label=loc.localize(
+                        "inference-settings-merge-consecutive-slider-label"
+                    ),
+                    info=loc.localize(
+                        "inference-settings-merge-consecutive-slider-info"
+                    ),
                 )
                 audio_speed_slider = gr.Slider(
                     minimum=-10,
                     maximum=10,
-                    value=cfg.AUDIO_SPEED,
+                    value=0,
                     step=1,
                     label=loc.localize("inference-settings-audio-speed-slider-label"),
                     info=loc.localize("inference-settings-audio-speed-slider-info"),
                 )
 
-            with gr.Row():
-                fmin_number = gr.Number(
-                    cfg.SIG_FMIN,
-                    minimum=0,
-                    label=loc.localize("inference-settings-fmin-number-label"),
-                    info=loc.localize("inference-settings-fmin-number-info"),
-                )
-
-                fmax_number = gr.Number(
-                    cfg.SIG_FMAX,
-                    minimum=0,
-                    label=loc.localize("inference-settings-fmax-number-label"),
-                    info=loc.localize("inference-settings-fmax-number-info"),
-                )
+            fmin_number, fmax_number = bandpass_settings()
 
         return {
             "use_top_n_checkbox": use_top_n_checkbox,
@@ -443,6 +479,25 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
         }
 
 
+def bandpass_settings():
+    with gr.Row():
+        fmin_number = gr.Number(
+            0,
+            minimum=0,
+            label=loc.localize("inference-settings-fmin-number-label"),
+            info=loc.localize("inference-settings-fmin-number-info"),
+        )
+
+        fmax_number = gr.Number(
+            15000,
+            minimum=0,
+            label=loc.localize("inference-settings-fmax-number-label"),
+            info=loc.localize("inference-settings-fmax-number-info"),
+        )
+
+    return fmin_number, fmax_number
+
+
 def locale():
     """Creates the gradio elements for locale selection
 
@@ -451,12 +506,11 @@ def locale():
     Returns:
         The dropdown element.
     """
-    label_files = os.listdir(ORIGINAL_TRANSLATED_LABELS_PATH)
-    options = ["EN"] + [label_file.split("BirdNET_GLOBAL_6K_V2.4_Labels_", 1)[1].split(".txt")[0].upper() for label_file in label_files]
+    options = get_args(MODEL_LANGUAGES)[0]
 
     return gr.Dropdown(
-        options,
-        value="EN",
+        get_args(options),
+        value=cast("str", MODEL_LANGUAGE_EN_US),
         label=loc.localize("analyze-locale-dropdown-label"),
         info=loc.localize("analyze-locale-dropdown-info"),
     )
@@ -465,8 +519,11 @@ def locale():
 def plot_map_scatter_mapbox(lat, lon, zoom=4):
     import plotly.express as px
 
-    fig = px.scatter_map(lat=[lat], lon=[lon], zoom=zoom, map_style="open-street-map", size=[10])
-    # fig.update_traces(marker=dict(size=10, color="red"))  # Explicitly set color and size
+    fig = px.scatter_map(
+        lat=[lat], lon=[lon], zoom=zoom, map_style="open-street-map", size=[10]
+    )
+    # Explicitly set color and size
+    # fig.update_traces(marker=dict(size=10, color="red"))
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
     return fig
 
@@ -491,14 +548,29 @@ def species_list_coordinates(show_map=False):
                 info=loc.localize("species-list-coordinates-lon-number-info"),
             )
 
-        map_plot = gr.Plot(plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map)
+        map_plot = gr.Plot(
+            plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map
+        )
 
-        lat_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress="hidden")
-        lon_number.change(plot_map_scatter_mapbox, inputs=[lat_number, lon_number], outputs=map_plot, show_progress="hidden")
+        lat_number.change(
+            plot_map_scatter_mapbox,
+            inputs=[lat_number, lon_number],
+            outputs=map_plot,
+            show_progress="hidden",
+        )
+        lon_number.change(
+            plot_map_scatter_mapbox,
+            inputs=[lat_number, lon_number],
+            outputs=map_plot,
+            show_progress="hidden",
+        )
 
     with gr.Group():
         with gr.Row():
-            yearlong_checkbox = gr.Checkbox(True, label=loc.localize("species-list-coordinates-yearlong-checkbox-label"))
+            yearlong_checkbox = gr.Checkbox(
+                True,
+                label=loc.localize("species-list-coordinates-yearlong-checkbox-label"),
+            )
             week_number = gr.Slider(
                 minimum=1,
                 maximum=48,
@@ -512,7 +584,7 @@ def species_list_coordinates(show_map=False):
         sf_thresh_number = gr.Slider(
             minimum=0.01,
             maximum=0.99,
-            value=cfg.LOCATION_FILTER_THRESHOLD,
+            value=0.03,
             step=0.01,
             label=loc.localize("species-list-coordinates-threshold-slider-label"),
             info=loc.localize("species-list-coordinates-threshold-slider-info"),
@@ -521,9 +593,18 @@ def species_list_coordinates(show_map=False):
     def on_change(use_yearlong):
         return gr.Slider(interactive=(not use_yearlong))
 
-    yearlong_checkbox.change(on_change, inputs=yearlong_checkbox, outputs=week_number, show_progress="hidden")
+    yearlong_checkbox.change(
+        on_change, inputs=yearlong_checkbox, outputs=week_number, show_progress="hidden"
+    )
 
-    return lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot
+    return (
+        lat_number,
+        lon_number,
+        week_number,
+        sf_thresh_number,
+        yearlong_checkbox,
+        map_plot,
+    )
 
 
 def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
@@ -535,11 +616,18 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    assert _WINDOW is not None
+
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    file = _WINDOW.create_file_dialog(webview.FileDialog.SAVE, file_types=filetypes, directory=initial_selection, save_filename=default_filename)
+    file = _WINDOW.create_file_dialog(
+        webview.FileDialog.SAVE,
+        file_types=filetypes,
+        directory=initial_selection,
+        save_filename=default_filename,
+    )
 
     if file:
-        file: str = file[0] if isinstance(file, list | tuple) else file
+        file: str = file[0] if isinstance(file, list | tuple) else file  # ty:ignore[invalid-assignment]
 
         if state_key:
             settings.set_state(state_key, os.path.dirname(file))
@@ -558,8 +646,12 @@ def select_file(filetypes=(), state_key=None):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    assert _WINDOW is not None
+
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    files = _WINDOW.create_file_dialog(webview.FileDialog.OPEN, file_types=filetypes, directory=initial_selection)
+    files = _WINDOW.create_file_dialog(
+        webview.FileDialog.OPEN, file_types=filetypes, directory=initial_selection
+    )
 
     if files:
         if state_key:
@@ -584,45 +676,65 @@ def show_species_choice(choice: str, file_input):
         ]
     """
     if choice == _CUSTOM_SPECIES:
-        return [gr.Row(visible=False), gr.File(visible=True), gr.Column(visible=False), gr.Row(visible=bool(file_input))]
+        return [
+            gr.update(visible=False),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(visible=bool(file_input)),
+        ]
     if choice == _PREDICT_SPECIES:
         return [
-            gr.Row(visible=True),
-            gr.File(visible=False),
-            gr.Column(visible=False),
-            gr.Row(visible=False),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
         ]
 
     return [
-        gr.Row(visible=False),
-        gr.File(visible=False),
-        gr.Column(visible=True),
-        gr.Row(visible=False),
+        gr.update(visible=False),
+        gr.update(visible=True),
+        gr.update(visible=False),
+        gr.update(visible=False),
     ]
 
 
 def model_selection(opened=True):
-    with gr.Group(), gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened):
+    with (
+        gr.Group(),
+        gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened),
+    ):
         with gr.Row():
-            values = [_USE_BIRDNET, _CUSTOM_CLASSIFIER, _USE_PERCH]
+            values = [_USE_BIRDNET_2_4, _CUSTOM_CLASSIFIER, _USE_PERCH]
 
             if platform.system() == "Darwin":
                 values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
 
             model_selection_radio = gr.Radio(
                 choices=values,
-                value=_USE_BIRDNET,
+                value=_USE_BIRDNET_2_4,
                 label=loc.localize("model-selection-radio-label"),
                 info=loc.localize("model-selection-radio-info"),
             )
 
             with gr.Column(visible=False) as custom_classifier_selector:
-                classifier_selection_button = gr.Button(loc.localize("species-list-custom-classifier-selection-button-label"))
-                classifier_file_input = gr.Files(file_types=[".tflite"], visible=False, interactive=False, show_label=False)
+                classifier_selection_button = gr.Button(
+                    loc.localize(
+                        "species-list-custom-classifier-selection-button-label"
+                    )
+                )
+                classifier_file_input = gr.Files(
+                    file_types=[".tflite"],
+                    visible=False,
+                    interactive=False,
+                    show_label=False,
+                )
                 selected_classifier_state = gr.State()
 
                 def on_custom_classifier_selection_click():
-                    file = select_file(("TFLite classifier (*.tflite)",), state_key="custom_classifier_file")
+                    file = select_file(
+                        ("TFLite classifier (*.tflite)",),
+                        state_key="custom_classifier_file",
+                    )
 
                     if not file:
                         return None, None, None
@@ -634,17 +746,36 @@ def model_selection(opened=True):
                         labels = file.replace("Model_FP32.tflite", "Labels.txt")
 
                     if not os.path.isfile(labels):
-                        gr.Warning(loc.localize("species-list-custom-classifier-no-labelfile-warning"))
+                        gr.Warning(
+                            loc.localize(
+                                "species-list-custom-classifier-no-labelfile-warning"
+                            )
+                        )
 
-                        return file, gr.update(value=file, visible=True), gr.update(visible=False)
+                        return (
+                            file,
+                            gr.update(value=file, visible=True),
+                            gr.update(visible=False),
+                        )
 
                     return (
                         file,
                         gr.update(value=file, visible=True),
-                        gr.update(value=utils.read_lines(labels), visible=True),
+                        gr.update(
+                            value=utils.read_lines(labels, fail_on_blank_lines=True),
+                            visible=True,
+                        ),
                     )
 
-        species_list_df = gr.List(value=[], headers=["Species"], max_height=200, show_label=False, visible=False)
+        locale_settings = locale()
+
+        species_list_df = gr.List(
+            value=[],
+            headers=[loc.localize("species-list-header")],
+            max_height=200,
+            show_label=False,
+            visible=False,
+        )
 
     classifier_selection_button.click(
         on_custom_classifier_selection_click,
@@ -654,20 +785,29 @@ def model_selection(opened=True):
 
     def on_model_selection_change(choice: str, cc_state):
         if choice == _CUSTOM_CLASSIFIER:
-            return gr.update(visible=True), gr.update(visible=cc_state is not None)
+            return (
+                gr.update(visible=True),
+                gr.update(visible=cc_state is not None),
+                gr.update(visible=False),
+            )
 
-        return gr.update(visible=False), gr.update(visible=False)
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=choice == _USE_BIRDNET_2_4),
+        )
 
     model_selection_radio.change(
         on_model_selection_change,
         inputs=[model_selection_radio, selected_classifier_state],
-        outputs=[custom_classifier_selector, species_list_df],
+        outputs=[custom_classifier_selector, species_list_df, locale_settings],
         show_progress="hidden",
     )
 
     return {
         "model_selection_radio": model_selection_radio,
         "selected_classifier_state": selected_classifier_state,
+        "locale_dropdown": locale_settings,
     }
 
 
@@ -678,9 +818,12 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
     Returns:
         A dict with the created elements.
     """
-    with gr.Group(), gr.Accordion(loc.localize("species-list-accordion-label"), open=opened):
+    with (
+        gr.Group(),
+        gr.Accordion(loc.localize("species-list-accordion-label"), open=opened),
+    ):
         with gr.Row():
-            values = [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
+            values = [_ALL_SPECIES, _CUSTOM_SPECIES, _PREDICT_SPECIES]
 
             species_list_radio = gr.Radio(
                 values,
@@ -691,12 +834,27 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
             )
 
             with gr.Column(visible=False) as position_row:
-                lat_number, lon_number, week_number, sf_thresh_number, yearlong_checkbox, map_plot = species_list_coordinates()
+                (
+                    lat_number,
+                    lon_number,
+                    week_number,
+                    sf_thresh_number,
+                    yearlong_checkbox,
+                    map_plot,
+                ) = species_list_coordinates()
 
-            species_file_input = gr.File(file_types=[".txt"], visible=False, show_label=False)
+            species_file_input = gr.File(
+                file_types=[".txt"], visible=False, show_label=False
+            )
             empty_col = gr.Column()
 
-        list_df = gr.List(value=[], headers=["Species"], max_height=200, show_label=False, visible=False)
+        list_df = gr.List(
+            value=[],
+            headers=[loc.localize("species-list-header")],
+            max_height=200,
+            show_label=False,
+            visible=False,
+        )
 
     species_list_radio.change(
         show_species_choice,
@@ -709,14 +867,14 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
         if not file:
             return gr.update(value=[], visible=False)
 
-        species_list = utils.read_lines(file)
+        species_list = utils.read_lines(file, fail_on_blank_lines=True)
 
-        return gr.update(value=species_list, visible=True)
+        return gr.update(value=[[el] for el in species_list], visible=True)
 
     species_file_input.change(
         on_species_file_change,
         inputs=species_file_input,
-        outputs=[list_df],
+        outputs=list_df,
         show_progress="hidden",
     )
 
@@ -735,16 +893,17 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
 def download_plot(plot, filename=""):
     from PIL import Image
 
-    imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
-    res = _WINDOW.create_file_dialog(
+    res: str = _WINDOW.create_file_dialog(  # type: ignore
         webview.FileDialog.SAVE,
         file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
         save_filename=filename,
     )
 
     if res:
+        imgdata = base64.b64decode(plot.plot.split(",", 1)[1])
+
         if isinstance(res, list | tuple):
-            res = res[0]
+            res: str = res[0]
 
         file_ext = res.split(".", 1)[-1].upper()
 
@@ -765,21 +924,22 @@ def _get_network_shortcuts():
     Retrieves a list of network shortcut paths from the user's Network Shortcuts folder.
     This function accesses the Network Shortcuts folder (Nethood) on a Windows system,
     iterates through its contents, and attempts to resolve `.lnk` files (shortcuts)
-    to their target paths. If successful, the resolved paths are added to the list of shortcuts.
+    to their target paths. If successful, the resolved paths are added to the list of
+    shortcuts.
     Returns:
         list: A list of resolved network shortcut paths.
     Notes:
-        - This function uses the `pythoncom` and `win32com.shell` modules, which are part of the
-          `pywin32` package.
+        - This function uses the `pythoncom` and `win32com.shell` modules, which are
+        part of the `pywin32` package.
         - Errors encountered while resolving shortcuts are printed to the console.
     """
     import pythoncom
-    from win32com.shell import shell, shellcon  # type: ignore[import]
+    from win32com.shell import shell, shellcon  # type: ignore
 
     try:
         # https://learn.microsoft.com/de-de/windows/win32/shell/csidl
         # CSIDL_NETHOOD: Path to folder containing network shortcuts
-        network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)
+        network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)  # pyright: ignore[reportArgumentType]
         shortcuts = []
 
         for item in os.listdir(network_shortcuts):
@@ -793,11 +953,18 @@ def _get_network_shortcuts():
                     try:
                         # https://learn.microsoft.com/de-de/windows/win32/shell/links
                         # CLSID_ShellLink: Class ID for Shell Link object
-                        shell_link = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink)
+                        shell_link = pythoncom.CoCreateInstance(  # ty:ignore[unresolved-attribute]
+                            shell.CLSID_ShellLink,
+                            None,
+                            pythoncom.CLSCTX_INPROC_SERVER,  # ty:ignore[unresolved-attribute]
+                            shell.IID_IShellLink,
+                        )
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
                         # Query IPersistFile interface used to
-                        persist_file = shell_link.QueryInterface(pythoncom.IID_IPersistFile)
+                        persist_file = shell_link.QueryInterface(
+                            pythoncom.IID_IPersistFile  # ty:ignore[unresolved-attribute]
+                        )
 
                         # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nf-objidl-ipersistfile-load
                         # Load shell link file
@@ -823,29 +990,67 @@ def _get_win_drives():
     return [f"{drive}:\\" for drive in UPPER_CASE] + _get_network_shortcuts()
 
 
-def open_window(builder: list[Callable] | Callable):
+def computing_settings():
+    import psutil
+
+    with gr.Row():
+        bs_number = gr.Number(
+            precision=1,
+            label=loc.localize("computing-settings-batchsize-number-label"),
+            value=1,
+            info=loc.localize("computing-settings-batchsize-number-info"),
+            minimum=1,
+        )
+        producers_number = gr.Number(
+            precision=1,
+            label=loc.localize("computing-settings-producers-number-label"),
+            value=1,
+            info=loc.localize("computing-settings-producers-number-info"),
+            minimum=1,
+        )
+        workers_number = gr.Number(
+            precision=1,
+            label=loc.localize("computing-settings-workers-number-label"),
+            value=psutil.cpu_count(logical=True) or 1,
+            info=loc.localize("computing-settings-workers-number-info"),
+            minimum=1,
+        )
+
+    return bs_number, producers_number, workers_number
+
+
+def slider_to_value(value: float):
+    return max(0.1, 1.0 / (value * -1)) if value < 0 else max(1.0, float(value))
+
+
+def open_window(
+    builder: list[Callable[[], TAB_BUILDER_RESULT]] | Callable[[], TAB_BUILDER_RESULT],
+):
     """
     Opens a GUI window using the Gradio library and the webview module.
     Args:
-        builder (list[Callable] | Callable): A callable or a list of callables that build the GUI components.
+        builder (list[Callable] | Callable): A callable or a list of callables that
+        build the GUI components.
     """
     global _URL
     multiprocessing.freeze_support()
 
-    utils.ensure_model_exists()
-
-    with gr.Blocks(
-        css=open(os.path.join(SCRIPT_DIR, "assets/gui.css")).read(),
-        js=open(os.path.join(SCRIPT_DIR, "assets/gui.js")).read(),
-        theme=gr.themes.Default(),
-        analytics_enabled=False,
-    ) as demo:
+    with (
+        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,  # gradio>=6
+        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+        gr.Blocks(
+            theme=gr.themes.Default(),
+            analytics_enabled=False,
+            css=css_file.read(),
+            js=js_file.read(),
+        ) as demo,
+    ):
         build_header()
 
         map_plots = []
 
         if callable(builder):
-            map_plots.append(builder())
+            map_plots.append(builder())  # ty:ignore[call-top-callable]
         elif isinstance(builder, tuple | set | list):
             map_plots.extend(build() for build in builder)
 
@@ -862,16 +1067,22 @@ def open_window(builder: list[Callable] | Callable):
                 outputs.append(plot)
 
             def update_plots(*args):
-                return [plot_map_scatter_mapbox(lat, lon) for lat, lon in utils.batched(args, 2, strict=True)]
+                return [
+                    plot_map_scatter_mapbox(lat, lon)
+                    for lat, lon in utils.batched(args, 2, strict=True)
+                ]
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
     _URL = demo.queue(api_open=False).launch(
+        # css=css_file.read(), # gradio>=6
+        # js=js_file.read(),
+        # theme=gr.themes.Default(),
         prevent_thread_lock=True,
         quiet=True,
-        show_api=False,
         enable_monitoring=False,
         allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
+        # footer_links=[], # gradio>=6
     )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
@@ -895,8 +1106,8 @@ def open_window(builder: list[Callable] | Callable):
         from webview.platforms.winforms import BrowserView
 
         dwmapi = ctypes.windll.LoadLibrary("dwmapi")
-        _WINDOW.events.loaded += lambda: dwmapi.DwmSetWindowAttribute(
-            BrowserView.instances[_WINDOW.uid].Handle.ToInt32(),
+        _WINDOW.events.loaded += lambda: dwmapi.DwmSetWindowAttribute(  # type: ignore
+            BrowserView.instances[_WINDOW.uid].Handle.ToInt32(),  # type: ignore
             20,  # DWMWA_USE_IMMERSIVE_DARK_MODE
             ctypes.byref(ctypes.c_bool(settings.theme() == "dark")),
             ctypes.sizeof(wintypes.BOOL),

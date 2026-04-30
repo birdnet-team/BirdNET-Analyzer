@@ -1,18 +1,23 @@
 """
 Module containing functions to plot performance metrics.
 
-This script provides a variety of functions to visualize performance metrics in different formats,
-including bar charts, line plots, and heatmaps. These visualizations help analyze metrics such as
-overall performance, per-class performance, and performance across thresholds.
+This script provides a variety of functions to visualize performance metrics in
+different formats, including bar charts, line plots, and heatmaps. These visualizations
+help analyze metrics such as overall performance, per-class performance, and performance
+across thresholds.
 
 Functions:
     - plot_overall_metrics: Plots a bar chart for overall performance metrics.
-    - plot_metrics_per_class: Plots metric values per class with unique lines and colors.
+    - plot_metrics_per_class: Plots metric values per class with unique lines and
+        colors.
     - plot_metrics_across_thresholds: Plots metrics across different thresholds.
-    - plot_metrics_across_thresholds_per_class: Plots metrics across thresholds for each class.
-    - plot_confusion_matrices: Visualizes confusion matrices for binary, multiclass, or multilabel tasks.
+    - plot_metrics_across_thresholds_per_class: Plots metrics across thresholds for each
+        class.
+    - plot_confusion_matrices: Visualizes confusion matrices for binary, multiclass, or
+        multilabel tasks.
 """
 
+from collections.abc import Sequence
 from typing import Literal
 
 import matplotlib.pyplot as plt
@@ -20,12 +25,20 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import ConfusionMatrixDisplay
 
-MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM = "performance-tab-binary-confusion-matrix-plot"
-MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM = "performance-tab-multiclass-confusion-matrix-plot"
+MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM = (
+    "performance-tab-binary-confusion-matrix-plot"
+)
+MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM = (
+    "performance-tab-multiclass-confusion-matrix-plot"
+)
 MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM = "performance-tab-overall-metrics-plot"
 MATPLOTLIB_PER_CLASS_METRICS_FIGURE_NUM = "performance-tab-per-class-metrics-plot"
-MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_FIGURE_NUM = "performance-tab-metrics-across-thresholds-plot"
-MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM = "performance-tab-metrics-across-thresholds-per-class-plot"
+MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_FIGURE_NUM = (
+    "performance-tab-metrics-across-thresholds-plot"
+)
+MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM = (
+    "performance-tab-metrics-across-thresholds-per-class-plot"
+)
 
 
 def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
@@ -33,7 +46,8 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
     Plots a bar chart for overall performance metrics.
 
     Args:
-        metrics_df (pd.DataFrame): DataFrame containing metric names as index and an 'Overall' column.
+        metrics_df (pd.DataFrame): DataFrame containing metric names as index and an
+            'Overall' column.
         colors (List[str]): List of colors for the bars.
 
     Raises:
@@ -81,10 +95,12 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
 
 def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
     """
-    Plots metric values per class, with each metric represented by a distinct color and line.
+    Plots metric values per class, with each metric represented by a distinct color and
+    line.
 
     Args:
-        metrics_df (pd.DataFrame): DataFrame containing metrics as index and class names as columns.
+        metrics_df (pd.DataFrame): DataFrame containing metrics as index and class names
+            as columns.
         colors (List[str]): List of colors for the lines.
 
     Raises:
@@ -148,7 +164,8 @@ def plot_metrics_across_thresholds(
 
     Args:
         thresholds (np.ndarray): Array of threshold values.
-        metric_values_dict (Dict[str, np.ndarray]): Dictionary mapping metric names to their values.
+        metric_values_dict (Dict[str, np.ndarray]): Dictionary mapping metric names to
+            their values.
         metrics_to_plot (List[str]): List of metric names to plot.
         colors (List[str]): List of colors for the lines.
 
@@ -187,7 +204,10 @@ def plot_metrics_across_thresholds(
             raise KeyError(f"Metric '{metric_name}' not found in metric_values_dict.")
         metric_values = metric_values_dict[metric_name]
         if len(metric_values) != len(thresholds):
-            raise ValueError(f"Length of metric '{metric_name}' values does not match length of thresholds.")
+            raise ValueError(
+                f"Length of metric '{metric_name}' values does not match length of "
+                "thresholds."
+            )
         plt.plot(
             thresholds,
             metric_values,
@@ -219,8 +239,9 @@ def plot_metrics_across_thresholds_per_class(
 
     Args:
         thresholds (np.ndarray): Array of threshold values.
-        metric_values_dict_per_class (Dict[str, Dict[str, np.ndarray]]): Dictionary mapping class names
-            to metric dictionaries, each containing metric names and their values across thresholds.
+        metric_values_dict_per_class (Dict[str, Dict[str, np.ndarray]]): Dictionary
+            mapping class names to metric dictionaries, each containing metric names and
+            their values across thresholds.
         metrics_to_plot (List[str]): List of metric names to plot.
         class_names (List[str]): List of class names.
         colors (List[str]): List of colors for the lines.
@@ -258,7 +279,12 @@ def plot_metrics_across_thresholds_per_class(
     n_rows = int(np.ceil(num_classes / n_cols))
 
     # Create subplots
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4), num=MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM)
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=(n_cols * 5, n_rows * 4),
+        num=MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM,
+    )
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
@@ -272,17 +298,24 @@ def plot_metrics_across_thresholds_per_class(
     # Plot each class
     for class_idx, class_name in enumerate(class_names):
         if class_name not in metric_values_dict_per_class:
-            raise KeyError(f"Class '{class_name}' not found in metric_values_dict_per_class.")
+            raise KeyError(
+                f"Class '{class_name}' not found in metric_values_dict_per_class."
+            )
         ax = axes[class_idx]
         metric_values_dict = metric_values_dict_per_class[class_name]
 
         # Plot each metric for the current class
         for i, metric_name in enumerate(metrics_to_plot):
             if metric_name not in metric_values_dict:
-                raise KeyError(f"Metric '{metric_name}' not found for class '{class_name}'.")
+                raise KeyError(
+                    f"Metric '{metric_name}' not found for class '{class_name}'."
+                )
             metric_values = metric_values_dict[metric_name]
             if len(metric_values) != len(thresholds):
-                raise ValueError(f"Length of metric '{metric_name}' values for class '{class_name}' " + "does not match length of thresholds.")
+                raise ValueError(
+                    f"Length of metric '{metric_name}' values for class '{class_name}' "
+                    + "does not match length of thresholds."
+                )
             ax.plot(
                 thresholds,
                 metric_values,
@@ -305,16 +338,17 @@ def plot_metrics_across_thresholds_per_class(
 def plot_confusion_matrices(
     conf_mat: np.ndarray,
     task: Literal["binary", "multiclass", "multilabel"],
-    class_names: list[str],
+    class_names: Sequence[str],
 ):
     """
     Plots confusion matrices for each class in a single figure with multiple subplots.
 
     Args:
-        conf_mat (np.ndarray): Confusion matrix or matrices. For binary classification, a single 2x2 matrix.
-            For multilabel or multiclass, an array of shape (num_classes, 2, 2).
+        conf_mat (np.ndarray): Confusion matrix or matrices. For binary classification,
+            a single 2x2 matrix. For multilabel or multiclass, an array of shape
+            (num_classes, 2, 2).
         task (Literal["binary", "multiclass", "multilabel"]): Task type.
-        class_names (List[str]): List of class names.
+        class_names (Sequence[str]): Sequence of class names.
 
     Raises:
         TypeError: If inputs are not of expected types.
@@ -329,15 +363,21 @@ def plot_confusion_matrices(
     if conf_mat.size == 0:
         raise ValueError("conf_mat is empty.")
     if not isinstance(task, str) or task not in ["binary", "multiclass", "multilabel"]:
-        raise ValueError("Invalid task. Expected 'binary', 'multiclass', or 'multilabel'.")
+        raise ValueError(
+            "Invalid task. Expected 'binary', 'multiclass', or 'multilabel'."
+        )
 
     if task == "binary":
         # Binary classification expects a single 2x2 matrix
         if conf_mat.shape != (2, 2):
             raise ValueError("For binary task, conf_mat must be of shape (2, 2).")
 
-        disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat, display_labels=["Negative", "Positive"])
-        fig, ax = plt.subplots(num=MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6))
+        disp = ConfusionMatrixDisplay(
+            confusion_matrix=conf_mat, display_labels=["Negative", "Positive"]
+        )
+        fig, ax = plt.subplots(
+            num=MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6)
+        )
 
         fig.tight_layout()
         fig.set_dpi(300)
@@ -348,22 +388,34 @@ def plot_confusion_matrices(
         num_matrices = conf_mat.shape[0]
 
         if conf_mat.shape[1:] != (2, 2):
-            raise ValueError("For multilabel or multiclass task, conf_mat must have shape (num_labels, 2, 2).")
+            raise ValueError(
+                "For multilabel or multiclass task, conf_mat must have shape "
+                "(num_labels, 2, 2)."
+            )
         if len(class_names) != num_matrices:
-            raise ValueError("Length of class_names must match number of labels in conf_mat.")
+            raise ValueError(
+                "Length of class_names must match number of labels in conf_mat."
+            )
 
         # Determine grid size for subplots
         n_cols = int(np.ceil(np.sqrt(num_matrices)))
         n_rows = int(np.ceil(num_matrices / n_cols))
 
         # Create subplots for each confusion matrix
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), num=MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM)
+        fig, axes = plt.subplots(
+            n_rows,
+            n_cols,
+            figsize=(4 * n_cols, 4 * n_rows),
+            num=MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM,
+        )
         fig.set_dpi(300)
         axes = axes.flatten() if hasattr(axes, "flatten") else [axes]
 
         # Plot each confusion matrix
         for idx, (cf, class_name) in enumerate(zip(conf_mat, class_names, strict=True)):
-            disp = ConfusionMatrixDisplay(confusion_matrix=cf, display_labels=["Negative", "Positive"])
+            disp = ConfusionMatrixDisplay(
+                confusion_matrix=cf, display_labels=["Negative", "Positive"]
+            )
             disp.plot(cmap="Reds", ax=axes[idx], colorbar=False, values_format=".2f")
             axes[idx].set_title(f"{class_name}")
             axes[idx].set_xlabel("Predicted class")
