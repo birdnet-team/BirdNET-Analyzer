@@ -286,6 +286,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                     return (
                         gr.update(visible=True),
                         gr.update(
+                            visible=True,
                             value=utils.spectrogram_from_file(
                                 audio_path,
                                 fig_size=(20, 4),

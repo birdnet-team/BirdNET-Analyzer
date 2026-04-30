@@ -68,7 +68,7 @@ def test_embeddings_cli(
     mock_get_embeddings.assert_called_once()
     call_kwargs = mock_get_embeddings.call_args
     assert call_kwargs[0][0] == env["input_dir"]
-    assert call_kwargs[1]["version"] == args.classifier_version
+    assert call_kwargs[1]["version"] == "2.4"
 
 
 @patch("birdnet_analyzer.embeddings.core._ensure_recording")

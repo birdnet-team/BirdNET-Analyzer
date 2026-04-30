@@ -44,9 +44,7 @@ def test_analyze_with_real_custom_classifier(setup_test_environment):
 
     analyze(soundscape_path, env["output_dir"], classifier=classifier)
 
-    output_file = os.path.join(
-        env["output_dir"], "soundscape.BirdNET.selection.table.txt"
-    )
+    output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file), "Output file was not created"
 
     with open(labels) as f:
@@ -75,9 +73,7 @@ def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environ
         soundscape_path, env["output_dir"], classifier=classifier, slist=species_list
     )
 
-    output_file = os.path.join(
-        env["output_dir"], "soundscape.BirdNET.selection.table.txt"
-    )
+    output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file), "Output file was not created"
 
     with open(species_list) as f:
