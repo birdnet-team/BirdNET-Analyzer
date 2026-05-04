@@ -814,6 +814,44 @@ def save_raven_model(
             utils.save_params_to_file(model_params, *params)
 
 
+def save_detached_classifier(
+    classifier,
+    model_path: str,
+    labels: list[str] | None = None,
+):
+    """Saves the detached classifier head as pb and tflite models.
+
+    Args:
+        classifier: The custom classifier.
+        model_path: Path the model will be saved at.
+        labels: List of labels to save for the detached classifier.
+    """
+    if model_path.endswith(".tflite"):
+        model_path = model_path.removesuffix(".tflite")
+
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
+    detached_classifier_path = model_path + "_detached"
+
+    detached_model_inputs = keras.Input(shape=(1024,), dtype=tf.float32,
+                                    name="detached_input")
+    detached_model_outputs = classifier(detached_model_inputs)
+    detached_model = keras.Model(inputs=detached_model_inputs,
+                                    outputs=detached_model_outputs,
+                                    name="detached_classifier")
+
+    detached_model.export(detached_classifier_path)
+
+    converter = tf.lite.TFLiteConverter.from_keras_model(detached_model)
+    tflite_model: bytes = converter.convert()
+
+    with open(detached_classifier_path + ".tflite", "wb") as f:
+        f.write(tflite_model)
+
+    if labels is not None:
+        with open(detached_classifier_path + "_Labels.txt", "w", encoding="utf-8") as f:
+            f.writelines(label + "\n" for label in labels)
+
 def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     """
     Focal loss for better handling of class imbalance.

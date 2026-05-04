@@ -68,6 +68,7 @@ def start_training(
     upsampling_mode,
     model_format,
     audio_speed,
+    save_detached_classifier,
     progress=gr.Progress(),
 ):
     """Starts the training of a custom classifier.
@@ -104,7 +105,7 @@ def start_training(
         upsampling_mode: Mode for upsampling (repeat, mean, smote).
         model_format: Format to save the trained model (tflite, raven, both).
         audio_speed: Speed factor for audio playback.
-
+        save_detached_classifier: Whether to save the detached classifier.
     Returns:
         Returns a matplotlib.pyplot figure.
     """
@@ -145,6 +146,9 @@ def start_training(
 
     if cache_mode == "load" and not os.path.isfile(cache_file):
         raise gr.Error(loc.localize("validation-no-cache-file-selected"))
+
+    if model_save_mode == "append" and save_detached_classifier:
+        gr.Warning(loc.localize("training-tab-warning-detached-classifier-append"))
 
     def data_load_progression(num_files, num_total_files, label):
         if progress is not None:
@@ -218,6 +222,7 @@ def start_training(
             autotune_trials=int(autotune_trials),
             autotune_n_splits=int(autotune_folds),
             autotune_n_repeats=int(autotune_repeats),
+            save_detached_classifier=save_detached_classifier,
         )
     except Exception as e:
         if e.args and len(e.args) > 1:
@@ -355,6 +360,12 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 info=loc.localize("training-tab-output-format-radio-info"),
                 visible=False,
             )
+            save_detached_classifier_checkbox = gr.Checkbox(
+                False,
+                label=loc.localize("training-tab-save-detached-classifier-checkbox-label"),
+                info=loc.localize("training-tab-save-detached-classifier-checkbox-info"),
+                visible=False,
+            )
 
         def select_classifier_directory_and_update_tb():
             dir_name = gu.select_folder(state_key="train-output-dir")
@@ -365,9 +376,10 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     dir_name,
                     gr.update(label=dir_name, visible=True),
                     gr.update(visible=True, interactive=True),
+                    gr.update(visible=True, interactive=True),
                 )
 
-            return gr.update(), gr.update(), gr.update(), gr.update()
+            return gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
 
         select_classifier_directory_btn.click(
             select_classifier_directory_and_update_tb,
@@ -376,6 +388,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 selected_output_textbox,
                 classifier_name,
                 output_format,
+                save_detached_classifier_checkbox,
             ],
             show_progress="hidden",
         )
@@ -869,6 +882,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 upsampling_mode,
                 output_format,
                 audio_speed_slider,
+                save_detached_classifier_checkbox,
             ],
             outputs=[train_history_plot, metrics_table],
         )

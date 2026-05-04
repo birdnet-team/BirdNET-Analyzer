@@ -121,6 +121,21 @@ Choose the mode that fits your use case best, depending on whether you need to d
 .. caution::
    When using the "Append" mode, make sure that the class names of the new classes do not conflict with existing classes in BirdNET.
 
+3.6 Detached Classifier
+##########################
+
+You can additionally choose to save a detached version of the trained classifier.
+This will save the classification head in tflite and saved model (pb) format.
+Instead of audio the classification head will take the embeddings extracted from the BirdNET model as input.
+This is meant as a way to provide a lightweight version of the classifier that can more easily be transferred to edge devices in the field that already run BirdNET. 
+
+.. note::
+  As of now the detached classifier feature is meant for custom inference pipelines and the BirdNET-Analyzer does not currently offer a way to use the detached classifier directly.
+
+.. caution::
+   The "Append" mode will not be applied to the detached classifier. The detached classifier will only contained the newly trained classes.
+   If the original BirdNET classifications are needed they should be extracted from the BirdNET model alongside the embeddings that are fed into the detached classifier.
+
 4. Using the Custom Classifier
 --------------------------------
 
