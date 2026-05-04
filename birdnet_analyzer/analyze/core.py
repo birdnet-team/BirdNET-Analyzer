@@ -481,7 +481,6 @@ def save_as_rtable(
     codes = load_codes()
     files = df["input"].unique()
     file_infos = {file: get_audio_info(file) for file in files}
-
     n_rows = df.shape[0]
     df["Selection"] = list(range(1, n_rows + 1))
     df["View"] = ["Spectrogram 1"] * n_rows
@@ -501,7 +500,6 @@ def save_as_rtable(
         "_", n=1, expand=True
     )
     df["Species Code"] = df["species_name"].map(lambda x: codes.get(str(x), str(x)))
-
     df = df.rename(
         columns={
             "start_time": "Begin Time (s)",
@@ -510,17 +508,19 @@ def save_as_rtable(
             "confidence": "Confidence",
         },
     )
-
+    timestamp_dtype = df["Begin Time (s)"].dtype
     acumulated_start_times = []
     accumulated_end_times = []
-    accumulated_time = 0.0
+    accumulated_time = timestamp_dtype.type(0)
     current_file = df["Begin Path"].iloc[0]
 
     for row in df.iterrows():
         file = row[1]["Begin Path"]
 
         if file != current_file:
-            accumulated_time += file_infos[current_file]["duration"]
+            accumulated_time += timestamp_dtype.type(
+                file_infos[current_file]["duration"]
+            )  # type: ignore
             current_file = file
 
         acumulated_start_times.append(row[1]["Begin Time (s)"] + accumulated_time)
