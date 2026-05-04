@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "birdnet_analyzer"
-version = "2.4.0"
+version = "3.0.0"
 license = { text = "MIT" }
 description = "BirdNET analyzer for scientific audio data processing and bird classification."
 authors = [{ name = "Stefan Kahl" }]
@@ -39,7 +39,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=0.2.14,<1",
+    "birdnet>=0.2.15,<1",
 ]
 
 [project.optional-dependencies]

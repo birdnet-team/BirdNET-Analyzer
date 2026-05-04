@@ -469,6 +469,8 @@ def save_as_rtable(
 ):
     from functools import partial
 
+    import numpy as np
+
     from birdnet_analyzer.audio import get_audio_info
     from birdnet_analyzer.utils import load_codes
 
@@ -513,14 +515,14 @@ def save_as_rtable(
 
     acumulated_start_times = []
     accumulated_end_times = []
-    accumulated_time = 0.0
+    accumulated_time = np.float16(0)
     current_file = df["Begin Path"].iloc[0]
 
     for row in df.iterrows():
         file = row[1]["Begin Path"]
 
         if file != current_file:
-            accumulated_time += file_infos[current_file]["duration"]
+            accumulated_time += np.float16(file_infos[current_file]["duration"])
             current_file = file
 
         acumulated_start_times.append(row[1]["Begin Time (s)"] + accumulated_time)
