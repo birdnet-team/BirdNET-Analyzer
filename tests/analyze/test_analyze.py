@@ -109,7 +109,9 @@ def test_analyze_with_speed_up_and_overlap(
 ):
     """Test analyzing with speed up."""
     if audio_speed == 0.3 and overlap == 0.7:
-        pytest.skip("This combination is currently not stable, see birdnet#37")
+        pytest.skip(
+            "This combination is currently not stable, see birdnet-team/birdnet#37"
+        )
 
     env = setup_test_environment
 
