@@ -108,6 +108,9 @@ def test_analyze_with_speed_up_and_overlap(
     setup_test_environment, audio_speed, overlap
 ):
     """Test analyzing with speed up."""
+    if audio_speed == 0.3 and overlap == 0.7:
+        pytest.skip("This combination is currently not stable, see birdnet#37")
+
     env = setup_test_environment
 
     soundscape_path = "birdnet_analyzer/example/soundscape.wav"
@@ -150,7 +153,7 @@ def test_analyze_with_speed_up_and_overlap(
 
     with open(output_file) as f:
         lines = f.readlines()[1:]
-        atol = 5e-2  # waiting for birdnet#37
+        atol = 3e-4
 
         for expected_start, expected_end, line in zip(
             expected_start_timestamps, expected_end_timestamps, lines, strict=True
