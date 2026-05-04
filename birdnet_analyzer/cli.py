@@ -144,27 +144,42 @@ def bandpass_args():
     return p
 
 
-def species_list_args():
+def species_list_args(add_species_list_hint=False):
     """
     Creates an argument parser for species-list arguments.
     Returns:
         argparse.ArgumentParser: The argument parser with the following arguments:
-            --lat (float): Recording location latitude. Set -1 to ignore. Default is -1.
-            --lon (float): Recording location longitude. Set -1 to ignore. Default is -1.
+            --lat (float): Recording location latitude in decimal degrees. Cannot be used together with --slist, use either the species list or the location coordinates.
+            --lon (float): Recording location longitude in decimal degrees. Cannot be used together with --slist, use either the species list or the location coordinates.
             --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
-                          Set -1 for year-round species list. Default is -1.
+                          Only effective when --lat and --lon are provided.
+                          Leave blank for year-round species list.
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
                            "species_list.txt". If lat and lon are provided, this list will be ignored.
             --sf_thresh (float): Minimum species occurrence frequency threshold for location filter. Values in [0.01, 0.99].
     """
     p = argparse.ArgumentParser(add_help=False)
 
-    p.add_argument("--lat", type=float, help="Recording location latitude.")
-    p.add_argument("--lon", type=float, help="Recording location longitude.")
+    slist_hint = (
+        " Cannot be used together with --slist, use either the species list or the location coordinates."
+        if add_species_list_hint
+        else ""
+    )
+
+    p.add_argument(
+        "--lat",
+        type=float,
+        help="Recording location latitude in decimal degrees." + slist_hint,
+    )
+    p.add_argument(
+        "--lon",
+        type=float,
+        help="Recording location longitude in decimal degrees." + slist_hint,
+    )
     p.add_argument(
         "--week",
         type=int,
-        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Leave blank for year-round species list.",
+        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Only effective when --lat and --lon are provided. Leave blank for year-round species list.",
     )
     p.add_argument(
         "--sf_thresh",
@@ -181,19 +196,20 @@ def species_args():
     Creates an argument parser for species-related arguments including the species-list arguments.
     Returns:
         argparse.ArgumentParser: The argument parser with the following arguments:
-            --lat (float): Recording location latitude. Set -1 to ignore. Default is -1.
-            --lon (float): Recording location longitude. Set -1 to ignore. Default is -1.
+            --lat (float): Recording location latitude in decimal degrees.
+            --lon (float): Recording location longitude in decimal degrees.
             --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
-                          Set -1 for year-round species list. Default is -1.
+                          Only effective when --lat and --lon are provided; ignored when a species list (--slist) is given.
+                          Leave blank for year-round species list.
             --sf_thresh (float): Minimum species occurrence frequency threshold for location filter. Values in [0.01, 0.99].
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
-                           "species_list.txt". If lat and lon are provided, this list will be ignored.
+                           "species_list.txt". Cannot be used together with --lat and --lon, use either the species list or the location coordinates
     """
-    p = species_list_args()
+    p = species_list_args(add_species_list_hint=True)
 
     p.add_argument(
         "--slist",
-        help='Path to species list file or folder. If folder is provided, species list needs to be named "species_list.txt". If lat and lon are provided, this list will be ignored.',
+        help='Path to species list file or folder. If folder is provided, species list needs to be named "species_list.txt". Cannot be used together with --lat and --lon, use either the species list or the location coordinates.',
     )
 
     return p
