@@ -152,7 +152,7 @@ def species_list_args(add_species_list_hint=False):
             --lat (float): Recording location latitude in decimal degrees. Cannot be used together with --slist, use either the species list or the location coordinates.
             --lon (float): Recording location longitude in decimal degrees. Cannot be used together with --slist, use either the species list or the location coordinates.
             --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
-                          Only effective when --lat and --lon are provided; ignored when a species list (--slist) is given.
+                          Only effective when --lat and --lon are provided.
                           Leave blank for year-round species list.
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
                            "species_list.txt". If lat and lon are provided, this list will be ignored.
@@ -161,7 +161,7 @@ def species_list_args(add_species_list_hint=False):
     p = argparse.ArgumentParser(add_help=False)
 
     slist_hint = (
-        " Cannot be used together with --lat and --lon, use either the species list or the location coordinates."
+        " Cannot be used together with --slist, use either the species list or the location coordinates."
         if add_species_list_hint
         else ""
     )
