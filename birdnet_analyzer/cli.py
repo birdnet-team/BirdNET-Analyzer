@@ -144,7 +144,7 @@ def bandpass_args():
     return p
 
 
-def species_list_args():
+def species_list_args(add_species_list_hint=False):
     """
     Creates an argument parser for species-list arguments.
     Returns:
@@ -160,15 +160,21 @@ def species_list_args():
     """
     p = argparse.ArgumentParser(add_help=False)
 
+    slist_hint = (
+        " Cannot be used together with --lat and --lon, use either the species list or the location coordinates."
+        if add_species_list_hint
+        else ""
+    )
+
     p.add_argument(
         "--lat",
         type=float,
-        help="Recording location latitude in decimal degrees. Cannot be used together with --slist, use either the species list or the location coordinates",
+        help="Recording location latitude in decimal degrees." + slist_hint,
     )
     p.add_argument(
         "--lon",
         type=float,
-        help="Recording location longitude in decimal degrees. Cannot be used together with --slist, use either the species list or the location coordinates",
+        help="Recording location longitude in decimal degrees." + slist_hint,
     )
     p.add_argument(
         "--week",
@@ -199,7 +205,7 @@ def species_args():
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
                            "species_list.txt". Cannot be used together with --lat and --lon, use either the species list or the location coordinates
     """
-    p = species_list_args()
+    p = species_list_args(add_species_list_hint=True)
 
     p.add_argument(
         "--slist",
