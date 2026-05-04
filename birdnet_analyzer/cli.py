@@ -149,9 +149,10 @@ def species_list_args():
     Creates an argument parser for species-list arguments.
     Returns:
         argparse.ArgumentParser: The argument parser with the following arguments:
-            --lat (float): Recording location latitude. Set -1 to ignore. Default is -1.
-            --lon (float): Recording location longitude. Set -1 to ignore. Default is -1.
+            --lat (float): Recording location latitude in decimal degrees. Set -1 to ignore. Default is -1.
+            --lon (float): Recording location longitude in decimal degrees. Set -1 to ignore. Default is -1.
             --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
+                          Only effective when --lat and --lon are provided; ignored when a species list (--slist) is given.
                           Set -1 for year-round species list. Default is -1.
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
                            "species_list.txt". If lat and lon are provided, this list will be ignored.
@@ -159,12 +160,12 @@ def species_list_args():
     """
     p = argparse.ArgumentParser(add_help=False)
 
-    p.add_argument("--lat", type=float, help="Recording location latitude.")
-    p.add_argument("--lon", type=float, help="Recording location longitude.")
+    p.add_argument("--lat", type=float, help="Recording location latitude in decimal degrees.")
+    p.add_argument("--lon", type=float, help="Recording location longitude in decimal degrees.")
     p.add_argument(
         "--week",
         type=int,
-        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Leave blank for year-round species list.",
+        help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Only effective when --lat and --lon are provided; ignored when a custom species list (--slist) is given. Leave blank for year-round species list.",
     )
     p.add_argument(
         "--sf_thresh",
@@ -181,9 +182,10 @@ def species_args():
     Creates an argument parser for species-related arguments including the species-list arguments.
     Returns:
         argparse.ArgumentParser: The argument parser with the following arguments:
-            --lat (float): Recording location latitude. Set -1 to ignore. Default is -1.
-            --lon (float): Recording location longitude. Set -1 to ignore. Default is -1.
+            --lat (float): Recording location latitude in decimal degrees. Set -1 to ignore. Default is -1.
+            --lon (float): Recording location longitude in decimal degrees. Set -1 to ignore. Default is -1.
             --week (int): Week of the year when the recording was made. Values in [1, 48] (4 weeks per month).
+                          Only effective when --lat and --lon are provided; ignored when a species list (--slist) is given.
                           Set -1 for year-round species list. Default is -1.
             --sf_thresh (float): Minimum species occurrence frequency threshold for location filter. Values in [0.01, 0.99].
             --slist (str): Path to species list file or folder. If folder is provided, species list needs to be named
