@@ -749,7 +749,7 @@ def train_model(
         if metrics:
             import csv
 
-            eval_file_path = os.path.join(output, "evaluation.csv")
+            eval_file_path = output + "_evaluation.csv"
 
             with open(eval_file_path, "w", newline="") as f:
                 writer = csv.writer(f)
