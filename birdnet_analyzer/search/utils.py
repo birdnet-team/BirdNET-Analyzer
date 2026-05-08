@@ -145,7 +145,7 @@ def get_search_results(
         if use_ann:
             sorted_results = _search_ann_ip(db, embedding, n_results)
         else:
-            results, scores = brutalism.threaded_brute_search(
+            results = brutalism.threaded_brute_search(
                 db,
                 embedding,
                 n_results,
