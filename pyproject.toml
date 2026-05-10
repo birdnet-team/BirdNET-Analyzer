@@ -39,12 +39,11 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=0.2.15,<1",
+    "birdnet>=0.2.16,<1",
 ]
 
 [project.optional-dependencies]
 train = ["optuna", "optuna-integration"]
-server = ["bottle", "requests"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
     "gradio==5.46.1",                     # 6.11.0 has tab-switching freeze bug (gradio-app/gradio#13198), also some components don't refresh anymore
@@ -55,7 +54,6 @@ gui = [
     "PyGObject;platform_system=='Linux'",
 ]
 embeddings = ["perch-hoplite>=1.0.1,<2.0.0"]
-all = ["birdnet-analyzer[server,gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout", "pytest-order"]
 dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.10"]
@@ -98,7 +96,6 @@ packages = [
 birdnet_analyzer = [
     "eBird_taxonomy_codes_2024E.json",
     "lang/*",
-    "labels/**/*",
     "gui/assets/**/*",
 ]
 
