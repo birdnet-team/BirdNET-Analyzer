@@ -14,7 +14,6 @@ import gradio as gr
 import webview
 from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 from birdnet_analyzer import utils
 from birdnet_analyzer.gui import settings
