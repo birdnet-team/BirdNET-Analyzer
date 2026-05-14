@@ -343,10 +343,10 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 rtl=True,
             )
 
-        with gr.Column():
+        with gr.Column(visible=False) as classifier_settings_column:
             classifier_name = gr.Textbox(
                 "CustomClassifier",
-                visible=False,
+                interactive=True,
                 info=loc.localize("training-tab-classifier-textbox-info"),
             )
             output_format = gr.Radio(
@@ -358,13 +358,17 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 value="tflite",
                 label=loc.localize("training-tab-output-format-radio-label"),
                 info=loc.localize("training-tab-output-format-radio-info"),
-                visible=False,
+                interactive=True,
             )
             save_detached_classifier_checkbox = gr.Checkbox(
                 False,
-                label=loc.localize("training-tab-save-detached-classifier-checkbox-label"),
-                info=loc.localize("training-tab-save-detached-classifier-checkbox-info"),
-                visible=False,
+                label=loc.localize(
+                    "training-tab-save-detached-classifier-checkbox-label"
+                ),
+                info=loc.localize(
+                    "training-tab-save-detached-classifier-checkbox-info"
+                ),
+                interactive=True,
             )
 
         def select_classifier_directory_and_update_tb():
@@ -374,12 +378,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 return (
                     dir_name,
                     dir_name,
-                    gr.update(label=dir_name, visible=True),
-                    gr.update(visible=True, interactive=True),
-                    gr.update(visible=True, interactive=True),
+                    gr.update(label=dir_name),
+                    gr.update(visible=True),
                 )
 
-            return gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+            return gr.update(), gr.update(), gr.update(), gr.update()
 
         select_classifier_directory_btn.click(
             select_classifier_directory_and_update_tb,
@@ -387,8 +390,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 output_directory_state,
                 selected_output_textbox,
                 classifier_name,
-                output_format,
-                save_detached_classifier_checkbox,
+                classifier_settings_column,
             ],
             show_progress="hidden",
         )

@@ -384,7 +384,7 @@ def train_model(
         on_trial_result: A callback function for hyperparameter tuning.
         on_data_load_end: A callback function for data loading progress.
         autotune_directory: Directory for autotune results.
-        save_detached_classifier: Whether to additionally save a detached version of 
+        save_detached_classifier: Whether to additionally save a detached version of
             the trained classifier.
 
     Returns:
