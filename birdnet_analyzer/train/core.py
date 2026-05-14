@@ -44,6 +44,7 @@ def train(
     autotune_n_repeats: int = 1,
     autotune_n_splits: int = 3,
     autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
+    save_detached_classifier: bool = False,
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
@@ -99,6 +100,10 @@ def train(
                                            hyperparameter tuning. Defaults to 1.
         autotune_n_splits (int, optional): Number of splits for cross-validation during
                                           hyperparameter tuning. Defaults to 3.
+        autotune_metric (Literal["val_AUPRC", "val_loss"], optional): Metric to optimize
+            during hyperparameter tuning. Defaults to "val_AUPRC".
+        save_detached_classifier (bool, optional): Whether to additionally save a
+            detached version of the trained classifier. Defaults to False.
     Returns:
         None
     """
@@ -135,4 +140,5 @@ def train(
         autotune_n_repeats=autotune_n_repeats,
         autotune_n_splits=autotune_n_splits,
         autotune_metric=autotune_metric,
+        save_detached_classifier=save_detached_classifier,
     )
