@@ -668,7 +668,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         calculate_button = gr.Button(
             loc.localize("eval-tab-calculate-metrics-button-label"),
-            variant="huggingface",
+            variant="primary",
         )
 
         with gr.Column(visible=False) as action_col:

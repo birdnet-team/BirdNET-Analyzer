@@ -236,7 +236,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 )
                 search_btn = gr.Button(
                     loc.localize("embeddings-search-start-button-label"),
-                    variant="huggingface",
+                    variant="primary",
                 )
 
             with gr.Column():

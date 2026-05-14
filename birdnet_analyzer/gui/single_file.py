@@ -185,7 +185,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         single_file_analyze = gr.Button(
             loc.localize("analyze-start-button-label"),
-            variant="huggingface",
+            variant="primary",
             interactive=False,
         )
 
@@ -304,7 +304,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             try_generate_spectrogram,
             inputs=[audio_path_state, generate_spectrogram_cb],
             outputs=[spectrogram_group, spectrogram_output],
-            show_progress_on=generate_spectrogram_cb
+            show_progress_on=generate_spectrogram_cb,
         )
 
         select_file_button.click(

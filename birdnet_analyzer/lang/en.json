@@ -163,6 +163,8 @@
     "multi-tab-additional-column-week-label": "Week",
     "multi-tab-additional-columns-checkbox-info": "Adds additional columns to the output. \"Start (s)\", \"End (s)\", \"Scientific name\", \"Common name\", \"Confidence\", \"File\" are already included.",
     "multi-tab-additional-columns-checkbox-label": "Additional columns for CSV",
+    "multi-tab-info-text": "Analyze all audio files in a directory recursively. Select an input folder, choose optional output formats and settings, then start the batch run.",
+    "multi-tab-info-title": "Info",
     "multi-tab-input-selection-button-label": "Select input directory (recursive)",
     "multi-tab-input-selection-textbox-placeholder": "No input directory selected",
     "multi-tab-more-files-label": "more...",

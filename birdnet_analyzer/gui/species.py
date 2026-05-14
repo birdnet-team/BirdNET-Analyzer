@@ -86,7 +86,7 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
         locale = gu.locale()
 
         start_btn = gr.Button(
-            loc.localize("species-tab-start-button-label"), variant="huggingface"
+            loc.localize("species-tab-start-button-label"), variant="primary"
         )
         start_btn.click(
             run_species_list,

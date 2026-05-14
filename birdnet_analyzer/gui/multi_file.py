@@ -111,6 +111,11 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         input_directory_state = gr.State()
         output_directory_predict_state = gr.State()
 
+        gu.info_box(
+            description=loc.localize("multi-tab-info-text"),
+            title=loc.localize("multi-tab-info-title"),
+        )
+
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(
                 loc.localize("multi-tab-input-selection-button-label"),
@@ -222,7 +227,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         bs_number, producers_number, workers_number = gu.computing_settings()
         start_batch_analysis_btn = gr.Button(
-            loc.localize("analyze-start-button-label"), variant="huggingface"
+            loc.localize("analyze-start-button-label"), variant="primary"
         )
         result_grid = gr.List(headers=[""])
         inputs = [

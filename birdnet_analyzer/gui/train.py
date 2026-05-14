@@ -808,7 +808,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         )
         start_training_button = gr.Button(
             loc.localize("training-tab-start-training-button-label"),
-            variant="huggingface",
+            variant="primary",
         )
 
         def train_and_show_metrics(*args):

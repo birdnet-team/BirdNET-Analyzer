@@ -244,7 +244,7 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
             )
 
         extract_segments_btn = gr.Button(
-            loc.localize("segments-tab-extract-button-label"), variant="huggingface"
+            loc.localize("segments-tab-extract-button-label"), variant="primary"
         )
         result_grid = gr.List(headers=[""])
 
