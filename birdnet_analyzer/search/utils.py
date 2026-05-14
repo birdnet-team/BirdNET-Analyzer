@@ -86,7 +86,7 @@ def get_query_embedding(
     else:
         sig_splits = audio.split_signal(sig, rate, sig_length, crop_overlap, sig_minlen)
 
-    return model_utils.get_embeddings_array(sig_splits)
+    return model_utils.get_embeddings_array(sig_splits, n_workers=1)
 
 
 def get_search_results(
@@ -145,7 +145,7 @@ def get_search_results(
         if use_ann:
             sorted_results = _search_ann_ip(db, embedding, n_results)
         else:
-            results, scores = brutalism.threaded_brute_search(
+            results = brutalism.threaded_brute_search(
                 db,
                 embedding,
                 n_results,
