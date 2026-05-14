@@ -310,7 +310,7 @@ def build_settings():
             label=loc.localize("settings-tab-error-log-textbox-label"),
             info=(
                 f"{loc.localize('settings-tab-error-log-textbox-info-path')}: "
-                f"{cfg.ERROR_LOG_FILE}"
+                f"{settings.ERROR_LOG_FILE}"
             ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
@@ -329,8 +329,8 @@ def build_settings():
                 _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")  # type: ignore
 
         def on_tab_select(value: gr.SelectData):
-            if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
-                with open(cfg.ERROR_LOG_FILE, mode="rb") as f:
+            if value.selected and os.path.exists(settings.ERROR_LOG_FILE):
+                with open(settings.ERROR_LOG_FILE, mode="rb") as f:
                     lines = [line.decode("utf-8", errors="ignore") for line in f]
                     last_100_lines = lines[-100:]
 
