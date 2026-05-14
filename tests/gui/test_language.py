@@ -2,7 +2,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from birdnet_analyzer.gui.settings import LANG_DIR
+from birdnet_analyzer.settings import LANG_DIR
 
 
 def test_language_keys():

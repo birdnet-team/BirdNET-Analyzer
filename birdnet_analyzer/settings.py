@@ -1,13 +1,14 @@
 import json
 import os
 import sys
+import traceback
 from pathlib import Path
 
-import birdnet_analyzer.config as cfg
-from birdnet_analyzer import utils
+APP_NAME = "BirdNET-Analyzer-GUI"
+FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
-if utils.FROZEN:
-    # divert stdout & stderr to logs.txt file since we have no console when deployed
+
+def _get_user_data_dir() -> Path:
     userdir = Path.home()
 
     if sys.platform == "win32":
@@ -17,24 +18,27 @@ if utils.FROZEN:
     elif sys.platform == "darwin":
         userdir /= "Library/Application Support"
 
-    APPDIR = userdir / "BirdNET-Analyzer-GUI"
+    return userdir / APP_NAME
 
+
+APPDIR = _get_user_data_dir()
+
+
+def _ensure_appdir_exists() -> None:
     APPDIR.mkdir(parents=True, exist_ok=True)
 
-    sys.stderr = sys.stdout = open(str(APPDIR / "logs.txt"), "a")  # noqa: SIM115
-    cfg.ERROR_LOG_FILE = str(APPDIR / os.path.basename(cfg.ERROR_LOG_FILE))
-else:
-    APPDIR = ""
+
+if FROZEN:
+    # divert stdout & stderr to logs.txt file since we have no console when deployed
+    _ensure_appdir_exists()
+    sys.stderr = sys.stdout = open(APPDIR / "logs.txt", "a")  # noqa: SIM115
 
 FALLBACK_LANGUAGE = "en"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-GUI_SETTINGS_PATH = os.path.join(
-    APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "gui-settings.json"
-)
+ERROR_LOG_FILE = str(APPDIR / "error_log.txt")
+GUI_SETTINGS_PATH = str(APPDIR / "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
-STATE_SETTINGS_PATH = os.path.join(
-    APPDIR if utils.FROZEN else os.path.dirname(SCRIPT_DIR), "state.json"
-)
+STATE_SETTINGS_PATH = str(APPDIR / "state.json")
 
 
 def get_state_dict() -> dict:
@@ -54,11 +58,12 @@ def get_state_dict() -> dict:
             return json.load(f)
     except FileNotFoundError:
         try:
+            _ensure_appdir_exists()
             with open(STATE_SETTINGS_PATH, "w", encoding="utf-8") as f:
                 json.dump({}, f)
             return {}
         except Exception as e:
-            utils.write_error_log(e)
+            write_error_log(e)
             return {}
 
 
@@ -89,10 +94,11 @@ def set_state(key: str, value: str):
         state = get_state_dict()
         state[key] = value
 
-        with open(STATE_SETTINGS_PATH, "w") as f:
+        _ensure_appdir_exists()
+        with open(STATE_SETTINGS_PATH, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4)
     except Exception as e:
-        utils.write_error_log(e)
+        write_error_log(e)
 
 
 def ensure_settings_file():
@@ -104,11 +110,12 @@ def ensure_settings_file():
     """
     if not os.path.exists(GUI_SETTINGS_PATH):
         try:
-            with open(GUI_SETTINGS_PATH, "w") as f:
+            _ensure_appdir_exists()
+            with open(GUI_SETTINGS_PATH, "w", encoding="utf-8") as f:
                 settings = {"language-id": FALLBACK_LANGUAGE, "theme": "light"}
                 f.write(json.dumps(settings, indent=4))
         except Exception as e:
-            utils.write_error_log(e)
+            write_error_log(e)
 
 
 def get_setting(key, default=None):
@@ -154,3 +161,23 @@ def theme():
     current_time = get_setting("theme", "light")
 
     return current_time if current_time in options else "light"
+
+
+def write_error_log(ex: Exception):
+    """Writes an exception to the error log.
+
+    Formats the stacktrace and writes it in the error log file.
+
+    Args:
+        ex: An exception that occurred.
+    """
+    import datetime
+
+    Path(ERROR_LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
+    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as elog:
+        elog.write(
+            datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+            + "\n"
+            + "".join(traceback.TracebackException.from_exception(ex).format())
+            + "\n"
+        )

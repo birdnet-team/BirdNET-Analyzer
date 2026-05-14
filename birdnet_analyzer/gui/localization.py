@@ -2,7 +2,7 @@
 import json
 import os
 
-from birdnet_analyzer.gui import settings
+from birdnet_analyzer import settings
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 LANGUAGE_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "lang")

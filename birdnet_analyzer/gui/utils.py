@@ -14,10 +14,8 @@ import gradio as gr
 import webview
 from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
-from birdnet_analyzer import utils
-from birdnet_analyzer.gui import settings
+from birdnet_analyzer import settings, utils
 
 warnings.filterwarnings("ignore")
 loc.load_local_state()
@@ -247,7 +245,7 @@ def build_footer():
 <div style='display: flex; justify-content: space-around; align-items: center; padding: 10px; text-align: center'>
     <div>
         <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span
-                id="current-version">{os.environ["GUI_VERSION"] if utils.FROZEN else "main"}</span><span
+                id="current-version">{os.environ["GUI_VERSION"] if settings.FROZEN else "main"}</span><span
                 style="display: none" id="update-available"><a>+</a></span></div>
         <div>Model version: 2.4</div>
     </div>
@@ -310,7 +308,7 @@ def build_settings():
             label=loc.localize("settings-tab-error-log-textbox-label"),
             info=(
                 f"{loc.localize('settings-tab-error-log-textbox-info-path')}: "
-                f"{cfg.ERROR_LOG_FILE}"
+                f"{settings.ERROR_LOG_FILE}"
             ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
@@ -329,8 +327,8 @@ def build_settings():
                 _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")  # type: ignore
 
         def on_tab_select(value: gr.SelectData):
-            if value.selected and os.path.exists(cfg.ERROR_LOG_FILE):
-                with open(cfg.ERROR_LOG_FILE, mode="rb") as f:
+            if value.selected and os.path.exists(settings.ERROR_LOG_FILE):
+                with open(settings.ERROR_LOG_FILE, mode="rb") as f:
                     lines = [line.decode("utf-8", errors="ignore") for line in f]
                     last_100_lines = lines[-100:]
 

@@ -2,14 +2,12 @@
 
 import itertools
 import os
-import sys
-import traceback
 from pathlib import Path
 
-from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE, ERROR_LOG_FILE
+from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
+from birdnet_analyzer.settings import write_error_log
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 
 def runtime_error_handler(f):
@@ -191,34 +189,6 @@ def list_subdirectories(path: str):
         A filter sequence containing the absolute paths to all directories.
     """
     return filter(lambda el: os.path.isdir(os.path.join(path, el)), os.listdir(path))
-
-
-def clear_error_log():
-    """Clears the error log file.
-
-    For debugging purposes.
-    """
-    if os.path.isfile(ERROR_LOG_FILE):
-        os.remove(ERROR_LOG_FILE)
-
-
-def write_error_log(ex: Exception):
-    """Writes an exception to the error log.
-
-    Formats the stacktrace and writes it in the error log file configured in the config.
-
-    Args:
-        ex: An exception that occurred.
-    """
-    import datetime
-
-    with open(ERROR_LOG_FILE, "a") as elog:
-        elog.write(
-            datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-            + "\n"
-            + "".join(traceback.TracebackException.from_exception(ex).format())
-            + "\n"
-        )
 
 
 def load_codes() -> dict[str, str]:

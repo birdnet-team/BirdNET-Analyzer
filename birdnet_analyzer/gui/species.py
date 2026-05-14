@@ -4,7 +4,7 @@ import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.gui import settings
+from birdnet_analyzer import settings
 
 
 @gu.gui_runtime_error_handler
