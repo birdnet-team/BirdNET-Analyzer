@@ -2,7 +2,7 @@ import importlib
 import sys
 from pathlib import Path
 
-from birdnet_analyzer.gui import settings
+from birdnet_analyzer import settings
 
 
 def test_gui_runtime_files_use_user_appdir_when_not_frozen(monkeypatch, tmp_path):

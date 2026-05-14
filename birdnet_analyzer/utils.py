@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
-from birdnet_analyzer.gui.settings import write_error_log
+from birdnet_analyzer.settings import write_error_log
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 

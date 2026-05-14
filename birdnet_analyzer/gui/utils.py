@@ -16,7 +16,7 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
 import birdnet_analyzer.gui.localization as loc
 from birdnet_analyzer import utils
-from birdnet_analyzer.gui import settings
+from birdnet_analyzer import settings
 
 warnings.filterwarnings("ignore")
 loc.load_local_state()
@@ -246,7 +246,7 @@ def build_footer():
 <div style='display: flex; justify-content: space-around; align-items: center; padding: 10px; text-align: center'>
     <div>
         <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span
-                id="current-version">{os.environ["GUI_VERSION"] if utils.FROZEN else "main"}</span><span
+                id="current-version">{os.environ["GUI_VERSION"] if settings.FROZEN else "main"}</span><span
                 style="display: none" id="update-available"><a>+</a></span></div>
         <div>Model version: 2.4</div>
     </div>
