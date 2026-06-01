@@ -389,5 +389,21 @@
     "validation-no-valid-classifier-name": "Veuillez saisir un nom valide pour le classificateur.",
     "validation-no-valid-epoch-number": "Veuillez saisir un nombre valide d'époques.",
     "validation-no-valid-frequency": "Veuillez saisir une fréquence valide dans",
-    "validation-no-valid-learning-rate": "Veuillez saisir un taux d'apprentissage valide."
+    "validation-no-valid-learning-rate": "Veuillez saisir un taux d'apprentissage valide.",
+    "multi-tab-info-text": "Analyze all audio files in a directory recursively. Select an input folder, review the sample list, choose an output location and result formats, adjust settings if needed, then start the batch run.",
+    "multi-tab-info-title": "Info",
+    "embeddings-search-tab-info-text": "Search an embeddings database with a query sample. Select the database and audio root, choose a query clip, tune the search options, then review or export the closest matches.",
+    "embeddings-search-tab-info-title": "Info",
+    "embeddings-tab-info-text": "Build an embeddings database from a directory of audio files. Choose the source audio and database location, adjust settings if needed, then generate the database for later search and review.",
+    "embeddings-tab-info-title": "Info",
+    "eval-tab-info-text": "Compare prediction files against annotations. Upload both sets, confirm the column mapping, calculate the metrics, then inspect plots and export the result tables if needed.",
+    "eval-tab-info-title": "Info",
+    "review-tab-info-text": "Review extracted segments one species at a time. Select a directory, step through the clips, mark each item as positive or negative, and use the history and regression plot to track progress.",
+    "review-tab-info-title": "Info",
+    "segments-tab-info-text": "Extract segments from analysis results. Select the source audio, result files, and output folder, set the collection filters, then create a segment set for review or training.",
+    "segments-tab-info-title": "Info",
+    "species-tab-info-text": "Generate a species list for a location. Choose where to save the file, set the coordinates and seasonal filters, then export the list for later analysis.",
+    "species-tab-info-title": "Info",
+    "training-tab-info-text": "Train a custom classifier from labeled folders. Select the training data and output location, optionally add test data and preprocessing settings, then run training and review the metrics.",
+    "training-tab-info-title": "Info"
 }

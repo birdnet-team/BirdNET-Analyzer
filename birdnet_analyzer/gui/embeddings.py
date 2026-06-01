@@ -117,6 +117,11 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
         input_directory_state = gr.State()
         db_directory_state = gr.State()
 
+        gu.info_box(
+            description=loc.localize("embeddings-tab-info-text"),
+            title=loc.localize("embeddings-tab-info-title"),
+        )
+
         def select_directory_to_state_and_tb(current, state_key=None):
             path = (
                 gu.select_directory(collect_files=False, state_key=state_key)

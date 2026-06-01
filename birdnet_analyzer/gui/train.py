@@ -253,6 +253,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         output_directory_state = gr.State()
         test_data_dir_state = gr.State()
 
+        gu.info_box(
+            description=loc.localize("training-tab-info-text"),
+            title=loc.localize("training-tab-info-title"),
+        )
+
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(
                 loc.localize("training-tab-input-selection-button-label"),

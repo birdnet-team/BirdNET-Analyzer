@@ -387,6 +387,11 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         prediction_files_state = gr.State()
         plot_name_state = gr.State()
 
+        gu.info_box(
+            description=loc.localize("eval-tab-info-text"),
+            title=loc.localize("eval-tab-info-title"),
+        )
+
         def get_selection_tables(directory):
             from pathlib import Path
 

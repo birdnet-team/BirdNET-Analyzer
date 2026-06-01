@@ -1017,27 +1017,22 @@ def computing_settings():
 
     return bs_number, producers_number, workers_number
 
+
 def info_box(description: str, title="Info") -> gr.HTML:
     title = escape(title)
     description = escape(description)
-    container_style = (
-        "margin: 0 0 1rem 0; "
-        "padding: 0.85rem 1rem; "
-        "border: 1px solid rgba(41, 128, 185, 0.35); "
-        "border-left: 0.35rem solid #2980b9; "
-        "border-radius: 0.5rem; "
-        "background: rgba(41, 128, 185, 0.08); "
-        "color: inherit;"
-    )
-    title_style = "margin: 0 0 0.35rem 0; font-weight: 600;"
-    description_style = "margin: 0; line-height: 1.5;"
 
-    return gr.HTML(f"""
-    <div style="{container_style}">
-        <p style="{title_style}">{title}</p>
-        <p style="{description_style}">{description}</p>
-    </div>
-    """)
+    with gr.Accordion(
+        title,
+        elem_classes="info-accordion-dark"
+        if settings.theme() == "dark"
+        else "info-accordion",
+        open=False,
+    ) as c:
+        gr.Markdown(description)
+
+        return c
+
 
 def slider_to_value(value: float):
     return max(0.1, 1.0 / (value * -1)) if value < 0 else max(1.0, float(value))
@@ -1133,4 +1128,4 @@ def open_window(
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False)
+    webview.start(private_mode=False, debug=True)

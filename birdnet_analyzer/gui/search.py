@@ -112,6 +112,11 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
         export_state = gr.State({})
         hidden_audio = gr.Audio(visible="hidden", autoplay=True, type="numpy")
 
+        gu.info_box(
+            description=loc.localize("embeddings-search-tab-info-text"),
+            title=loc.localize("embeddings-search-tab-info-title"),
+        )
+
         with gr.Row():
             with gr.Column():
                 with gr.Group(), gr.Row(equal_height=True):

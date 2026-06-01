@@ -148,6 +148,11 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
             }
         )
 
+        gu.info_box(
+            description=loc.localize("review-tab-info-text"),
+            title=loc.localize("review-tab-info-title"),
+        )
+
         select_directory_btn = gr.Button(
             loc.localize("review-tab-input-directory-button-label")
         )
