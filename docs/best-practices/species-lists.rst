@@ -5,9 +5,17 @@ When editing your own `species_list.txt` file, make sure to copy species names f
 
 You can find label files in the checkpoints folder, e.g., `checkpoints/V2.4/BirdNET_GLOBAL_6K_V2.4_Labels.txt`.
 
-Species names need to consist of `scientific name_common name` to be valid.
-If you want to use the Perch model, you have to use their naming convention, which is just `scientific name`.
-For examples check the respective label files.
+Species names need to consist of `scientific name_common name` to be valid, for example::
+
+   Turdus merula_Common Blackbird
+   Parus major_Great Tit
+
+If you want to use the Perch model, you have to use only the scientific name with no underscore or common name, for example::
+
+   Turdus merula
+   Parus major
+
+Note that `birdnet_analyzer.species` only generates BirdNET-format names and cannot be used to build a Perch species list.
 
 You can generate a species list for a given location using :ref:`birdnet_analyzer.species <cli-species>`.
 
