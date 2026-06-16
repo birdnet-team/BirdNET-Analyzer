@@ -64,6 +64,7 @@ def run_analysis(
     n_producers,
     n_workers,
     progress: gr.Progress | None,
+    split_tables: bool = False,
 ):
     """Starts the analysis.
 
@@ -94,6 +95,7 @@ def run_analysis(
         n_workers: The number of worker threads to be used.
         input_dir: The input directory.
         progress: The gradio progress bar.
+        split_tables: Whether to split the output into separate tables per input file.
     """
     import birdnet_analyzer.gui.localization as loc
     from birdnet_analyzer.analyze import analyze
@@ -154,5 +156,6 @@ def run_analysis(
         save_params=save_params,
         n_producers=n_producers,
         n_workers=n_workers,
+        split_tables=split_tables,
         _return_only=bool(input_path),  # only for single file tab
     )
