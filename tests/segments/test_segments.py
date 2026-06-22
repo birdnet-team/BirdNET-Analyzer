@@ -5,14 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import birdnet_analyzer.config as cfg
 from birdnet_analyzer.cli import segments_parser
 from birdnet_analyzer.segments.core import segments
 
 
 @pytest.fixture
 def setup_test_environment():
-    # Create a temporary directory for testing
     test_dir = tempfile.mkdtemp()
     input_dir = os.path.join(test_dir, "input")
     output_dir = os.path.join(test_dir, "output")
@@ -23,14 +21,15 @@ def setup_test_environment():
     os.makedirs(results_dir, exist_ok=True)
 
     file_list = [
-        {"audio": os.path.join(input_dir, "audio1.wav"), "result": os.path.join(results_dir, "result1.csv")},
-        {"audio": os.path.join(input_dir, "audio2.wav"), "result": os.path.join(results_dir, "result2.csv")}
+        {
+            "audio": os.path.join(input_dir, "audio1.wav"),
+            "result": os.path.join(results_dir, "result1.csv"),
+        },
+        {
+            "audio": os.path.join(input_dir, "audio2.wav"),
+            "result": os.path.join(results_dir, "result2.csv"),
+        },
     ]
-
-    # Store original config values
-    original_config = {
-        attr: getattr(cfg, attr) for attr in dir(cfg) if not attr.startswith("_") and not callable(getattr(cfg, attr))
-    }
 
     yield {
         "test_dir": test_dir,
@@ -40,23 +39,43 @@ def setup_test_environment():
         "file_list": file_list,
     }
 
-    # Clean up
     shutil.rmtree(test_dir)
 
-    # Restore original config
-    for attr, value in original_config.items():
-        setattr(cfg, attr, value)
 
 @patch("birdnet_analyzer.segments.utils.extract_segments")
 @patch("birdnet_analyzer.segments.utils.parse_files")
 @patch("birdnet_analyzer.segments.utils.parse_folders")
-def test_segments_cli(mock_parse_folders: MagicMock, mock_parse_files: MagicMock, mock_extract_segments: MagicMock, setup_test_environment):
+def test_segments_cli(
+    mock_parse_folders: MagicMock,
+    mock_parse_files: MagicMock,
+    mock_extract_segments: MagicMock,
+    setup_test_environment,
+):
     env = setup_test_environment
 
     parser = segments_parser()
-    args = parser.parse_args([env["input_dir"],"--results", env["results_dir"] ,"--output", env["output_dir"], "--threads", "1"])
+    args = parser.parse_args(
+        [
+            env["input_dir"],
+            "--results",
+            env["results_dir"],
+            "--output",
+            env["output_dir"],
+            "--threads",
+            "1",
+        ]
+    )
 
-    mock_parse_files.return_value = env["file_list"]
+    mock_parse_files.return_value = [
+        (
+            env["file_list"][0]["audio"],
+            [{"start": 0, "end": 3, "species": "sp1", "confidence": 0.9}],
+        ),
+        (
+            env["file_list"][1]["audio"],
+            [{"start": 0, "end": 3, "species": "sp2", "confidence": 0.8}],
+        ),
+    ]
 
     segments(**vars(args))
 

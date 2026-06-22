@@ -12,14 +12,14 @@ jobs:
       url: https://test.pypi.org/p/birdnet_analyzer
 
     permissions:
-      id-token: write  # Needed for trusted publishing
+      id-token: write # Needed for trusted publishing
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -31,7 +31,7 @@ jobs:
       - name: Build package
         run: python -m build
 
-      - name: Publish to PyPI (Trusted)
+      - name: Publish to Test-PyPI (Trusted)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/

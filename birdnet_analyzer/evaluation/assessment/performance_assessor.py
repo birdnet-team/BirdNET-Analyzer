@@ -1,9 +1,10 @@
 """
 PerformanceAssessor Module
 
-This module defines the `PerformanceAssessor` class to evaluate classification model performance.
-It includes methods to compute metrics like precision, recall, F1 score, AUROC, and accuracy,
-as well as utilities for generating related plots.
+This module defines the `PerformanceAssessor` class to evaluate classification model
+performance.
+It includes methods to compute metrics like precision, recall, F1 score, AUROC, and
+accuracy, as well as utilities for generating related plots.
 """
 
 from typing import Literal
@@ -41,7 +42,8 @@ class PerformanceAssessor:
 
         Args:
             num_classes (int): The number of classes in the classification problem.
-            threshold (float): The threshold for binarizing probabilities into class labels.
+            threshold (float): The threshold for binarizing probabilities into class
+                labels.
             classes (Optional[Tuple[str, ...]]): Optional tuple of class names.
             task (Literal["binary", "multilabel"]): The classification task type.
             metrics_list (Tuple[str, ...]): A tuple of metrics to compute.
@@ -62,7 +64,10 @@ class PerformanceAssessor:
             if not isinstance(classes, tuple):
                 raise ValueError("classes must be a tuple of strings.")
             if len(classes) != num_classes:
-                raise ValueError(f"Length of classes ({len(classes)}) must match num_classes ({num_classes}).")
+                raise ValueError(
+                    f"Length of classes ({len(classes)}) must match "
+                    f"num_classes ({num_classes})."
+                )
             if not all(isinstance(class_name, str) for class_name in classes):
                 raise ValueError("All elements in classes must be strings.")
 
@@ -75,7 +80,9 @@ class PerformanceAssessor:
         if not metrics_list:
             raise ValueError("metrics_list cannot be empty.")
         if not all(metric in valid_metrics for metric in metrics_list):
-            raise ValueError(f"Invalid metrics in {metrics_list}. Valid options are {valid_metrics}.")
+            raise ValueError(
+                f"Invalid metrics in {metrics_list}. Valid options are {valid_metrics}."
+            )
 
         # Assign instance variables
         self.num_classes = num_classes
@@ -97,16 +104,19 @@ class PerformanceAssessor:
         Calculate multiple performance metrics for the given predictions and labels.
 
         Args:
-            predictions (np.ndarray): Model predictions as a 2D NumPy array (probabilities or logits).
+            predictions (np.ndarray): Model predictions as a 2D NumPy array
+                (probabilities or logits).
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
-            per_class_metrics (bool): If True, compute metrics for each class individually.
+            per_class_metrics (bool): If True, compute metrics for each class
+                individually.
 
         Returns:
             pd.DataFrame: A DataFrame containing the computed metrics.
 
         Raises:
             TypeError: If predictions or labels are not NumPy arrays.
-            ValueError: If predictions and labels have mismatched dimensions or invalid shapes.
+            ValueError: If predictions and labels have mismatched dimensions or invalid
+                shapes.
         """
         # Validate that predictions and labels are NumPy arrays
         if not isinstance(predictions, np.ndarray):
@@ -120,10 +130,15 @@ class PerformanceAssessor:
         if predictions.ndim != 2:
             raise ValueError("predictions and labels must be 2-dimensional arrays.")
         if predictions.shape[1] != self.num_classes:
-            raise ValueError(f"The number of columns in predictions ({predictions.shape[1]}) " + f"must match num_classes ({self.num_classes}).")
+            raise ValueError(
+                f"The number of columns in predictions ({predictions.shape[1]}) "
+                + f"must match num_classes ({self.num_classes})."
+            )
 
         # Determine the averaging method for metrics
-        averaging_method = None if per_class_metrics or self.num_classes == 1 else "macro"
+        averaging_method = (
+            None if per_class_metrics or self.num_classes == 1 else "macro"
+        )
 
         # Dictionary to store the results of each metric
         metrics_results = {}
@@ -185,11 +200,19 @@ class PerformanceAssessor:
                 metrics_results["Accuracy"] = np.atleast_1d(result)
 
         # Define column names for the DataFrame
-        columns = (self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)]) if per_class_metrics else ["Overall"]
+        columns = (
+            (self.classes or [f"Class {i}" for i in range(self.num_classes)])
+            if per_class_metrics
+            else ["Overall"]
+        )
 
         # Create a DataFrame to organize metric results
-        metrics_data = {key: np.atleast_1d(value) for key, value in metrics_results.items()}
-        return pd.DataFrame.from_dict(metrics_data, orient="index", columns=columns)
+        metrics_data = {
+            key: np.atleast_1d(value) for key, value in metrics_results.items()
+        }
+        return pd.DataFrame.from_dict(
+            metrics_data, orient="index", columns=pd.Index(columns)
+        )
 
     def plot_metrics(
         self,
@@ -201,9 +224,11 @@ class PerformanceAssessor:
         Plot performance metrics for the given predictions and labels.
 
         Args:
-            predictions (np.ndarray): Model output predictions as a 2D NumPy array (probabilities or logits).
+            predictions (np.ndarray): Model output predictions as a 2D NumPy array
+                (probabilities or logits).
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
-            per_class_metrics (bool): If True, plots metrics for each class individually.
+            per_class_metrics (bool): If True, plots metrics for each class
+                individually.
 
         Raises:
             ValueError: If the metrics cannot be calculated or plotting fails.
@@ -215,7 +240,11 @@ class PerformanceAssessor:
         metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics)
 
         # Choose the plotting method based on whether per-class metrics are required
-        return plotting.plot_metrics_per_class(metrics_df, self.colors) if per_class_metrics else plotting.plot_overall_metrics(metrics_df, self.colors)
+        return (
+            plotting.plot_metrics_per_class(metrics_df, self.colors)
+            if per_class_metrics
+            else plotting.plot_overall_metrics(metrics_df, self.colors)
+        )
 
     def plot_metrics_all_thresholds(
         self,
@@ -227,9 +256,11 @@ class PerformanceAssessor:
         Plot performance metrics across thresholds for the given predictions and labels.
 
         Args:
-            predictions (np.ndarray): Model output predictions as a 2D NumPy array (probabilities or logits).
+            predictions (np.ndarray): Model output predictions as a 2D NumPy array
+                (probabilities or logits).
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
-            per_class_metrics (bool): If True, plots metrics for each class individually.
+            per_class_metrics (bool): If True, plots metrics for each class
+                individually.
 
         Raises:
             ValueError: If metrics calculation or plotting fails.
@@ -248,23 +279,44 @@ class PerformanceAssessor:
 
         if per_class_metrics:
             # Define class names for plotting
-            class_names = list(self.classes) if self.classes else [f"Class {i}" for i in range(self.num_classes)]
+            class_names = (
+                list(self.classes)
+                if self.classes
+                else [f"Class {i}" for i in range(self.num_classes)]
+            )
 
             # Initialize a dictionary to store metric values per class
-            metric_values_dict_per_class = {class_name: {metric: [] for metric in metrics_to_plot} for class_name in class_names}
+            metric_values_dict_per_class = {
+                class_name: {metric: [] for metric in metrics_to_plot}
+                for class_name in class_names
+            }
 
             # Compute metrics for each threshold
             for thresh in thresholds:
                 self.threshold = thresh
-                metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics=True)
+                metrics_df = self.calculate_metrics(
+                    predictions, labels, per_class_metrics=True
+                )
                 for metric_name in metrics_to_plot:
-                    metric_label = metric_name.capitalize() if metric_name != "f1" else "F1"
+                    metric_label = (
+                        metric_name.capitalize() if metric_name != "f1" else "F1"
+                    )
                     for class_name in class_names:
                         value = metrics_df.loc[metric_label, class_name]
-                        metric_values_dict_per_class[class_name][metric_name].append(value)
+                        metric_values_dict_per_class[class_name][metric_name].append(
+                            value
+                        )
 
             # Restore the original threshold
             self.threshold = original_threshold
+
+            # Convert lists to NumPy arrays
+            metric_values_dict_per_class = {
+                class_name: {
+                    metric: np.array(values) for metric, values in metrics_dict.items()
+                }
+                for class_name, metrics_dict in metric_values_dict_per_class.items()
+            }
 
             # Plot metrics across thresholds per class
             fig = plotting.plot_metrics_across_thresholds_per_class(
@@ -281,14 +333,24 @@ class PerformanceAssessor:
             # Compute metrics for each threshold
             for thresh in thresholds:
                 self.threshold = thresh
-                metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics=False)
+                metrics_df = self.calculate_metrics(
+                    predictions, labels, per_class_metrics=False
+                )
                 for metric_name in metrics_to_plot:
-                    metric_label = metric_name.capitalize() if metric_name != "f1" else "F1"
+                    metric_label = (
+                        metric_name.capitalize() if metric_name != "f1" else "F1"
+                    )
                     value = metrics_df.loc[metric_label, "Overall"]
                     metric_values_dict[metric_name].append(value)
 
             # Restore the original threshold
             self.threshold = original_threshold
+
+            # Convert lists to NumPy arrays
+            metric_values_dict = {
+                metric_name: np.array(values)
+                for metric_name, values in metric_values_dict.items()
+            }
 
             # Plot metrics across thresholds
             fig = plotting.plot_metrics_across_thresholds(
@@ -306,15 +368,18 @@ class PerformanceAssessor:
         labels: np.ndarray,
     ):
         """
-        Plot confusion matrices for each class using scikit-learn's ConfusionMatrixDisplay.
+        Plot confusion matrices for each class using scikit-learn's
+            ConfusionMatrixDisplay.
 
         Args:
-            predictions (np.ndarray): Model output predictions as a 2D NumPy array (probabilities or logits).
+            predictions (np.ndarray): Model output predictions as a 2D NumPy array
+                (probabilities or logits).
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
 
         Raises:
             TypeError: If predictions or labels are not NumPy arrays.
-            ValueError: If predictions and labels have mismatched shapes or invalid dimensions.
+            ValueError: If predictions and labels have mismatched shapes or invalid
+                dimensions.
 
         Returns:
             None
@@ -329,7 +394,10 @@ class PerformanceAssessor:
         if predictions.ndim != 2:
             raise ValueError("predictions and labels must be 2-dimensional arrays.")
         if predictions.shape[1] != self.num_classes:
-            raise ValueError(f"The number of columns in predictions ({predictions.shape[1]}) " + f"must match num_classes ({self.num_classes}).")
+            raise ValueError(
+                f"The number of columns in predictions ({predictions.shape[1]}) "
+                + f"must match num_classes ({self.num_classes})."
+            )
 
         if self.task == "binary":
             # Binarize predictions using the threshold
@@ -340,7 +408,7 @@ class PerformanceAssessor:
             conf_mat = confusion_matrix(y_true, y_pred, normalize="true")
             conf_mat = np.round(conf_mat, 2)
 
-            return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)
+            return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)  # ty:ignore[invalid-argument-type]
 
         if self.task == "multilabel":
             # Binarize predictions for multilabel classification
@@ -349,13 +417,19 @@ class PerformanceAssessor:
 
             # Compute confusion matrices for each class
             conf_mats = []
-            class_names = self.classes if self.classes else [f"Class {i}" for i in range(self.num_classes)]
+            class_names = self.classes or [
+                f"Class {i}" for i in range(self.num_classes)
+            ]
 
             for i in range(self.num_classes):
-                conf_mat = confusion_matrix(y_true[:, i], y_pred[:, i], normalize="true")
+                conf_mat = confusion_matrix(
+                    y_true[:, i], y_pred[:, i], normalize="true"
+                )
                 conf_mat = np.round(conf_mat, 2)
                 conf_mats.append(conf_mat)
 
-            return plotting.plot_confusion_matrices(np.array(conf_mats), self.task, class_names)
+            return plotting.plot_confusion_matrices(
+                np.array(conf_mats), self.task, class_names
+            )
 
         raise ValueError(f"Unsupported task type: {self.task}")

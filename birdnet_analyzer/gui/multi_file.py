@@ -1,25 +1,30 @@
 import gradio as gr
+from birdnet.globals import MODEL_LANGUAGE_EN_US
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 
-OUTPUT_TYPE_MAP = {
-    "Raven selection table": "table",
-    "Audacity": "audacity",
-    "CSV": "csv",
-    "Kaleidoscope": "kaleidoscope",
-}
-ADDITIONAL_COLUMNS_MAP = {
-    "Latitude": "lat",
-    "Longitude": "lon",
-    "Week": "week",
-    "Overlap": "overlap",
-    "Sensitivity": "sensitivity",
-    "Minimum confidence": "min_conf",
-    "Species list file": "species_list",
-    "Model file": "model",
-}
+
+def _output_type_map():
+    return {
+        loc.localize("multi-tab-output-type-raven-label"): "table",
+        loc.localize("multi-tab-output-type-audacity-label"): "audacity",
+        loc.localize("multi-tab-output-type-csv-label"): "csv",
+        loc.localize("multi-tab-output-type-kaleidoscope-label"): "kaleidoscope",
+    }
+
+
+def _additional_columns_map():
+    return {
+        loc.localize("multi-tab-additional-column-latitude-label"): "lat",
+        loc.localize("multi-tab-additional-column-longitude-label"): "lon",
+        loc.localize("multi-tab-additional-column-week-label"): "week",
+        loc.localize("multi-tab-additional-column-overlap-label"): "overlap",
+        loc.localize("multi-tab-additional-column-sensitivity-label"): "sensitivity",
+        loc.localize("multi-tab-additional-column-min-confidence-label"): "min_conf",
+        loc.localize("multi-tab-additional-column-species-list-label"): "species_list",
+        loc.localize("multi-tab-additional-column-model-file-label"): "model",
+    }
 
 
 @gu.gui_runtime_error_handler
@@ -45,175 +50,181 @@ def run_batch_analysis(
     custom_classifier_file,
     output_type,
     additional_columns,
-    combine_tables,
     locale,
     batch_size,
-    threads,
+    producers_number,
+    workers_number,
     input_dir,
-    skip_existing,
-    progress=gr.Progress(track_tqdm=True),
+    progress=gr.Progress(),
 ):
     from birdnet_analyzer.gui.analysis import run_analysis
 
     gu.validate(input_dir, loc.localize("validation-no-directory-selected"))
-    batch_size = int(batch_size)
-    threads = int(threads)
-
-    if species_list_choice == gu._CUSTOM_SPECIES:
-        gu.validate(species_list_file, loc.localize("validation-no-species-list-selected"))
-
-    if fmin is None or fmax is None or fmin < cfg.SIG_FMIN or fmax > cfg.SIG_FMAX or fmin > fmax:
-        raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [{cfg.SIG_FMIN}, {cfg.SIG_FMAX}]")
 
     results = run_analysis(
-        None,
-        output_path,
-        use_top_n,
-        top_n,
-        confidence,
-        sensitivity,
-        overlap,
-        merge_consecutive,
-        audio_speed,
-        fmin,
-        fmax,
-        species_list_choice,
-        species_list_file,
-        lat,
-        lon,
-        week,
-        use_yearlong,
-        sf_thresh,
-        selected_model,
-        custom_classifier_file,
-        output_type,
-        additional_columns,
-        combine_tables,
-        locale if locale else "en",
-        batch_size if batch_size and batch_size > 0 else 1,
-        threads if threads and threads > 0 else 4,
-        input_dir,
-        skip_existing,
-        True,
-        progress,
+        input_path=None,
+        output_path=output_path,
+        use_top_n=use_top_n,
+        top_n=top_n,
+        confidence=confidence,
+        sensitivity=sensitivity,
+        overlap=overlap,
+        merge_consecutive=merge_consecutive,
+        audio_speed=audio_speed,
+        fmin=fmin,
+        fmax=fmax,
+        species_list_choice=species_list_choice,
+        species_list_file=species_list_file,
+        lat=lat,
+        lon=lon,
+        week=week,
+        use_yearlong=use_yearlong,
+        sf_thresh=sf_thresh,
+        selected_model=selected_model,
+        custom_classifier_file=custom_classifier_file,
+        output_types=output_type,
+        additional_columns=additional_columns,
+        locale=locale or MODEL_LANGUAGE_EN_US,
+        batch_size=batch_size if batch_size and batch_size > 0 else 1,
+        input_dir=input_dir,
+        save_params=True,
+        progress=progress,
+        n_producers=producers_number,
+        n_workers=workers_number,
     )
-
-    def map_to_reason(result):
-        match result:
-            case "NoBackendError":
-                return loc.localize("multi-tab-file-error-nobackend")
-            case _:
-                return result
-
-    skipped_files = [[path, map_to_reason(successful)] for path, successful in results if isinstance(successful, str)]
+    skipped_files = [results.inputs[ui] for ui in results.unprocessable_inputs]
     header = (
-        [loc.localize("multi-tab-result-dataframe-column-invalid-file-header"), loc.localize("multi-tab-result-dataframe-column-reason-header")]
+        [loc.localize("multi-tab-result-dataframe-column-invalid-file-header")]
         if skipped_files
         else [loc.localize("multi-tab-result-dataframe-column-success-header")]
     )
 
-    return gr.update(value=skipped_files, headers=header, col_count=2 if skipped_files else 1, elem_classes=None if skipped_files else "success")
+    return gr.update(
+        value=skipped_files,
+        headers=header,
+        elem_classes=None if skipped_files else "success",
+    )
 
 
-def build_multi_analysis_tab():
+def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("multi-tab-title")):
         input_directory_state = gr.State()
         output_directory_predict_state = gr.State()
 
-        with gr.Row():
-            with gr.Column():
-                select_directory_btn = gr.Button(loc.localize("multi-tab-input-selection-button-label"))
-                directory_input = gr.Matrix(
-                    interactive=False,
-                    headers=[
-                        loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
-                        loc.localize("multi-tab-samples-dataframe-column-duration-header"),
-                    ],
-                )
+        with gr.Group(), gr.Row(equal_height=True):
+            select_directory_btn = gr.Button(
+                loc.localize("multi-tab-input-selection-button-label"),
+                variant="primary",
+            )
+            selected_input_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize(
+                    "multi-tab-input-selection-textbox-placeholder"
+                ),
+                scale=3,
+                rtl=True,
+                max_lines=1,
+                elem_classes="path-textbox",
+            )
 
-                def select_directory_on_empty():  # Nishant - Function modified for For Folder selection
-                    folder = gu.select_folder(state_key="batch-analysis-data-dir")
+        directory_input = gr.Matrix(
+            interactive=False,
+            headers=[
+                loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
+                loc.localize("multi-tab-samples-dataframe-column-duration-header"),
+            ],
+        )
 
-                    if folder:
-                        files_and_durations = gu.get_audio_files_and_durations(folder)
-                        if len(files_and_durations) > 100:
-                            return [folder, [*files_and_durations[:100], ("...", "...")]]  # hopefully fixes issue#272
-                        return [folder, files_and_durations]
+        def select_directory_on_empty():
+            folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
-                    return ["", [[loc.localize("multi-tab-samples-dataframe-no-files-found")]]]
+            if folder:
+                files_and_durations = gu.get_audio_files_and_durations(folder)
+                if len(files_and_durations) > 100:
+                    return [
+                        folder,
+                        folder,
+                        [
+                            *files_and_durations[:100],
+                            (
+                                f"{len(files_and_durations) - 100} "
+                                f"{loc.localize('multi-tab-more-files-label')}",
+                                "...",
+                            ),
+                        ],
+                    ]
+                if not files_and_durations:
+                    return [
+                        folder,
+                        folder,
+                        [[loc.localize("multi-tab-samples-dataframe-no-files-found")]],
+                    ]
+                return [folder, folder, files_and_durations]
 
-                select_directory_btn.click(select_directory_on_empty, outputs=[input_directory_state, directory_input], show_progress="full")
+            return [
+                gr.update(),
+                gr.update(),
+                gr.update(),
+            ]
 
-            with gr.Column():
-                select_out_directory_btn = gr.Button(loc.localize("multi-tab-output-selection-button-label"))
-                selected_out_textbox = gr.Textbox(
-                    label=loc.localize("multi-tab-output-textbox-label"),
-                    interactive=False,
-                    placeholder=loc.localize("multi-tab-output-textbox-placeholder"),
-                )
+        select_directory_btn.click(
+            select_directory_on_empty,
+            outputs=[input_directory_state, selected_input_textbox, directory_input],
+            show_progress="full",
+        )
 
-                def select_directory_wrapper():  # Nishant - Function modified for For Folder selection
-                    folder = gu.select_folder(state_key="batch-analysis-output-dir")
-                    return (folder, folder) if folder else ("", "")
+        with gr.Group(), gr.Row(equal_height=True):
+            select_out_directory_btn = gr.Button(
+                loc.localize("multi-tab-output-selection-button-label"),
+                variant="primary",
+            )
+            selected_out_textbox = gr.Textbox(
+                show_label=False,
+                interactive=False,
+                placeholder=loc.localize("multi-tab-output-textbox-placeholder"),
+                scale=3,
+                max_lines=1,
+                rtl=True,
+                elem_classes="path-textbox",
+            )
 
-                select_out_directory_btn.click(
-                    select_directory_wrapper,
-                    outputs=[output_directory_predict_state, selected_out_textbox],
-                    show_progress="hidden",
-                )
+        def select_directory_wrapper():
+            folder = gu.select_folder(state_key="batch-analysis-output-dir")
+            return (folder, folder) if folder else (gr.update(), gr.update())
 
-        sample_settings, species_settings, model_settings = gu.sample_species_model_settings(opened=False)
+        select_out_directory_btn.click(
+            select_directory_wrapper,
+            outputs=[output_directory_predict_state, selected_out_textbox],
+            show_progress="hidden",
+        )
 
-        with gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True), gr.Group():
+        sample_settings, species_settings, model_settings = (
+            gu.sample_species_model_settings(opened=False)
+        )
+
+        with (
+            gr.Group(),
+            gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True),
+        ):
             output_type_radio = gr.CheckboxGroup(
-                list(OUTPUT_TYPE_MAP.items()),
+                list(_output_type_map().items()),
                 value="table",
                 label=loc.localize("multi-tab-output-radio-label"),
                 info=loc.localize("multi-tab-output-radio-info"),
             )
             additional_columns_ = gr.CheckboxGroup(
-                list(ADDITIONAL_COLUMNS_MAP.items()),
+                list(_additional_columns_map().items()),
                 visible=False,
                 label=loc.localize("multi-tab-additional-columns-checkbox-label"),
                 info=loc.localize("multi-tab-additional-columns-checkbox-info"),
             )
 
-            with gr.Row():
-                combine_tables_checkbox = gr.Checkbox(
-                    False,
-                    label=loc.localize("multi-tab-output-combine-tables-checkbox-label"),
-                    info=loc.localize("multi-tab-output-combine-tables-checkbox-info"),
-                )
-
-            with gr.Row():
-                skip_existing_checkbox = gr.Checkbox(
-                    False,
-                    label=loc.localize("multi-tab-skip-existing-checkbox-label"),
-                    info=loc.localize("multi-tab-skip-existing-checkbox-info"),
-                )
-
-        with gr.Row():
-            batch_size_number = gr.Number(
-                precision=1,
-                label=loc.localize("multi-tab-batchsize-number-label"),
-                value=1,
-                info=loc.localize("multi-tab-batchsize-number-info"),
-                minimum=1,
-            )
-            threads_number = gr.Number(
-                precision=1,
-                label=loc.localize("multi-tab-threads-number-label"),
-                value=4,
-                info=loc.localize("multi-tab-threads-number-info"),
-                minimum=1,
-            )
-
-        locale_radio = gu.locale()
-
-        start_batch_analysis_btn = gr.Button(loc.localize("analyze-start-button-label"), variant="huggingface")
-
-        result_grid = gr.Matrix(headers=[""], col_count=1)
-
+        bs_number, producers_number, workers_number = gu.computing_settings()
+        start_batch_analysis_btn = gr.Button(
+            loc.localize("analyze-start-button-label"), variant="huggingface"
+        )
+        result_grid = gr.List(headers=[""])
         inputs = [
             output_directory_predict_state,
             sample_settings["use_top_n_checkbox"],
@@ -236,21 +247,30 @@ def build_multi_analysis_tab():
             model_settings["selected_classifier_state"],
             output_type_radio,
             additional_columns_,
-            combine_tables_checkbox,
-            locale_radio,
-            batch_size_number,
-            threads_number,
+            model_settings["locale_dropdown"],
+            bs_number,
+            producers_number,
+            workers_number,
             input_directory_state,
-            skip_existing_checkbox,
         ]
 
         def show_additional_columns(values):
             return gr.update(visible="csv" in values)
 
-        start_batch_analysis_btn.click(run_batch_analysis, inputs=inputs, outputs=result_grid)
-        output_type_radio.change(show_additional_columns, inputs=output_type_radio, outputs=additional_columns_)
+        start_batch_analysis_btn.click(
+            run_batch_analysis, inputs=inputs, outputs=result_grid
+        )
+        output_type_radio.change(
+            show_additional_columns,
+            inputs=output_type_radio,
+            outputs=additional_columns_,
+        )
 
-    return species_settings["lat_number"], species_settings["lon_number"], species_settings["map_plot"]
+    return (
+        species_settings["lat_number"],
+        species_settings["lon_number"],
+        species_settings["map_plot"],
+    )
 
 
 if __name__ == "__main__":

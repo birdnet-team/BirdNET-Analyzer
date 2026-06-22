@@ -2,7 +2,7 @@
 import json
 import os
 
-from birdnet_analyzer.gui import settings
+from birdnet_analyzer import settings
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 LANGUAGE_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "lang")
@@ -12,8 +12,8 @@ TARGET_LANGUAGE = settings.FALLBACK_LANGUAGE
 
 def load_local_state():
     """
-    Loads the local language settings and populates the LANGUAGE_LOOKUP dictionary with the appropriate translations.
-    This function performs the following steps:
+    Loads the local language settings and populates the LANGUAGE_LOOKUP dictionary with
+    the appropriate translations.
     """
     global LANGUAGE_LOOKUP
     global TARGET_LANGUAGE
@@ -27,15 +27,18 @@ def load_local_state():
             if "language-id" in settings_data:
                 TARGET_LANGUAGE = settings_data["language-id"]
     except FileNotFoundError:
-        print(f"gui-settings.json not found. Using fallback language {settings.FALLBACK_LANGUAGE}.")
+        print(
+            "gui-settings.json not found. Using fallback language "
+            f"{settings.FALLBACK_LANGUAGE}."
+        )
 
     try:
         with open(f"{LANGUAGE_DIR}/{TARGET_LANGUAGE}.json", encoding="utf-8") as f:
             LANGUAGE_LOOKUP = json.load(f)
     except FileNotFoundError:
         print(
-            f"Language file for {TARGET_LANGUAGE} not found in {LANGUAGE_DIR}."
-            + "Using fallback language {settings.FALLBACK_LANGUAGE}."
+            f"Language file for {TARGET_LANGUAGE} not found in {LANGUAGE_DIR}. "
+            f"Using fallback language {settings.FALLBACK_LANGUAGE}."
         )
 
     if TARGET_LANGUAGE != settings.FALLBACK_LANGUAGE:
@@ -56,7 +59,8 @@ def localize(key: str) -> str:
 
     Returns:
         str: The localized string corresponding to the given key.
-             If the key is not found in the localization lookup, the original key is returned.
+             If the key is not found in the localization lookup, the original key is
+             returned.
     """
     return LANGUAGE_LOOKUP.get(key, key)
 

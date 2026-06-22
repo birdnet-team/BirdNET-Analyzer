@@ -1,299 +1,701 @@
-import os
-from typing import Literal
+from __future__ import annotations
 
-from tqdm import tqdm
+import os
+from math import isclose
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Sequence
+
+    import pandas as pd
+    from birdnet.acoustic.inference.core.perf_tracker import (
+        AcousticProgressStats,
+    )
+    from birdnet.acoustic.inference.core.prediction.prediction_result import (
+        AcousticResultBase,
+    )
+    from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGES
+
+    from birdnet_analyzer.config import ADDITIONAL_COLUMNS, RESULT_TYPES
 
 
 def analyze(
     audio_input: str,
     output: str | None = None,
     *,
+    model: str = "birdnet",
+    birdnet: ACOUSTIC_MODEL_VERSIONS = "2.4",
     min_conf: float = 0.25,
     classifier: str | None = None,
-    lat: float = -1,
-    lon: float = -1,
-    week: int = -1,
-    slist: str | None = None,
+    cc_species_list: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    week: int | None = None,
+    slist: str | Path | Collection[str] | None = None,
     sensitivity: float = 1.0,
     overlap: float = 0,
     fmin: int = 0,
     fmax: int = 15000,
     audio_speed: float = 1.0,
     batch_size: int = 1,
-    show_progress: bool = False,
-    combine_results: bool = False,
-    rtype: Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] | list[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]] = "table",
-    skip_existing_results: bool = False,
+    n_workers: int | None = None,
+    n_producers: int = 1,
+    rtype: RESULT_TYPES | list[RESULT_TYPES] = "table",
     sf_thresh: float = 0.03,
     top_n: int | None = None,
     merge_consecutive: int = 1,
-    threads: int = 8,
-    locale: str = "en",
-    additional_columns: list[str] | None = None,
-    use_perch: bool = False,
+    locale: MODEL_LANGUAGES = "en_us",
+    additional_columns: list[ADDITIONAL_COLUMNS] | None = None,
+    on_update: Callable[[AcousticProgressStats], None] | None = None,
+    split_tables: bool = False,
+    save_params: bool = False,
+    show_progress: bool = False,
+    _return_only=False,
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
     Args:
         audio_input (str): Path to the input directory or file containing audio data.
-        output (str | None, optional): Path to the output directory for results. Defaults to None.
-        min_conf (float, optional): Minimum confidence threshold for detections. Defaults to 0.25.
-        classifier (str | None, optional): Path to a custom classifier file. Defaults to None.
-        lat (float, optional): Latitude for location-based filtering. Defaults to -1.
-        lon (float, optional): Longitude for location-based filtering. Defaults to -1.
+        output (str | None, optional): Path to the output directory for results.
+            Defaults to None.
+        min_conf (float, optional): Minimum confidence threshold for detections.
+            Defaults to 0.25.
+        classifier (str | None, optional): Path to a custom classifier file.
+            Defaults to None.
+        lat (float | None, optional): Latitude for location-based filtering.
+            Defaults to None.
+        lon (float | None, optional): Longitude for location-based filtering.
+            Defaults to None.
         week (int, optional): Week of the year for seasonal filtering. Defaults to -1.
-        slist (str | None, optional): Path to a species list file for filtering. Defaults to None.
-        sensitivity (float, optional): Sensitivity of the detection algorithm. Defaults to 1.0.
-        overlap (float, optional): Overlap between analysis windows in seconds. Defaults to 0.
+        slist (str | None, optional): Path to a species list file for filtering.
+            Defaults to None.
+        sensitivity (float, optional): Sensitivity of the detection algorithm.
+            Defaults to 1.0.
+        overlap (float, optional): Overlap between analysis windows in seconds.
+            Defaults to 0.
         fmin (int, optional): Minimum frequency for analysis in Hz. Defaults to 0.
         fmax (int, optional): Maximum frequency for analysis in Hz. Defaults to 15000.
-        audio_speed (float, optional): Speed factor for audio playback during analysis. Defaults to 1.0.
+        audio_speed (float, optional): Speed factor for audio playback during analysis.
+            Defaults to 1.0.
         batch_size (int, optional): Batch size for processing. Defaults to 1.
-        combine_results (bool, optional): Whether to combine results into a single file. Defaults to False.
-        rtype (Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] | List[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]], optional):
+        rtype (Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] |
+        List[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]], optional):
             Output format(s) for results. Defaults to "table".
-        skip_existing_results (bool, optional): Whether to skip analysis for files with existing results. Defaults to False.
         sf_thresh (float, optional): Threshold for species filtering. Defaults to 0.03.
-        top_n (int | None, optional): Limit the number of top detections per file. Defaults to None.
-        merge_consecutive (int, optional): Merge consecutive detections within this time window in seconds. Defaults to 1.
-        threads (int, optional): Number of CPU threads to use for analysis. Defaults to 8.
+        top_n (int | None, optional): Limit the number of top detections per file.
+            Defaults to None.
+        merge_consecutive (int, optional): Merge consecutive detections within this time
+            window in seconds. Defaults to 1.
+        threads (int, optional): Number of CPU threads to use for analysis.
+            Defaults to 8.
         locale (str, optional): Locale for species names and output. Defaults to "en".
-        additional_columns (list[str] | None, optional): Additional columns to include in the output. Defaults to None.
-        use_perch (bool, optional): Whether to use the Perch model for analysis. Defaults to False.
+        additional_columns (list[str] | None, optional): Additional columns to include
+            in the output. Defaults to None.
+        use_perch (bool, optional): Whether to use the Perch model for analysis.
+            Defaults to False.
+        split_tables (bool, optional): Whether to split output tables by input files.
+            Defaults to False.
     Returns:
         None
     Raises:
         ValueError: If input path is invalid or required parameters are missing.
     Notes:
         - The function ensures the BirdNET model is available before analysis.
-        - Results can be combined into a single file if `combine_results` is True.
         - Analysis parameters are saved to a file in the output directory.
     """
-    from multiprocessing import Pool
-
     import birdnet_analyzer.config as cfg
-    from birdnet_analyzer.analyze.utils import analyze_file, save_analysis_params
-    from birdnet_analyzer.analyze.utils import combine_results as combine
+    from birdnet_analyzer.model_utils import run_geomodel, run_inference
+    from birdnet_analyzer.utils import save_params_to_file
 
-    flist = _set_params(
-        audio_input=audio_input,
-        output=output,
-        min_conf=min_conf,
-        custom_classifier=classifier,
-        lat=lat,
-        lon=lon,
-        week=week,
-        slist=slist,
-        sensitivity=sensitivity,
-        locale=locale,
-        overlap=overlap,
-        fmin=fmin,
-        fmax=fmax,
-        audio_speed=audio_speed,
-        bs=batch_size,
-        combine_results=combine_results,
-        rtype=rtype,
-        sf_thresh=sf_thresh,
-        top_n=top_n,
-        merge_consecutive=merge_consecutive,
-        skip_existing_results=skip_existing_results,
-        threads=threads,
-        labels_file=cfg.LABELS_FILE,
-        additional_columns=additional_columns,
-        use_perch=use_perch,
-        show_progress=show_progress,
+    species_list_file = slist if isinstance(slist, (str, Path)) else ""
+    rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype
+
+    if lat is not None and lon is not None:
+        if slist is not None:
+            raise ValueError(
+                "Cannot use both location (lat/lon) and custom species list (slist) "
+                "together."
+            )
+
+        slist = run_geomodel(
+            lat, lon, week=week, language=locale, threshold=sf_thresh
+        ).to_set()
+
+    predictions = run_inference(
+        audio_input,
+        model=model,
+        top_k=top_n,
+        batch_size=batch_size,
+        prefetch_ratio=3,
+        overlap_duration_s=overlap,
+        bandpass_fmin=fmin,
+        bandpass_fmax=fmax,
+        sigmoid_sensitivity=sensitivity,
+        speed=audio_speed,
+        min_confidence=min_conf,
+        custom_species_list=slist,
+        label_language=locale,
+        classifier=classifier,
+        cc_species_list=cc_species_list,
+        version=birdnet,
+        callback=on_update,
+        n_workers=n_workers,
+        n_producers=n_producers,
     )
 
-    print(f"Found {len(cfg.FILE_LIST)} files to analyze")
+    if _return_only:
+        return predictions
 
-    if not cfg.SPECIES_LIST:
-        print(f"Species list contains {len(cfg.LABELS)} species")
-    else:
-        print(f"Species list contains {len(cfg.SPECIES_LIST)} species")
+    audio_input_path: Path = Path(audio_input)
+    df = predictions.to_dataframe()
+    df = _merge_consecutive_segments(
+        df, merge_consecutive, hop_size=predictions.hop_duration_s
+    )
 
-    result_files = []
+    if not output:
+        if os.path.isfile(audio_input):
+            output = os.path.dirname(audio_input)
+        else:
+            output = audio_input
 
-    # Analyze files
-    if cfg.CPU_THREADS < 2 or len(flist) < 2:
-        result_files.extend(tqdm((analyze_file(f) for f in flist), total=len(flist), desc="Processing audio files...", disable=not cfg.SHOW_PROGRESS))
-    else:
-        with Pool(cfg.CPU_THREADS) as p:
-            # Map analyzeFile function to each entry in flist
-            result_files = list(tqdm(p.imap(analyze_file, flist), total=len(flist), desc="Processing audio files...", disable=not cfg.SHOW_PROGRESS))
-    # Combine results?
-    if cfg.COMBINE_RESULTS:
-        print(f"Combining results, writing to {cfg.OUTPUT_PATH}...", end="", flush=True)
-        combine(result_files)
-        print("done!", flush=True)
+    if split_tables:
+        output: Path = (
+            audio_input_path.parent if audio_input_path.is_file() else audio_input_path
+        )
+        _split_tables(
+            df,
+            audio_input_path,
+            output,
+            fmin,
+            fmax,
+            predictions,
+            audio_speed,
+            rtypes,
+            additional_columns,
+            lat,
+            lon,
+            week,
+            overlap,
+            min_conf,
+            sensitivity,
+            species_list_file,
+        )
 
-    save_analysis_params(os.path.join(cfg.OUTPUT_PATH, cfg.ANALYSIS_PARAMS_FILENAME))
+    if "table" in rtypes:
+        save_as_rtable(
+            df,
+            fmin,
+            fmax,
+            predictions.model_fmin,
+            predictions.model_fmax,
+            audio_speed,
+            Path(output) / cfg.OUTPUT_RAVEN_FILENAME,
+        )
+
+    if "csv" in rtypes:
+        save_as_csv(
+            df,
+            Path(output) / cfg.OUTPUT_CSV_FILENAME,
+            additional_columns,
+            lat=lat,
+            lon=lon,
+            week=week,
+            overlap=overlap,
+            min_conf=min_conf,
+            sensitivity=sensitivity,
+            species_list_file=species_list_file,
+            model_path=predictions.model_path,
+        )
+
+    if "kaleidoscope" in rtypes:
+        save_as_kaleidoscope(df, Path(output) / cfg.OUTPUT_KALEIDOSCOPE_FILENAME)
+
+    if "audacity" in rtypes:
+        save_as_audacity(df, Path(output) / cfg.OUTPUT_AUDACITY_FILENAME)
+
+    if "parquet" in rtypes:
+        save_as_parquet(
+            df,
+            Path(output) / cfg.OUTPUT_PARQUET_FILENAME,
+            additional_columns,
+            lat=lat,
+            lon=lon,
+            week=week,
+            overlap=overlap,
+            min_conf=min_conf,
+            sensitivity=sensitivity,
+            species_list_file=species_list_file,
+            model_path=predictions.model_path,
+        )
+
+    if save_params:
+        save_params_to_file(
+            Path(output) / cfg.ANALYSIS_PARAMS_FILENAME,
+            (
+                "Model",
+                "BirdNET version",
+                "Segment length",
+                "Sample rate",
+                "Segment overlap",
+                "Bandpass filter minimum",
+                "Bandpass filter maximum",
+                "Merge consecutive detections",
+                "Audio speed",
+                "Minimum confidence",
+                "Sensitivity",
+                "Top N",
+                "Batch size",
+                "Number of workers",
+                "Number of producers",
+                "Result type(s)",
+                "Latitude",
+                "Longitude",
+                "Week",
+                "Species filter threshold",
+                "Species list file",
+                "Locale",
+                "Custom classifier path",
+                "Custom classifier species list",
+                "Split tables",
+            ),
+            (
+                model,
+                birdnet,
+                predictions.segment_duration_s,
+                predictions.model_sr,
+                overlap,
+                fmin,
+                fmax,
+                merge_consecutive,
+                audio_speed,
+                min_conf,
+                sensitivity,
+                top_n or "",
+                batch_size,
+                n_workers or "",
+                n_producers,
+                ", ".join(rtypes),
+                lat or "",
+                lon or "",
+                week or "",
+                sf_thresh,
+                species_list_file or "",
+                locale,
+                classifier or "",
+                cc_species_list or "",
+                split_tables,
+            ),
+        )
+
+    return predictions
 
 
-def _set_params(
-    audio_input,
-    output,
-    min_conf,
-    custom_classifier,
+def _split_tables(
+    df: pd.DataFrame,
+    audio_input_path: Path,
+    output: Path,
+    bandpass_fmin: int,
+    bandpass_fmax: int,
+    predictions: AcousticResultBase,
+    audio_speed: float,
+    rtypes: Sequence[str],
+    additional_columns,
     lat,
     lon,
     week,
-    slist,
-    sensitivity,
-    locale,
     overlap,
-    fmin,
-    fmax,
-    audio_speed,
-    bs,
-    combine_results,
-    rtype,
-    skip_existing_results,
-    sf_thresh,
-    top_n,
-    merge_consecutive,
-    threads,
-    labels_file=None,
-    additional_columns=None,
-    use_perch=False,
-    show_progress=True,
+    min_conf,
+    sensitivity,
+    species_list_file,
 ):
-    import birdnet_analyzer.config as cfg
-    from birdnet_analyzer.analyze.utils import load_codes
-    from birdnet_analyzer.species.utils import get_species_list
-    from birdnet_analyzer.utils import collect_audio_files, ensure_model_exists, read_lines
+    for input_file in df["input"].unique():
+        df_file = df[df["input"] == input_file]
+        rpath = str(input_file).replace(str(audio_input_path), "")
+        rpath = (
+            (rpath[1:] if rpath[0] in ["/", "\\"] else rpath)
+            if rpath
+            else os.path.basename(input_file)
+        )
+        file_shorthand = rpath.rsplit(".", 1)[0]
 
-    ensure_model_exists(check_perch=use_perch)
+        if "table" in rtypes:
+            save_as_rtable(
+                df_file,
+                bandpass_fmin,
+                bandpass_fmax,
+                predictions.model_fmin,
+                predictions.model_fmax,
+                audio_speed,
+                output / (file_shorthand + ".BirdNET.selection.table.txt"),
+            )
 
-    if not isinstance(overlap, int | float):
-        raise ValueError("Overlap must be a numeric value.")
+        if "csv" in rtypes:
+            save_as_csv(
+                df_file,
+                output / (file_shorthand + ".BirdNET.results.csv"),
+                additional_columns,
+                lat=lat,
+                lon=lon,
+                week=week,
+                overlap=overlap,
+                min_conf=min_conf,
+                sensitivity=sensitivity,
+                species_list_file=species_list_file,
+                model_path=predictions.model_path,
+            )
 
-    if overlap < 0:
-        raise ValueError("Overlap must be a non-negative value.")
+        if "kaleidoscope" in rtypes:
+            save_as_kaleidoscope(
+                df_file, output / (file_shorthand + ".BirdNET.results.kaleidoscope.csv")
+            )
 
-    if not use_perch and overlap > 2.9:
-        raise ValueError("Overlap must be less than or equal to 2.9 seconds for BirdNET model.")
+        if "audacity" in rtypes:
+            save_as_audacity(
+                df_file, output / (file_shorthand + ".BirdNET.results.txt")
+            )
 
-    if use_perch and overlap > 4.9:
-        raise ValueError("Overlap must be less than or equal to 4.9 seconds for Perch model.")
 
-    if not isinstance(audio_speed, int | float):
-        raise ValueError("Audio speed must be a numeric value.")
+def _merge_consecutive_segments(
+    df: pd.DataFrame, merge_consecutive: int, hop_size: float = 3.0
+) -> pd.DataFrame:
+    """
+    Merge consecutive prediction segments for the same input and species.
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input predictions containing at least "input", "species_name", "start_time",
+        "end_time" and "confidence".
+    merge_consecutive : int
+        Number of consecutive rows that must be contiguous to merge them.
+    hop_size : float, optional
+        Allowed tolerance (in seconds) between the end of one segment and the start of
+        the next to consider them consecutive, by default 3.0.
+    Returns
+    -------
+    pandas.DataFrame
+        Merged prediction segments, with continuous ranges collapsed and the
+        confidence averaged when available. Raises ValueError when required columns
+        are missing or time columns are non-numeric.
+    """
+    import pandas as pd
 
-    if audio_speed <= 0:
-        raise ValueError("Audio speed must be a positive value.")
+    if merge_consecutive <= 1:
+        return df
 
-    if use_perch and sensitivity != 1.0:
-        print("Warning: Sensitivity setting is ignored when using the Perch model.")
+    if df.empty:
+        return df
 
-    cfg.CODES = load_codes()
-    cfg.SKIP_EXISTING_RESULTS = skip_existing_results
-    cfg.LOCATION_FILTER_THRESHOLD = sf_thresh
-    cfg.TOP_N = top_n
-    cfg.MERGE_CONSECUTIVE = merge_consecutive
-    cfg.INPUT_PATH = audio_input.replace("/", os.sep)
-    cfg.MIN_CONFIDENCE = min_conf
-    cfg.SIGMOID_SENSITIVITY = sensitivity
-    cfg.SIG_OVERLAP = overlap
-    cfg.BANDPASS_FMIN = fmin
-    cfg.BANDPASS_FMAX = fmax
-    cfg.AUDIO_SPEED = audio_speed
-    cfg.RESULT_TYPES = rtype if isinstance(rtype, list | tuple | set) else [rtype]
-    cfg.COMBINE_RESULTS = combine_results
-    cfg.BATCH_SIZE = bs
-    cfg.ADDITIONAL_COLUMNS = additional_columns
-    cfg.USE_PERCH = use_perch
-    cfg.SHOW_PROGRESS = show_progress
+    required_cols = {"input", "species_name", "start_time", "end_time"}
 
-    if cfg.USE_PERCH and custom_classifier:
-        raise ValueError("Selected custom classifier and Perch model, please select only one.")
+    if not required_cols.issubset(set(df.columns)):
+        raise ValueError(
+            "DataFrame is badly formed, missing required columns: "
+            f"{required_cols - set(df.columns)}"
+        )
 
-    if not output:
-        if os.path.isfile(cfg.INPUT_PATH):
-            cfg.OUTPUT_PATH = os.path.dirname(cfg.INPUT_PATH)
-        else:
-            cfg.OUTPUT_PATH = cfg.INPUT_PATH
-    else:
-        cfg.OUTPUT_PATH = output
+    df = df.copy()
 
-    if os.path.isdir(cfg.INPUT_PATH):
-        cfg.FILE_LIST = collect_audio_files(cfg.INPUT_PATH)
-    else:
-        cfg.FILE_LIST = [cfg.INPUT_PATH]
+    try:
+        # time columns can be float16, which cannot be sorted by pandas
+        df["start_time"] = df["start_time"].astype("float32", copy=False)
+        df["end_time"] = df["end_time"].astype("float32", copy=False)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Time columns must be numeric.") from exc
 
-    if os.path.isdir(cfg.INPUT_PATH):
-        cfg.CPU_THREADS = threads
-        cfg.TFLITE_THREADS = 1
-    else:
-        cfg.CPU_THREADS = 1
-        cfg.TFLITE_THREADS = threads
+    df_sorted = df.sort_values(
+        by=["input", "species_name", "start_time", "end_time"]
+    ).reset_index(drop=True)
+    merged_records = []
+    i = 0
 
-    if cfg.USE_PERCH:
-        cfg.MODEL_PATH = cfg.PERCH_V2_MODEL_PATH
-        cfg.LABELS_FILE = cfg.perch_labels_file()
-        cfg.SAMPLE_RATE = cfg.PERCH_SAMPLE_RATE
-        cfg.SIG_LENGTH = cfg.PERCH_SIG_LENGTH
-        cfg.LABELS = read_lines(cfg.LABELS_FILE)
-        cfg.LABELS = cfg.LABELS[1:]  # it's a csv with header
-    else:
-        cfg.MODEL_PATH = cfg.BIRDNET_MODEL_PATH
-        cfg.LABELS_FILE = cfg.BIRDNET_LABELS_FILE
-        cfg.SAMPLE_RATE = cfg.BIRDNET_SAMPLE_RATE
-        cfg.SIG_LENGTH = cfg.BIRDNET_SIG_LENGTH
-        cfg.LABELS = read_lines(labels_file if labels_file else cfg.LABELS_FILE)
+    while i < len(df_sorted):
+        window = [df_sorted.iloc[i]]
 
-    if overlap >= cfg.SIG_LENGTH:
-        raise ValueError(f"Overlap must be less than {cfg.SIG_LENGTH} seconds.")
+        while len(window) < merge_consecutive:
+            next_idx = i + len(window)
+            if next_idx >= len(df_sorted):
+                break
 
-    cfg.CUSTOM_CLASSIFIER = custom_classifier  # we treat this as absolute path, so no need to join with dirname
-    cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK = lat, lon, week
+            prev_row = window[-1]
+            candidate_row = df_sorted.iloc[next_idx]
 
-    # TODO: Should really be None instead of -1
-    if cfg.LATITUDE == -1 and cfg.LONGITUDE == -1:
-        if not slist:
-            cfg.SPECIES_LIST_FILE = None
-        else:
-            cfg.SPECIES_LIST_FILE = slist
-
-            if os.path.isdir(cfg.SPECIES_LIST_FILE):
-                cfg.SPECIES_LIST_FILE = os.path.join(cfg.SPECIES_LIST_FILE, "species_list.txt")
-
-        cfg.SPECIES_LIST = read_lines(cfg.SPECIES_LIST_FILE, trim=True, fail_on_blank_lines=True)
-    else:
-        # TODO: What if only one of the two is given?
-        cfg.SPECIES_LIST_FILE = None
-        cfg.SPECIES_LIST = get_species_list(cfg.LATITUDE, cfg.LONGITUDE, cfg.WEEK, cfg.LOCATION_FILTER_THRESHOLD)
-
-    if custom_classifier:
-        if custom_classifier.endswith(".tflite"):
-            cfg.LABELS_FILE = custom_classifier.replace(".tflite", "_Labels.txt")  # same for labels file
-
-            if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is not found, an old birdnet model might be used
-                cfg.LABELS_FILE = custom_classifier.replace("Model_FP32.tflite", "Labels.txt")
-
-            if not os.path.isfile(cfg.LABELS_FILE):  # if the label file is still not found, dont use labels
-                cfg.LABELS_FILE = None
-                cfg.LABELS = None
+            if (
+                candidate_row["input"] == prev_row["input"]
+                and candidate_row["species_name"] == prev_row["species_name"]
+                and isclose(
+                    float(candidate_row["start_time"]),
+                    float(prev_row["end_time"]),
+                    abs_tol=hop_size,
+                )
+            ):
+                window.append(candidate_row)
             else:
-                cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
+                break
+
+        if len(window) == merge_consecutive:
+            merged_row = window[0].copy()
+            merged_row["start_time"] = window[0]["start_time"]
+            merged_row["end_time"] = window[-1]["end_time"]
+
+            if "confidence" in df.columns:
+                confidences = [float(row["confidence"]) for row in window]
+                avg_confidence = sum(confidences) / len(confidences)
+                confidence_type = type(window[0]["confidence"])
+
+                try:
+                    merged_row["confidence"] = confidence_type(avg_confidence)
+                except (TypeError, ValueError):
+                    merged_row["confidence"] = avg_confidence
+
+            merged_records.append(merged_row.to_dict())
+            i += merge_consecutive
         else:
-            cfg.APPLY_SIGMOID = False
-            # our output format
-            cfg.LABELS_FILE = os.path.join(custom_classifier, "labels", "label_names.csv")
+            merged_records.append(window[0].to_dict())
+            i += 1
 
-            if not os.path.isfile(cfg.LABELS_FILE):
-                cfg.LABELS_FILE = os.path.join(custom_classifier, "assets", "label.csv")
-                cfg.LABELS = read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)
-            else:
-                cfg.LABELS = [line.split(",")[1] for line in read_lines(cfg.LABELS_FILE, fail_on_blank_lines=True)]
+    merged_df = pd.DataFrame.from_records(merged_records, columns=df.columns)
+    return merged_df.sort_values(by=["input", "start_time", "end_time", "species_name"])
 
-    if cfg.LABELS_FILE:
-        lfile = os.path.join(cfg.TRANSLATED_LABELS_PATH, os.path.basename(cfg.LABELS_FILE).replace(".txt", f"_{locale}.txt"))
 
-        if locale not in ["en"] and os.path.isfile(lfile):
-            cfg.TRANSLATED_LABELS = read_lines(lfile)
-        else:
-            cfg.TRANSLATED_LABELS = cfg.LABELS
-    else:
-        cfg.TRANSLATED_LABELS = cfg.LABELS
+def save_as_rtable(
+    df: pd.DataFrame,
+    bandpass_fmin,
+    bandpass_fmax,
+    model_fmin,
+    model_fmax,
+    audio_speed,
+    outfile: Path,
+):
+    from functools import partial
 
-    return [(f, cfg.get_config()) for f in cfg.FILE_LIST]
+    from birdnet_analyzer.audio import get_audio_info
+    from birdnet_analyzer.utils import load_codes
+
+    def read_high_freq(file_path, sig_fmax, bandpass_fmax, audio_speed, file_infos):
+        high_freq = file_infos[file_path]["samplerate"] / 2
+        high_freq = min(high_freq, int(sig_fmax / audio_speed))
+        return int(min(high_freq, int(bandpass_fmax / audio_speed)))
+
+    df = df.copy()
+    codes = load_codes()
+    files = df["input"].unique()
+    file_infos = {file: get_audio_info(file) for file in files}
+    n_rows = df.shape[0]
+    df["Selection"] = list(range(1, n_rows + 1))
+    df["View"] = ["Spectrogram 1"] * n_rows
+    df["Channel"] = [1] * n_rows
+    df["High Freq (Hz)"] = df["input"].map(
+        partial(
+            read_high_freq,
+            sig_fmax=model_fmax,
+            bandpass_fmax=bandpass_fmax,
+            audio_speed=audio_speed,
+            file_infos=file_infos,
+        )
+    )
+    df["Low Freq (Hz)"] = [max(model_fmin, int(bandpass_fmin / audio_speed))] * n_rows
+    df["File Offset (s)"] = df["start_time"]
+    df[["Scientific Name", "Common Name"]] = df["species_name"].str.split(
+        "_", n=1, expand=True
+    )
+    df["Species Code"] = df["species_name"].map(lambda x: codes.get(str(x), str(x)))
+    df = df.rename(
+        columns={
+            "start_time": "Begin Time (s)",
+            "end_time": "End Time (s)",
+            "input": "Begin Path",
+            "confidence": "Confidence",
+        },
+    )
+    timestamp_dtype = df["Begin Time (s)"].dtype
+    acumulated_start_times = []
+    accumulated_end_times = []
+    accumulated_time = timestamp_dtype.type(0)
+    current_file = df["Begin Path"].iloc[0]
+
+    for row in df.iterrows():
+        file = row[1]["Begin Path"]
+
+        if file != current_file:
+            accumulated_time += timestamp_dtype.type(
+                file_infos[current_file]["duration"]
+            )  # type: ignore
+            current_file = file
+
+        acumulated_start_times.append(row[1]["Begin Time (s)"] + accumulated_time)
+        accumulated_end_times.append(row[1]["End Time (s)"] + accumulated_time)
+
+    # Reordering
+    cols = [
+        "Selection",
+        "Begin Time (s)",
+        "End Time (s)",
+        "Common Name",
+        "Scientific Name",
+        "Species Code",
+        "Confidence",
+        "View",
+        "Channel",
+        "File Offset (s)",
+        "Low Freq (Hz)",
+        "High Freq (Hz)",
+        "Begin Path",
+    ]
+
+    df = df[cols]
+    df["Begin Time (s)"] = acumulated_start_times
+    df["End Time (s)"] = accumulated_end_times
+
+    outfile.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(outfile, sep="\t", index=False)
+
+
+def save_as_csv(
+    df: pd.DataFrame,
+    output: Path,
+    additional_columns: list[ADDITIONAL_COLUMNS] | None = None,
+    lat=None,
+    lon=None,
+    week=None,
+    overlap=None,
+    min_conf=None,
+    sensitivity=None,
+    species_list_file=None,
+    model_path=None,
+):
+    df = df.copy()
+    n_rows = df.shape[0]
+
+    if additional_columns:
+        possible_cols = {
+            "lat": [lat if lat is not None else ""],
+            "lon": [lon if lon is not None else ""],
+            "week": [week if week is not None else ""],
+            "overlap": [overlap if overlap is not None else ""],
+            "sensitivity": [sensitivity if sensitivity is not None else ""],
+            "min_conf": [min_conf if min_conf is not None else ""],
+            "species_list": [species_list_file],
+            "model": [os.path.basename(model_path or "")],
+        }
+        additional_columns = [col for col in additional_columns if col in possible_cols]
+
+        for col in possible_cols:
+            if col in additional_columns:
+                df[col] = possible_cols[col] * n_rows
+
+    df[["Scientific name", "Common name"]] = df["species_name"].str.split(
+        "_", n=1, expand=True
+    )
+
+    df = df.rename(
+        columns={
+            "input": "File",
+            "start_time": "Start (s)",
+            "end_time": "End (s)",
+            "confidence": "Confidence",
+        }
+    )
+
+    order = [
+        "Start (s)",
+        "End (s)",
+        "Scientific name",
+        "Common name",
+        "Confidence",
+        "File",
+    ]
+    cols = [*order, *additional_columns] if additional_columns else order
+    df = df[cols]
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output, index=False)
+
+
+def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
+    df = df.copy()
+    df["INDIR"] = df["input"].map(lambda x: str(Path(x).parent.parent).rstrip("/"))
+    df["FOLDER"] = df["input"].map(lambda x: Path(x).parent.name)
+    df["IN FILE"] = df["input"].map(lambda x: Path(x).name)
+    df["DURATION"] = df["end_time"] - df["start_time"]
+    df[["scientific_name", "TOP1MATCH"]] = df["species_name"].str.split(
+        "_", n=1, expand=True
+    )
+
+    df = df.rename(
+        columns={
+            "start_time": "OFFSET",
+            "TOP1DIST": "confidence",
+        }
+    )
+
+    df = df.drop(columns=["input", "species_name", "end_time", "scientific_name"])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output, index=False)
+
+
+def save_as_audacity(df: pd.DataFrame, output: Path):
+    df = df[["start_time", "end_time", "species_name", "confidence"]]
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output, index=False, header=False, sep="\t")
+
+
+def save_as_parquet(
+    df: pd.DataFrame,
+    output: Path,
+    additional_columns: list[ADDITIONAL_COLUMNS] | None = None,
+    lat=None,
+    lon=None,
+    week=None,
+    overlap=None,
+    min_conf=None,
+    sensitivity=None,
+    species_list_file=None,
+    model_path=None,
+):
+    df = df.copy()
+    n_rows = df.shape[0]
+    df[["Scientific name", "Common name"]] = df["species_name"].str.split(
+        "_", n=1, expand=True
+    )
+
+    df = df.rename(
+        columns={
+            "input": "File",
+            "start_time": "Start (s)",
+            "end_time": "End (s)",
+            "confidence": "Confidence",
+        }
+    )
+
+    order = [
+        "Start (s)",
+        "End (s)",
+        "Scientific name",
+        "Common name",
+        "Confidence",
+        "File",
+    ]
+
+    if additional_columns:
+        possible_cols = {
+            "lat": [lat if lat is not None else ""],
+            "lon": [lon if lon is not None else ""],
+            "week": [week if week is not None else ""],
+            "overlap": [overlap if overlap is not None else ""],
+            "sensitivity": [sensitivity if sensitivity is not None else ""],
+            "min_conf": [min_conf if min_conf is not None else ""],
+            "species_list": [species_list_file],
+            "model": [os.path.basename(model_path or "")],
+        }
+        additional_columns = [col for col in additional_columns if col in possible_cols]
+
+        for col in additional_columns:
+            df[col] = possible_cols[col] * n_rows
+
+    cols = [*order, *additional_columns] if additional_columns else order
+    df: pd.DataFrame = df[cols]
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(output, index=False)

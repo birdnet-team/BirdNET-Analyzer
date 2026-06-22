@@ -13,14 +13,23 @@ keywords = ["birdnet", "birdnet-analyzer"]
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
+    "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: POSIX :: BSD",
+    "Operating System :: Unix",
     "Topic :: Multimedia :: Sound/Audio :: Analysis",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "librosa>=0.11",
@@ -30,27 +39,24 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "kagglehub",
+    "birdnet>=0.2.16,<1",
 ]
 
 [project.optional-dependencies]
-train = ["keras-tuner"]
-server = ["bottle", "requests"]
+train = ["optuna", "optuna-integration"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio>=5.46, <6.0",
-    "pywebview>=6.0",
-    "pyobjc-framework-UniformTypeIdentifiers;platform_system=='Darwin'", # macOS only, until pywebview adds it as dependency
+    "gradio==5.46.1",                     # 6.11.0 has tab-switching freeze bug (gradio-app/gradio#13198), also some components don't refresh anymore
+    "pywebview>=6.1,<7.0",
     "plotly[express]",
     "pywin32;platform_system=='Windows'",
     "qtpy;platform_system=='Linux'",
     "PyGObject;platform_system=='Linux'",
 ]
-embeddings = ["perch-hoplite>=0.1.1,<1.0.0"]
-all = ["birdnet-analyzer[server,gui]"]
+embeddings = ["perch-hoplite>=1.0.1,<2.0.0"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout", "pytest-order"]
-dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.14.0"]
+dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.10"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
@@ -90,7 +96,6 @@ packages = [
 birdnet_analyzer = [
     "eBird_taxonomy_codes_2024E.json",
     "lang/*",
-    "labels/**/*",
     "gui/assets/**/*",
 ]
 
@@ -105,7 +110,7 @@ filterwarnings = [
 
 [tool.ruff]
 exclude = ["conf.py"]
-line-length = 165
+line-length = 88
 
 [tool.ruff.lint]
 select = [
@@ -153,4 +158,5 @@ ignore = [
     "PLC0206",
     "PLC0415",
     "RUF015",
+    "PD002",
 ]
