@@ -907,18 +907,7 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode: Liter
 
     model_cls = custom_models.CombinedModelAppendWithSigmoid if mode == "append" else custom_models.CombinedModelReplaceWithSigmoid
 
-    # Clone the classifier without its optimizer before building the combined model.
-    # Saving a Keras model that has Adam (or any stateful optimizer) attached causes TF to
-    # include optimizer slot variables in the SavedModel checkpoint via anonymous Variable_N
-    # handles, while the inference concrete functions reference the original named Keras variable
-    # handles (e.g. sequential/dense_1/kernel). The TF C API restores only the handles listed in
-    # the SaverDef restore op (the anonymous ones), so the named handles are never initialised and
-    # inference fails with "Resource ... does not exist". A clone has no optimizer attached, so
-    # only the named inference variables appear in the checkpoint and the C API can restore them.
-    inference_classifier = tf.keras.models.clone_model(classifier)
-    inference_classifier.set_weights(classifier.get_weights())
-
-    combined_model = model_cls(PBMODEL, inference_classifier)
+    combined_model = model_cls(PBMODEL, classifier)
 
     @tf.function(input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)])  # pyright: ignore[reportCallIssue]
     def basic(inputs):
@@ -932,6 +921,13 @@ def save_raven_model(classifier, model_path: str, labels: list[str], mode: Liter
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     model_path = model_path.removesuffix(".tflite")
     tf.saved_model.save(combined_model, model_path, signatures=signatures)
+
+    #resave to fix for raven import compatibility.
+    loaded = tf.saved_model.load(model_path)
+    all_sigs = list(loaded.signatures.keys())
+    SKIP_SIGS = {"__saved_model_init_op"}
+    inference_sigs = {k: loaded.signatures[k] for k in all_sigs if k not in SKIP_SIGS}
+    tf.saved_model.save(loaded, model_path, signatures=inference_sigs)
 
     if mode == "append":
         labels = [*utils.read_lines(os.path.join(SCRIPT_DIR, cfg.LABELS_FILE)), *labels]
@@ -1078,7 +1074,6 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     # Sum over all classes
     return tf.reduce_sum(focal_loss, axis=-1)
 
-@keras.saving.register_keras_serializable()
 def custom_loss(y_true, y_pred, epsilon=1e-7):
     # Calculate loss for positive labels with epsilon
     positive_loss = -tf.reduce_sum(y_true * tf.math.log(tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)), axis=-1)
