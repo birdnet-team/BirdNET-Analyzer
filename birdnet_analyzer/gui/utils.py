@@ -288,7 +288,7 @@ def build_settings():
                             "light",
                         ),
                     ],
-                    value=lambda: settings.theme(),
+                    value=settings.theme,
                     label=loc.localize("settings-tab-theme-dropdown-label"),
                     info="⚠️" + loc.localize("settings-tab-theme-dropdown-info"),
                     interactive=True,
