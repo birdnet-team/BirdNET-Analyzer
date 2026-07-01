@@ -23,7 +23,7 @@ To upgrade later:
 
    winget upgrade BirdNET-Team.BirdNETAnalyzer
 
-For maintainers, this repository contains a release workflow in `.github/workflows/winget.yml` that prepares Winget manifests from release assets. The workflow publishes those manifests as a build artifact and release zip, ready for submission to winget-pkgs.
+For maintainers, this repository contains a release workflow in `.github/workflows/winget.yml` that submits an updated Winget manifest PR based on the current GitHub release assets (via wingetcreate), ready for review/merge in winget-pkgs.
 
 .. note::
     | Installation was only tested on M1 and M2 chips.
