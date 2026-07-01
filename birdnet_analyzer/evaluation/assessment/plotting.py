@@ -286,7 +286,6 @@ def plot_metrics_across_thresholds_per_class(
         num=MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM,
         clear=True,
     )
-    fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
 
