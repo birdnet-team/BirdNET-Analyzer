@@ -49,7 +49,7 @@
     "embeddings-tab-dp-path-textbox-info": "建議在建立新資料庫時選擇一個空的目錄。",
     "embeddings-tab-file-output-checkbox-label": "Dateiausgabe aktivieren",
     "embeddings-tab-file-output-directory-textbox-label": "檔案輸出資料夾",
-    "embeddings-tab-file-output-directory-textbox-placeholder": "若無選擇，將不進行檔案輸出。",
+    "embeddings-tab-file-output-directory-textbox-placeholder": "若無選擇，將不進行檔案輸出",
     "embeddings-tab-finish-info": "已完成嵌入提取至：",
     "embeddings-tab-info-text": "從音訊檔案目錄建立嵌入向量資料庫。請選擇來源音訊與資料庫位置，並依需求調整設定，最後產生資料庫以供日後搜尋與檢視。",
     "embeddings-tab-info-title": "資訊",

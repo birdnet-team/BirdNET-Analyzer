@@ -1018,7 +1018,7 @@ def computing_settings():
     return bs_number, producers_number, workers_number
 
 
-def info_box(description: str, title="Info") -> gr.HTML:
+def info_box(description: str, title="Info") -> gr.Accordion:
     title = escape(title)
     description = escape(description)
 
