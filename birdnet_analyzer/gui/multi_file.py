@@ -50,6 +50,7 @@ def run_batch_analysis(
     custom_classifier_file,
     output_type,
     additional_columns,
+    split_tables_checkbox,
     locale,
     batch_size,
     producers_number,
@@ -91,6 +92,7 @@ def run_batch_analysis(
         progress=progress,
         n_producers=producers_number,
         n_workers=workers_number,
+        split_tables=split_tables_checkbox,
     )
     skipped_files = [results.inputs[ui] for ui in results.unprocessable_inputs]
     header = (
@@ -219,6 +221,11 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 label=loc.localize("multi-tab-additional-columns-checkbox-label"),
                 info=loc.localize("multi-tab-additional-columns-checkbox-info"),
             )
+            split_tables_checkbox = gr.Checkbox(
+                False,
+                label=loc.localize("multi-tab-split-table-checkbox-label"),
+                info=loc.localize("multi-tab-split-table-checkbox-info"),
+            )
 
         bs_number, producers_number, workers_number = gu.computing_settings()
         start_batch_analysis_btn = gr.Button(
@@ -247,6 +254,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             model_settings["selected_classifier_state"],
             output_type_radio,
             additional_columns_,
+            split_tables_checkbox,
             model_settings["locale_dropdown"],
             bs_number,
             producers_number,
