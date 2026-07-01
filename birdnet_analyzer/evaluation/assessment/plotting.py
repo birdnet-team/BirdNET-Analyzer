@@ -284,8 +284,8 @@ def plot_metrics_across_thresholds_per_class(
         n_cols,
         figsize=(n_cols * 5, n_rows * 4),
         num=MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_PER_CLASS_FIGURE_NUM,
+        clear=True,
     )
-    fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
 
@@ -376,7 +376,9 @@ def plot_confusion_matrices(
             confusion_matrix=conf_mat, display_labels=["Negative", "Positive"]
         )
         fig, ax = plt.subplots(
-            num=MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM, figsize=(6, 6)
+            num=MATPLOTLIB_BINARY_CONFUSION_MATRIX_FIGURE_NUM,
+            figsize=(6, 6),
+            clear=True,
         )
 
         fig.tight_layout()
@@ -407,6 +409,7 @@ def plot_confusion_matrices(
             n_cols,
             figsize=(4 * n_cols, 4 * n_rows),
             num=MATPLOTLIB_MULTICLASS_CONFUSION_MATRIX_FIGURE_NUM,
+            clear=True,
         )
         fig.set_dpi(300)
         axes = axes.flatten() if hasattr(axes, "flatten") else [axes]

@@ -752,6 +752,13 @@ def save_raven_model(
 
     tf.saved_model.save(combined_model, model_path, signatures=signatures)
 
+    #resave to fix for raven import compatibility.
+    loaded = tf.saved_model.load(model_path)
+    all_sigs = list(loaded.signatures.keys())
+    SKIP_SIGS = {"__saved_model_init_op"}
+    inference_sigs = {k: loaded.signatures[k] for k in all_sigs if k not in SKIP_SIGS}
+    tf.saved_model.save(loaded, model_path, signatures=inference_sigs)
+
     if mode == "append":
         labels = [*original_labels, *labels]
 
@@ -880,7 +887,6 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     focal_loss = alpha_factor * focal_weight * cross_entropy
 
     return tf.reduce_sum(focal_loss, axis=-1)
-
 
 def custom_loss(y_true, y_pred, epsilon=1e-7):
     positive_loss = -tf.reduce_sum(
