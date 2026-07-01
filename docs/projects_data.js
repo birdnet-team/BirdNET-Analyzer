@@ -1191,4 +1191,19 @@ var projects_data = [
     "Species Image Credit": "Thünen-Institut",
     "Species Icon": "feather"
   },
+  {
+    "Project name": "Beak Tech: Urban vs Rural Vocal Activity Monitoring",
+    "Organization/Project lead": "Beak Tech",
+    "Target species": "Birds",
+    "Country": "United Kingdom",
+    "Region/Location": "Lake District National Park",
+    "Latitude": 54.311,
+    "Longitude": -2.736,
+    "Contact": "hello@beaktech.org",
+    "Website": "https://beaktech.org",
+    "Paper": "https://beaktech.org/blog/urban-vs-rural-bird-activity",
+    "Species Image": "https://beaktech.org/images/wren.webp",
+    "Species Image Credit": "Sandra Standbridge / Depositphotos",
+    "Species Icon": "feather"
+  },
 ];

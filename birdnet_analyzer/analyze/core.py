@@ -160,13 +160,10 @@ def analyze(
             output = audio_input
 
     if split_tables:
-        output: Path = (
-            audio_input_path.parent if audio_input_path.is_file() else audio_input_path
-        )
         _split_tables(
             df,
             audio_input_path,
-            output,
+            Path(output),
             fmin,
             fmax,
             predictions,
@@ -181,53 +178,53 @@ def analyze(
             sensitivity,
             species_list_file,
         )
+    else:
+        if "table" in rtypes:
+            save_as_rtable(
+                df,
+                fmin,
+                fmax,
+                predictions.model_fmin,
+                predictions.model_fmax,
+                audio_speed,
+                Path(output) / cfg.OUTPUT_RAVEN_FILENAME,
+            )
 
-    if "table" in rtypes:
-        save_as_rtable(
-            df,
-            fmin,
-            fmax,
-            predictions.model_fmin,
-            predictions.model_fmax,
-            audio_speed,
-            Path(output) / cfg.OUTPUT_RAVEN_FILENAME,
-        )
+        if "csv" in rtypes:
+            save_as_csv(
+                df,
+                Path(output) / cfg.OUTPUT_CSV_FILENAME,
+                additional_columns,
+                lat=lat,
+                lon=lon,
+                week=week,
+                overlap=overlap,
+                min_conf=min_conf,
+                sensitivity=sensitivity,
+                species_list_file=species_list_file,
+                model_path=predictions.model_path,
+            )
 
-    if "csv" in rtypes:
-        save_as_csv(
-            df,
-            Path(output) / cfg.OUTPUT_CSV_FILENAME,
-            additional_columns,
-            lat=lat,
-            lon=lon,
-            week=week,
-            overlap=overlap,
-            min_conf=min_conf,
-            sensitivity=sensitivity,
-            species_list_file=species_list_file,
-            model_path=predictions.model_path,
-        )
+        if "kaleidoscope" in rtypes:
+            save_as_kaleidoscope(df, Path(output) / cfg.OUTPUT_KALEIDOSCOPE_FILENAME)
 
-    if "kaleidoscope" in rtypes:
-        save_as_kaleidoscope(df, Path(output) / cfg.OUTPUT_KALEIDOSCOPE_FILENAME)
+        if "audacity" in rtypes:
+            save_as_audacity(df, Path(output) / cfg.OUTPUT_AUDACITY_FILENAME)
 
-    if "audacity" in rtypes:
-        save_as_audacity(df, Path(output) / cfg.OUTPUT_AUDACITY_FILENAME)
-
-    if "parquet" in rtypes:
-        save_as_parquet(
-            df,
-            Path(output) / cfg.OUTPUT_PARQUET_FILENAME,
-            additional_columns,
-            lat=lat,
-            lon=lon,
-            week=week,
-            overlap=overlap,
-            min_conf=min_conf,
-            sensitivity=sensitivity,
-            species_list_file=species_list_file,
-            model_path=predictions.model_path,
-        )
+        if "parquet" in rtypes:
+            save_as_parquet(
+                df,
+                Path(output) / cfg.OUTPUT_PARQUET_FILENAME,
+                additional_columns,
+                lat=lat,
+                lon=lon,
+                week=week,
+                overlap=overlap,
+                min_conf=min_conf,
+                sensitivity=sensitivity,
+                species_list_file=species_list_file,
+                model_path=predictions.model_path,
+            )
 
     if save_params:
         save_params_to_file(
@@ -353,6 +350,21 @@ def _split_tables(
         if "audacity" in rtypes:
             save_as_audacity(
                 df_file, output / (file_shorthand + ".BirdNET.results.txt")
+            )
+
+        if "parquet" in rtypes:
+            save_as_parquet(
+                df_file,
+                output / (file_shorthand + ".BirdNET.results.parquet"),
+                additional_columns,
+                lat=lat,
+                lon=lon,
+                week=week,
+                overlap=overlap,
+                min_conf=min_conf,
+                sensitivity=sensitivity,
+                species_list_file=species_list_file,
+                model_path=predictions.model_path,
             )
 
 
