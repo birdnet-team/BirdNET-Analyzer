@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "Mode économie de modèle",
     "training-tab-model-save-mode-radio-option-append": "ajouter",
     "training-tab-model-save-mode-radio-option-replace": "remplacer",
-    "training-tab-output-format-both": "à la fois",
     "training-tab-output-format-radio-info": "Format du classificateur formé.",
     "training-tab-output-format-radio-label": "Format de sortie du modèle",
     "training-tab-preprocessing-accordion-label": "Prétraitement",

@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "Modo para salvar o modelo",
     "training-tab-model-save-mode-radio-option-append": "anexar",
     "training-tab-model-save-mode-radio-option-replace": "substituir",
-    "training-tab-output-format-both": "ambos",
     "training-tab-output-format-radio-info": "Formato do classificador treinado.",
     "training-tab-output-format-radio-label": "Formato da saída do modelo",
     "training-tab-preprocessing-accordion-label": "Pré-processamento",

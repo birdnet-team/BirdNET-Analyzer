@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "Mallin tallennustila",
     "training-tab-model-save-mode-radio-option-append": "lisää",
     "training-tab-model-save-mode-radio-option-replace": "korvaa",
-    "training-tab-output-format-both": "molemmat",
     "training-tab-output-format-radio-info": "Koulutetun luokittelijan muoto.",
     "training-tab-output-format-radio-label": "Mallin tulostemuoto",
     "training-tab-preprocessing-accordion-label": "Esikäsittely",

@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "Modellens sparläge",
     "training-tab-model-save-mode-radio-option-append": "lägg till",
     "training-tab-model-save-mode-radio-option-replace": "ersätt",
-    "training-tab-output-format-both": "båda",
     "training-tab-output-format-radio-info": "Format för den tränade klassificeraren.",
     "training-tab-output-format-radio-label": "Modell utdataformat",
     "training-tab-preprocessing-accordion-label": "Förbehandling",

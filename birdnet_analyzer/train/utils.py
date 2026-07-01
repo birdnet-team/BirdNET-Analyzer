@@ -360,7 +360,8 @@ def train_model(
     mixup: bool = False,
     upsampling_ratio: float = 0.0,
     upsampling_mode: UPSAMPLING_MODES = "repeat",
-    model_format: TRAINED_MODEL_OUTPUT_FORMATS = "tflite",
+    model_formats: list[TRAINED_MODEL_OUTPUT_FORMATS]
+    | TRAINED_MODEL_OUTPUT_FORMATS = "tflite",
     model_save_mode: TRAINED_MODEL_SAVE_MODES = "replace",
     save_cache_to: str | None = None,
     threads: int = 1,
@@ -721,31 +722,22 @@ def train_model(
             ],
         )
 
-        if model_format == "both":
-            model.save_raven_model(
-                classifier, output, labels, mode=model_save_mode, params=params
-            )
+        if "tflite" in model_formats:
             model.save_linear_classifier(
                 classifier, output, labels, mode=model_save_mode, params=params
             )
-        elif model_format == "tflite":
-            model.save_linear_classifier(
-                classifier, output, labels, mode=model_save_mode, params=params
-            )
-        elif model_format == "raven":
+        if "raven" in model_formats:
             model.save_raven_model(
                 classifier, output, labels, mode=model_save_mode, params=params
             )
-        else:
-            raise ValueError(f"Unknown model output format: {model_format}")
+        if "detached" in model_formats:
+            model.save_detached_classifier(
+                classifier,
+                output,
+                labels=labels if model_save_mode == "append" else None,
+            )
     except Exception as e:
         raise Exception("Error saving model") from e
-
-    ## TODO: Warn if save mode is "append"
-    if save_detached_classifier:
-        model.save_detached_classifier(
-            classifier, output, labels=labels if model_save_mode == "append" else None
-        )
 
     save_sample_counts(labels, y_train_full, output)
 

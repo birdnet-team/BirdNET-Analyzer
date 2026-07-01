@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "模型儲存方法",
     "training-tab-model-save-mode-radio-option-append": "附加",
     "training-tab-model-save-mode-radio-option-replace": "取代",
-    "training-tab-output-format-both": "兩者",
     "training-tab-output-format-radio-info": "訓練後分類器的格式",
     "training-tab-output-format-radio-label": "模型輸出格式",
     "training-tab-preprocessing-accordion-label": "前處理",

@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "Mode penyimpanan model",
     "training-tab-model-save-mode-radio-option-append": "tambahkan",
     "training-tab-model-save-mode-radio-option-replace": "ganti",
-    "training-tab-output-format-both": "keduanya",
     "training-tab-output-format-radio-info": "Format klasifikator yang telah dilatih.",
     "training-tab-output-format-radio-label": "Format output model",
     "training-tab-preprocessing-accordion-label": "Praproses",

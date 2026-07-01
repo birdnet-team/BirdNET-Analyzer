@@ -367,7 +367,6 @@
     "training-tab-model-save-mode-radio-label": "Безопасный режим модели",
     "training-tab-model-save-mode-radio-option-append": "добавить",
     "training-tab-model-save-mode-radio-option-replace": "заменить",
-    "training-tab-output-format-both": "оба",
     "training-tab-output-format-radio-info": "Формат обученного классификатора.",
     "training-tab-output-format-radio-label": "Формат вывода модели",
     "training-tab-preprocessing-accordion-label": "Предобработка",
