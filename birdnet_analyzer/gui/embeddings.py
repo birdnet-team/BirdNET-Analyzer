@@ -157,8 +157,7 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
             )
             db_path_tb = gr.Textbox(
                 show_label=False,
-                # buttons=["copy"], # gradio>=6
-                show_copy_button=True,
+                buttons=["copy"],
                 interactive=False,
                 info="⚠️ " + loc.localize("embeddings-tab-dp-path-textbox-info"),
                 placeholder=loc.localize(

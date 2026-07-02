@@ -203,11 +203,10 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             segment_audio = gr.Audio(
                 autoplay=True,
                 type="numpy",
-                # buttons=["download"], # gradio>=6
+                buttons=["download"],
                 show_label=False,
                 editable=False,
                 visible=False,
-                show_download_button=True,
             )
 
         output_dataframe = gr.Dataframe(

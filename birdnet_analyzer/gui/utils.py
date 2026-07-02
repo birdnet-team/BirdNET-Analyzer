@@ -312,8 +312,7 @@ def build_settings():
             ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
-            # buttons=["copy"], # gradio>=6
-            show_copy_button=True,
+            buttons=["copy"],
         )
 
         def on_language_change(value):
@@ -1034,13 +1033,9 @@ def open_window(
     multiprocessing.freeze_support()
 
     with (
-        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,  # gradio>=6
-        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
         gr.Blocks(
             theme=gr.themes.Default(),
             analytics_enabled=False,
-            css=css_file.read(),
-            js=js_file.read(),
         ) as demo,
     ):
         build_header()
@@ -1071,17 +1066,20 @@ def open_window(
                 ]
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
-
-    _URL = demo.queue(api_open=False).launch(
-        # css=css_file.read(), # gradio>=6
-        # js=js_file.read(),
-        # theme=gr.themes.Default(),
-        prevent_thread_lock=True,
-        quiet=True,
-        enable_monitoring=False,
-        allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
-        # footer_links=[], # gradio>=6
-    )[1]
+    with (
+        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
+        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+    ):
+        _URL = demo.queue(api_open=False).launch(
+            css=css_file.read(),
+            js=js_file.read(),
+            theme=gr.themes.Default(),
+            prevent_thread_lock=True,
+            quiet=True,
+            enable_monitoring=False,
+            allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
+            footer_links=[],
+        )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
