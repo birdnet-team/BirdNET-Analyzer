@@ -676,7 +676,6 @@ def show_species_choice(choice: str, file_input):
         return [
             gr.update(visible=False),
             gr.update(visible=True),
-            gr.update(visible=False),
             gr.update(visible=bool(file_input)),
         ]
     if choice == _PREDICT_SPECIES:
@@ -684,12 +683,10 @@ def show_species_choice(choice: str, file_input):
             gr.update(visible=True),
             gr.update(visible=False),
             gr.update(visible=False),
-            gr.update(visible=False),
         ]
 
     return [
         gr.update(visible=False),
-        gr.update(visible=True),
         gr.update(visible=False),
         gr.update(visible=False),
     ]
@@ -843,7 +840,6 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
             species_file_input = gr.File(
                 file_types=[".txt"], visible=False, show_label=False
             )
-            empty_col = gr.Column()
 
         list_df = gr.List(
             value=[],
@@ -856,7 +852,7 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
     species_list_radio.change(
         show_species_choice,
         inputs=[species_list_radio, species_file_input],
-        outputs=[position_row, species_file_input, empty_col, list_df],
+        outputs=[position_row, species_file_input, list_df],
         show_progress="hidden",
     )
 
