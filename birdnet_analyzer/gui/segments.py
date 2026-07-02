@@ -7,6 +7,14 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.segments.core import segments
 
+_SEGMENTS_TAB_INFO_TEXT = """
+Extract short audio segments from your recordings based on the results of a batch analysis, so you can validate detections or collect training data.
+
+Select the folder with the original audio, the folder that contains the analysis result files, and an output folder for the extracted segments.
+
+Set the confidence range and the number of segments to collect per species, then start the extraction. The resulting segments can be checked in the Review tab.
+"""
+
 
 @gu.gui_runtime_error_handler
 def _extract_segments(
@@ -81,7 +89,7 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
         output_directory_state = gr.State()
 
         gu.info_box(
-            description=loc.localize("segments-tab-info-text"),
+            description=_SEGMENTS_TAB_INFO_TEXT,  # loc.localize("segments-tab-info-text"),
             title=loc.localize("segments-tab-info-title"),
         )
 
