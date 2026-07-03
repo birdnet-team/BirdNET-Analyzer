@@ -8,6 +8,7 @@ import sys
 import warnings
 from collections.abc import Callable
 from contextlib import suppress
+from html import escape
 from typing import Literal, cast, get_args
 
 import gradio as gr
@@ -1017,6 +1018,22 @@ def computing_settings():
     return bs_number, producers_number, workers_number
 
 
+def info_box(description: str, title="Info") -> gr.Accordion:
+    title = escape(title)
+    description = escape(description)
+
+    with gr.Accordion(
+        title,
+        elem_classes="info-accordion-dark"
+        if settings.theme() == "dark"
+        else "info-accordion",
+        open=False,
+    ) as c:
+        gr.Markdown(description)
+
+        return c
+
+
 def slider_to_value(value: float):
     return max(0.1, 1.0 / (value * -1)) if value < 0 else max(1.0, float(value))
 
@@ -1111,4 +1128,4 @@ def open_window(
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False)
+    webview.start(private_mode=False, debug=True)

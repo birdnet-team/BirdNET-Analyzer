@@ -80,6 +80,11 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
         result_directory_state = gr.State()
         output_directory_state = gr.State()
 
+        gu.info_box(
+            description=loc.localize("segments-tab-info-text"),
+            title=loc.localize("segments-tab-info-title"),
+        )
+
         def select_directory_to_state_and_tb(state_key):
             selection = gu.select_directory(collect_files=False, state_key=state_key)
             if selection:
@@ -244,7 +249,7 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
             )
 
         extract_segments_btn = gr.Button(
-            loc.localize("segments-tab-extract-button-label"), variant="huggingface"
+            loc.localize("segments-tab-extract-button-label"), variant="primary"
         )
         result_grid = gr.List(headers=[""])
 

@@ -66,9 +66,8 @@ def start_training(
     use_mixup,
     upsampling_ratio,
     upsampling_mode,
-    model_format,
+    model_formats,
     audio_speed,
-    save_detached_classifier,
     progress=gr.Progress(),
 ):
     """Starts the training of a custom classifier.
@@ -103,7 +102,7 @@ def start_training(
         use_mixup: Whether to use mixup data augmentation.
         upsampling_ratio: Ratio for upsampling underrepresented classes.
         upsampling_mode: Mode for upsampling (repeat, mean, smote).
-        model_format: Format to save the trained model (tflite, raven, both).
+        model_formats: Formats to save the trained model (tflite, raven, detached).
         audio_speed: Speed factor for audio playback.
         save_detached_classifier: Whether to save the detached classifier.
     Returns:
@@ -147,7 +146,7 @@ def start_training(
     if cache_mode == "load" and not os.path.isfile(cache_file):
         raise gr.Error(loc.localize("validation-no-cache-file-selected"))
 
-    if model_save_mode == "append" and save_detached_classifier:
+    if model_save_mode == "append" and "detached" in model_formats:
         gr.Warning(loc.localize("training-tab-warning-detached-classifier-append"))
 
     def data_load_progression(num_files, num_total_files, label):
@@ -199,7 +198,7 @@ def start_training(
             mixup=use_mixup,
             upsampling_ratio=min(max(0, upsampling_ratio), 1),
             upsampling_mode=upsampling_mode,
-            model_format=model_format,
+            model_formats=model_formats,
             use_focal_loss=focal_loss,
             focal_loss_gamma=max(0.0, float(focal_loss_gamma)),
             focal_loss_alpha=max(0.0, min(1.0, float(focal_loss_alpha))),
@@ -222,7 +221,6 @@ def start_training(
             autotune_trials=int(autotune_trials),
             autotune_n_splits=int(autotune_folds),
             autotune_n_repeats=int(autotune_repeats),
-            save_detached_classifier=save_detached_classifier,
         )
     except Exception as e:
         if e.args and len(e.args) > 1:
@@ -252,6 +250,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         input_directory_state = gr.State()
         output_directory_state = gr.State()
         test_data_dir_state = gr.State()
+
+        gu.info_box(
+            description=loc.localize("training-tab-info-text"),
+            title=loc.localize("training-tab-info-title"),
+        )
 
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(
@@ -349,25 +352,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 interactive=True,
                 info=loc.localize("training-tab-classifier-textbox-info"),
             )
-            output_format = gr.Radio(
-                [
-                    "tflite",
-                    "raven",
-                    (loc.localize("training-tab-output-format-both"), "both"),
-                ],
+            output_formats = gr.CheckboxGroup(
+                ["tflite", "raven", "detached"],
                 value="tflite",
                 label=loc.localize("training-tab-output-format-radio-label"),
                 info=loc.localize("training-tab-output-format-radio-info"),
-                interactive=True,
-            )
-            save_detached_classifier_checkbox = gr.Checkbox(
-                False,
-                label=loc.localize(
-                    "training-tab-save-detached-classifier-checkbox-label"
-                ),
-                info=loc.localize(
-                    "training-tab-save-detached-classifier-checkbox-info"
-                ),
                 interactive=True,
             )
 
@@ -808,7 +797,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         )
         start_training_button = gr.Button(
             loc.localize("training-tab-start-training-button-label"),
-            variant="huggingface",
+            variant="primary",
         )
 
         def train_and_show_metrics(*args):
@@ -882,9 +871,8 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 use_mixup,
                 upsampling_ratio,
                 upsampling_mode,
-                output_format,
+                output_formats,
                 audio_speed_slider,
-                save_detached_classifier_checkbox,
             ],
             outputs=[train_history_plot, metrics_table],
         )

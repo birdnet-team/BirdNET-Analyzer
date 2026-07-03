@@ -144,6 +144,11 @@ def run_single_file_analysis(
 
 def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("single-tab-title")):
+        gu.info_box(
+            description=loc.localize("single-tab-info-text"),
+            title=loc.localize("single-tab-info-title"),
+        )
+
         with gr.Group(), gr.Row(equal_height=True):
             select_file_button = gr.Button(
                 loc.localize("single-tab-select-file-button-label"),
@@ -185,7 +190,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         single_file_analyze = gr.Button(
             loc.localize("analyze-start-button-label"),
-            variant="huggingface",
+            variant="primary",
             interactive=False,
         )
 
@@ -304,7 +309,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             try_generate_spectrogram,
             inputs=[audio_path_state, generate_spectrogram_cb],
             outputs=[spectrogram_group, spectrogram_output],
-            show_progress_on=generate_spectrogram_cb
+            show_progress_on=generate_spectrogram_cb,
         )
 
         select_file_button.click(

@@ -31,6 +31,11 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("species-tab-title")) as species_tab:
         output_directory_state = gr.State()
 
+        gu.info_box(
+            description=loc.localize("species-tab-info-text"),
+            title=loc.localize("species-tab-info-title"),
+        )
+
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(
                 loc.localize("species-tab-select-output-directory-button-label"),
@@ -86,7 +91,7 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
         locale = gu.locale()
 
         start_btn = gr.Button(
-            loc.localize("species-tab-start-button-label"), variant="huggingface"
+            loc.localize("species-tab-start-button-label"), variant="primary"
         )
         start_btn.click(
             run_species_list,
