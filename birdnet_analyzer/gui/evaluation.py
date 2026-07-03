@@ -372,21 +372,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         )
 
     with gr.Tab(loc.localize("eval-tab-title")):
-        # Custom CSS to match the layout style of other files and
-        # remove gray backgrounds.
-        gr.Markdown(
-            """
-            <style>
-            /* Grid layout for checkbox groups */
-            .custom-checkbox-group {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                grid-gap: 8px;
-            }
-            </style>
-            """
-        )
-
         processor_state = gr.State()
         pa_state = gr.State()
         predictions_state = gr.State()
