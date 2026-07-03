@@ -13,14 +13,6 @@ from birdnet_analyzer import utils
 if TYPE_CHECKING:
     from ty_extensions import Unknown
 
-_REVIEW_TAB_INFO_TEXT = """
-Review and validate audio clips one species at a time, for example the segments produced by the Segments tab. The input does not have to be extracted segments, any directory of audio files works.
-
-Select a directory, then step through the clips and mark each one as positive or negative. Marked files are moved into corresponding subfolders.
-
-Use the history and the logistic regression plot to keep track of your progress and to determine species specific confidence thresholds.
-"""
-
 POSITIVE_LABEL_DIR = "Positive"
 NEGATIVE_LABEL_DIR = "Negative"
 MATPLOTLIB_FIGURE_ID = "review-tab-spectrogram-plot"
@@ -157,7 +149,7 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
         )
 
         gu.info_box(
-            description=_REVIEW_TAB_INFO_TEXT,  # loc.localize("review-tab-info-text"),
+            description=loc.localize("review-tab-info-text"),
             title=loc.localize("review-tab-info-title"),
         )
 

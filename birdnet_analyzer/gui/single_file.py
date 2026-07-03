@@ -13,16 +13,6 @@ from birdnet_analyzer.analyze.core import (
     save_as_rtable,
 )
 
-_SINGLE_FILE_TAB_INFO_TEXT = """
-Use this tab to explore your data and to figure out suitable settings on a few samples before running a large batch analysis in the Batch Analysis tab.
-
-Click "Select file" to choose a single audio file. Enable the spectrogram option if you want to inspect the recording visually.
-
-Thresholding, audio and species options can be adjusted in the inference settings. To use a custom classifier or a model other than BirdNET (the default), select it in the model selection section.
-
-Press Analyze to run the model on the file. The detections appear in the table below, where you can play back each segment and download the results as a Raven table, CSV or Kaleidoscope file.
-"""
-
 MATPLOTLIB_FIGURE_NUM = "single-file-tab-spectrogram-plot"
 HEADER_START_LBL = loc.localize("single-tab-output-header-start")
 HEADER_END_LBL = loc.localize("single-tab-output-header-end")
@@ -155,7 +145,7 @@ def run_single_file_analysis(
 def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("single-tab-title")):
         gu.info_box(
-            description=_SINGLE_FILE_TAB_INFO_TEXT,  # loc.localize("single-tab-info-text"),
+            description=loc.localize("single-tab-info-text"),
             title=loc.localize("single-tab-info-title"),
         )
 

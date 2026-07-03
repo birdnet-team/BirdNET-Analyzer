@@ -6,14 +6,6 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import settings
 
-_SPECIES_TAB_INFO_TEXT = """
-Generate a species list for a given location that you can use to restrict the species considered during Single File and Batch Analysis.
-
-Choose where to save the list, then set the coordinates and the seasonal (week) filter. The frequency threshold controls how likely a species has to be at that location and time to be included.
-
-Export the list to a text file that you can later load in the species selection of the analysis tabs.
-"""
-
 
 @gu.gui_runtime_error_handler
 def run_species_list(
@@ -40,7 +32,7 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
         output_directory_state = gr.State()
 
         gu.info_box(
-            description=_SPECIES_TAB_INFO_TEXT,  # loc.localize("species-tab-info-text"),
+            description=loc.localize("species-tab-info-text"),
             title=loc.localize("species-tab-info-title"),
         )
 

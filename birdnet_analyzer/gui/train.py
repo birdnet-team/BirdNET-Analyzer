@@ -8,14 +8,6 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
 
-_TRAINING_TAB_INFO_TEXT = """
-Train your own classifier from a labeled dataset, where each subfolder of the training directory holds the audio samples of one class. If you don't have enough examples yet, you can use the Search tab to find similar calls of your target species first.
-
-Select the training data folder and choose where the trained classifier should be saved. You can optionally provide a separate test dataset and adjust the preprocessing and training hyperparameters.
-
-Start the training and inspect the resulting metrics. The trained classifier can afterwards be selected in the Single File and Batch Analysis tabs.
-"""
-
 _GRID_MAX_HEIGHT = 240
 
 
@@ -260,7 +252,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         test_data_dir_state = gr.State()
 
         gu.info_box(
-            description=_TRAINING_TAB_INFO_TEXT,  # loc.localize("training-tab-info-text"),
+            description=loc.localize("training-tab-info-text"),
             title=loc.localize("training-tab-info-title"),
         )
 

@@ -11,14 +11,6 @@ from birdnet_analyzer.search.core import get_database as get_search_database
 
 PAGE_SIZE = 6
 
-_SEARCH_TAB_INFO_TEXT = """
-Search an embeddings database created in the Embeddings tab to find sounds that are similar to a query sample.
-
-Select the embeddings database and the audio root it was built from, then choose a query clip and tune the search options such as the number of results.
-
-Run the search to browse the closest matches. The results can help you find additional examples of a target species, for instance to build a training dataset.
-"""
-
 
 def play_audio(audio_infos):
     from birdnet_analyzer import audio
@@ -121,7 +113,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
         hidden_audio = gr.Audio(visible="hidden", autoplay=True, type="numpy")
 
         gu.info_box(
-            description=_SEARCH_TAB_INFO_TEXT,  # loc.localize("embeddings-search-tab-info-text"),
+            description=loc.localize("embeddings-search-tab-info-text"),
             title=loc.localize("embeddings-search-tab-info-title"),
         )
 

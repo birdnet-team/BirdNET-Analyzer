@@ -16,14 +16,6 @@ from birdnet_analyzer.evaluation.assessment.performance_assessor import (
 )
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 
-_EVAL_TAB_INFO_TEXT = """
-If ground truth annotations exist for your data, you can evaluate the performance of BirdNET or your custom classifier and quantify how your settings affect the results.
-
-Upload your prediction files (from a batch analysis) together with the matching annotation files and confirm the column mapping so both can be aligned.
-
-Calculate the metrics, then inspect the plots and, if needed, export the resulting tables.
-"""
-
 
 class ProcessorState(typing.NamedTuple):
     """State of the DataProcessor."""
@@ -381,7 +373,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         plot_name_state = gr.State()
 
         gu.info_box(
-            description=_EVAL_TAB_INFO_TEXT,  # loc.localize("eval-tab-info-text"),
+            description=loc.localize("eval-tab-info-text"),
             title=loc.localize("eval-tab-info-title"),
         )
 

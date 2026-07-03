@@ -52,6 +52,10 @@ footer {
     background-color: #2980b9;
 }
 
+.info-accordion-dark button span {
+    font-weight: bolder;
+}
+
 .info-accordion {
     background-color: rgba(17, 38, 224, 0.6);
 }
@@ -62,4 +66,9 @@ footer {
 
 .info-accordion button {
     color: white;
+    font-weight: bolder;
+}
+
+.info-accordion button span {
+    font-weight: bolder;
 }

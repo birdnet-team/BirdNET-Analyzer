@@ -11,14 +11,6 @@ from birdnet_analyzer.embeddings.core import (
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
-_EMBEDDINGS_TAB_INFO_TEXT = """
-Create an embeddings database from a directory of audio files. The embeddings capture the acoustic content of your recordings and can later be queried in the Search tab.
-
-Select the source audio directory and the location for the embeddings database. Adjust the settings if needed, for example the audio options or overlap.
-
-Start the process to generate the database, which can then be searched for sounds similar to a query sample.
-"""
-
 
 def run_embeddings_with_tqdm_tracking(
     input_path,
@@ -126,7 +118,7 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
         db_directory_state = gr.State()
 
         gu.info_box(
-            description=_EMBEDDINGS_TAB_INFO_TEXT,  # loc.localize("embeddings-tab-info-text"),
+            description=loc.localize("embeddings-tab-info-text"),
             title=loc.localize("embeddings-tab-info-title"),
         )
 

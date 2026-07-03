@@ -4,20 +4,6 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 
-_MULTI_FILE_TAB_INFO_TEXT = """
-Select the directory that contains your audio files by clicking on "Select input directory (recursive)". The analyzer will find all audio files within, even if they are contained within subdirectories.
-
-The analysis will create result files, if you don't specify an output directory, they will be placed inside your input directory.
-
-Thresholding and audio options can be adjusted in the inference settings.
-
-To filter by species you can use custom species lists in the species selection section or generate a species list with given coordinates.
-
-If you have already trained a custom classifier or do not want to use BirdNET (the default) you can select another model in the model selection section. There are translated labels for the birdnet models, which will be applied to the result files.
-
-You can decide on the output formats you need in the output settings. All results be combined in one result file by default. To seperate them by audio file, check the split option.
-"""
-
 
 def _output_type_map():
     return {
@@ -128,7 +114,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         output_directory_predict_state = gr.State()
 
         gu.info_box(
-            description=_MULTI_FILE_TAB_INFO_TEXT,  # loc.localize("multi-tab-info-text"),
+            description=loc.localize("multi-tab-info-text"),
             title=loc.localize("multi-tab-info-title"),
         )
 
