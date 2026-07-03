@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -21,6 +22,18 @@ from birdnet_analyzer.config import (
     NON_EVENT_CLASSES,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
+
+# Internal batch size the encoding pipeline uses per inference call. On CPU the tflite
+# model resizes its input tensor whenever the batch shape changes, so small batches are
+# fastest: a sweep on BirdNET 2.4 showed ~24 ms/segment for batch sizes 1-4, rising to
+# ~42 ms/segment at 32. The big win over the previous code is not the batch size itself
+# but issuing a single run_arrays() call for many segments (amortising the ~1 s per-call
+# pipeline overhead) instead of one call per segment.
+ENCODE_BATCH_SIZE = 4
+# Number of decoded segments to buffer before flushing them through the encoding
+# pipeline in a single batched call. Bounds the peak memory of buffered raw audio
+# (~0.5 MiB per 3 s float32 segment at 48 kHz) while keeping per-call overhead low.
+ENCODE_CHUNK_SIZE = 1024
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -71,9 +84,8 @@ def save_sample_counts(labels, y_train, output_dir: str):
             writer.writerow([label, count])
 
 
-def _load_audio_file(
+def _read_and_crop_file(
     f,
-    session,
     label_vector,
     sample_rate=48000,
     fmin=0,
@@ -83,19 +95,35 @@ def _load_audio_file(
     sig_length=3.0,
     overlap=0.0,
     min_len=1.0,
-    model_sample_rate=48000,
 ):
-    """Load an audio file and extract features.
+    """Decode and crop one audio file into fixed-length signal segments.
+
+    This performs only the CPU-bound audio work (decode, resample, bandpass, crop) and
+    intentionally does *not* compute embeddings, so it can be run in parallel across
+    many files. The resulting segments are fed to the encoding pipeline in a single
+    batched call by the caller.
+
+    Any future per-sample audio augmentation should be applied to ``sig_splits`` here,
+    before the segments leave this function.
+
     Args:
         f: Path to the audio file.
         label_vector: The label vector for the file.
+        sample_rate: Target sample rate for decoding.
+        fmin: Minimum frequency for the bandpass filter.
+        fmax: Maximum frequency for the bandpass filter.
+        audio_speed: Speed factor applied while decoding.
+        crop_mode: Mode for cropping audio samples.
+        sig_length: Segment length in seconds.
+        overlap: Overlap between segments in seconds.
+        min_len: Minimum length of a segment in seconds.
+
     Returns:
-        A tuple of (x_train, y_train).
+        A tuple ``(sig_splits, labels)`` where ``sig_splits`` is a list of float32
+        segment arrays and ``labels`` repeats the file's ``label_vector`` once per
+        segment. Both lists are empty if the file could not be loaded or produced no
+        usable segment (e.g. a signal shorter than ``min_len``).
     """
-
-    x_train = []
-    y_train = []
-
     try:
         sig, rate = audio.open_audio_file(
             f,
@@ -108,33 +136,23 @@ def _load_audio_file(
     except Exception as e:
         print(f"\t Error when loading file {f}", flush=True)
         print(f"\t {e}", flush=True)
-        return np.array([]), np.array([])
+        return [], []
 
     if crop_mode == "center":
         sig_splits = [audio.crop_center(sig, rate, sig_length)]
     elif crop_mode == "first":
-        sig_splits = [audio.split_signal(sig, rate, sig_length, overlap, min_len)[0]]
+        # split_signal returns [] for signals shorter than min_len; slicing (not
+        # indexing [0]) keeps such files fail-soft instead of raising IndexError.
+        sig_splits = audio.split_signal(sig, rate, sig_length, overlap, min_len)[:1]
     elif crop_mode == "smart":
         sig_splits = audio.smart_crop_signal(sig, rate, sig_length, overlap, min_len)
     else:
         sig_splits = audio.split_signal(sig, rate, sig_length, overlap, min_len)
 
-    # turns out that batch size 1 is the fastest, probably because of having to resize
-    # the model input when the number of samples in a batch changes
-    # TODO: Still faster?
-    batch_size = 1
+    sig_splits = [np.asarray(s, dtype="float32") for s in sig_splits]
+    labels = [label_vector] * len(sig_splits)
 
-    for i in range(0, len(sig_splits), batch_size):
-        batch_sig = sig_splits[i : i + batch_size]
-        batch_label = [label_vector] * len(batch_sig)
-        embeddings = model_utils.get_embeddings_array_with_session(
-            session, [(sig, model_sample_rate) for sig in batch_sig]
-        )
-
-        x_train.extend(embeddings)
-        y_train.extend(batch_label)
-
-    return x_train, y_train
+    return sig_splits, labels
 
 
 def _load_training_data(
@@ -229,20 +247,46 @@ def _load_training_data(
 
     x_train, y_train, x_test, y_test = [], [], [], []
     model = load("acoustic", "2.4", "tf")
+    model_sr = int(model.get_sample_rate())
 
+    # Number of parallel decode workers for the read/crop phase. librosa/scipy release
+    # the GIL for the heavy numeric work, so threads recover most of the parallelism the
+    # old multiprocessing.Pool provided, without the pickling/spawn overhead.
+    n_decode_workers = threads if threads and threads > 0 else (os.cpu_count() or 1)
+
+    # NOTE: bandpass and speed are applied once, in open_audio_file (see
+    # _read_and_crop_file). The encoding session therefore uses its no-op defaults
+    # (bandpass_fmin=0, bandpass_fmax=15000, speed=1.0) to avoid applying them a second
+    # time. Segments are pushed through the pipeline in large batched run_arrays() calls
+    # (see load_data) rather than one call per segment.
     with model.encode_session(
-        bandpass_fmin=fmin,
-        bandpass_fmax=fmax,
-        speed=audio_speed,
-        batch_size=1,
+        batch_size=ENCODE_BATCH_SIZE,
         n_workers=None,
+        n_producers=1,
         progress_callback=None,
         prefetch_ratio=GLOBAL_PREFETCH_RATIO,
     ) as session:
 
         def load_data(data_path, allowed_folders):
-            x = []
-            y = []
+            # Accumulated embeddings/labels, plus a buffer of not-yet-encoded segments.
+            x_chunks: list[np.ndarray] = []
+            y_chunks: list[np.ndarray] = []
+            seg_buffer: list[np.ndarray] = []
+            lab_buffer: list[np.ndarray] = []
+
+            def flush():
+                """Encode buffered segments in one batched call, keeping valid rows."""
+                if not seg_buffer:
+                    return
+                embeddings, valid = model_utils.encode_arrays_batched(
+                    session, [(s, model_sr) for s in seg_buffer]
+                )
+                labels = np.asarray(lab_buffer, dtype="float32")
+                x_chunks.append(embeddings[valid])
+                y_chunks.append(labels[valid])
+                seg_buffer.clear()
+                lab_buffer.clear()
+
             folders = sorted(utils.list_subdirectories(data_path))
 
             for folder in folders:
@@ -275,25 +319,38 @@ def _load_training_data(
 
                 num_files_processed = 0
 
+                # Phase A: decode + crop all files in this folder in parallel.
+                # Phase B: encode buffered segments in batched flushes (across folders).
                 with tqdm.tqdm(
                     total=len(files), desc=f" - loading '{folder}'", unit="f"
-                ) as progress_bar:
-                    for f in files:
-                        result = _load_audio_file(
+                ) as progress_bar, ThreadPoolExecutor(
+                    max_workers=n_decode_workers
+                ) as executor:
+                    futures = [
+                        executor.submit(
+                            _read_and_crop_file,
                             f,
-                            session,
-                            label_vector=label_vector,
+                            label_vector,
+                            sample_rate=model_sr,
                             fmin=fmin,
                             fmax=fmax,
                             audio_speed=audio_speed,
                             crop_mode=crop_mode,
                             overlap=overlap,
                             min_len=min_len,
-                            model_sample_rate=model.get_sample_rate(),
                         )
-                        if len(result[0]) > 0:
-                            x += result[0]
-                            y += result[1]
+                        for f in files
+                    ]
+
+                    # Consume in submission order (not as_completed) so the resulting
+                    # sample order is deterministic: downstream stratified k-fold splits
+                    # and shuffles use fixed seeds and rely on a stable input order.
+                    # Decoding still runs fully in parallel across the pool; only result
+                    # consumption is ordered, so this costs virtually nothing.
+                    for fut in futures:
+                        sig_splits, labels = fut.result()
+                        seg_buffer.extend(sig_splits)
+                        lab_buffer.extend(labels)
 
                         num_files_processed += 1
                         progress_bar.update(1)
@@ -301,7 +358,21 @@ def _load_training_data(
                         if progress_callback:
                             progress_callback(num_files_processed, len(files), folder)
 
-            return np.array(x, dtype="float32"), np.array(y, dtype="float32")
+                        if len(seg_buffer) >= ENCODE_CHUNK_SIZE:
+                            flush()
+
+            flush()
+
+            if not x_chunks:
+                return (
+                    np.array([], dtype="float32"),
+                    np.array([], dtype="float32"),
+                )
+
+            return (
+                np.concatenate(x_chunks).astype("float32"),
+                np.concatenate(y_chunks).astype("float32"),
+            )
 
         x_train, y_train = load_data(audio_input, train_folders)
 
