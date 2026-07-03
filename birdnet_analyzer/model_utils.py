@@ -128,6 +128,41 @@ def get_embeddings_array_with_session(
     return result.embeddings[:, 0, :]
 
 
+def encode_arrays_batched(
+    session: AcousticEncodingSession,
+    signals: list[tuple[np.ndarray, int]],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Encode a batch of single-segment signals through an open encoding session.
+
+    Unlike :func:`get_embeddings_array_with_session`, this runs the whole batch through
+    the library pipeline in a single call (enabling worker parallelism and real
+    batching) and reports which inputs produced a valid embedding.
+
+    Args:
+        session: An open ``AcousticEncodingSession``.
+        signals: A list of ``(signal, sample_rate)`` tuples. Each signal must be exactly
+            one model segment long (e.g. 3 s) so that it yields exactly one segment.
+
+    Returns:
+        A tuple ``(embeddings, valid_mask)`` where ``embeddings`` has shape
+        ``(n_inputs, embed_dim)`` and ``valid_mask`` is a boolean array of shape
+        ``(n_inputs,)`` that is ``True`` where the corresponding input produced a valid
+        embedding. Inputs that could not be processed (e.g. failed decoding) are marked
+        ``False`` and their embedding row should be discarded by the caller.
+    """
+    import numpy as np
+
+    result = session.run_arrays(signals)
+
+    # embeddings/embeddings_masked have shape (n_inputs, n_segments, embed_dim).
+    # A segment is invalid when every value in its mask row is True (see
+    # AcousticEncodingResultBase.to_structured_array). Each input is a single segment.
+    embeddings = result.embeddings[:, 0, :]
+    valid_mask = ~result.embeddings_masked[:, 0, :].all(axis=1)
+
+    return embeddings, np.asarray(valid_mask, dtype=bool)
+
+
 def get_embeddings_array(
     signals: list[np.ndarray],
     version: ACOUSTIC_MODEL_VERSIONS = "2.4",
