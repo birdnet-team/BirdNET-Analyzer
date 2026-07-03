@@ -155,8 +155,19 @@ def encode_arrays_batched(
     result = session.run_arrays(signals)
 
     # embeddings/embeddings_masked have shape (n_inputs, n_segments, embed_dim).
+    # This helper assumes each input is exactly one model segment. Guard against a
+    # caller passing longer signals (or a mismatched session config), which would
+    # otherwise silently drop the extra segments taken by the [:, 0, :] slice below.
+    n_segments = result.embeddings.shape[1]
+    if n_segments != 1:
+        raise ValueError(
+            "encode_arrays_batched expects one segment per input, but the session "
+            f"produced {n_segments} segments per input. Pass signals that are exactly "
+            "one model segment long (e.g. 3 s)."
+        )
+
     # A segment is invalid when every value in its mask row is True (see
-    # AcousticEncodingResultBase.to_structured_array). Each input is a single segment.
+    # AcousticEncodingResultBase.to_structured_array).
     embeddings = result.embeddings[:, 0, :]
     valid_mask = ~result.embeddings_masked[:, 0, :].all(axis=1)
 

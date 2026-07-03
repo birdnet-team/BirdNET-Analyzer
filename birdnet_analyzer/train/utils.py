@@ -120,8 +120,9 @@ def _read_and_crop_file(
 
     Returns:
         A tuple ``(sig_splits, labels)`` where ``sig_splits`` is a list of float32
-        segment arrays and ``labels`` is a list with one copy of ``label_vector`` per
-        segment. Both lists are empty if the file could not be loaded.
+        segment arrays and ``labels`` repeats the file's ``label_vector`` once per
+        segment. Both lists are empty if the file could not be loaded or produced no
+        usable segment (e.g. a signal shorter than ``min_len``).
     """
     try:
         sig, rate = audio.open_audio_file(
@@ -140,7 +141,9 @@ def _read_and_crop_file(
     if crop_mode == "center":
         sig_splits = [audio.crop_center(sig, rate, sig_length)]
     elif crop_mode == "first":
-        sig_splits = [audio.split_signal(sig, rate, sig_length, overlap, min_len)[0]]
+        # split_signal returns [] for signals shorter than min_len; slicing (not
+        # indexing [0]) keeps such files fail-soft instead of raising IndexError.
+        sig_splits = audio.split_signal(sig, rate, sig_length, overlap, min_len)[:1]
     elif crop_mode == "smart":
         sig_splits = audio.smart_crop_signal(sig, rate, sig_length, overlap, min_len)
     else:
@@ -339,6 +342,11 @@ def _load_training_data(
                         for f in files
                     ]
 
+                    # Consume in submission order (not as_completed) so the resulting
+                    # sample order is deterministic: downstream stratified k-fold splits
+                    # and shuffles use fixed seeds and rely on a stable input order.
+                    # Decoding still runs fully in parallel across the pool; only result
+                    # consumption is ordered, so this costs virtually nothing.
                     for fut in futures:
                         sig_splits, labels = fut.result()
                         seg_buffer.extend(sig_splits)

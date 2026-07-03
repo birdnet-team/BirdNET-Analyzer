@@ -51,7 +51,7 @@ def test_read_and_crop_center_returns_single_segment(sine_wav):
     assert len(labels) == 1
     assert segs[0].dtype == np.float32
     assert segs[0].shape[0] == int(SIG_LENGTH * SR)
-    # each segment gets its own copy of the label vector
+    # each segment is labelled with the file's label vector
     np.testing.assert_array_equal(labels[0], _label())
 
 
@@ -76,6 +76,29 @@ def test_read_and_crop_segments_returns_multiple_aligned(sine_wav):
 def test_read_and_crop_bad_file_returns_empty():
     segs, labels = _read_and_crop_file(
         "does_not_exist.wav", _label(), sample_rate=SR, crop_mode="center"
+    )
+    assert segs == []
+    assert labels == []
+
+
+@pytest.fixture
+def short_wav():
+    """A 0.4 s wav -> shorter than the 1 s min_len, so split_signal yields nothing."""
+    duration = 0.4
+    t = np.linspace(0, duration, int(SR * duration), endpoint=False, dtype="float32")
+    sig = (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32")
+    fd, path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    sf.write(path, sig, SR)
+    yield path
+    os.remove(path)
+
+
+def test_read_and_crop_first_short_file_fails_soft(short_wav):
+    # 'first' mode used to index [0] into a possibly-empty split list -> IndexError.
+    # A sub-min_len file must fail soft (no segment), not crash the threaded loader.
+    segs, labels = _read_and_crop_file(
+        short_wav, _label(), sample_rate=SR, crop_mode="first", sig_length=SIG_LENGTH
     )
     assert segs == []
     assert labels == []
@@ -129,3 +152,15 @@ def test_encode_arrays_batched_drops_masked_rows():
     kept = embeddings[valid]
     np.testing.assert_array_equal(kept[0], emb[0, 0])
     np.testing.assert_array_equal(kept[1], emb[2, 0])
+
+
+def test_encode_arrays_batched_rejects_multi_segment():
+    # If the session yields more than one segment per input, [:, 0, :] would silently
+    # drop the rest -> the helper must raise instead.
+    emb = np.zeros((2, 3, 4), dtype="float32")  # 3 segments per input
+    masked = np.zeros((2, 3, 4), dtype=bool)
+    session = _FakeSession(_FakeResult(emb, masked))
+
+    signals = [(np.zeros(4, dtype="float32"), SR) for _ in range(2)]
+    with pytest.raises(ValueError, match="one segment per input"):
+        model_utils.encode_arrays_batched(session, signals)
