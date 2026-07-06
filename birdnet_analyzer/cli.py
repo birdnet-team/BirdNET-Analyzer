@@ -9,7 +9,7 @@ from birdnet.globals import (
     MODEL_LANGUAGES,
 )
 
-from birdnet_analyzer.config import AUTOTUNE_METRICS
+from birdnet_analyzer.config import AUTOTUNE_METRICS, TRAINED_MODEL_OUTPUT_FORMATS
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ASCII_LOGO = r"""                        
@@ -888,10 +888,11 @@ def train_parser():
         help="Upsampling mode.",
     )
     parser.add_argument(
-        "--model_format",
-        default="tflite",
-        choices=["tflite", "raven", "both"],
-        help="Model output format.",
+        "--model_formats",
+        nargs="+",
+        default=["tflite"],
+        choices=get_args(TRAINED_MODEL_OUTPUT_FORMATS),
+        help="Model output format(s). One or more of 'tflite', 'raven', 'detached'.",
     )
     parser.add_argument(
         "--model_save_mode",

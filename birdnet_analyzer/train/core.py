@@ -32,7 +32,8 @@ def train(
     mixup: bool = False,
     upsampling_ratio: float = 0.0,
     upsampling_mode: UPSAMPLING_MODES = "repeat",
-    model_format: TRAINED_MODEL_OUTPUT_FORMATS = "tflite",
+    model_formats: list[TRAINED_MODEL_OUTPUT_FORMATS]
+    | TRAINED_MODEL_OUTPUT_FORMATS = "tflite",
     model_save_mode: TRAINED_MODEL_SAVE_MODES = "replace",
     save_cache_to: str | None = None,
     threads: int = 1,
@@ -80,8 +81,8 @@ def train(
                                             classes. Defaults to 0.0.
         upsampling_mode (Literal["repeat", "mean", "smote"], optional): Mode for
             upsampling. Defaults to "repeat".
-        model_format (Literal["tflite", "raven", "both"], optional): Format to save the
-            trained model. Defaults to "tflite".
+        model_formats (list[Literal["tflite", "raven", "detached"]] | str, optional):
+            One or more formats to save the trained model. Defaults to "tflite".
         model_save_mode (Literal["replace", "append"], optional): Save mode for the
             model. Defaults to "replace".
         save_cache_to (str | None, optional): Path to save the cache file.
@@ -128,7 +129,7 @@ def train(
         mixup=mixup,
         upsampling_ratio=upsampling_ratio,
         upsampling_mode=upsampling_mode,
-        model_format=model_format,
+        model_formats=model_formats,
         model_save_mode=model_save_mode,
         save_cache_to=save_cache_to,
         threads=threads,
