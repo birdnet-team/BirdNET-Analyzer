@@ -379,7 +379,9 @@ def _merge_consecutive_segments(
         Input predictions containing at least "input", "species_name", "start_time",
         "end_time" and "confidence".
     merge_consecutive : int
-        Number of consecutive rows that must be contiguous to merge them.
+        Maximum number of consecutive contiguous rows to collapse into a single
+        segment. Runs longer than this are split into chunks of at most
+        ``merge_consecutive`` rows; runs shorter than it are still merged.
     hop_size : float, optional
         Allowed tolerance (in seconds) between the end of one segment and the start of
         the next to consider them consecutive, by default 3.0.
@@ -445,7 +447,8 @@ def _merge_consecutive_segments(
             else:
                 break
 
-        if len(window) == merge_consecutive:
+        # Merge whatever consecutive rows we collected (1 up to merge_consecutive).
+        if len(window) > 1:
             merged_row = window[0].copy()
             merged_row["start_time"] = window[0]["start_time"]
             merged_row["end_time"] = window[-1]["end_time"]
@@ -461,10 +464,10 @@ def _merge_consecutive_segments(
                     merged_row["confidence"] = avg_confidence
 
             merged_records.append(merged_row.to_dict())
-            i += merge_consecutive
         else:
             merged_records.append(window[0].to_dict())
-            i += 1
+
+        i += len(window)
 
     merged_df = pd.DataFrame.from_records(merged_records, columns=df.columns)
     return merged_df.sort_values(by=["input", "start_time", "end_time", "species_name"])
