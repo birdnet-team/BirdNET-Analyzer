@@ -143,19 +143,28 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             ],
         )
 
+        preview_limit = 100
+
         def select_directory_on_empty():
             folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
             if folder:
-                files_and_durations = gu.get_audio_files_and_durations(folder)
-                if len(files_and_durations) > 100:
+                # Only load durations for the first files shown in the preview.
+                # Fetch one extra to detect whether more files exist without
+                # walking (and probing durations for) the whole directory.
+                files_and_durations = gu.get_audio_files_and_durations(
+                    folder, max_files=preview_limit + 1
+                )
+                if len(files_and_durations) > preview_limit:
+                    # Count the remaining files with a fast walk that skips durations.
+                    total = gu.count_audio_files(folder)
                     return [
                         folder,
                         folder,
                         [
-                            *files_and_durations[:100],
+                            *files_and_durations[:preview_limit],
                             (
-                                f"{len(files_and_durations) - 100} "
+                                f"{total - preview_limit} "
                                 f"{loc.localize('multi-tab-more-files-label')}",
                                 "...",
                             ),

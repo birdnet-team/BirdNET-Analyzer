@@ -150,6 +150,18 @@ def get_audio_files_and_durations(folder, max_files=None):
     return files_and_durations
 
 
+def count_audio_files(folder):
+    """Counts the audio files in a folder without collecting their paths or durations.
+
+    Args:
+        folder (str): The path to the folder containing audio files.
+
+    Returns:
+        int: The number of audio files in the folder (recursively).
+    """
+    return utils.count_audio_files(folder)
+
+
 def set_window(window):
     """
     Sets the global _WINDOW variable to the provided window object.
