@@ -145,6 +145,31 @@ def collect_audio_files(path: str, max_files: int | None = None):
     return sorted(files)
 
 
+def count_audio_files(path: str) -> int:
+    """Counts all audio files in the given directory.
+
+    Faster than ``collect_audio_files`` when only the number of files is needed,
+    as it neither stores nor sorts the paths.
+
+    Args:
+        path: The directory to be searched.
+
+    Returns:
+        The number of audio files in the directory (recursively).
+    """
+    count = 0
+
+    for _, _, flist in os.walk(path):
+        for f in flist:
+            if (
+                not f.startswith(".")
+                and f.rsplit(".", 1)[-1].lower() in ALLOWED_FILETYPES
+            ):
+                count += 1
+
+    return count
+
+
 def read_lines(
     path: str | Path | None, trim: bool = False, fail_on_blank_lines: bool = False
 ) -> list[str]:
