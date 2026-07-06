@@ -53,12 +53,14 @@ def spectrogram_from_file(
     speed=1.0,
     sig_fmin=0,
     sig_fmax=15000,
+    show_freq_axis=False,
 ):
     """
     Generate a spectrogram from an audio file.
 
     Parameters:
     path (str): The path to the audio file.
+    show_freq_axis (bool): Whether to display the frequency scale (y-axis).
 
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
@@ -76,16 +78,19 @@ def spectrogram_from_file(
         sig_fmax=sig_fmax,
     )
 
-    return spectrogram_from_audio(s, sr, fig_num=fig_num, fig_size=fig_size)
+    return spectrogram_from_audio(
+        s, sr, fig_num=fig_num, fig_size=fig_size, show_freq_axis=show_freq_axis
+    )
 
 
-def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None):
+def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=False):
     """
     Generate a spectrogram from an audio signal.
 
     Parameters:
     s: The signal
     sr: The sample rate
+    show_freq_axis (bool): Whether to display the frequency scale (y-axis).
 
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
@@ -94,6 +99,7 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None):
     import librosa.display
     import matplotlib
     import matplotlib.pyplot as plt
+    import matplotlib.ticker
     import numpy as np
 
     matplotlib.use("agg")
@@ -111,13 +117,29 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None):
 
     ax = f.add_subplot(111)
 
-    ax.set_axis_off()
-    f.tight_layout(pad=0)
-
     D = librosa.stft(s, n_fft=1024, hop_length=512)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
 
-    return librosa.display.specshow(S_db, ax=ax, n_fft=1024, hop_length=512).figure
+    spec = librosa.display.specshow(
+        S_db,
+        ax=ax,
+        sr=sr,
+        n_fft=1024,
+        hop_length=512,
+        y_axis="linear" if show_freq_axis else None,
+    )
+
+    if show_freq_axis:
+        ax.yaxis.set_major_formatter(
+            matplotlib.ticker.FuncFormatter(lambda x, _: f"{x / 1000:g}")
+        )
+        ax.set_ylabel("Frequency (kHz)")
+        f.tight_layout(pad=.5)
+    else:
+        ax.set_axis_off()
+        f.tight_layout(pad=0)
+
+    return spec.figure
 
 
 def collect_audio_files(path: str, max_files: int | None = None):

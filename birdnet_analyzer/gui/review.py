@@ -252,7 +252,10 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
                         next_file, label=os.path.basename(next_file)
                     ),
                     spectrogram_image: utils.spectrogram_from_file(
-                        next_file, fig_num=MATPLOTLIB_FIGURE_ID, fig_size=(8, 4)
+                        next_file,
+                        fig_num=MATPLOTLIB_FIGURE_ID,
+                        fig_size=(8, 4),
+                        show_freq_axis=True,
                     ),
                 }
 
@@ -421,7 +424,10 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
                         value=todo_files[0], label=os.path.basename(todo_files[0])
                     ),
                     spectrogram_image: utils.spectrogram_from_file(
-                        todo_files[0], fig_num=MATPLOTLIB_FIGURE_ID, fig_size=(8, 4)
+                        todo_files[0],
+                        fig_num=MATPLOTLIB_FIGURE_ID,
+                        fig_size=(8, 4),
+                        show_freq_axis=True,
                     ),
                     no_samles_label: gr.Label(visible=False),
                 }
