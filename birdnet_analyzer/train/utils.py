@@ -447,7 +447,6 @@ def train_model(
     on_epoch_end=None,
     on_trial_result=None,
     on_data_load_end=None,
-    save_detached_classifier: bool = False,
 ):
     """Trains a custom classifier.
 
@@ -805,7 +804,7 @@ def train_model(
             model.save_detached_classifier(
                 classifier,
                 output,
-                labels=labels if model_save_mode == "append" else None,
+                labels=labels,
             )
     except Exception as e:
         raise Exception("Error saving model") from e
