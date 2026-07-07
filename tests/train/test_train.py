@@ -51,7 +51,9 @@ def test_train_cli(mock_train_model, setup_test_environment):
 
 
 @patch("birdnet_analyzer.train.utils.train_model")
-def test_train_cli_accepts_full_parser_surface(mock_train_model, setup_test_environment):
+def test_train_cli_accepts_full_parser_surface(
+        mock_train_model, setup_test_environment
+    ):
     env = setup_test_environment
 
     parser = train_parser()

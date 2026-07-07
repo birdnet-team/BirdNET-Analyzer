@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from birdnet_analyzer.cli import analyzer_parser
 from birdnet_analyzer.analyze.core import analyze
+from birdnet_analyzer.cli import analyzer_parser
 
 
 @pytest.fixture
