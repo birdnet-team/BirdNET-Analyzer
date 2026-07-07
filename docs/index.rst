@@ -55,7 +55,7 @@ Feel free to use BirdNET for your acoustic analyses and research. If you do, ple
 About
 -----
 
-Developed by the `K. Lisa Yang Center for Conservation Bioacoustics <https://www.birds.cornell.edu/ccb/>`_ at the `Cornell Lab of Ornithology <https://www.birds.cornell.edu/home>`_ in collaboration with `Chemnitz University of Technology <https://www.tu-chemnitz.de/index.html>`_.
+Developed by the `Cornell K. Lisa Yang Center for Conservation Bioacoustics <https://www.birds.cornell.edu/ccb/>`_ at the `Cornell Lab of Ornithology <https://www.birds.cornell.edu/home>`_ in collaboration with `Chemnitz University of Technology <https://www.tu-chemnitz.de/index.html>`_.
 
 Go to https://birdnet.cornell.edu to learn more about the project.
 
@@ -95,7 +95,7 @@ Funding
 -------
 
 This project is supported by Jake Holshuh (Cornell class of ´69) and The Arthur Vining Davis Foundations.
-Our work in the K. Lisa Yang Center for Conservation Bioacoustics is made possible by the generosity of K. Lisa Yang to advance innovative conservation technologies to inspire and inform the conservation of wildlife and habitats.
+Our work in the Cornell K. Lisa Yang Center for Conservation Bioacoustics is made possible by the generosity of K. Lisa Yang to advance innovative conservation technologies to inspire and inform the conservation of wildlife and habitats.
 
 The development of BirdNET is supported by the German Federal Ministry of Education and Research through the project “BirdNET+” (FKZ 01|S22072).
 The German Federal Ministry for the Environment, Nature Conservation and Nuclear Safety contributes through the “DeepBirdDetect” project (FKZ 67KI31040E).

@@ -793,7 +793,7 @@ def save_raven_model(
             "modelDescription": "Custom classifier trained with BirdNET "
             + model_version
             + " embeddings.\n"
-            + "BirdNET was developed by the K. Lisa Yang Center for Conservation "
+            + "BirdNET was developed by the Cornell K. Lisa Yang Center for Conservation "
             + "Bioacoustics at the Cornell Lab of Ornithology in collaboration with "
             + "Chemnitz University of Technology.\n\nhttps://birdnet.cornell.edu",
             "modelTypeConfig": {"modelType": "RECOGNITION"},

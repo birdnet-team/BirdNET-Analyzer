@@ -53,7 +53,7 @@ Models can be found on [Zenodo](https://zenodo.org/records/15050749).
 
 ## About
 
-Developed by the [K. Lisa Yang Center for Conservation Bioacoustics](https://www.birds.cornell.edu/ccb/) at the [Cornell Lab of Ornithology](https://www.birds.cornell.edu/home) in collaboration with [Chemnitz University of Technology](https://www.tu-chemnitz.de/index.html.en).
+Developed by the [Cornell K. Lisa Yang Center for Conservation Bioacoustics](https://www.birds.cornell.edu/ccb/) at the [Cornell Lab of Ornithology](https://www.birds.cornell.edu/home) in collaboration with [Chemnitz University of Technology](https://www.tu-chemnitz.de/index.html.en).
 
 Go to https://birdnet.cornell.edu to learn more about the project.
 
@@ -72,7 +72,7 @@ Please ensure you review and adhere to the specific license terms provided with 
 
 ## Funding
 
-Our work in the K. Lisa Yang Center for Conservation Bioacoustics is made possible by the generosity of K. Lisa Yang to advance innovative conservation technologies to inspire and inform the conservation of wildlife and habitats.
+Our work in the Cornell K. Lisa Yang Center for Conservation Bioacoustics is made possible by the generosity of K. Lisa Yang to advance innovative conservation technologies to inspire and inform the conservation of wildlife and habitats.
 
 The development of BirdNET is supported by the German Federal Ministry of Research, Technology and Space (FKZ 01|S22072), the German Federal Ministry for the Environment, Climate Action, Nature Conservation and Nuclear Safety (FKZ 67KI31040E), the German Federal Ministry of Economic Affairs and Energy (FKZ 16KN095550), the Deutsche Bundesstiftung Umwelt (project 39263/01) and the European Social Fund.
 
