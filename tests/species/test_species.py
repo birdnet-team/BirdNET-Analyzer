@@ -40,3 +40,35 @@ def test_species_cli(mock_get_species_list, setup_test_environment):
     mock_get_species_list.assert_called_once_with(
         lat=-1, lon=-1, week=None, threshold=0.03, lang="en_us"
     )
+
+
+@patch("birdnet_analyzer.species.utils.get_species_list")
+def test_species_cli_accepts_full_parser_surface(
+    mock_get_species_list, setup_test_environment
+):
+    env = setup_test_environment
+
+    mock_get_species_list.return_value = ["Species1", "Species2"]
+
+    parser = species_parser()
+    args = parser.parse_args(
+        [
+            "--lat",
+            "42.5",
+            "--lon",
+            "-76.45",
+            "--week",
+            "20",
+            "--sf_thresh",
+            "0.12",
+            "--locale",
+            "de",
+            env["output_dir"],
+        ]
+    )
+
+    species(**vars(args))
+
+    mock_get_species_list.assert_called_once_with(
+        lat=42.5, lon=-76.45, week=20, threshold=0.12, lang="de"
+    )

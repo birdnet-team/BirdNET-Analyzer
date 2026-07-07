@@ -71,6 +71,64 @@ def test_embeddings_cli(
     assert call_kwargs[1]["version"] == "2.4"
 
 
+@patch("birdnet_analyzer.embeddings.core.create_csv_output")
+@patch("birdnet_analyzer.embeddings.core._check_database_settings")
+@patch("birdnet_analyzer.embeddings.core.get_or_create_database")
+@patch("birdnet_analyzer.model_utils.get_embeddings")
+def test_embeddings_cli_accepts_full_parser_surface(
+    mock_get_embeddings: MagicMock,
+    mock_get_db: MagicMock,
+    mock_check_settings: MagicMock,
+    mock_csv_output: MagicMock,
+    setup_test_environment,
+):
+    env = setup_test_environment
+
+    mock_get_embeddings.return_value = _make_empty_encoding_result()
+    mock_db = MagicMock()
+    mock_get_db.return_value = mock_db
+
+    parser = embeddings_parser()
+    file_output = os.path.join(env["output_dir"], "embeddings.csv")
+    args = parser.parse_args(
+        [
+            "--input",
+            env["input_dir"],
+            "-db",
+            env["output_dir"],
+            "--overlap",
+            "0.5",
+            "--audio_speed",
+            "1.1",
+            "--fmin",
+            "100",
+            "--fmax",
+            "10000",
+            "-b",
+            "4",
+            "--n_workers",
+            "2",
+            "--n_producers",
+            "3",
+            "--file_output",
+            file_output,
+        ]
+    )
+
+    embeddings(**vars(args))
+
+    mock_get_embeddings.assert_called_once()
+    call_kwargs = mock_get_embeddings.call_args.kwargs
+    assert call_kwargs["batch_size"] == 4
+    assert call_kwargs["overlap_duration_s"] == 0.5
+    assert call_kwargs["bandpass_fmin"] == 100
+    assert call_kwargs["bandpass_fmax"] == 10000
+    assert call_kwargs["speed"] == 1.1
+    assert call_kwargs["n_workers"] == 2
+    assert call_kwargs["n_producers"] == 3
+    assert mock_csv_output.called
+
+
 @patch("birdnet_analyzer.embeddings.core._ensure_recording")
 @patch("birdnet_analyzer.embeddings.core._ensure_deployment")
 @patch("birdnet_analyzer.embeddings.core._check_database_settings")

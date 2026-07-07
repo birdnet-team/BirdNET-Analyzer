@@ -3,12 +3,14 @@ import os
 import platform
 import shutil
 import tempfile
+from unittest.mock import patch
 
 import birdnet
 import numpy as np
 import pandas as pd
 import pytest
 
+from birdnet_analyzer.cli import analyzer_parser
 from birdnet_analyzer.analyze.core import analyze
 
 
@@ -29,6 +31,89 @@ def setup_test_environment():
     }
 
     shutil.rmtree(test_dir)
+
+
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_cli_accepts_full_parser_surface(
+    mock_run_inference, setup_test_environment
+):
+    env = setup_test_environment
+
+    mock_run_inference.return_value = object()
+
+    parser = analyzer_parser()
+    species_list_path = os.path.join(env["test_dir"], "species_list.txt")
+    classifier_path = os.path.join(env["test_dir"], "classifier.tflite")
+    cc_species_list_path = os.path.join(env["test_dir"], "classifier_labels.txt")
+    args = parser.parse_args(
+        [
+            env["input_dir"],
+            "--output",
+            env["output_dir"],
+            "--birdnet",
+            "2.4",
+            "--min_conf",
+            "0.1",
+            "--classifier",
+            classifier_path,
+            "--cc_species_list",
+            cc_species_list_path,
+            "--slist",
+            species_list_path,
+            "--sensitivity",
+            "1.2",
+            "--overlap",
+            "0.5",
+            "--fmin",
+            "100",
+            "--fmax",
+            "10000",
+            "--audio_speed",
+            "1.1",
+            "-b",
+            "4",
+            "--n_workers",
+            "2",
+            "--n_producers",
+            "3",
+            "--rtype",
+            "csv",
+            "parquet",
+            "--additional_columns",
+            "lat",
+            "lon",
+            "week",
+            "model",
+            "overlap",
+            "sensitivity",
+            "species_list",
+            "min_conf",
+            "--top_n",
+            "5",
+            "--merge_consecutive",
+            "2",
+            "--locale",
+            "de",
+            "--use_perch",
+            "--split_tables",
+        ]
+    )
+
+    kwargs = vars(args)
+    assert kwargs["use_perch"] is True
+    kwargs.pop("use_perch", None)
+
+    analyze(**kwargs, _return_only=True)
+
+    mock_run_inference.assert_called_once()
+    call_kwargs = mock_run_inference.call_args.kwargs
+    assert call_kwargs["top_k"] == 5
+    assert call_kwargs["batch_size"] == 4
+    assert call_kwargs["n_workers"] == 2
+    assert call_kwargs["n_producers"] == 3
+    assert call_kwargs["bandpass_fmin"] == 100
+    assert call_kwargs["bandpass_fmax"] == 10000
+    assert call_kwargs["sigmoid_sensitivity"] == 1.2
 
 
 def test_analyze_with_real_custom_classifier(setup_test_environment):
