@@ -190,6 +190,7 @@ def create_csv_output(output_path: str, database: str):
                 f"{recording.filename},{start},{end},"
                 f'"{",".join(map(str, embedding.tolist()))}"\n'
             )
+    db.db.close()
 
 
 def _ensure_deployment(
