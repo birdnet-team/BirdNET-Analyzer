@@ -46,7 +46,7 @@ dependencies = [
 train = ["optuna", "optuna-integration"]
 gui = [
     "birdnet-analyzer[train,embeddings]",
-    "gradio==6.19.0",
+    "gradio==6.20.0",
     "pywebview>=6.1,<7.0",
     "plotly[express]",
     "pywin32;platform_system=='Windows'",
