@@ -932,10 +932,5 @@ def train_parser():
         choices=get_args(AUTOTUNE_METRICS),
         help="Metric to optimize during hyperparameter tuning. This can be any metric that is returned by the training process and is included in the training history object. Common choices are 'val_loss', 'val_AUPRC' or 'val_AUROC'.",
     )
-    parser.add_argument(
-        "--save_detached_classifier",
-        action="store_true",
-        help="Whether to additionally save a detached version of the trained classifier. This can be useful if you want to use the trained classifier in another model or application without having to load the entire model.",
-    )
 
     return parser

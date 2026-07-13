@@ -45,7 +45,6 @@ def train(
     autotune_n_repeats: int = 1,
     autotune_n_splits: int = 3,
     autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
-    save_detached_classifier: bool = False,
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
@@ -141,5 +140,4 @@ def train(
         autotune_n_repeats=autotune_n_repeats,
         autotune_n_splits=autotune_n_splits,
         autotune_metric=autotune_metric,
-        save_detached_classifier=save_detached_classifier,
     )

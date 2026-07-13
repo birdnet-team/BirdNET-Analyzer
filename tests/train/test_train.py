@@ -50,6 +50,89 @@ def test_train_cli(mock_train_model, setup_test_environment):
     assert mock_train_model.call_args[0][0] == env["input_dir"]
 
 
+@patch("birdnet_analyzer.train.utils.train_model")
+def test_train_cli_accepts_full_parser_surface(
+        mock_train_model, setup_test_environment
+    ):
+    env = setup_test_environment
+
+    parser = train_parser()
+    cache_path = os.path.join(env["test_dir"], "train_cache.npz")
+    args = parser.parse_args(
+        [
+            env["input_dir"],
+            "--test_data",
+            env["output_dir"],
+            "--crop_mode",
+            "smart",
+            "-o",
+            env["classifier_output"],
+            "--epochs",
+            "3",
+            "--val_split",
+            "0.25",
+            "--learning_rate",
+            "0.001",
+            "--focal-loss",
+            "--focal-loss-gamma",
+            "2.5",
+            "--focal-loss-alpha",
+            "0.5",
+            "--hidden_units",
+            "16",
+            "--dropout",
+            "0.3",
+            "--label_smoothing",
+            "--mixup",
+            "--upsampling_ratio",
+            "0.5",
+            "--upsampling_mode",
+            "mean",
+            "--model_formats",
+            "tflite",
+            "raven",
+            "detached",
+            "--model_save_mode",
+            "append",
+            "--save_cache_to",
+            cache_path,
+            "--fmin",
+            "100",
+            "--fmax",
+            "10000",
+            "--audio_speed",
+            "1.1",
+            "--threads",
+            "2",
+            "--overlap",
+            "1.5",
+            "-b",
+            "4",
+            "--autotune",
+            "--autotune_trials",
+            "3",
+            "--autotune_n_repeats",
+            "2",
+            "--autotune_n_splits",
+            "2",
+            "--autotune_metric",
+            "val_loss",
+        ]
+    )
+
+    train(**vars(args))
+
+    mock_train_model.assert_called_once()
+    call_kwargs = mock_train_model.call_args[1]
+    assert call_kwargs["test_data"] == env["output_dir"]
+    assert call_kwargs["crop_mode"] == "smart"
+    assert call_kwargs["model_formats"] == ["tflite", "raven", "detached"]
+    assert call_kwargs["model_save_mode"] == "append"
+    assert call_kwargs["save_cache_to"] == cache_path
+    assert call_kwargs["autotune"] is True
+    assert call_kwargs["autotune_metric"] == "val_loss"
+
+
 def _make_dummy_history():
     class DummyHistory:
         history = {"val_AUPRC": [0.123]}  # noqa: RUF012
