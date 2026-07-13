@@ -141,6 +141,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
                 loc.localize("multi-tab-samples-dataframe-column-duration-header"),
             ],
+            buttons=[],
         )
 
         preview_limit = 100
@@ -245,7 +246,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         start_batch_analysis_btn = gr.Button(
             loc.localize("analyze-start-button-label"), variant="primary"
         )
-        result_grid = gr.List(headers=[""])
+        result_grid = gr.List(headers=[""], buttons=[])
         inputs = [
             output_directory_predict_state,
             sample_settings["use_top_n_checkbox"],
