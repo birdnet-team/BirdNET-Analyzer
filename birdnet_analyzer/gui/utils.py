@@ -325,8 +325,7 @@ def build_settings():
             ),
             interactive=False,
             placeholder=loc.localize("settings-tab-error-log-textbox-placeholder"),
-            # buttons=["copy"], # gradio>=6
-            show_copy_button=True,
+            buttons=["copy"],
         )
 
         def on_language_change(value):
@@ -690,7 +689,6 @@ def show_species_choice(choice: str, file_input):
         return [
             gr.update(visible=False),
             gr.update(visible=True),
-            gr.update(visible=False),
             gr.update(visible=bool(file_input)),
         ]
     if choice == _PREDICT_SPECIES:
@@ -698,12 +696,10 @@ def show_species_choice(choice: str, file_input):
             gr.update(visible=True),
             gr.update(visible=False),
             gr.update(visible=False),
-            gr.update(visible=False),
         ]
 
     return [
         gr.update(visible=False),
-        gr.update(visible=True),
         gr.update(visible=False),
         gr.update(visible=False),
     ]
@@ -857,7 +853,6 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
             species_file_input = gr.File(
                 file_types=[".txt"], visible=False, show_label=False
             )
-            empty_col = gr.Column()
 
         list_df = gr.List(
             value=[],
@@ -870,7 +865,7 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
     species_list_radio.change(
         show_species_choice,
         inputs=[species_list_radio, species_file_input],
-        outputs=[position_row, species_file_input, empty_col, list_df],
+        outputs=[position_row, species_file_input, list_df],
         show_progress="hidden",
     )
 
@@ -1063,13 +1058,9 @@ def open_window(
     multiprocessing.freeze_support()
 
     with (
-        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,  # gradio>=6
-        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
         gr.Blocks(
             theme=gr.themes.Default(),
             analytics_enabled=False,
-            css=css_file.read(),
-            js=js_file.read(),
         ) as demo,
     ):
         build_header()
@@ -1100,17 +1091,20 @@ def open_window(
                 ]
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
-
-    _URL = demo.queue(api_open=False).launch(
-        # css=css_file.read(), # gradio>=6
-        # js=js_file.read(),
-        # theme=gr.themes.Default(),
-        prevent_thread_lock=True,
-        quiet=True,
-        enable_monitoring=False,
-        allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
-        # footer_links=[], # gradio>=6
-    )[1]
+    with (
+        open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
+        open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+    ):
+        _URL = demo.queue(api_open=False).launch(
+            css=css_file.read(),
+            js=js_file.read(),
+            theme=gr.themes.Default(),
+            prevent_thread_lock=True,
+            quiet=True,
+            enable_monitoring=False,
+            allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
+            footer_links=[],
+        )[1]
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
