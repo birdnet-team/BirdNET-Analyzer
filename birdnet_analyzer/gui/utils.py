@@ -1065,9 +1065,9 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
 
     from birdnet_analyzer import model_utils
 
-    if model_utils.active_session_count() == 0:
-        return
-
+    # No early-out on an empty registry: a Gradio worker thread can still
+    # register a session while we tear down. cancel_active_analyses() latches
+    # shutdown so any such late session cancels itself on registration.
     model_utils.cancel_active_analyses()
 
     # Some time to stop all processes
@@ -1075,10 +1075,15 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
     while model_utils.active_session_count() and time.monotonic() < deadline:
         time.sleep(0.1)
 
-    # Force terminate remaining subprocesses
-    for child in multiprocessing.active_children():
+    # Force terminate any subprocesses still alive, then join them so none are
+    # left unreaped. join() also gives terminate() time to take effect.
+    children = multiprocessing.active_children()
+    for child in children:
         with suppress(Exception):
             child.terminate()
+    for child in children:
+        with suppress(Exception):
+            child.join(timeout=5)
 
 
 def open_window(
