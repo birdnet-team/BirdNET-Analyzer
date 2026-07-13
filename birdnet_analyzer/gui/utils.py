@@ -1045,6 +1045,42 @@ def slider_to_value(value: float):
     return max(0.1, 1.0 / (value * -1)) if value < 0 else max(1.0, float(value))
 
 
+def shutdown_running_analyses(timeout: float = 15.0) -> None:
+    """Stop any analysis still running when the GUI window is closed.
+
+    Closing the window returns from ``webview.start()``, but the Gradio worker
+    thread executing the analysis (and the birdnet worker/producer subprocesses
+    it spawned) keep running otherwise, so the analysis would continue headless
+    until it finishes on its own.
+
+    This cancels every in-flight session via the birdnet cancel event, which
+    lets each session stop the pipeline and tear down its subprocesses and shared
+    memory cleanly, then terminates anything still alive as a backstop.
+
+    Args:
+        timeout: Seconds to wait for cancelled sessions to shut down cleanly
+            before force-terminating leftover subprocesses.
+    """
+    import time
+
+    from birdnet_analyzer import model_utils
+
+    if model_utils.active_session_count() == 0:
+        return
+
+    model_utils.cancel_active_analyses()
+
+    # Some time to stop all processes
+    deadline = time.monotonic() + timeout
+    while model_utils.active_session_count() and time.monotonic() < deadline:
+        time.sleep(0.1)
+
+    # Force terminate remaining subprocesses
+    for child in multiprocessing.active_children():
+        with suppress(Exception):
+            child.terminate()
+
+
 def open_window(
     builder: list[Callable[[], TAB_BUILDER_RESULT]] | Callable[[], TAB_BUILDER_RESULT],
 ):
@@ -1135,3 +1171,7 @@ def open_window(
         )
 
     webview.start(private_mode=False)
+
+    # The window has been closed. Make sure no analysis keeps running in the
+    # background now that there is no UI to control or observe it.
+    shutdown_running_analyses()
