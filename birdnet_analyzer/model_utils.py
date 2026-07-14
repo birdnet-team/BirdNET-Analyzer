@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import birdnet
@@ -17,10 +19,75 @@ if TYPE_CHECKING:
     from birdnet.acoustic.inference.core.prediction.prediction_result import (
         AcousticFilePredictionResult,
     )
-    from birdnet.acoustic.inference.session import AcousticEncodingSession
+    from birdnet.acoustic.inference.session import (
+        AcousticEncodingSession,
+        AcousticSessionBase,
+    )
     from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGES
 
 GLOBAL_PREFETCH_RATIO = 2
+
+# list of sessions so they can be cancelled from another
+# thread. Access is guarded by a lock
+# because sessions are registered from Gradio worker threads while
+# cancel_active_analyses() may be called from the main thread.
+_ACTIVE_SESSIONS: set[AcousticSessionBase] = set()
+_ACTIVE_SESSIONS_LOCK = threading.Lock()
+# Latched once shutdown begins. A session that registers after this point
+# cancels itself immediately, so no analysis can slip past
+# cancel_active_analyses() and keep running headless.
+_SHUTDOWN = threading.Event()
+
+
+def _register_session(session) -> None:
+    """Track a live inference session so it can be cancelled on shutdown."""
+    with _ACTIVE_SESSIONS_LOCK:
+        _ACTIVE_SESSIONS.add(session)
+        # Read the latch under the same lock cancel_active_analyses() holds, so a
+        # session registered concurrently with shutdown is either seen by the
+        # cancel loop or cancelled here - never missed by both.
+        shutting_down = _SHUTDOWN.is_set()
+
+    if shutting_down:
+        with suppress(Exception):
+            session.cancel()
+
+
+def _unregister_session(session) -> None:
+    with _ACTIVE_SESSIONS_LOCK:
+        _ACTIVE_SESSIONS.discard(session)
+
+
+def active_session_count() -> int:
+    """Return the number of inference sessions currently running."""
+    with _ACTIVE_SESSIONS_LOCK:
+        return len(_ACTIVE_SESSIONS)
+
+
+def cancel_active_analyses() -> int:
+    """Signal every in-flight analysis to cancel and latch shutdown.
+
+    Uses the birdnet session cancel event, which stops the inference pipeline
+    from consuming new work and lets each session tear down its worker/producer
+    subprocesses and shared memory cleanly via its context manager. Safe to call
+    from any thread.
+
+    Latches shutdown so any analysis started after this call (e.g. by a Gradio
+    worker thread still finishing a queued request) is cancelled as soon as it
+    registers, instead of running headless.
+
+    Returns:
+        The number of sessions that were asked to cancel.
+    """
+    with _ACTIVE_SESSIONS_LOCK:
+        _SHUTDOWN.set()
+        sessions = list(_ACTIVE_SESSIONS)
+
+    for session in sessions:
+        with suppress(Exception):
+            session.cancel()
+
+    return len(sessions)
 
 
 def run_inference(
@@ -61,8 +128,11 @@ def run_inference(
             "use a custom classifier."
         )
 
-    return acoustic_model.predict(
-        path,
+    from birdnet.acoustic.inference.configs import InferenceConfig
+
+    input_files = InferenceConfig.validate_input_files(path)
+
+    with acoustic_model.predict_session(
         top_k=top_k,
         batch_size=batch_size,
         prefetch_ratio=prefetch_ratio,
@@ -78,7 +148,13 @@ def run_inference(
         n_workers=n_workers,
         n_producers=n_producers,
         apply_sigmoid=model != "perch",
-    )  # ty:ignore[invalid-return-type]
+        max_n_files=len(input_files),
+    ) as session:
+        _register_session(session)
+        try:
+            return session.run(input_files)  # ty:ignore[invalid-return-type]
+        finally:
+            _unregister_session(session)
 
 
 def run_geomodel(
