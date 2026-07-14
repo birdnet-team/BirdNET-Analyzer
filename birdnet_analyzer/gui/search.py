@@ -7,6 +7,7 @@ import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.embeddings.core import (
     get_or_create_database as get_embeddings_database,
 )
+from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.search.core import get_database as get_search_database
 
 PAGE_SIZE = 6
@@ -106,6 +107,8 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
     from birdnet_analyzer import audio, utils
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
 
+    state = TabState("search")
+
     with gr.Tab(loc.localize("embeddings-search-tab-title")):
         results_state = gr.State([])
         page_state = gr.State(0)
@@ -197,8 +200,10 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                         elem_classes="path-textbox",
                     )
 
-                crop_mode = gr.Radio(
-                    [
+                crop_mode = state.persist(
+                    "crop_mode_radio",
+                    gr.Radio,
+                    choices=[
                         (
                             loc.localize("training-tab-crop-mode-radio-option-center"),
                             "center",
@@ -218,22 +223,30 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                     label=loc.localize("training-tab-crop-mode-radio-label"),
                     info=loc.localize("embeddings-search-crop-mode-radio-info"),
                 )
+                crops_segments = crop_mode.value == "segments"
 
-                crop_overlap = gr.Slider(
+                crop_overlap = state.persist(
+                    "crop_overlap_slider",
+                    gr.Slider,
                     minimum=0,
                     maximum=2.9,
                     value=0,
                     step=0.1,
                     label=loc.localize("training-tab-crop-overlap-number-label"),
                     info=loc.localize("embeddings-search-crop-overlap-number-info"),
-                    visible=False,
+                    visible=crops_segments,
+                    interactive=crops_segments,
                 )
-                max_samples_number = gr.Number(
+                max_samples_number = state.persist(
+                    "max_samples_number",
+                    gr.Number,
                     label=loc.localize("embeddings-search-max-samples-number-label"),
                     value=10,
                     interactive=True,
                 )
-                score_fn_select = gr.Radio(
+                score_fn_select = state.persist(
+                    "score_fn_radio",
+                    gr.Radio,
                     label=loc.localize("embeddings-search-score-fn-select-label"),
                     choices=["cosine", "dot", "euclidean"],
                     value="cosine",

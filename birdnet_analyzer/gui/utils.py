@@ -16,7 +16,9 @@ import webview
 from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
 
 import birdnet_analyzer.gui.localization as loc
+import birdnet_analyzer.gui.state as gs
 from birdnet_analyzer import settings, utils
+from birdnet_analyzer.gui.state import TabState
 
 warnings.filterwarnings("ignore")
 loc.load_local_state()
@@ -308,6 +310,27 @@ def build_settings():
                     scale=10,
                 )
 
+            # Built last, so every tab has registered its settings by now.
+            persisted_components = gs.persisted_components()
+
+            if persisted_components:
+                with gr.Row():
+                    reset_settings_btn = gr.Button(
+                        loc.localize("settings-tab-reset-button-label"),
+                    )
+
+                def on_reset_click():
+                    updates = gs.reset_to_defaults()
+                    gr.Info(loc.localize("settings-tab-reset-info"))
+
+                    return updates
+
+                reset_settings_btn.click(
+                    on_reset_click,
+                    outputs=persisted_components,
+                    show_progress="hidden",
+                )
+
         gr.Markdown(
             """
             If you encounter a bug or error, please provide the error log.\n
@@ -355,10 +378,27 @@ def build_settings():
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
 
-def sample_species_model_settings(opened=True):
-    sample_settings = sample_sliders(opened=opened)
-    species_settings = species_lists(opened=opened)
-    model_settings = model_selection(opened=opened)
+def model_choices():
+    """Returns the models that can be selected on the current platform."""
+    values = [_USE_BIRDNET_2_4, _CUSTOM_CLASSIFIER, _USE_PERCH]
+
+    if platform.system() == "Darwin":
+        values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
+
+    return values
+
+
+def sample_species_model_settings(state: TabState, opened=True):
+    # The model decides which sample and species settings are available, so it has to
+    # be known before those are built, even though it is shown below them.
+    is_perch = (
+        state.get("model_selection_radio", _USE_BIRDNET_2_4, choices=model_choices())
+        == _USE_PERCH
+    )
+
+    sample_settings = sample_sliders(state, opened=opened, is_perch=is_perch)
+    species_settings = species_lists(state, opened=opened, is_perch=is_perch)
+    model_settings = model_selection(state, opened=opened)
 
     def on_species_list_change(value):
         is_perch = value == _USE_PERCH
@@ -388,11 +428,15 @@ def sample_species_model_settings(opened=True):
     return sample_settings, species_settings, model_settings
 
 
-def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
+def sample_sliders(
+    state: TabState, opened=True, is_perch=False
+) -> dict[_SAMPLE_KEYS, gr.components.Component]:
     """Creates the gradio accordion for sample settings.
 
     Args:
+        state: The persisted settings of the tab the accordion belongs to.
         opened: If True the accordion is open on init.
+        is_perch: If True the settings are limited to what the Perch model supports.
     Returns:
         A dict with the created elements.
     """
@@ -402,24 +446,32 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
     ):
         with gr.Group():
             with gr.Row():
-                use_top_n_checkbox = gr.Checkbox(
+                use_top_n_checkbox = state.persist(
+                    "use_top_n_checkbox",
+                    gr.Checkbox,
                     label=loc.localize("inference-settings-use-top-n-checkbox-label"),
                     value=False,
                     info=loc.localize("inference-settings-use-top-n-checkbox-info"),
                 )
-                top_n_input = gr.Number(
+                use_top_n = bool(use_top_n_checkbox.value)
+                top_n_input = state.persist(
+                    "top_n_input",
+                    gr.Number,
                     value=5,
                     minimum=1,
                     precision=1,
-                    visible=False,
+                    visible=use_top_n,
                     label=loc.localize("inference-settings-top-n-number-label"),
                     info=loc.localize("inference-settings-top-n-number-info"),
                 )
-                confidence_slider = gr.Slider(
+                confidence_slider = state.persist(
+                    "confidence_slider",
+                    gr.Slider,
                     minimum=0.05,
                     maximum=0.95,
                     value=0.25,
                     step=0.05,
+                    visible=not use_top_n,
                     label=loc.localize("inference-settings-confidence-slider-label"),
                     info=loc.localize("inference-settings-confidence-slider-info"),
                 )
@@ -435,17 +487,22 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
             )
 
             with gr.Row():
-                sensitivity_slider = gr.Slider(
+                sensitivity_slider = state.persist(
+                    "sensitivity_slider",
+                    gr.Slider,
                     minimum=0.5,
                     maximum=1.5,
                     value=1.0,
                     step=0.01,
+                    interactive=not is_perch,
                     label=loc.localize("inference-settings-sensitivity-slider-label"),
                     info=loc.localize("inference-settings-sensitivity-slider-info"),
                 )
-                overlap_slider = gr.Slider(
+                overlap_slider = state.persist(
+                    "overlap_slider",
+                    gr.Slider,
                     minimum=0,
-                    maximum=2.9,
+                    maximum=4.9 if is_perch else 2.9,
                     value=0.0,
                     step=0.1,
                     label=loc.localize("inference-settings-overlap-slider-label"),
@@ -453,7 +510,9 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                 )
 
             with gr.Row():
-                merge_consecutive_slider = gr.Slider(
+                merge_consecutive_slider = state.persist(
+                    "merge_consecutive_slider",
+                    gr.Slider,
                     minimum=1,
                     maximum=10,
                     value=1,
@@ -465,7 +524,9 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                         "inference-settings-merge-consecutive-slider-info"
                     ),
                 )
-                audio_speed_slider = gr.Slider(
+                audio_speed_slider = state.persist(
+                    "audio_speed_slider",
+                    gr.Slider,
                     minimum=-10,
                     maximum=10,
                     value=0,
@@ -474,7 +535,7 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
                     info=loc.localize("inference-settings-audio-speed-slider-info"),
                 )
 
-            fmin_number, fmax_number = bandpass_settings()
+            fmin_number, fmax_number = bandpass_settings(state)
 
         return {
             "use_top_n_checkbox": use_top_n_checkbox,
@@ -489,17 +550,21 @@ def sample_sliders(opened=True) -> dict[_SAMPLE_KEYS, gr.components.Component]:
         }
 
 
-def bandpass_settings():
+def bandpass_settings(state: TabState):
     with gr.Row():
-        fmin_number = gr.Number(
-            0,
+        fmin_number = state.persist(
+            "fmin_number",
+            gr.Number,
+            value=0,
             minimum=0,
             label=loc.localize("inference-settings-fmin-number-label"),
             info=loc.localize("inference-settings-fmin-number-info"),
         )
 
-        fmax_number = gr.Number(
-            15000,
+        fmax_number = state.persist(
+            "fmax_number",
+            gr.Number,
+            value=15000,
             minimum=0,
             label=loc.localize("inference-settings-fmax-number-label"),
             info=loc.localize("inference-settings-fmax-number-info"),
@@ -508,19 +573,26 @@ def bandpass_settings():
     return fmin_number, fmax_number
 
 
-def locale():
+def locale(state: TabState, visible=True):
     """Creates the gradio elements for locale selection
 
     Reads the translated labels inside the checkpoints directory.
+
+    Args:
+        state: The persisted settings of the tab the dropdown belongs to.
+        visible: If True the dropdown is shown on init.
 
     Returns:
         The dropdown element.
     """
     options = get_args(MODEL_LANGUAGES)[0]
 
-    return gr.Dropdown(
-        get_args(options),
+    return state.persist(
+        "locale_dropdown",
+        gr.Dropdown,
+        choices=get_args(options),
         value=cast("str", MODEL_LANGUAGE_EN_US),
+        visible=visible,
         label=loc.localize("analyze-locale-dropdown-label"),
         info=loc.localize("analyze-locale-dropdown-info"),
     )
@@ -538,10 +610,12 @@ def plot_map_scatter_mapbox(lat, lon, zoom=4):
     return fig
 
 
-def species_list_coordinates(show_map=False):
+def species_list_coordinates(state: TabState, show_map=False):
     with gr.Row(equal_height=True):
         with gr.Column(scale=1), gr.Group():
-            lat_number = gr.Slider(
+            lat_number = state.persist(
+                "lat_number",
+                gr.Slider,
                 minimum=-90,
                 maximum=90,
                 value=0,
@@ -549,7 +623,9 @@ def species_list_coordinates(show_map=False):
                 label=loc.localize("species-list-coordinates-lat-number-label"),
                 info=loc.localize("species-list-coordinates-lat-number-info"),
             )
-            lon_number = gr.Slider(
+            lon_number = state.persist(
+                "lon_number",
+                gr.Slider,
                 minimum=-180,
                 maximum=180,
                 value=0,
@@ -559,7 +635,10 @@ def species_list_coordinates(show_map=False):
             )
 
         map_plot = gr.Plot(
-            plot_map_scatter_mapbox(0, 0), show_label=False, scale=2, visible=show_map
+            plot_map_scatter_mapbox(lat_number.value, lon_number.value),
+            show_label=False,
+            scale=2,
+            visible=show_map,
         )
 
         lat_number.change(
@@ -577,21 +656,27 @@ def species_list_coordinates(show_map=False):
 
     with gr.Group():
         with gr.Row():
-            yearlong_checkbox = gr.Checkbox(
-                True,
+            yearlong_checkbox = state.persist(
+                "yearlong_checkbox",
+                gr.Checkbox,
+                value=True,
                 label=loc.localize("species-list-coordinates-yearlong-checkbox-label"),
             )
-            week_number = gr.Slider(
+            week_number = state.persist(
+                "week_number",
+                gr.Slider,
                 minimum=1,
                 maximum=48,
                 value=1,
                 step=1,
-                interactive=False,
+                interactive=not yearlong_checkbox.value,
                 label=loc.localize("species-list-coordinates-week-slider-label"),
                 info=loc.localize("species-list-coordinates-week-slider-info"),
             )
 
-        sf_thresh_number = gr.Slider(
+        sf_thresh_number = state.persist(
+            "sf_thresh_number",
+            gr.Slider,
             minimum=0.01,
             maximum=0.99,
             value=0.03,
@@ -705,25 +790,25 @@ def show_species_choice(choice: str, file_input):
     ]
 
 
-def model_selection(opened=True):
+def model_selection(state: TabState, opened=True):
     with (
         gr.Group(),
         gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened),
     ):
         with gr.Row():
-            values = [_USE_BIRDNET_2_4, _CUSTOM_CLASSIFIER, _USE_PERCH]
-
-            if platform.system() == "Darwin":
-                values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
-
-            model_selection_radio = gr.Radio(
-                choices=values,
+            model_selection_radio = state.persist(
+                "model_selection_radio",
+                gr.Radio,
+                choices=model_choices(),
                 value=_USE_BIRDNET_2_4,
                 label=loc.localize("model-selection-radio-label"),
                 info=loc.localize("model-selection-radio-info"),
             )
+            selected_model = model_selection_radio.value
 
-            with gr.Column(visible=False) as custom_classifier_selector:
+            with gr.Column(
+                visible=selected_model == _CUSTOM_CLASSIFIER
+            ) as custom_classifier_selector:
                 classifier_selection_button = gr.Button(
                     loc.localize(
                         "species-list-custom-classifier-selection-button-label"
@@ -774,7 +859,7 @@ def model_selection(opened=True):
                         ),
                     )
 
-        locale_settings = locale()
+        locale_settings = locale(state, visible=selected_model == _USE_BIRDNET_2_4)
 
         species_list_df = gr.List(
             value=[],
@@ -818,10 +903,14 @@ def model_selection(opened=True):
     }
 
 
-def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
+def species_lists(
+    state: TabState, opened=True, is_perch=False
+) -> dict[_SPECIES_KEYS, gr.components.Component]:
     """Creates the gradio accordion for species list selection.
     Args:
+        state: The persisted settings of the tab the accordion belongs to.
         opened: If True the accordion is open on init.
+        is_perch: If True the choices are limited to what the Perch model supports.
     Returns:
         A dict with the created elements.
     """
@@ -830,17 +919,26 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
         gr.Accordion(loc.localize("species-list-accordion-label"), open=opened),
     ):
         with gr.Row():
-            values = [_ALL_SPECIES, _CUSTOM_SPECIES, _PREDICT_SPECIES]
+            values = (
+                [_CUSTOM_SPECIES, _ALL_SPECIES]
+                if is_perch
+                else [_ALL_SPECIES, _CUSTOM_SPECIES, _PREDICT_SPECIES]
+            )
 
-            species_list_radio = gr.Radio(
-                values,
+            species_list_radio = state.persist(
+                "species_list_radio",
+                gr.Radio,
+                choices=values,
                 value=_ALL_SPECIES,
                 label=loc.localize("species-list-radio-label"),
                 info=loc.localize("species-list-radio-info"),
                 elem_classes="d-block",
             )
+            selected_species_list = species_list_radio.value
 
-            with gr.Column(visible=False) as position_row:
+            with gr.Column(
+                visible=selected_species_list == _PREDICT_SPECIES
+            ) as position_row:
                 (
                     lat_number,
                     lon_number,
@@ -848,10 +946,12 @@ def species_lists(opened=True) -> dict[_SPECIES_KEYS, gr.components.Component]:
                     sf_thresh_number,
                     yearlong_checkbox,
                     map_plot,
-                ) = species_list_coordinates()
+                ) = species_list_coordinates(state)
 
             species_file_input = gr.File(
-                file_types=[".txt"], visible=False, show_label=False
+                file_types=[".txt"],
+                visible=selected_species_list == _CUSTOM_SPECIES,
+                show_label=False,
             )
 
         list_df = gr.List(
@@ -996,25 +1096,31 @@ def _get_win_drives():
     return [f"{drive}:\\" for drive in UPPER_CASE] + _get_network_shortcuts()
 
 
-def computing_settings():
+def computing_settings(state: TabState):
     import psutil
 
     with gr.Row():
-        bs_number = gr.Number(
+        bs_number = state.persist(
+            "batch_size_number",
+            gr.Number,
             precision=1,
             label=loc.localize("computing-settings-batchsize-number-label"),
             value=1,
             info=loc.localize("computing-settings-batchsize-number-info"),
             minimum=1,
         )
-        producers_number = gr.Number(
+        producers_number = state.persist(
+            "producers_number",
+            gr.Number,
             precision=1,
             label=loc.localize("computing-settings-producers-number-label"),
             value=1,
             info=loc.localize("computing-settings-producers-number-info"),
             minimum=1,
         )
-        workers_number = gr.Number(
+        workers_number = state.persist(
+            "workers_number",
+            gr.Number,
             precision=1,
             label=loc.localize("computing-settings-workers-number-label"),
             value=psutil.cpu_count(logical=True) or 1,

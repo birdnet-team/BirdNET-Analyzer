@@ -3,6 +3,7 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.gui.state import TabState
 
 
 def _output_type_map():
@@ -109,6 +110,8 @@ def run_batch_analysis(
 
 
 def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
+    state = TabState("multi")
+
     with gr.Tab(loc.localize("multi-tab-title")):
         input_directory_state = gr.State()
         output_directory_predict_state = gr.State()
@@ -217,32 +220,39 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         )
 
         sample_settings, species_settings, model_settings = (
-            gu.sample_species_model_settings(opened=False)
+            gu.sample_species_model_settings(state, opened=False)
         )
 
         with (
             gr.Group(),
             gr.Accordion(loc.localize("multi-tab-output-accordion-label"), open=True),
         ):
-            output_type_radio = gr.CheckboxGroup(
-                list(_output_type_map().items()),
-                value="table",
+            output_type_radio = state.persist(
+                "output_type_checkboxgroup",
+                gr.CheckboxGroup,
+                choices=list(_output_type_map().items()),
+                value=["table"],
                 label=loc.localize("multi-tab-output-radio-label"),
                 info=loc.localize("multi-tab-output-radio-info"),
             )
-            additional_columns_ = gr.CheckboxGroup(
-                list(_additional_columns_map().items()),
-                visible=False,
+            additional_columns_ = state.persist(
+                "additional_columns_checkboxgroup",
+                gr.CheckboxGroup,
+                choices=list(_additional_columns_map().items()),
+                value=[],
+                visible="csv" in output_type_radio.value,
                 label=loc.localize("multi-tab-additional-columns-checkbox-label"),
                 info=loc.localize("multi-tab-additional-columns-checkbox-info"),
             )
-            split_tables_checkbox = gr.Checkbox(
-                False,
+            split_tables_checkbox = state.persist(
+                "split_tables_checkbox",
+                gr.Checkbox,
+                value=False,
                 label=loc.localize("multi-tab-split-table-checkbox-label"),
                 info=loc.localize("multi-tab-split-table-checkbox-info"),
             )
 
-        bs_number, producers_number, workers_number = gu.computing_settings()
+        bs_number, producers_number, workers_number = gu.computing_settings(state)
         start_batch_analysis_btn = gr.Button(
             loc.localize("analyze-start-button-label"), variant="primary"
         )

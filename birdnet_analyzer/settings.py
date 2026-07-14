@@ -40,6 +40,10 @@ GUI_SETTINGS_PATH = str(APPDIR / "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
 STATE_SETTINGS_PATH = str(APPDIR / "state.json")
 
+# The values of the GUI settings live under this key, one sub-dict per tab, so they
+# stay separate from the flat keys used to remember the last directory of a dialog.
+TAB_SETTINGS_KEY = "tab-settings"
+
 
 def get_state_dict() -> dict:
     """
@@ -55,16 +59,40 @@ def get_state_dict() -> dict:
     """
     try:
         with open(STATE_SETTINGS_PATH, encoding="utf-8") as f:
-            return json.load(f)
+            state = json.load(f)
+
+        return state if isinstance(state, dict) else {}
     except FileNotFoundError:
         try:
             _ensure_appdir_exists()
-            with open(STATE_SETTINGS_PATH, "w", encoding="utf-8") as f:
-                json.dump({}, f)
+            _write_state_dict({})
             return {}
         except Exception as e:
             write_error_log(e)
             return {}
+    except Exception as e:
+        # A corrupted state file must never keep the GUI from starting.
+        write_error_log(e)
+        return {}
+
+
+def _write_state_dict(state: dict) -> None:
+    """Writes the state dictionary to disk.
+
+    Writes to a temporary file first and replaces the state file with it, so an
+    interrupted write (e.g. the app being closed mid-write) cannot leave a corrupted
+    state file behind.
+
+    Args:
+        state (dict): The complete state dictionary to persist.
+    """
+    _ensure_appdir_exists()
+    tmp_path = f"{STATE_SETTINGS_PATH}.tmp"
+
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=4)
+
+    os.replace(tmp_path, STATE_SETTINGS_PATH)
 
 
 def get_state(key: str, default=None) -> str:
@@ -94,9 +122,73 @@ def set_state(key: str, value: str):
         state = get_state_dict()
         state[key] = value
 
-        _ensure_appdir_exists()
-        with open(STATE_SETTINGS_PATH, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=4)
+        _write_state_dict(state)
+    except Exception as e:
+        write_error_log(e)
+
+
+def get_tab_settings(tab: str) -> dict:
+    """
+    Retrieves the persisted GUI settings of a single tab.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+
+    Returns:
+        dict: The values the user last used in that tab, empty if there are none.
+    """
+    tab_settings = get_state_dict().get(TAB_SETTINGS_KEY)
+
+    if not isinstance(tab_settings, dict):
+        return {}
+
+    values = tab_settings.get(tab)
+
+    return values if isinstance(values, dict) else {}
+
+
+def set_tab_setting(tab: str, key: str, value):
+    """
+    Persists a single GUI setting of a tab.
+
+    The value is stored per tab, so the same setting can hold a different value in
+    every tab it appears in.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+        key (str): The name of the setting inside the tab.
+        value: The value to persist. Must be JSON serializable.
+    """
+    try:
+        state = get_state_dict()
+        tab_settings = state.get(TAB_SETTINGS_KEY)
+
+        if not isinstance(tab_settings, dict):
+            tab_settings = state[TAB_SETTINGS_KEY] = {}
+
+        values = tab_settings.get(tab)
+
+        if not isinstance(values, dict):
+            values = tab_settings[tab] = {}
+
+        values[key] = value
+
+        _write_state_dict(state)
+    except Exception as e:
+        write_error_log(e)
+
+
+def reset_tab_settings():
+    """
+    Removes all persisted GUI settings, so every tab falls back to its default values.
+
+    The directories remembered for the file dialogs are kept.
+    """
+    try:
+        state = get_state_dict()
+
+        if state.pop(TAB_SETTINGS_KEY, None) is not None:
+            _write_state_dict(state)
     except Exception as e:
         write_error_log(e)
 

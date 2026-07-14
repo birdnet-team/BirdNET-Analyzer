@@ -8,6 +8,7 @@ import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.embeddings.core import (
     get_or_create_database as get_embeddings_database,
 )
+from birdnet_analyzer.gui.state import TabState
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -112,6 +113,8 @@ def run_embeddings(
 
 def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
+
+    state = TabState("embeddings")
 
     with gr.Tab(loc.localize("embeddings-tab-title")):
         input_directory_state = gr.State()
@@ -221,7 +224,9 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
             ),
         ):
             with gr.Row():
-                overlap_slider = gr.Slider(
+                overlap_slider = state.persist(
+                    "overlap_slider",
+                    gr.Slider,
                     minimum=0,
                     maximum=2.9,
                     value=0,
@@ -229,7 +234,9 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
                     label=loc.localize("embedding-settings-overlap-slider-label"),
                     info=loc.localize("embedding-settings-overlap-slider-info"),
                 )
-                audio_speed_slider = gr.Slider(
+                audio_speed_slider = state.persist(
+                    "audio_speed_slider",
+                    gr.Slider,
                     minimum=-10,
                     maximum=10,
                     value=0,
@@ -238,9 +245,9 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("embedding-settings-audio-speed-slider-info"),
                 )
 
-            bs_number, producers_number, workers_number = gu.computing_settings()
+            bs_number, producers_number, workers_number = gu.computing_settings(state)
 
-            fmin_number, fmax_number = gu.bandpass_settings()
+            fmin_number, fmax_number = gu.bandpass_settings(state)
 
         def select_directory_and_update_tb(current_state):
             dir_name: str = gu.select_directory(
