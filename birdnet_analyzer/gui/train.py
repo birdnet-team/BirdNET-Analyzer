@@ -731,25 +731,25 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     show_label=True,
                 )
 
-        with gr.Row(visible=False) as focal_loss_params:
-            focal_loss_gamma = gr.Slider(
-                minimum=0.5,
-                maximum=5.0,
-                value=2.0,
-                step=0.1,
-                label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
-                info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
-                interactive=True,
-            )
-            focal_loss_alpha = gr.Slider(
-                minimum=0.1,
-                maximum=0.9,
-                value=0.25,
-                step=0.05,
-                label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
-                info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
-                interactive=True,
-            )
+            with gr.Row(visible=False) as focal_loss_params:
+                focal_loss_gamma = gr.Slider(
+                    minimum=0.5,
+                    maximum=5.0,
+                    value=2.0,
+                    step=0.1,
+                    label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
+                    info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
+                    interactive=True,
+                )
+                focal_loss_alpha = gr.Slider(
+                    minimum=0.1,
+                    maximum=0.9,
+                    value=0.25,
+                    step=0.05,
+                    label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
+                    info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
+                    interactive=True,
+                )
 
         def on_focal_loss_change(value):
             return gr.update(visible=value)
