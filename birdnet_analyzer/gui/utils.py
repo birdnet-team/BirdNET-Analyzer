@@ -400,23 +400,31 @@ def sample_species_model_settings(state: TabState, opened=True):
     species_settings = species_lists(state, opened=opened, is_perch=is_perch)
     model_settings = model_selection(state, opened=opened)
 
-    def on_species_list_change(value):
+    def on_species_list_change(value, species_choice):
         is_perch = value == _USE_PERCH
+        choices = (
+            [_CUSTOM_SPECIES, _ALL_SPECIES]
+            if is_perch
+            else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
+        )
 
         return (
             gr.update(interactive=not is_perch),
             gr.update(maximum=4.9 if is_perch else 2.9),
+            # Keep the current species selection (e.g. the one a preset was just
+            # applied with) as long as the new model offers it.
             gr.update(
-                choices=[_CUSTOM_SPECIES, _ALL_SPECIES]
-                if is_perch
-                else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES],
-                value=_ALL_SPECIES,
+                choices=choices,
+                value=species_choice if species_choice in choices else _ALL_SPECIES,
             ),
         )
 
     model_settings["model_selection_radio"].change(
         on_species_list_change,
-        inputs=model_settings["model_selection_radio"],
+        inputs=[
+            model_settings["model_selection_radio"],
+            species_settings["species_list_radio"],
+        ],
         outputs=[
             sample_settings["sensitivity_slider"],
             sample_settings["overlap_slider"],
@@ -831,13 +839,9 @@ def model_selection(state: TabState, opened=True):
                     if not file:
                         return None, None, None
 
-                    base_name = os.path.splitext(file)[0]
-                    labels = base_name + "_Labels.txt"
+                    labels = utils.read_classifier_labels(file)
 
-                    if not os.path.isfile(labels):
-                        labels = file.replace("Model_FP32.tflite", "Labels.txt")
-
-                    if not os.path.isfile(labels):
+                    if labels is None:
                         gr.Warning(
                             loc.localize(
                                 "species-list-custom-classifier-no-labelfile-warning"
@@ -853,10 +857,7 @@ def model_selection(state: TabState, opened=True):
                     return (
                         file,
                         gr.update(value=file, visible=True),
-                        gr.update(
-                            value=utils.read_lines(labels, fail_on_blank_lines=True),
-                            visible=True,
-                        ),
+                        gr.update(value=labels, visible=True),
                     )
 
         locale_settings = locale(state, visible=selected_model == _USE_BIRDNET_2_4)
@@ -899,6 +900,8 @@ def model_selection(state: TabState, opened=True):
     return {
         "model_selection_radio": model_selection_radio,
         "selected_classifier_state": selected_classifier_state,
+        "classifier_file_input": classifier_file_input,
+        "classifier_labels_df": species_list_df,
         "locale_dropdown": locale_settings,
     }
 

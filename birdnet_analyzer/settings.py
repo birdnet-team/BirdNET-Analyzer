@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import sys
 import traceback
+from contextlib import suppress
 from pathlib import Path
 
 APP_NAME = "BirdNET-Analyzer-GUI"
@@ -159,6 +161,20 @@ def set_tab_setting(tab: str, key: str, value):
         key (str): The name of the setting inside the tab.
         value: The value to persist. Must be JSON serializable.
     """
+    update_tab_settings(tab, {key: value})
+
+
+def update_tab_settings(tab: str, values: dict):
+    """
+    Persists several GUI settings of a tab in a single write.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+        values (dict): The settings to persist, by name. Must be JSON serializable.
+    """
+    if not values:
+        return
+
     try:
         state = get_state_dict()
         tab_settings = state.get(TAB_SETTINGS_KEY)
@@ -166,12 +182,12 @@ def set_tab_setting(tab: str, key: str, value):
         if not isinstance(tab_settings, dict):
             tab_settings = state[TAB_SETTINGS_KEY] = {}
 
-        values = tab_settings.get(tab)
+        current = tab_settings.get(tab)
 
-        if not isinstance(values, dict):
-            values = tab_settings[tab] = {}
+        if not isinstance(current, dict):
+            current = tab_settings[tab] = {}
 
-        values[key] = value
+        current.update(values)
 
         _write_state_dict(state)
     except Exception as e:
@@ -191,6 +207,108 @@ def reset_tab_settings():
             _write_state_dict(state)
     except Exception as e:
         write_error_log(e)
+
+
+PRESET_NAME_MAX_LENGTH = 60
+# Letters, digits, spaces, dashes, dots and underscores keep a preset name usable as
+# a file name on every platform.
+_PRESET_NAME_PATTERN = re.compile(r"^\w[\w .-]*$")
+
+
+def is_valid_preset_name(name: str) -> bool:
+    """
+    Checks whether a preset name can be used as a file name.
+
+    Args:
+        name (str): The name the user chose for the preset.
+
+    Returns:
+        bool: True if the name is safe to use as a file name.
+    """
+    return (
+        len(name) <= PRESET_NAME_MAX_LENGTH
+        and not name.endswith((" ", "."))
+        and bool(_PRESET_NAME_PATTERN.match(name))
+    )
+
+
+def _preset_file(tab: str, name: str) -> Path:
+    if not is_valid_preset_name(name):
+        raise ValueError(f"Invalid preset name: {name!r}")
+
+    return APPDIR / "presets" / tab / f"{name}.json"
+
+
+def list_presets(tab: str) -> list[str]:
+    """
+    Returns the names of the saved presets of a tab, sorted alphabetically.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+    """
+    try:
+        names = [file.stem for file in (APPDIR / "presets" / tab).glob("*.json")]
+    except OSError as e:
+        write_error_log(e)
+        return []
+
+    return sorted(names, key=str.casefold)
+
+
+def save_preset(tab: str, name: str, values: dict) -> None:
+    """
+    Saves the settings of a tab as a named preset.
+
+    An existing preset of the same name is overwritten.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+        name (str): The name the preset is saved under.
+        values (dict): The settings to save, by name. Must be JSON serializable.
+
+    Raises:
+        ValueError: If the name cannot be used as a file name.
+        OSError: If the preset cannot be written.
+    """
+    file = _preset_file(tab, name)
+    file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(file, "w", encoding="utf-8") as f:
+        json.dump(values, f, indent=4)
+
+
+def load_preset(tab: str, name: str) -> dict | None:
+    """
+    Reads a named preset of a tab.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+        name (str): The name of the preset.
+
+    Returns:
+        dict | None: The saved settings, or None if the preset does not exist or
+        cannot be read.
+    """
+    try:
+        with open(_preset_file(tab, name), encoding="utf-8") as f:
+            values = json.load(f)
+    except (OSError, ValueError) as e:
+        write_error_log(e)
+        return None
+
+    return values if isinstance(values, dict) else None
+
+
+def delete_preset(tab: str, name: str) -> None:
+    """
+    Deletes a named preset of a tab. Nothing happens if it does not exist.
+
+    Args:
+        tab (str): The id of the tab, e.g. "multi".
+        name (str): The name of the preset.
+    """
+    with suppress(OSError):
+        _preset_file(tab, name).unlink(missing_ok=True)
 
 
 def ensure_settings_file():

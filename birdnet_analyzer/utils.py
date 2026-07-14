@@ -224,6 +224,30 @@ def read_lines(
     return cleaned_lines
 
 
+def read_classifier_labels(classifier_file: str) -> list[str] | None:
+    """Reads the labels belonging to a custom classifier.
+
+    Looks for the label file next to the classifier, following the naming used when a
+    custom classifier is trained.
+
+    Args:
+        classifier_file: Absolute path to the classifier file.
+
+    Returns:
+        The labels, or None if no label file was found.
+    """
+    base_name = os.path.splitext(classifier_file)[0]
+    labels_file = base_name + "_Labels.txt"
+
+    if not os.path.isfile(labels_file):
+        labels_file = classifier_file.replace("Model_FP32.tflite", "Labels.txt")
+
+    if not os.path.isfile(labels_file):
+        return None
+
+    return read_lines(labels_file, fail_on_blank_lines=True)
+
+
 def list_subdirectories(path: str):
     """Lists all directories inside a path.
 
