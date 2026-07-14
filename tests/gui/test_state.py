@@ -9,10 +9,15 @@ from birdnet_analyzer.gui import state as gs
 
 @pytest.fixture
 def state_file(monkeypatch, tmp_path):
-    """Points the GUI state at a state.json inside tmp_path."""
+    """Points the GUI state at a state.json inside tmp_path.
+
+    The error log goes to tmp_path too: reading a broken state file logs the error, and
+    the log file is otherwise resolved from the real user data dir at import time.
+    """
     path = tmp_path / "state.json"
     monkeypatch.setattr(settings, "APPDIR", tmp_path)
     monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(path))
+    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
     monkeypatch.setattr(gs, "_PERSISTED", [])
 
     return path
@@ -37,11 +42,12 @@ def test_tab_settings_do_not_touch_the_dialog_directories(state_file):
     assert settings.get_state("train-data-dir") == "/tmp/train"
 
 
-def test_a_corrupted_state_file_falls_back_to_the_defaults(state_file):
+def test_a_corrupted_state_file_falls_back_to_the_defaults(state_file, tmp_path):
     state_file.write_text("{not json", encoding="utf-8")
 
     assert settings.get_state_dict() == {}
     assert gs.TabState("multi").get("confidence_slider", 0.25) == 0.25
+    assert (tmp_path / "error_log.txt").exists()
 
 
 @pytest.mark.parametrize(

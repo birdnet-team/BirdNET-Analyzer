@@ -641,8 +641,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             gr.Accordion(loc.localize("eval-tab-metrics-accordian-label"), open=False),
             gr.Row(),
         ):
-            # The labels are translated, so the metrics are persisted under an id that
-            # does not change with the GUI language.
+            # The labels are translated, so the metrics are keyed by the id the
+            # PerformanceAssessor expects, which does not change with the GUI language.
             metric_info = {
                 "auroc": (
                     loc.localize("eval-tab-metric-auroc-label"),
@@ -672,7 +672,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             metrics_checkboxes = {}
 
             for metric_id, (metric_name, description) in metric_info.items():
-                metrics_checkboxes[metric_name.lower()] = state.persist(
+                metrics_checkboxes[metric_id] = state.persist(
                     f"{metric_id}_checkbox",
                     gr.Checkbox,
                     label=metric_name,
@@ -787,24 +787,12 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             proc_state: ProcessorState,
             *metrics_checkbox_values,
         ):
-            selected_metrics = []
-
-            for value, (m_lower, _) in zip(
-                metrics_checkbox_values, metrics_checkboxes.items(), strict=True
-            ):
-                if value:
-                    selected_metrics.append(m_lower)
-
-            valid_metrics = {
-                "accuracy": "accuracy",
-                "recall": "recall",
-                "precision": "precision",
-                "f1 score": "f1",
-                "average precision (ap)": "ap",
-                "auroc": "auroc",
-            }
             metrics = tuple(
-                valid_metrics[m] for m in selected_metrics if m in valid_metrics
+                metric_id
+                for value, metric_id in zip(
+                    metrics_checkbox_values, metrics_checkboxes, strict=True
+                )
+                if value
             )
 
             # Fall back to available classes from processor state if none selected.
