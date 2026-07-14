@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "No content",
     "settings-tab-language-dropdown-info": "Changes will only take effect after restarting the application.",
     "settings-tab-language-dropdown-label": "GUI Language",
+    "settings-tab-reset-button-label": "Reset all settings to default values",
+    "settings-tab-reset-info": "All settings have been reset to their default values.",
     "settings-tab-theme-dropdown-dark-option": "Dark",
     "settings-tab-theme-dropdown-info": "WARNING: Changing the theme will reload the window.",
     "settings-tab-theme-dropdown-label": "Theme",

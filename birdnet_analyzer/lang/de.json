@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "Kein Inhalt",
     "settings-tab-language-dropdown-info": "Wird erst nach Neustart der Anwendung aktiv.",
     "settings-tab-language-dropdown-label": "GUI Sprache",
+    "settings-tab-reset-button-label": "Alle Einstellungen auf Standardwerte zurücksetzen",
+    "settings-tab-reset-info": "Alle Einstellungen wurden auf ihre Standardwerte zurückgesetzt.",
     "settings-tab-theme-dropdown-dark-option": "Dunkel",
     "settings-tab-theme-dropdown-info": "WARNING: Das ändern das Designs führt zum Neuladen des Fensters.",
     "settings-tab-theme-dropdown-label": "Design",

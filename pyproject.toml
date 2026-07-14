@@ -56,6 +56,7 @@ gui = [
 embeddings = ["perch-hoplite>=1.0.1,<2.0.0"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
 tests = ["pytest", "pytest-timeout", "pytest-order"]
+gui-tests = ["birdnet-analyzer[tests]", "gradio==6.20.0"]
 dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.10"]
 
 [project.scripts]

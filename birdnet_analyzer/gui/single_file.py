@@ -12,6 +12,7 @@ from birdnet_analyzer.analyze.core import (
     save_as_kaleidoscope,
     save_as_rtable,
 )
+from birdnet_analyzer.gui.state import TabState
 
 MATPLOTLIB_FIGURE_NUM = "single-file-tab-spectrogram-plot"
 HEADER_START_LBL = loc.localize("single-tab-output-header-start")
@@ -143,6 +144,8 @@ def run_single_file_analysis(
 
 
 def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
+    state = TabState("single")
+
     with gr.Tab(loc.localize("single-tab-title")):
         gu.info_box(
             description=loc.localize("single-tab-info-text"),
@@ -178,7 +181,9 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 label=loc.localize("review-tab-spectrogram-plot-label"),
                 show_label=False,
             )
-        generate_spectrogram_cb = gr.Checkbox(
+        generate_spectrogram_cb = state.persist(
+            "generate_spectrogram_checkbox",
+            gr.Checkbox,
             value=False,
             label=loc.localize("single-tab-spectrogram-checkbox-label"),
             info=loc.localize("single-tab-spectrogram-checkbox-info"),
@@ -186,7 +191,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         audio_path_state = gr.State()
         last_prediction_state = gr.State()
         sample_settings, species_settings, model_settings = (
-            gu.sample_species_model_settings(opened=False)
+            gu.sample_species_model_settings(state, opened=False)
         )
 
         single_file_analyze = gr.Button(
@@ -227,7 +232,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             elem_id="single-file-output",
             interactive=False,
-            buttons=[]
+            buttons=[],
         )
 
         def select_and_load_audio_file(generate_spectrogram=False):

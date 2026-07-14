@@ -5,6 +5,7 @@ import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.segments.core import segments
 
 
@@ -74,6 +75,8 @@ def _extract_segments(
 
 def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
     import psutil
+
+    state = TabState("segments")
 
     with gr.Tab(loc.localize("segments-tab-title")):
         audio_directory_state = gr.State()
@@ -167,7 +170,9 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
 
         with gr.Group():
             with gr.Row():
-                min_conf_slider = gr.Slider(
+                min_conf_slider = state.persist(
+                    "min_confidence_slider",
+                    gr.Slider,
                     minimum=0.1,
                     maximum=0.99,
                     step=0.01,
@@ -175,7 +180,9 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                     label=loc.localize("segments-tab-min-confidence-slider-label"),
                     info=loc.localize("segments-tab-min-confidence-slider-info"),
                 )
-                max_conf_slider = gr.Slider(
+                max_conf_slider = state.persist(
+                    "max_confidence_slider",
+                    gr.Slider,
                     minimum=0.1,
                     maximum=1.0,
                     step=0.01,
@@ -185,7 +192,9 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                 )
 
             with gr.Row():
-                collection_mode_radio = gr.Radio(
+                collection_mode_radio = state.persist(
+                    "collection_mode_radio",
+                    gr.Radio,
                     choices=[
                         (
                             loc.localize(
@@ -211,23 +220,29 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("segments-tab-collection-mode-info"),
                     interactive=True,
                 )
-                num_bins = gr.Number(
-                    10,
+                num_bins = state.persist(
+                    "n_bins_number",
+                    gr.Number,
+                    value=10,
                     label=loc.localize("segments-tab-n-bins-label"),
                     info=loc.localize("segments-tab-n-bins-info"),
                     minimum=2,
                     step=1,
-                    visible=False,
+                    visible=collection_mode_radio.value == "balanced",
                     interactive=True,
                 )
 
-            num_seq_number = gr.Number(
-                100,
+            num_seq_number = state.persist(
+                "max_seq_number",
+                gr.Number,
+                value=100,
                 label=loc.localize("segments-tab-max-seq-number-label"),
                 info=loc.localize("segments-tab-max-seq-number-info"),
                 minimum=1,
             )
-            audio_speed_slider = gr.Slider(
+            audio_speed_slider = state.persist(
+                "audio_speed_slider",
+                gr.Slider,
                 minimum=-10,
                 maximum=10,
                 value=1,
@@ -235,14 +250,18 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
                 label=loc.localize("inference-settings-audio-speed-slider-label"),
                 info=loc.localize("inference-settings-audio-speed-slider-info"),
             )
-            seq_length_number = gr.Number(
-                3.0,
+            seq_length_number = state.persist(
+                "seq_length_number",
+                gr.Number,
+                value=3.0,
                 label=loc.localize("segments-tab-seq-length-number-label"),
                 info=loc.localize("segments-tab-seq-length-number-info"),
                 minimum=0.1,
             )
-            threads_number = gr.Number(
-                psutil.cpu_count(logical=False) or 1,
+            threads_number = state.persist(
+                "threads_number",
+                gr.Number,
+                value=psutil.cpu_count(logical=False) or 1,
                 label=loc.localize("segments-tab-threads-number-label"),
                 info=loc.localize("segments-tab-threads-number-info"),
                 minimum=1,

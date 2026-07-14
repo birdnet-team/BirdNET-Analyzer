@@ -9,6 +9,7 @@ import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
+from birdnet_analyzer.gui.state import TabState
 
 if TYPE_CHECKING:
     from ty_extensions import Unknown
@@ -21,6 +22,8 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def build_review_tab() -> gu.TAB_BUILDER_RESULT:
+    state = TabState("review")
+
     def collect_segments(directory, shuffle=False):
         segments = (
             [
@@ -213,8 +216,10 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
                             buttons=["download"],
                             autoplay=True,
                         )
-                        autoplay_checkbox = gr.Checkbox(
-                            True,
+                        autoplay_checkbox = state.persist(
+                            "autoplay_checkbox",
+                            gr.Checkbox,
+                            value=True,
                             label=loc.localize("review-tab-autoplay-checkbox-label"),
                         )
 

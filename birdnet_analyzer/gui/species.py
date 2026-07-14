@@ -5,6 +5,7 @@ import gradio as gr
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import settings
+from birdnet_analyzer.gui.state import TabState
 
 
 @gu.gui_runtime_error_handler
@@ -28,6 +29,8 @@ def run_species_list(
 
 
 def build_species_tab() -> gu.TAB_BUILDER_RESULT:
+    state = TabState("species")
+
     with gr.Tab(loc.localize("species-tab-title")) as species_tab:
         output_directory_state = gr.State()
 
@@ -53,8 +56,10 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
                 elem_classes="path-textbox",
             )
 
-        classifier_name = gr.Textbox(
-            "species_list.txt",
+        classifier_name = state.persist(
+            "filename_textbox",
+            gr.Textbox,
+            value="species_list.txt",
             visible=False,
             info=loc.localize("species-tab-filename-textbox-label"),
         )
@@ -86,9 +91,9 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
             sf_thresh_number,
             yearlong_checkbox,
             map_plot,
-        ) = gu.species_list_coordinates(show_map=True)
+        ) = gu.species_list_coordinates(state, show_map=True)
 
-        locale = gu.locale()
+        locale = gu.locale(state)
 
         start_btn = gr.Button(
             loc.localize("species-tab-start-button-label"), variant="primary"
