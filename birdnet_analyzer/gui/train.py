@@ -279,6 +279,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             interactive=False,
             max_height=_GRID_MAX_HEIGHT,
+            buttons=[],
         )
 
         def select_directory(state_key):
@@ -321,6 +322,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             interactive=False,
             max_height=_GRID_MAX_HEIGHT,
+            buttons=[],
         )
 
         select_test_directory_btn.click(
@@ -388,11 +390,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             cache_file_state = gr.State()
             cache_mode = gr.Radio(
                 [
-                    (loc.localize("training-tab-cache-mode-radio-option-none"), None),
+                    (loc.localize("training-tab-cache-mode-radio-option-none"), "none"),
                     (loc.localize("training-tab-cache-mode-radio-option-load"), "load"),
                     (loc.localize("training-tab-cache-mode-radio-option-save"), "save"),
                 ],  # ty:ignore[invalid-argument-type]
-                value=None,
+                value="none",
                 label=loc.localize("training-tab-cache-mode-radio-label"),
                 info=loc.localize("training-tab-cache-mode-radio-info"),
             )
@@ -504,8 +506,12 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     gr.update(interactive=value != "load"),
                 )
 
-        with gr.Accordion(
-            open=False, label=loc.localize("training-tab-preprocessing-accordion-label")
+        with (
+            gr.Group(),
+            gr.Accordion(
+                open=False,
+                label=loc.localize("training-tab-preprocessing-accordion-label"),
+            ),
         ):
             with gr.Row():
                 fmin_number = gr.Number(
@@ -623,9 +629,13 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("training-tab-autotune-repeats-number-info"),
                 )
 
-        with gr.Accordion(
-            open=False, label=loc.localize("training-tab-custom-params-accordion-label")
-        ) as custom_params:
+        with (
+            gr.Group() as custom_params,
+            gr.Accordion(
+                open=False,
+                label=loc.localize("training-tab-custom-params-accordion-label"),
+            ),
+        ):
             with gr.Row():
                 epoch_number = gr.Number(
                     50,
@@ -721,28 +731,28 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     show_label=True,
                 )
 
-        with gr.Row(visible=False) as focal_loss_params, gr.Row():
-            focal_loss_gamma = gr.Slider(
-                minimum=0.5,
-                maximum=5.0,
-                value=2.0,
-                step=0.1,
-                label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
-                info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
-                interactive=True,
-            )
-            focal_loss_alpha = gr.Slider(
-                minimum=0.1,
-                maximum=0.9,
-                value=0.25,
-                step=0.05,
-                label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
-                info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
-                interactive=True,
-            )
+            with gr.Row(visible=False) as focal_loss_params:
+                focal_loss_gamma = gr.Slider(
+                    minimum=0.5,
+                    maximum=5.0,
+                    value=2.0,
+                    step=0.1,
+                    label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
+                    info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
+                    interactive=True,
+                )
+                focal_loss_alpha = gr.Slider(
+                    minimum=0.1,
+                    maximum=0.9,
+                    value=0.25,
+                    step=0.05,
+                    label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
+                    info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
+                    interactive=True,
+                )
 
         def on_focal_loss_change(value):
-            return gr.Row(visible=value)
+            return gr.update(visible=value)
 
         use_focal_loss.change(
             on_focal_loss_change,
@@ -753,9 +763,9 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
 
         def on_autotune_change(value):
             return (
-                gr.Column(visible=not value),
-                gr.Column(visible=value),
-                gr.Row(visible=not value and use_focal_loss.value),
+                gr.update(visible=not value),
+                gr.update(visible=value),
+                gr.update(visible=not value and use_focal_loss.value),
             )
 
         autotune_cb.change(

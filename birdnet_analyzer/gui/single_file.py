@@ -169,6 +169,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             label=loc.localize("single-audio-label"),
             interactive=False,
             visible=False,
+            buttons=[],
             editable=False,
         )
 
@@ -226,6 +227,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             elem_id="single-file-output",
             interactive=False,
+            buttons=[]
         )
 
         def select_and_load_audio_file(generate_spectrogram=False):
