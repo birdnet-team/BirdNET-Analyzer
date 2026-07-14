@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "無內容",
     "settings-tab-language-dropdown-info": "更改的設定會在重新啟動 GUI 後更新",
     "settings-tab-language-dropdown-label": "GUI 語言",
+    "settings-tab-reset-button-label": "將所有設定重設為預設值",
+    "settings-tab-reset-info": "所有設定已重設為預設值。",
     "settings-tab-theme-dropdown-dark-option": "深色",
     "settings-tab-theme-dropdown-info": "警告：更改主題將重新加載窗口。",
     "settings-tab-theme-dropdown-label": "主題",

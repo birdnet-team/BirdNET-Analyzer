@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "Vide",
     "settings-tab-language-dropdown-info": "Les modifications ne prendront effet qu'après le redémarrage de l'application.",
     "settings-tab-language-dropdown-label": "Langue de l’interface",
+    "settings-tab-reset-button-label": "Réinitialiser tous les paramètres aux valeurs par défaut",
+    "settings-tab-reset-info": "Tous les paramètres ont été réinitialisés à leurs valeurs par défaut.",
     "settings-tab-theme-dropdown-dark-option": "Sombre",
     "settings-tab-theme-dropdown-info": "AVERTISSEMENT : Le changement de thème entraîne le rechargement de la fenêtre.",
     "settings-tab-theme-dropdown-label": "Thème",

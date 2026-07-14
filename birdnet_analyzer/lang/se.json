@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "Inget innehåll",
     "settings-tab-language-dropdown-info": "Ändringar kommer endast att träda i kraft efter omstart av applikationen.",
     "settings-tab-language-dropdown-label": "GUI Språk",
+    "settings-tab-reset-button-label": "Återställ alla inställningar till standardvärden",
+    "settings-tab-reset-info": "Alla inställningar har återställts till sina standardvärden.",
     "settings-tab-theme-dropdown-dark-option": "Mörkt",
     "settings-tab-theme-dropdown-info": "VARNING: Ändring av temat kommer att ladda om fönstret.",
     "settings-tab-theme-dropdown-label": "Tema",

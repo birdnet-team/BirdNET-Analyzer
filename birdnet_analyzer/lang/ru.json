@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "Нет содержания",
     "settings-tab-language-dropdown-info": "Изменения вступят в силу только после перезапуска приложения.",
     "settings-tab-language-dropdown-label": "Язык интерфейса GUI",
+    "settings-tab-reset-button-label": "Сбросить все настройки до значений по умолчанию",
+    "settings-tab-reset-info": "Все настройки сброшены до значений по умолчанию.",
     "settings-tab-theme-dropdown-dark-option": "Темная",
     "settings-tab-theme-dropdown-info": "ВНИМАНИЕ: изменения приведут к перезагрузке окна приложения.",
     "settings-tab-theme-dropdown-label": "Тема",

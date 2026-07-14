@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "Nenhum conteúdo",
     "settings-tab-language-dropdown-info": "As alterações só entrarão em vigor após reiniciar o aplicativo.",
     "settings-tab-language-dropdown-label": "Linguagem do GUI",
+    "settings-tab-reset-button-label": "Redefinir todas as configurações para os valores padrão",
+    "settings-tab-reset-info": "Todas as configurações foram redefinidas para os seus valores padrão.",
     "settings-tab-theme-dropdown-dark-option": "Escuro",
     "settings-tab-theme-dropdown-info": "AVISO: Alterar o tema recarregará a janela.",
     "settings-tab-theme-dropdown-label": "Tema",

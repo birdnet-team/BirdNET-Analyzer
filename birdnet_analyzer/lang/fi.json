@@ -256,6 +256,8 @@
     "settings-tab-error-log-textbox-placeholder": "Ei sisältöä",
     "settings-tab-language-dropdown-info": "Muutokset tulevat voimaan vasta sovelluksen uudelleenkäynnistyksen jälkeen.",
     "settings-tab-language-dropdown-label": "Käyttöliittymän kieli",
+    "settings-tab-reset-button-label": "Palauta kaikki asetukset oletusarvoihin",
+    "settings-tab-reset-info": "Kaikki asetukset on palautettu oletusarvoihinsa.",
     "settings-tab-theme-dropdown-dark-option": "Tumma",
     "settings-tab-theme-dropdown-info": "VAROITUS: Teeman vaihtaminen aiheuttaa ikkunan uudelleenlatauksen.",
     "settings-tab-theme-dropdown-label": "Teema",
