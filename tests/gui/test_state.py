@@ -1,10 +1,12 @@
 import json
 
-import gradio as gr
 import pytest
 
-from birdnet_analyzer import settings
-from birdnet_analyzer.gui import state as gs
+# Building components needs gradio, which only comes with the gui and gui-tests extras.
+gr = pytest.importorskip("gradio")
+
+from birdnet_analyzer import settings  # noqa: E402
+from birdnet_analyzer.gui import state as gs  # noqa: E402
 
 
 @pytest.fixture

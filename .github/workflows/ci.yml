@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[embeddings,train,tests]
+          python -m pip install .[embeddings,train,tests,gui-tests]
       - name: Run tests
         run: |
           python -m pytest
