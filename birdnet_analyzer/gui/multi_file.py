@@ -3,7 +3,7 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.gui.presets import PresetControls
+from birdnet_analyzer.gui.presets import PresetControls, load_analysis_params
 from birdnet_analyzer.gui.state import TabState
 
 
@@ -122,7 +122,13 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             title=loc.localize("multi-tab-info-title"),
         )
 
-        preset_controls = PresetControls("multi", with_params_file_loader=True)
+        preset_controls = PresetControls(
+            "multi",
+            params_loader=load_analysis_params,
+            params_button_label=loc.localize(
+                "presets-load-analyze-params-button-label"
+            ),
+        )
 
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(

@@ -2,9 +2,13 @@
 
 A preset stores the settings a tab persists between sessions (see
 :mod:`birdnet_analyzer.gui.state`) under a name the user chooses, so a configuration
-that belongs to a project can be recalled at any time. The multi-file tab can
-additionally read its settings back from the ``BirdNET_analysis_params.csv`` a
-previous analysis saved next to its results.
+that belongs to a project can be recalled at any time. Both tabs can additionally
+read their settings back from the parameters file a previous run saved: the analysis
+from the ``birdnet.analyze-params.csv`` in its output directory, the training from
+the ``<classifier>.birdnet.train-params.csv`` next to the trained classifier. The
+loaders also understand the files written before the 2.x releases
+(``BirdNET_analysis_params.csv`` and ``<classifier>_Params.csv``), which held the
+same parameters in one column per parameter instead of one row.
 
 Presets of the multi-file tab also remember the species list and custom classifier
 files. They are stored as paths: a path that no longer exists when the preset is
@@ -12,13 +16,12 @@ applied is skipped with a warning, like every other value the tab cannot take.
 """
 
 import os
-from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
-from birdnet_analyzer import settings, utils
+from birdnet_analyzer import params, settings, utils
 
 if TYPE_CHECKING:
     from birdnet_analyzer.gui.state import TabState
@@ -36,15 +39,18 @@ class PresetControls:
     :meth:`wire` attaches their handlers once every component of the tab exists.
     """
 
-    def __init__(self, tab: str, with_params_file_loader: bool = False):
+    def __init__(self, tab: str, params_loader=None, params_button_label=None):
         """
         Args:
             tab: The id of the tab the presets belong to, e.g. "multi".
-            with_params_file_loader: If True, a button to load the settings from the
-                parameters file of a previous analysis is shown.
+            params_loader: Reads the parameters file of a previous run into settings,
+                e.g. :func:`load_analysis_params`. If given, a button to load such a
+                file is shown, labelled with ``params_button_label``.
+            params_button_label: The label of the load-from-file button.
         """
         self.tab = tab
         self.load_params_file_button = None
+        self._params_loader = params_loader
 
         with (
             gr.Accordion(loc.localize("presets-accordion-label"), open=False),
@@ -72,10 +78,8 @@ class PresetControls:
                 )
                 self.save_button = gr.Button(loc.localize("presets-save-button-label"))
 
-            if with_params_file_loader:
-                self.load_params_file_button = gr.Button(
-                    loc.localize("presets-load-params-file-button-label")
-                )
+            if params_loader is not None:
+                self.load_params_file_button = gr.Button(params_button_label)
 
     def wire(
         self,
@@ -210,13 +214,13 @@ class PresetControls:
                 import birdnet_analyzer.gui.utils as gu
 
                 file = gu.select_file(
-                    ("CSV (*.csv)",), state_key="analysis-params-file"
+                    ("CSV (*.csv)",), state_key=f"{self.tab}-params-file"
                 )
 
                 if not file:
                     return [gr.skip()] * len(outputs)
 
-                updates = apply_values(load_analysis_params(file))
+                updates = apply_values(self._params_loader(file))
                 gr.Info(loc.localize("presets-loaded-info"))
 
                 return updates
@@ -270,13 +274,34 @@ def _species_choice(option: str) -> str:
     return loc.localize(f"species-list-radio-option-{option}")
 
 
+def _load_params_file(loader, path: str) -> dict[str, Any]:
+    try:
+        return loader(path)
+    except ValueError as e:
+        raise gr.Error(loc.localize("presets-invalid-params-file-error")) from e
+
+
+def _rename(kwargs: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
+    """Renames run parameters to the keys of the components showing them."""
+    return {
+        component_key: kwargs[key]
+        for key, component_key in mapping.items()
+        if key in kwargs
+    }
+
+
+def _speed_to_slider(speed: float) -> int:
+    # Undo gui.utils.slider_to_value: factors below 1 sit on the negative side.
+    return round(speed) if speed >= 1 else -round(1 / speed)
+
+
 def load_analysis_params(path: str) -> dict[str, Any]:
     """Reads the settings of a previous analysis back from its parameters file.
 
-    The file is the ``BirdNET_analysis_params.csv`` an analysis saves into its output
-    directory. The parameters are translated back into the settings of the multi-file
-    tab, undoing the transformations the analysis applied (e.g. the audio speed
-    factor back into the slider value). Parameters that cannot be read are left out.
+    Maps the parameters read by :func:`birdnet_analyzer.params.load_analysis_params`
+    onto the settings of the multi-file tab, undoing the transformations the GUI
+    applies when it starts an analysis (e.g. the audio speed factor back into the
+    slider value).
 
     Args:
         path: The path to the parameters file.
@@ -287,98 +312,108 @@ def load_analysis_params(path: str) -> dict[str, Any]:
     Raises:
         gr.Error: If the file is not an analysis parameters file.
     """
-    import csv
+    kwargs = _load_params_file(params.load_analysis_params, path)
+    values = _rename(
+        kwargs,
+        {
+            "sensitivity": "sensitivity_slider",
+            "overlap": "overlap_slider",
+            "merge_consecutive": "merge_consecutive_slider",
+            "fmin": "fmin_number",
+            "fmax": "fmax_number",
+            "sf_thresh": "sf_thresh_number",
+            "batch_size": "batch_size_number",
+            "n_producers": "producers_number",
+            "n_workers": "workers_number",
+            "top_n": "top_n_input",
+            "lat": "lat_number",
+            "lon": "lon_number",
+            "week": "week_number",
+            "locale": "locale_dropdown",
+            "split_tables": "split_tables_checkbox",
+            "rtype": "output_type_checkboxgroup",
+            "additional_columns": "additional_columns_checkboxgroup",
+        },
+    )
 
-    try:
-        with open(path, encoding="utf-8", newline="") as f:
-            rows = list(csv.reader(f))
-    except (OSError, UnicodeDecodeError) as e:
-        raise gr.Error(loc.localize("presets-invalid-params-file-error")) from e
+    if "audio_speed" in kwargs:
+        values["audio_speed_slider"] = _speed_to_slider(kwargs["audio_speed"])
 
-    if len(rows) < 2:
-        raise gr.Error(loc.localize("presets-invalid-params-file-error"))
+    values["use_top_n_checkbox"] = "top_n" in kwargs
 
-    params = dict(zip(rows[0], rows[1], strict=False))
-    values: dict[str, Any] = {}
+    # With top N in use the analysis ran without a confidence threshold and stored 0,
+    # which is not a value the confidence slider offers.
+    if "top_n" not in kwargs and "min_conf" in kwargs:
+        values["confidence_slider"] = kwargs["min_conf"]
 
-    def parse(header: str, key: str, converter):
-        raw = params.get(header, "").strip()
+    values["yearlong_checkbox"] = "week" not in kwargs
 
-        if raw:
-            with suppress(ValueError):
-                values[key] = converter(raw)
-
-    def to_int(raw):
-        return int(float(raw))
-
-    def to_speed_slider(raw):
-        speed = float(raw)
-        # Undo gui.utils.slider_to_value: factors below 1 sit on the negative side.
-        return round(speed) if speed >= 1 else -round(1 / speed)
-
-    parse("Minimum confidence", "confidence_slider", float)
-    parse("Sensitivity", "sensitivity_slider", float)
-    parse("Segment overlap", "overlap_slider", float)
-    parse("Merge consecutive detections", "merge_consecutive_slider", to_int)
-    parse("Audio speed", "audio_speed_slider", to_speed_slider)
-    parse("Bandpass filter minimum", "fmin_number", to_int)
-    parse("Bandpass filter maximum", "fmax_number", to_int)
-    parse("Species filter threshold", "sf_thresh_number", float)
-    parse("Batch size", "batch_size_number", to_int)
-    parse("Number of producers", "producers_number", to_int)
-    parse("Number of workers", "workers_number", to_int)
-    parse("Top N", "top_n_input", to_int)
-    parse("Latitude", "lat_number", float)
-    parse("Longitude", "lon_number", float)
-    parse("Week", "week_number", to_int)
-    parse("Locale", "locale_dropdown", str)
-
-    if "Top N" in params:
-        values["use_top_n_checkbox"] = "top_n_input" in values
-
-        # With top N in use the analysis ran without a confidence threshold and
-        # stored 0, which is not a value the confidence slider offers.
-        if values["use_top_n_checkbox"]:
-            values.pop("confidence_slider", None)
-
-    if "Week" in params:
-        values["yearlong_checkbox"] = "week_number" not in values
-
-    for header, key in (
-        ("Result type(s)", "output_type_checkboxgroup"),
-        ("Additional columns", "additional_columns_checkboxgroup"),
-    ):
-        if header in params:
-            values[key] = [
-                entry.strip() for entry in params[header].split(",") if entry.strip()
-            ]
-
-    if params.get("Split tables", "").strip() in ("True", "False"):
-        values["split_tables_checkbox"] = params["Split tables"].strip() == "True"
-
-    species_file = params.get("Species list file", "").strip()
-    classifier_file = params.get("Custom classifier path", "").strip()
-
-    if species_file:
+    if "slist" in kwargs:
         values["species_list_radio"] = _species_choice("custom-list")
-        values[SPECIES_FILE_KEY] = species_file
-    elif "lat_number" in values and "lon_number" in values:
+        values[SPECIES_FILE_KEY] = kwargs["slist"]
+    elif "lat" in kwargs and "lon" in kwargs:
         values["species_list_radio"] = _species_choice("predict-list")
-    elif "Species list file" in params:
+    else:
         values["species_list_radio"] = _species_choice("all")
 
-    if classifier_file:
+    if "classifier" in kwargs:
         values["model_selection_radio"] = _species_choice("custom-classifier")
-        values[CLASSIFIER_FILE_KEY] = classifier_file
-    elif params.get("Model", "").strip() == "perch":
+        values[CLASSIFIER_FILE_KEY] = kwargs["classifier"]
+    elif kwargs.get("model") == "perch":
         values["model_selection_radio"] = _species_choice("use-perch")
-    elif params.get("Model", "").strip():
+    elif "model" in kwargs:
         # Not localized, must match gui.utils._USE_BIRDNET_2_4.
         values["model_selection_radio"] = "BirdNET 2.4"
 
-    # A file without a reasonable number of readable parameters is not an analysis
-    # parameters file.
-    if len(values) < 3:
-        raise gr.Error(loc.localize("presets-invalid-params-file-error"))
+    return values
+
+
+def load_train_params(path: str) -> dict[str, Any]:
+    """Reads the settings of a previous training run back from its parameters file.
+
+    Maps the parameters read by :func:`birdnet_analyzer.params.load_train_params`
+    onto the settings of the train tab.
+
+    Args:
+        path: The path to the parameters file.
+
+    Returns:
+        The settings by key, as `TabState.updates_for` expects them.
+
+    Raises:
+        gr.Error: If the file is not a training parameters file.
+    """
+    kwargs = _load_params_file(params.load_train_params, path)
+    values = _rename(
+        kwargs,
+        {
+            "classifier_name": "classifier_name_textbox",
+            "model_formats": "output_format_checkboxgroup",
+            "model_save_mode": "model_save_mode_radio",
+            "fmin": "fmin_number",
+            "fmax": "fmax_number",
+            "crop_mode": "crop_mode_radio",
+            "overlap": "crop_overlap_slider",
+            "autotune": "autotune_checkbox",
+            "autotune_trials": "autotune_trials_number",
+            "autotune_n_splits": "autotune_folds_number",
+            "autotune_n_repeats": "autotune_repeats_number",
+            "epochs": "epochs_number",
+            "batch_size": "batch_size_number",
+            "learning_rate": "learning_rate_number",
+            "hidden_units": "hidden_units_number",
+            "dropout": "dropout_number",
+            "label_smoothing": "use_label_smoothing_checkbox",
+            "mixup": "use_mixup_checkbox",
+            "use_focal_loss": "use_focal_loss_checkbox",
+            "focal_loss_gamma": "focal_loss_gamma_slider",
+            "focal_loss_alpha": "focal_loss_alpha_slider",
+            "upsampling_mode": "upsampling_mode_radio",
+            "upsampling_ratio": "upsampling_ratio_slider",
+        },
+    )
+
+    if "audio_speed" in kwargs:
+        values["audio_speed_slider"] = _speed_to_slider(kwargs["audio_speed"])
 
     return values

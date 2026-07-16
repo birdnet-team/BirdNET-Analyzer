@@ -7,7 +7,7 @@ import gradio as gr
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
-from birdnet_analyzer.gui.presets import PresetControls
+from birdnet_analyzer.gui.presets import PresetControls, load_train_params
 from birdnet_analyzer.gui.state import TabState
 
 _GRID_MAX_HEIGHT = 240
@@ -268,7 +268,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             title=loc.localize("training-tab-info-title"),
         )
 
-        preset_controls = PresetControls("train")
+        preset_controls = PresetControls(
+            "train",
+            params_loader=load_train_params,
+            params_button_label=loc.localize("presets-load-train-params-button-label"),
+        )
 
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(

@@ -14,7 +14,6 @@ import numpy as np
 import tensorflow as tf
 from birdnet.acoustic.models.v2_4.pb import AcousticPBDownloaderV2_4
 
-from birdnet_analyzer import utils
 from birdnet_analyzer.config import RANDOM_SEED
 from birdnet_analyzer.train import custom_models
 
@@ -647,7 +646,6 @@ def save_linear_classifier(
     model_path: str,
     labels: list[str],
     mode: Literal["replace", "append"] = "replace",
-    params: tuple[list[str], list] | None = None,
 ):
     """Saves the classifier as a tflite model, as well as the used labels in a .txt.
 
@@ -693,9 +691,6 @@ def save_linear_classifier(
     with open(model_path.replace(".tflite", "_Labels.txt"), "w", encoding="utf-8") as f:
         f.writelines(label + "\n" for label in labels)
 
-    if params:
-        utils.save_params_to_file(model_path.replace(".tflite", "_Params.csv"), *params)
-
 
 def save_raven_model(
     classifier,
@@ -705,7 +700,6 @@ def save_raven_model(
     sig_fmin=0,
     sig_fmax=15000,
     model_version="2.4",
-    params: tuple[list[str], list] | None = None,
 ):
     """
     Save a TensorFlow model with a custom classifier and associated metadata for use
@@ -814,11 +808,6 @@ def save_raven_model(
         }
 
         json.dump(modelconfig, modelconfigfile, indent=2)
-
-        model_params = os.path.join(model_path, "model_params.csv")
-
-        if params:
-            utils.save_params_to_file(model_params, *params)
 
 
 def save_detached_classifier(

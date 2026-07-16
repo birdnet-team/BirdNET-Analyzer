@@ -20,6 +20,7 @@ from birdnet_analyzer.config import (
     ALLOWED_FILETYPES,
     AUTOTUNE_METRICS,
     NON_EVENT_CLASSES,
+    TRAIN_PARAMS_SUFFIX,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
 
@@ -753,54 +754,51 @@ def train_model(
     try:
         # Remove activation from last layer before saving
         classifier.pop()
-        params = (
-            [
-                "Hidden units",
-                "Dropout",
-                "Batchsize",
-                "Learning rate",
-                "Weight decay",
-                "Crop mode",
-                "Crop overlap",
-                "Audio speed",
-                "Upsampling mode",
-                "Upsampling ratio",
-                "use mixup",
-                "use label smoothing",
-                "use focal loss",
-                "focal loss alpha",
-                "focal loss gamma",
-                "BirdNET Model version",
-            ],
-            [
-                hidden_units,
-                dropout,
-                batch_size,
-                learning_rate,
-                weight_decay,
-                crop_mode,
-                overlap,
-                audio_speed,
-                upsampling_mode,
-                upsampling_ratio,
-                mixup,
-                label_smoothing,
-                use_focal_loss,
-                focal_loss_alpha,
-                focal_loss_gamma,
-                "2.4",
-            ],
+        formats = [model_formats] if isinstance(model_formats, str) else model_formats
+        classifier_path = output.removesuffix(".tflite")
+
+        # The settings the classifier was trained with, saved next to it both as a
+        # record and so the GUI can load them again. When autotune ran, the values
+        # are the tuned ones.
+        utils.save_params_file(
+            classifier_path + TRAIN_PARAMS_SUFFIX,
+            {
+                "Classifier name": os.path.basename(classifier_path),
+                "Model formats": ", ".join(formats),
+                "Model save mode": model_save_mode,
+                "Bandpass filter minimum": fmin,
+                "Bandpass filter maximum": fmax,
+                "Audio speed": audio_speed,
+                "Crop mode": crop_mode,
+                "Crop overlap": overlap,
+                "Autotune": autotune,
+                "Autotune trials": autotune_trials,
+                "Autotune folds": autotune_n_splits,
+                "Autotune repeats": autotune_n_repeats,
+                "Epochs": epochs,
+                "Batch size": batch_size,
+                "Learning rate": learning_rate,
+                "Hidden units": hidden_units,
+                "Dropout": dropout,
+                "Weight decay": weight_decay,
+                "Use label smoothing": label_smoothing,
+                "Use mixup": mixup,
+                "Use focal loss": use_focal_loss,
+                "Focal loss gamma": focal_loss_gamma,
+                "Focal loss alpha": focal_loss_alpha,
+                "Upsampling mode": upsampling_mode,
+                "Upsampling ratio": upsampling_ratio,
+                "BirdNET model version": "2.4",
+            },
         )
 
-        if "tflite" in model_formats:
+        if "tflite" in formats:
             model.save_linear_classifier(
-                classifier, output, labels, mode=model_save_mode, params=params
+                classifier, output, labels, mode=model_save_mode
             )
-        if "raven" in model_formats:
-            model.save_raven_model(
-                classifier, output, labels, mode=model_save_mode, params=params
-            )
-        if "detached" in model_formats:
+        if "raven" in formats:
+            model.save_raven_model(classifier, output, labels, mode=model_save_mode)
+        if "detached" in formats:
             model.save_detached_classifier(
                 classifier,
                 output,

@@ -281,19 +281,19 @@ def img2base64(path):
         return base64.b64encode(img_file.read()).decode("utf-8")
 
 
-def save_params_to_file(file_path, headers, values):
-    """Saves the params used to train the custom classifier.
+def save_params_file(file_path, params: dict):
+    """Saves the parameters of an analysis or training run as a two-column CSV.
 
-    The hyperparams will be saved to disk in a file named 'model_params.csv'.
+    One parameter per row, so the file reads as a table in a spreadsheet or text
+    editor. Written with a BOM so spreadsheet applications pick up the encoding.
 
     Args:
         file_path: The path to the file.
-        headers: The headers of the csv file.
-        values: The values of the csv file.
+        params: The parameters to save, by their human-readable names.
     """
     import csv
 
-    with open(file_path, "w", newline="") as paramsfile:
+    with open(file_path, "w", newline="", encoding="utf-8-sig") as paramsfile:
         paramswriter = csv.writer(paramsfile)
-        paramswriter.writerow(headers)
-        paramswriter.writerow(values)
+        paramswriter.writerow(("Parameter", "Value"))
+        paramswriter.writerows(params.items())

@@ -6,11 +6,12 @@ import pytest
 gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
-from birdnet_analyzer import settings  # noqa: E402
+from birdnet_analyzer import settings, utils  # noqa: E402
 from birdnet_analyzer.gui import presets  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 
-# The header row of a BirdNET_analysis_params.csv, as the analysis writes it.
+# The analysis parameters as the versions before 2.x wrote them: one column per
+# parameter, a header row and a value row.
 PARAMS_HEADERS = [
     "Model",
     "BirdNET version",
@@ -52,8 +53,7 @@ def appdir(monkeypatch, tmp_path):
     return tmp_path
 
 
-def params_file(tmp_path, **overrides):
-    """Writes an analysis parameters file like the one an analysis saves."""
+def analysis_params(**overrides):
     values = dict.fromkeys(PARAMS_HEADERS, "")
     values.update(
         {
@@ -79,12 +79,27 @@ def params_file(tmp_path, **overrides):
         }
     )
     values.update(overrides)
+
+    return values
+
+
+def params_file(tmp_path, **overrides):
+    """Writes an analysis parameters file in the old one-column-per-parameter layout."""
+    values = analysis_params(**overrides)
     path = tmp_path / "BirdNET_analysis_params.csv"
 
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(PARAMS_HEADERS)
         writer.writerow([values[header] for header in PARAMS_HEADERS])
+
+    return str(path)
+
+
+def tall_params_file(tmp_path, **overrides):
+    """Writes an analysis parameters file the way the current version saves it."""
+    path = tmp_path / "birdnet.analyze-params.csv"
+    utils.save_params_file(path, analysis_params(**overrides))
 
     return str(path)
 
@@ -236,8 +251,11 @@ def test_loading_without_a_selection_changes_nothing(appdir):
     assert updates == [gr.skip(), gr.skip()]
 
 
-def test_the_analysis_params_of_a_previous_run_are_read_back(appdir, tmp_path):
-    values = presets.load_analysis_params(params_file(tmp_path))
+@pytest.mark.parametrize("write_file", [params_file, tall_params_file])
+def test_the_analysis_params_of_a_previous_run_are_read_back(
+    appdir, tmp_path, write_file
+):
+    values = presets.load_analysis_params(write_file(tmp_path))
 
     assert values == {
         "confidence_slider": 0.3,
@@ -335,3 +353,163 @@ def test_a_file_that_is_no_params_file_is_rejected(appdir, tmp_path):
 
     with pytest.raises(gr.Error):
         presets.load_analysis_params(str(path))
+
+    with pytest.raises(gr.Error):
+        presets.load_train_params(str(path))
+
+
+def test_params_are_saved_one_per_row_with_a_bom(tmp_path):
+    path = tmp_path / "params.csv"
+
+    utils.save_params_file(path, {"Minimum confidence": 0.25, "Split tables": False})
+
+    # The BOM lets spreadsheet applications pick up the encoding.
+    assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+    assert path.read_text(encoding="utf-8-sig").splitlines() == [
+        "Parameter,Value",
+        "Minimum confidence,0.25",
+        "Split tables,False",
+    ]
+
+
+def train_params_file(tmp_path, **overrides):
+    """Writes a training parameters file the way the current version saves it."""
+    values = {
+        "Classifier name": "MyClassifier",
+        "Model formats": "tflite, raven",
+        "Model save mode": "replace",
+        "Bandpass filter minimum": 150,
+        "Bandpass filter maximum": 12000,
+        "Audio speed": 2.0,
+        "Crop mode": "segments",
+        "Crop overlap": 1.5,
+        "Autotune": False,
+        "Autotune trials": 50,
+        "Autotune folds": 5,
+        "Autotune repeats": 1,
+        "Epochs": 100,
+        "Batch size": 64,
+        "Learning rate": 0.0005,
+        "Hidden units": 512,
+        "Dropout": 0.25,
+        "Weight decay": 0.004,
+        "Use label smoothing": True,
+        "Use mixup": True,
+        "Use focal loss": True,
+        "Focal loss gamma": 2.0,
+        "Focal loss alpha": 0.25,
+        "Upsampling mode": "repeat",
+        "Upsampling ratio": 0.5,
+        "BirdNET model version": "2.4",
+    }
+    values.update(overrides)
+    path = tmp_path / "MyClassifier.birdnet.train-params.csv"
+    utils.save_params_file(path, values)
+
+    return str(path)
+
+
+def test_the_train_params_of_a_previous_run_are_read_back(appdir, tmp_path):
+    values = presets.load_train_params(train_params_file(tmp_path))
+
+    assert values == {
+        "classifier_name_textbox": "MyClassifier",
+        "output_format_checkboxgroup": ["tflite", "raven"],
+        "model_save_mode_radio": "replace",
+        "fmin_number": 150,
+        "fmax_number": 12000,
+        "audio_speed_slider": 2,
+        "crop_mode_radio": "segments",
+        "crop_overlap_slider": 1.5,
+        "autotune_checkbox": False,
+        "autotune_trials_number": 50,
+        "autotune_folds_number": 5,
+        "autotune_repeats_number": 1,
+        "epochs_number": 100,
+        "batch_size_number": 64,
+        "learning_rate_number": 0.0005,
+        "hidden_units_number": 512,
+        "dropout_number": 0.25,
+        "use_label_smoothing_checkbox": True,
+        "use_mixup_checkbox": True,
+        "use_focal_loss_checkbox": True,
+        "focal_loss_gamma_slider": 2.0,
+        "focal_loss_alpha_slider": 0.25,
+        "upsampling_mode_radio": "repeat",
+        "upsampling_ratio_slider": 0.5,
+    }
+
+
+def test_an_old_train_params_file_is_still_understood(appdir, tmp_path):
+    # The layout and names the versions before 2.x saved next to the classifier.
+    headers = [
+        "Hidden units",
+        "Dropout",
+        "Batchsize",
+        "Learning rate",
+        "Weight decay",
+        "Crop mode",
+        "Crop overlap",
+        "Audio speed",
+        "Upsampling mode",
+        "Upsampling ratio",
+        "use mixup",
+        "use label smoothing",
+        "use focal loss",
+        "focal loss alpha",
+        "focal loss gamma",
+        "BirdNET Model version",
+    ]
+    row = [
+        512,
+        0.25,
+        32,
+        0.0001,
+        0.004,
+        "center",
+        0.0,
+        0.5,
+        "repeat",
+        0.75,
+        True,
+        False,
+        False,
+        0.25,
+        2.0,
+        "2.4",
+    ]
+    path = tmp_path / "MyClassifier_Params.csv"
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+        writer.writerow(row)
+
+    values = presets.load_train_params(str(path))
+
+    assert values == {
+        "hidden_units_number": 512,
+        "dropout_number": 0.25,
+        "batch_size_number": 32,
+        "learning_rate_number": 0.0001,
+        "crop_mode_radio": "center",
+        "crop_overlap_slider": 0.0,
+        "audio_speed_slider": -2,
+        "upsampling_mode_radio": "repeat",
+        "upsampling_ratio_slider": 0.75,
+        "use_mixup_checkbox": True,
+        "use_label_smoothing_checkbox": False,
+        "use_focal_loss_checkbox": False,
+        "focal_loss_alpha_slider": 0.25,
+        "focal_loss_gamma_slider": 2.0,
+    }
+
+
+def test_the_params_file_of_the_other_tab_is_rejected(appdir, tmp_path):
+    # The tabs share a handful of parameter names (audio speed, bandpass limits,
+    # batch size), which must not be enough to pass as the right file.
+    with pytest.raises(gr.Error):
+        presets.load_train_params(tall_params_file(tmp_path))
+
+    with pytest.raises(gr.Error):
+        presets.load_analysis_params(train_params_file(tmp_path))
