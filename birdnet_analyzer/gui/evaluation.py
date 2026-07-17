@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -16,6 +17,8 @@ from birdnet_analyzer.evaluation.assessment.performance_assessor import (
 )
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 from birdnet_analyzer.gui.state import TabState
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessorState(typing.NamedTuple):
@@ -79,7 +82,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
                 gr.Info(loc.localize("eval-tab-info-mapping-template-saved"))
         except Exception as e:
-            print(f"Error saving mapping template: {e}")
+            logger.error(f"Error saving mapping template: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-saving-mapping-template')} {e}"
             ) from e
@@ -111,7 +114,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
                 gr.Info(loc.localize("eval-tab-info-results-table-saved"))
         except Exception as e:
-            print(f"Error saving results table: {e}")
+            logger.error(f"Error saving results table: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-saving-results-table')} {e}"
             ) from e
@@ -150,7 +153,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     df = pd.read_csv(file_obj, sep=None, engine="python", nrows=0)
                     columns.update(df.columns)
                 except Exception as e:
-                    print(f"Error reading file {file_obj}: {e}")
+                    logger.error(f"Error reading file {file_obj}: {e}", exc_info=e)
                     gr.Warning(
                         f"{loc.localize('eval-tab-warning-error-reading-file')} "
                         f"{file_obj}"
@@ -270,14 +273,14 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
             return avail_classes, avail_recordings, proc, annotation_dir, prediction_dir
         except KeyError as e:
-            print(f"Column missing in files: {e}")
+            logger.error(f"Column missing in files: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-missing-col')}: "
                 + str(e)
                 + f". {loc.localize('eval-tab-error-missing-col-info')}"
             ) from e
         except Exception as e:
-            print(f"Error initializing processor: {e}")
+            logger.error(f"Error initializing processor: {e}", exc_info=e)
 
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-init-processor')}:" + str(e)
@@ -861,7 +864,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     proc_state,
                 )
             except Exception as e:
-                print("Error processing data:", e)
+                logger.error(f"Error processing data: {e}", exc_info=e)
                 raise gr.Error(
                     f"{loc.localize('eval-tab-error-during-processing')}: {e}"
                 ) from e

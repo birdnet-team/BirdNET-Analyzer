@@ -1,5 +1,6 @@
 # AI
 .claude
+CLAUDE.md
 
 # UV
 uv.lock
@@ -43,6 +44,7 @@ checkpoints/custom/
 
 # Logs
 error_log.txt
+error_log.txt.1
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

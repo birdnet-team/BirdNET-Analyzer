@@ -9,6 +9,7 @@ selected classes or recordings.
 
 import argparse
 import json
+import logging
 import os
 from collections.abc import Sequence
 
@@ -16,6 +17,8 @@ from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     PerformanceAssessor,
 )
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
+
+logger = logging.getLogger(__name__)
 
 
 def process_data(
@@ -135,8 +138,15 @@ def main():
     """
     import matplotlib.pyplot as plt
 
+    from birdnet_analyzer.cli import verbosity_args
+    from birdnet_analyzer.logs import setup_logging
+
+    setup_logging()
+
     # Set up argument parsing
-    parser = argparse.ArgumentParser(description="Performance Assessor Core Script")
+    parser = argparse.ArgumentParser(
+        description="Performance Assessor Core Script", parents=[verbosity_args()]
+    )
     parser.add_argument(
         "--annotation_path", required=True, help="Path to annotation file or folder"
     )
@@ -215,7 +225,7 @@ def main():
     )
 
     # Display the computed metrics
-    print(metrics_df)
+    logger.info(metrics_df)
 
     # Create output directory if needed
     if args.output_dir and not os.path.exists(args.output_dir):

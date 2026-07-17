@@ -1,5 +1,6 @@
 # ruff: noqa: PLW0603
 import json
+import logging
 import os
 
 from birdnet_analyzer import settings
@@ -8,6 +9,7 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 LANGUAGE_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "lang")
 LANGUAGE_LOOKUP = {}
 TARGET_LANGUAGE = settings.FALLBACK_LANGUAGE
+logger = logging.getLogger(__name__)
 
 
 def load_local_state():
@@ -27,7 +29,7 @@ def load_local_state():
             if "language-id" in settings_data:
                 TARGET_LANGUAGE = settings_data["language-id"]
     except FileNotFoundError:
-        print(
+        logger.warning(
             "gui-settings.json not found. Using fallback language "
             f"{settings.FALLBACK_LANGUAGE}."
         )
@@ -36,7 +38,7 @@ def load_local_state():
         with open(f"{LANGUAGE_DIR}/{TARGET_LANGUAGE}.json", encoding="utf-8") as f:
             LANGUAGE_LOOKUP = json.load(f)
     except FileNotFoundError:
-        print(
+        logger.warning(
             f"Language file for {TARGET_LANGUAGE} not found in {LANGUAGE_DIR}. "
             f"Using fallback language {settings.FALLBACK_LANGUAGE}."
         )
