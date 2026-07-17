@@ -224,6 +224,37 @@ def read_lines(
     return cleaned_lines
 
 
+# The shipped BirdNET models drop this suffix to name their label file, e.g.
+# BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite -> BirdNET_GLOBAL_6K_V2.4_Labels.txt, while
+# a trained classifier keeps its full name, e.g. Custom.tflite -> Custom_Labels.txt.
+_BIRDNET_SUFFIX = "Model_FP32.tflite"
+
+
+def read_classifier_labels(classifier_file: str) -> list[str] | None:
+    """Reads the labels belonging to a custom classifier.
+
+    Looks for the label file next to the classifier, following the naming used when a
+    custom classifier is trained, and falls back to the naming of the shipped BirdNET
+    models.
+
+    Args:
+        classifier_file: Absolute path to the classifier file.
+
+    Returns:
+        The labels, or None if no label file was found.
+    """
+    base_name = os.path.splitext(classifier_file)[0]
+    labels_file = base_name + "_Labels.txt"
+
+    if not os.path.isfile(labels_file) and classifier_file.endswith(_BIRDNET_SUFFIX):
+        labels_file = classifier_file.removesuffix(_BIRDNET_SUFFIX) + "Labels.txt"
+
+    if not os.path.isfile(labels_file):
+        return None
+
+    return read_lines(labels_file, fail_on_blank_lines=True)
+
+
 def list_subdirectories(path: str):
     """Lists all directories inside a path.
 
@@ -257,19 +288,19 @@ def img2base64(path):
         return base64.b64encode(img_file.read()).decode("utf-8")
 
 
-def save_params_to_file(file_path, headers, values):
-    """Saves the params used to train the custom classifier.
+def save_params_file(file_path, params: dict):
+    """Saves the parameters of an analysis or training run as a two-column CSV.
 
-    The hyperparams will be saved to disk in a file named 'model_params.csv'.
+    One parameter per row, so the file reads as a table in a spreadsheet or text
+    editor. Written with a BOM so spreadsheet applications pick up the encoding.
 
     Args:
         file_path: The path to the file.
-        headers: The headers of the csv file.
-        values: The values of the csv file.
+        params: The parameters to save, by their human-readable names.
     """
     import csv
 
-    with open(file_path, "w", newline="") as paramsfile:
+    with open(file_path, "w", newline="", encoding="utf-8-sig") as paramsfile:
         paramswriter = csv.writer(paramsfile)
-        paramswriter.writerow(headers)
-        paramswriter.writerow(values)
+        paramswriter.writerow(("Parameter", "Value"))
+        paramswriter.writerows(params.items())

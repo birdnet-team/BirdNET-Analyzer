@@ -12,7 +12,7 @@ discarded in favour of the default the component is built with. That way a stale
 settings file can never keep a tab from starting up.
 """
 
-from typing import Any
+from typing import Any, NamedTuple
 
 import gradio as gr
 
@@ -21,6 +21,16 @@ from birdnet_analyzer import settings
 # Every persisted component with the default it was built with, so the settings tab can
 # offer a reset. Populated while the tabs are built, in build order.
 _PERSISTED: list[tuple[gr.components.Component, Any]] = []
+
+
+class _Field(NamedTuple):
+    """A persisted component and the constraints its values are validated against."""
+
+    component: gr.components.Component
+    default: Any
+    choices: Any
+    minimum: float | None
+    maximum: float | None
 
 
 def _validate(
@@ -92,6 +102,7 @@ class TabState:
         """
         self.tab = tab
         self._values = settings.get_tab_settings(tab)
+        self._fields: dict[str, _Field] = {}
 
     def get(
         self,
@@ -151,6 +162,13 @@ class TabState:
 
         component = constructor(**kwargs)
         _PERSISTED.append((component, default))
+        self._fields[key] = _Field(
+            component,
+            default,
+            kwargs.get("choices"),
+            kwargs.get("minimum"),
+            kwargs.get("maximum"),
+        )
 
         # Only user edits are persisted. Values a component receives from another
         # component's event handler are derived from settings that are persisted
@@ -167,6 +185,67 @@ class TabState:
         )
 
         return component
+
+    def components(self) -> list[gr.components.Component]:
+        """Returns every component persisted in this tab, in build order."""
+        return [field.component for field in self._fields.values()]
+
+    def snapshot(self, values) -> dict[str, Any]:
+        """Pairs the current component values with their setting keys.
+
+        Args:
+            values: The current values of `components()`, in the same order.
+
+        Returns:
+            The values by setting key, e.g. to be saved as a preset.
+        """
+        return dict(zip(self._fields, values, strict=True))
+
+    def updates_for(self, values: dict) -> tuple[list[dict], list[str]]:
+        """Builds the component updates that show a set of persisted values.
+
+        Every value is validated against the component it belongs to, exactly like a
+        value restored from a previous session. A value that does not fit -- or a key
+        no component was built for -- is skipped and the component keeps its current
+        value. The applied values are persisted, so they survive a restart just like
+        user edits.
+
+        Args:
+            values: The values to show, by setting key. E.g. a saved preset.
+
+        Returns:
+            A tuple of the updates (one per component, in build order) and the keys
+            whose values could not be applied.
+        """
+        updates = []
+        applied = {}
+        skipped = [key for key in values if key not in self._fields]
+
+        for key, field in self._fields.items():
+            if key not in values:
+                updates.append(gr.update())
+                continue
+
+            value = values[key]
+            accepted = _validate(
+                value,
+                field.default,
+                choices=field.choices,
+                minimum=field.minimum,
+                maximum=field.maximum,
+            )
+
+            # _validate hands the value object itself back iff the component takes it.
+            if accepted is value:
+                updates.append(gr.update(value=value))
+                applied[key] = value
+            else:
+                updates.append(gr.update())
+                skipped.append(key)
+
+        settings.update_tab_settings(self.tab, applied)
+
+        return updates, skipped
 
 
 def persisted_components() -> list[gr.components.Component]:

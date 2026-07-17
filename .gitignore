@@ -181,6 +181,8 @@ autotune/
 gui-settings.json
 state.json
 BirdNET_analysis_params.csv
+birdnet.analyze-params.csv
+*.birdnet.train-params.csv
 
 # Build files
 entitlements.plist

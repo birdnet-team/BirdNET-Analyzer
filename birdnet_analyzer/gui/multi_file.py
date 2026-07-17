@@ -3,6 +3,7 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.gui.presets import PresetControls, load_analysis_params
 from birdnet_analyzer.gui.state import TabState
 
 
@@ -119,6 +120,14 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         gu.info_box(
             description=loc.localize("multi-tab-info-text"),
             title=loc.localize("multi-tab-info-title"),
+        )
+
+        preset_controls = PresetControls(
+            "multi",
+            params_loader=load_analysis_params,
+            params_button_label=loc.localize(
+                "presets-load-analyze-params-button-label"
+            ),
         )
 
         with gr.Group(), gr.Row(equal_height=True):
@@ -297,6 +306,13 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             show_additional_columns,
             inputs=output_type_radio,
             outputs=additional_columns_,
+        )
+        preset_controls.wire(
+            state,
+            species_file_input=species_settings["species_file_input"],
+            classifier_state=model_settings["selected_classifier_state"],
+            classifier_file_input=model_settings["classifier_file_input"],
+            classifier_labels_df=model_settings["classifier_labels_df"],
         )
 
     return (

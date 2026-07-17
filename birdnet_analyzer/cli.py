@@ -41,6 +41,60 @@ ASCII_LOGO = r"""
 """  # noqa: W291
 
 
+def apply_params_file_defaults(parser, loader, argv=None):
+    """Makes the values of a ``--load_params`` file the defaults of a parser.
+
+    Reads the file before the actual parsing, so arguments given on the command line
+    override the values from the file, which in turn override the built-in defaults.
+    Values the parser has no argument for are ignored.
+
+    Args:
+        parser: The fully built argument parser.
+        loader: Reads the parameters file into keyword arguments, e.g.
+            :func:`birdnet_analyzer.params.load_analysis_params`.
+        argv: The command line to read the file path from. Defaults to ``sys.argv``.
+    """
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--load_params")
+    known, _ = pre_parser.parse_known_args(argv)
+
+    if not known.load_params:
+        return
+
+    try:
+        values = loader(known.load_params)
+    except ValueError as e:
+        parser.error(str(e))
+
+    dests = {action.dest for action in parser._actions}
+    parser.set_defaults(**{key: value for key, value in values.items() if key in dests})
+
+
+def load_params_args(run: str, files_hint: str):
+    """
+    Creates an argument parser for reading the settings of a previous run.
+
+    Args:
+        run: What the parameters file belongs to, e.g. "analysis".
+        files_hint: The file names to point the user to.
+
+    Returns:
+        argparse.ArgumentParser: The argument parser with the `--load_params`
+        argument.
+    """
+    p = argparse.ArgumentParser(add_help=False)
+
+    p.add_argument(
+        "--load_params",
+        metavar="PARAMS_FILE",
+        help=f"Read default settings from the parameters file of a previous {run} "
+        f"({files_hint}). Arguments given on the command line take precedence. "
+        "Parameters files of earlier BirdNET-Analyzer versions are understood too.",
+    )
+
+    return p
+
+
 def store_model_action(model_name: str):
     class StoreModelAction(argparse.Action):
         def __init__(
@@ -456,6 +510,7 @@ def analyzer_parser():
         locale_args(),
         bs_args(),
         computing_resources_args(),
+        load_params_args("analysis", "birdnet.analyze-params.csv"),
     ]
 
     parser = argparse.ArgumentParser(
@@ -509,7 +564,8 @@ def analyzer_parser():
     )
     parser.add_argument(
         "--split_tables",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Saves separate result tables for each input audio file in the output.",
     )
     parser.set_defaults(model="birdnet")
@@ -793,6 +849,7 @@ def train_parser():
             overlap_args(
                 help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."
             ),
+            load_params_args("training run", "*.birdnet.train-params.csv"),
         ],
     )
     c = (
@@ -840,7 +897,8 @@ def train_parser():
     parser.add_argument(
         "--focal-loss",
         dest="use_focal_loss",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Use focal loss for training (helps with imbalanced classes and hard examples).",
     )
     parser.add_argument(
@@ -869,11 +927,15 @@ def train_parser():
     )
     parser.add_argument(
         "--label_smoothing",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Whether to use label smoothing for training.",
     )
     parser.add_argument(
-        "--mixup", action="store_true", help="Whether to use mixup for training."
+        "--mixup",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Whether to use mixup for training.",
     )
     parser.add_argument(
         "--upsampling_ratio",
@@ -905,7 +967,8 @@ def train_parser():
     )
     parser.add_argument(
         "--autotune",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Whether to use automatic hyperparameter tuning (this will execute multiple training runs to search for optimal hyperparameters).",
     )
     parser.add_argument(

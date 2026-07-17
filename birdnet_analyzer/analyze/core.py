@@ -106,7 +106,7 @@ def analyze(
     """
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.model_utils import run_geomodel, run_inference
-    from birdnet_analyzer.utils import save_params_to_file
+    from birdnet_analyzer.utils import save_params_file
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
     rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype
@@ -227,62 +227,38 @@ def analyze(
             )
 
     if save_params:
-        save_params_to_file(
+        save_params_file(
             Path(output) / cfg.ANALYSIS_PARAMS_FILENAME,
-            (
-                "Model",
-                "BirdNET version",
-                "Segment length",
-                "Sample rate",
-                "Segment overlap",
-                "Bandpass filter minimum",
-                "Bandpass filter maximum",
-                "Merge consecutive detections",
-                "Audio speed",
-                "Minimum confidence",
-                "Sensitivity",
-                "Top N",
-                "Batch size",
-                "Number of workers",
-                "Number of producers",
-                "Result type(s)",
-                "Latitude",
-                "Longitude",
-                "Week",
-                "Species filter threshold",
-                "Species list file",
-                "Locale",
-                "Custom classifier path",
-                "Custom classifier species list",
-                "Split tables",
-            ),
-            (
-                model,
-                birdnet,
-                predictions.segment_duration_s,
-                predictions.model_sr,
-                overlap,
-                fmin,
-                fmax,
-                merge_consecutive,
-                audio_speed,
-                min_conf,
-                sensitivity,
-                top_n or "",
-                batch_size,
-                n_workers or "",
-                n_producers,
-                ", ".join(rtypes),
-                lat or "",
-                lon or "",
-                week or "",
-                sf_thresh,
-                species_list_file or "",
-                locale,
-                classifier or "",
-                cc_species_list or "",
-                split_tables,
-            ),
+            {
+                "Model": model,
+                "BirdNET version": birdnet,
+                "Segment length": predictions.segment_duration_s,
+                "Sample rate": predictions.model_sr,
+                "Segment overlap": overlap,
+                "Bandpass filter minimum": fmin,
+                "Bandpass filter maximum": fmax,
+                "Merge consecutive detections": merge_consecutive,
+                "Audio speed": audio_speed,
+                "Minimum confidence": min_conf,
+                "Sensitivity": sensitivity,
+                "Top N": top_n or "",
+                "Batch size": batch_size,
+                "Number of workers": n_workers or "",
+                "Number of producers": n_producers,
+                "Result type(s)": ", ".join(rtypes),
+                "Additional columns": ", ".join(additional_columns)
+                if additional_columns
+                else "",
+                "Latitude": lat or "",
+                "Longitude": lon or "",
+                "Week": week or "",
+                "Species filter threshold": sf_thresh,
+                "Species list file": species_list_file or "",
+                "Locale": locale,
+                "Custom classifier path": classifier or "",
+                "Custom classifier species list": cc_species_list or "",
+                "Split tables": split_tables,
+            },
         )
 
     return predictions

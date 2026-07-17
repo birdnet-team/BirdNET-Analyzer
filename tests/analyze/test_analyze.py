@@ -102,6 +102,7 @@ def test_analyze_cli_accepts_full_parser_surface(
     kwargs = vars(args)
     assert kwargs["use_perch"] is True
     kwargs.pop("use_perch", None)
+    kwargs.pop("load_params")
 
     analyze(**kwargs, _return_only=True)
 
