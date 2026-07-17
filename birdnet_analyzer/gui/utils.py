@@ -57,6 +57,70 @@ _SPECIES_KEYS = Literal[
 ]
 TAB_BUILDER_RESULT = tuple[gr.Component, gr.Component, gr.Component] | None
 
+_SETTINGS_TAB_ID = "settings"
+_SPECTROGRAM_COLORMAPS = ["viridis", "magma", "plasma", "inferno", "Greys", "jet"]
+_SPECTROGRAM_FFT_SIZES = [256, 512, 1024, 2048, 4096]
+_SPECTROGRAM_FREQ_SCALES = ["linear", "log"]
+_SPECTROGRAM_DEFAULTS = {
+    "spectrogram_colormap_dropdown": "viridis",
+    "spectrogram_fft_size_dropdown": 1024,
+    "spectrogram_overlap_slider": 50,
+    "spectrogram_dynamic_range_slider": 80,
+    "spectrogram_freq_scale_radio": "linear",
+}
+
+
+def spectrogram_settings() -> dict:
+    """Reads the spectrogram settings the user chose in the settings tab.
+
+    The values are read from disk at call time, so a change in the settings tab shows
+    in the next spectrogram that is drawn, without a restart.
+
+    Returns:
+        The keyword arguments for `utils.spectrogram_from_file` and
+        `utils.spectrogram_from_audio`.
+    """
+    state = TabState(_SETTINGS_TAB_ID)
+    defaults = _SPECTROGRAM_DEFAULTS
+    n_fft = cast(
+        "int",
+        state.get(
+            "spectrogram_fft_size_dropdown",
+            defaults["spectrogram_fft_size_dropdown"],
+            choices=_SPECTROGRAM_FFT_SIZES,
+        ),
+    )
+    overlap = cast(
+        "float",
+        state.get(
+            "spectrogram_overlap_slider",
+            defaults["spectrogram_overlap_slider"],
+            minimum=0,
+            maximum=90,
+        ),
+    )
+
+    return {
+        "n_fft": n_fft,
+        "hop_length": max(1, round(n_fft * (1 - overlap / 100))),
+        "colormap": state.get(
+            "spectrogram_colormap_dropdown",
+            defaults["spectrogram_colormap_dropdown"],
+            choices=_SPECTROGRAM_COLORMAPS,
+        ),
+        "top_db": state.get(
+            "spectrogram_dynamic_range_slider",
+            defaults["spectrogram_dynamic_range_slider"],
+            minimum=30,
+            maximum=120,
+        ),
+        "freq_scale": state.get(
+            "spectrogram_freq_scale_radio",
+            defaults["spectrogram_freq_scale_radio"],
+            choices=_SPECTROGRAM_FREQ_SCALES,
+        ),
+    }
+
 
 def gui_runtime_error_handler(f):
     """
@@ -309,6 +373,95 @@ def build_settings():
                     interactive=True,
                     scale=10,
                 )
+
+            state = TabState(_SETTINGS_TAB_ID)
+
+            with gr.Accordion(
+                loc.localize("settings-tab-spectrogram-accordion-label"), open=False
+            ):
+                gr.Markdown(loc.localize("settings-tab-spectrogram-info"))
+
+                with gr.Row():
+                    state.persist(
+                        "spectrogram_colormap_dropdown",
+                        gr.Dropdown,
+                        choices=[
+                            ("Viridis", "viridis"),
+                            ("Magma", "magma"),
+                            ("Plasma", "plasma"),
+                            ("Inferno", "inferno"),
+                            (
+                                loc.localize(
+                                    "settings-tab-spectrogram-colormap-grayscale-option"
+                                ),
+                                "Greys",
+                            ),
+                            ("Jet", "jet"),
+                        ],
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_colormap_dropdown"],
+                        label=loc.localize("settings-tab-spectrogram-colormap-label"),
+                        info=loc.localize("settings-tab-spectrogram-colormap-info"),
+                        interactive=True,
+                    )
+                    state.persist(
+                        "spectrogram_freq_scale_radio",
+                        gr.Radio,
+                        choices=[
+                            (
+                                loc.localize(
+                                    "settings-tab-spectrogram-freq-scale-linear-option"
+                                ),
+                                "linear",
+                            ),
+                            (
+                                loc.localize(
+                                    "settings-tab-spectrogram-freq-scale-log-option"
+                                ),
+                                "log",
+                            ),
+                        ],
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_freq_scale_radio"],
+                        label=loc.localize("settings-tab-spectrogram-freq-scale-label"),
+                        info=loc.localize("settings-tab-spectrogram-freq-scale-info"),
+                        interactive=True,
+                    )
+
+                with gr.Row():
+                    state.persist(
+                        "spectrogram_fft_size_dropdown",
+                        gr.Dropdown,
+                        choices=_SPECTROGRAM_FFT_SIZES,
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_fft_size_dropdown"],
+                        label=loc.localize("settings-tab-spectrogram-fft-size-label"),
+                        info=loc.localize("settings-tab-spectrogram-fft-size-info"),
+                        interactive=True,
+                    )
+                    state.persist(
+                        "spectrogram_overlap_slider",
+                        gr.Slider,
+                        minimum=0,
+                        maximum=90,
+                        step=5,
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_overlap_slider"],
+                        label=loc.localize("settings-tab-spectrogram-overlap-label"),
+                        info=loc.localize("settings-tab-spectrogram-overlap-info"),
+                        interactive=True,
+                    )
+                    state.persist(
+                        "spectrogram_dynamic_range_slider",
+                        gr.Slider,
+                        minimum=30,
+                        maximum=120,
+                        step=5,
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_dynamic_range_slider"],
+                        label=loc.localize(
+                            "settings-tab-spectrogram-dynamic-range-label"
+                        ),
+                        info=loc.localize(
+                            "settings-tab-spectrogram-dynamic-range-info"
+                        ),
+                        interactive=True,
+                    )
 
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()

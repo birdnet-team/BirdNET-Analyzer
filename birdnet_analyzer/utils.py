@@ -54,6 +54,11 @@ def spectrogram_from_file(
     sig_fmin=0,
     sig_fmax=15000,
     show_freq_axis=False,
+    n_fft=1024,
+    hop_length=None,
+    colormap=None,
+    top_db=80,
+    freq_scale="linear",
 ):
     """
     Generate a spectrogram from an audio file.
@@ -61,6 +66,12 @@ def spectrogram_from_file(
     Parameters:
     path (str): The path to the audio file.
     show_freq_axis (bool): Whether to display the frequency scale (y-axis).
+    n_fft (int): The FFT window size in samples.
+    hop_length (int): The hop between adjacent FFT windows in samples.
+        Defaults to half the window size.
+    colormap (str): The matplotlib colormap to draw with. None lets librosa choose.
+    top_db (float): The dynamic range in dB, measured down from the peak.
+    freq_scale (str): The scale of the frequency axis, "linear" or "log".
 
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
@@ -79,11 +90,31 @@ def spectrogram_from_file(
     )
 
     return spectrogram_from_audio(
-        s, sr, fig_num=fig_num, fig_size=fig_size, show_freq_axis=show_freq_axis
+        s,
+        sr,
+        fig_num=fig_num,
+        fig_size=fig_size,
+        show_freq_axis=show_freq_axis,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        colormap=colormap,
+        top_db=top_db,
+        freq_scale=freq_scale,
     )
 
 
-def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=False):
+def spectrogram_from_audio(
+    s,
+    sr,
+    fig_num=None,
+    fig_size=None,
+    show_freq_axis=False,
+    n_fft=1024,
+    hop_length=None,
+    colormap=None,
+    top_db=80,
+    freq_scale="linear",
+):
     """
     Generate a spectrogram from an audio signal.
 
@@ -91,6 +122,12 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=Fa
     s: The signal
     sr: The sample rate
     show_freq_axis (bool): Whether to display the frequency scale (y-axis).
+    n_fft (int): The FFT window size in samples.
+    hop_length (int): The hop between adjacent FFT windows in samples.
+        Defaults to half the window size.
+    colormap (str): The matplotlib colormap to draw with. None lets librosa choose.
+    top_db (float): The dynamic range in dB, measured down from the peak.
+    freq_scale (str): The scale of the frequency axis, "linear" or "log".
 
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
@@ -103,6 +140,9 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=Fa
     import numpy as np
 
     matplotlib.use("agg")
+
+    if hop_length is None:
+        hop_length = n_fft // 2
 
     if isinstance(fig_size, tuple):
         f = plt.figure(fig_num, figsize=fig_size)
@@ -117,16 +157,17 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=Fa
 
     ax = f.add_subplot(111)
 
-    D = librosa.stft(s, n_fft=1024, hop_length=512)
-    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
+    D = librosa.stft(s, n_fft=n_fft, hop_length=hop_length)
+    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max, top_db=top_db)
 
     spec = librosa.display.specshow(
         S_db,
         ax=ax,
         sr=sr,
-        n_fft=1024,
-        hop_length=512,
-        y_axis="linear" if show_freq_axis else None,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        y_axis=freq_scale,
+        cmap=colormap,
     )
 
     if show_freq_axis:
