@@ -260,6 +260,7 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
                         fig_num=MATPLOTLIB_FIGURE_ID,
                         fig_size=(8, 4),
                         show_freq_axis=True,
+                        **gu.spectrogram_settings(),
                     ),
                 }
 
@@ -432,6 +433,7 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
                         fig_num=MATPLOTLIB_FIGURE_ID,
                         fig_size=(8, 4),
                         show_freq_axis=True,
+                        **gu.spectrogram_settings(),
                     ),
                     no_samles_label: gr.Label(visible=False),
                 }

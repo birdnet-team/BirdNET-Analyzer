@@ -257,6 +257,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                                 file_path,
                                 fig_size=(20, 4),
                                 fig_num=MATPLOTLIB_FIGURE_NUM,
+                                **gu.spectrogram_settings(),
                             ),
                         )
                         if generate_spectrogram
@@ -301,6 +302,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                                 audio_path,
                                 fig_size=(20, 4),
                                 fig_num=MATPLOTLIB_FIGURE_NUM,
+                                **gu.spectrogram_settings(),
                             ),
                         ),
                     )
