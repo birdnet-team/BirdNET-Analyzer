@@ -67,8 +67,8 @@ def spectrogram_from_file(
     path (str): The path to the audio file.
     show_freq_axis (bool): Whether to display the frequency scale (y-axis).
     n_fft (int): The FFT window size in samples.
-    hop_length (int): The hop between adjacent FFT windows in samples.
-        Defaults to half the window size.
+    hop_length (int | None): The hop between adjacent FFT windows in samples.
+        None uses half the window size.
     colormap (str): The matplotlib colormap to draw with. None lets librosa choose.
     top_db (float): The dynamic range in dB, measured down from the peak.
     freq_scale (str): The scale of the frequency axis, "linear" or "log".
@@ -123,8 +123,8 @@ def spectrogram_from_audio(
     sr: The sample rate
     show_freq_axis (bool): Whether to display the frequency scale (y-axis).
     n_fft (int): The FFT window size in samples.
-    hop_length (int): The hop between adjacent FFT windows in samples.
-        Defaults to half the window size.
+    hop_length (int | None): The hop between adjacent FFT windows in samples.
+        None uses half the window size.
     colormap (str): The matplotlib colormap to draw with. None lets librosa choose.
     top_db (float): The dynamic range in dB, measured down from the peak.
     freq_scale (str): The scale of the frequency axis, "linear" or "log".
