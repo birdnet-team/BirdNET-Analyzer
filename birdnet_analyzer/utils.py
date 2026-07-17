@@ -5,13 +5,17 @@ import os
 from pathlib import Path
 
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
+from birdnet_analyzer.logs import setup_logging
 from birdnet_analyzer.settings import write_error_log
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def runtime_error_handler(f):
-    """Decorator to catch runtime errors and write them to the error log.
+    """Decorator preparing the runtime of the CLI entry points.
+
+    Configures logging, so messages reach the console and the error log file, and
+    catches runtime errors to write them to the error log.
 
     Args:
         f: The function to be decorated.
@@ -21,6 +25,8 @@ def runtime_error_handler(f):
     """
 
     def wrapper(*args, **kwargs):
+        setup_logging()
+
         try:
             return f(*args, **kwargs)
         except Exception as ex:

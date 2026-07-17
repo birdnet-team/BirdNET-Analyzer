@@ -6,6 +6,7 @@ Can be used to train a custom classifier with new training data.
 from __future__ import annotations
 
 import csv
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
@@ -35,6 +36,8 @@ ENCODE_BATCH_SIZE = 4
 # pipeline in a single batched call. Bounds the peak memory of buffered raw audio
 # (~0.5 MiB per 3 s float32 segment at 48 kHz) while keeping per-call overhead low.
 ENCODE_CHUNK_SIZE = 1024
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -135,8 +138,7 @@ def _read_and_crop_file(
             speed=audio_speed,
         )
     except Exception as e:
-        print(f"\t Error when loading file {f}", flush=True)
-        print(f"\t {e}", flush=True)
+        logger.error(f"\t Error when loading file {f}\n\t {e}", exc_info=e)
         return [], []
 
     if crop_mode == "center":
@@ -407,7 +409,7 @@ def _load_training_data(
                 is_multi_label=is_multi_label,
             )
         except Exception as e:
-            print(f"\t...error saving cache: {e}", flush=True)
+            logger.warning(f"\t...error saving cache: {e}")
 
     return x_train, y_train, x_test, y_test, valid_labels, is_binary, is_multi_label
 
@@ -486,13 +488,12 @@ def train_model(
         save_cache_to=save_cache_to,
         progress_callback=on_data_load_end,
     )
-    print(
+    logger.info(
         f"...Done. Loaded {x_train_full.shape[0]} training samples "
-        f"and {y_train_full.shape[1]} labels.",
-        flush=True,
+        f"and {y_train_full.shape[1]} labels."
     )
     if len(x_val_full) > 0:
-        print(f"...Loaded {x_val_full.shape[0]} test samples.", flush=True)
+        logger.info(f"...Loaded {x_val_full.shape[0]} test samples.")
 
     if autotune:
         import gc
@@ -960,8 +961,8 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
 
     metrics = {}
 
-    print("\nModel Evaluation:")
-    print("=================")
+    logger.info("\nModel Evaluation:")
+    logger.info("=================")
 
     # Calculate metrics for each class
     precisions_default = []
@@ -976,13 +977,15 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     optimal_thresholds = {}
 
     # Print the metric calculation method that's being used
-    print(
+    logger.info(
         "\nNote: The AUPRC and AUROC metrics calculated during post-training evaluation"
         " may differ"
     )
-    print("from training history values due to different calculation methods:")
-    print("  - Training history uses Keras metrics calculated over batches")
-    print("  - Evaluation uses scikit-learn metrics calculated over the entire dataset")
+    logger.info("from training history values due to different calculation methods:")
+    logger.info("  - Training history uses Keras metrics calculated over batches")
+    logger.info(
+        "  - Evaluation uses scikit-learn metrics calculated over the entire dataset"
+    )
 
     for i in range(y_test.shape[1]):
         try:
@@ -1034,25 +1037,27 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
                 "threshold": class_threshold,
             }
 
-            print(f"\nClass: {labels[i]}")
-            print("  Default threshold (0.5):")
-            print(f"    Precision: {class_precision_default:.4f}")
-            print(f"    Recall:    {class_recall_default:.4f}")
-            print(f"    F1 Score:  {class_f1_default:.4f}")
-            print(f"  Optimized threshold ({class_threshold:.2f}):")
-            print(f"    Precision: {class_precision_opt:.4f}")
-            print(f"    Recall:    {class_recall_opt:.4f}")
-            print(f"    F1 Score:  {class_f1_opt:.4f}")
-            print(f"  AUPRC:     {class_auprc:.4f}")
-            print(f"  AUROC:     {class_auroc:.4f}")
-            print("  Confusion matrix (optimized threshold):")
-            print(f"    True Positives:  {tp}")
-            print(f"    False Positives: {fp}")
-            print(f"    True Negatives:  {tn}")
-            print(f"    False Negatives: {fn}")
+            logger.info(f"\nClass: {labels[i]}")
+            logger.info("  Default threshold (0.5):")
+            logger.info(f"    Precision: {class_precision_default:.4f}")
+            logger.info(f"    Recall:    {class_recall_default:.4f}")
+            logger.info(f"    F1 Score:  {class_f1_default:.4f}")
+            logger.info(f"  Optimized threshold ({class_threshold:.2f}):")
+            logger.info(f"    Precision: {class_precision_opt:.4f}")
+            logger.info(f"    Recall:    {class_recall_opt:.4f}")
+            logger.info(f"    F1 Score:  {class_f1_opt:.4f}")
+            logger.info(f"  AUPRC:     {class_auprc:.4f}")
+            logger.info(f"  AUROC:     {class_auroc:.4f}")
+            logger.info("  Confusion matrix (optimized threshold):")
+            logger.info(f"    True Positives:  {tp}")
+            logger.info(f"    False Positives: {fp}")
+            logger.info(f"    True Negatives:  {tn}")
+            logger.info(f"    False Negatives: {fn}")
 
         except Exception as e:
-            print(f"Error calculating metrics for class {labels[i]}: {e}")
+            logger.error(
+                f"Error calculating metrics for class {labels[i]}: {e}", exc_info=e
+            )
 
     # Calculate macro-averaged metrics for both default and optimized thresholds
     metrics["macro_precision_default"] = np.mean(precisions_default)
@@ -1066,28 +1071,28 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     metrics["class_metrics"] = class_metrics
     metrics["optimal_thresholds"] = optimal_thresholds
 
-    print("\nMacro-averaged metrics:")
-    print("  Default threshold (0.5):")
-    print(f"    Precision: {metrics['macro_precision_default']:.4f}")
-    print(f"    Recall:    {metrics['macro_recall_default']:.4f}")
-    print(f"    F1 Score:  {metrics['macro_f1_default']:.4f}")
-    print("  Optimized thresholds:")
-    print(f"    Precision: {metrics['macro_precision_opt']:.4f}")
-    print(f"    Recall:    {metrics['macro_recall_opt']:.4f}")
-    print(f"    F1 Score:  {metrics['macro_f1_opt']:.4f}")
-    print(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
-    print(f"  AUROC:     {metrics['macro_auroc']:.4f}")
+    logger.info("\nMacro-averaged metrics:")
+    logger.info("  Default threshold (0.5):")
+    logger.info(f"    Precision: {metrics['macro_precision_default']:.4f}")
+    logger.info(f"    Recall:    {metrics['macro_recall_default']:.4f}")
+    logger.info(f"    F1 Score:  {metrics['macro_f1_default']:.4f}")
+    logger.info("  Optimized thresholds:")
+    logger.info(f"    Precision: {metrics['macro_precision_opt']:.4f}")
+    logger.info(f"    Recall:    {metrics['macro_recall_opt']:.4f}")
+    logger.info(f"    F1 Score:  {metrics['macro_f1_opt']:.4f}")
+    logger.info(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
+    logger.info(f"  AUROC:     {metrics['macro_auroc']:.4f}")
 
     # Calculate class distribution in test set
     class_counts = y_test.sum(axis=0)
     total_samples = len(y_test)
     class_distribution = {}
 
-    print("\nClass distribution in test set:")
+    logger.info("\nClass distribution in test set:")
     for i, count in enumerate(class_counts):
         percentage = count / total_samples * 100
         class_distribution[labels[i]] = {"count": int(count), "percentage": percentage}
-        print(f"  {labels[i]}: {int(count)} samples ({percentage:.2f}%)")
+        logger.info(f"  {labels[i]}: {int(count)} samples ({percentage:.2f}%)")
 
     metrics["class_distribution"] = class_distribution
 

@@ -1,6 +1,7 @@
 # ruff: noqa: PLW0603
 import base64
 import io
+import logging
 import multiprocessing
 import os
 import platform
@@ -23,6 +24,7 @@ from birdnet_analyzer.gui.state import TabState
 warnings.filterwarnings("ignore")
 loc.load_local_state()
 
+logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
@@ -1237,7 +1239,7 @@ def _get_network_shortcuts():
 
                         shortcuts.append(path_buffer)
                     except Exception as e:
-                        print(f"Error reading {target_lnk}: {e}")
+                        logger.error(f"Error reading {target_lnk}: {e}")
                         raise e
 
         return shortcuts

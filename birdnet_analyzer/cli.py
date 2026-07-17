@@ -1,5 +1,6 @@
 # ruff: noqa: E501
 import argparse
+import logging
 import os
 from typing import cast, get_args
 
@@ -10,6 +11,7 @@ from birdnet.globals import (
 )
 
 from birdnet_analyzer.config import AUTOTUNE_METRICS, TRAINED_MODEL_OUTPUT_FORMATS
+from birdnet_analyzer.logs import setup_logging
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ASCII_LOGO = r"""                        
@@ -142,6 +144,52 @@ def birdnet_arg():
         choices=get_args(ACOUSTIC_MODEL_VERSIONS),
         action=set_model_action("birdnet"),
         help="Use the BirdNET model. Specify the version to use.",
+    )
+
+    return p
+
+
+class _VerbosityAction(argparse.Action):
+    """Reconfigures the console log level as soon as the flag is parsed.
+
+    Stores nothing in the namespace, so the flag never reaches the keyword arguments
+    the entry points pass into the feature functions.
+    """
+
+    def __init__(self, option_strings, dest, level=logging.INFO, **kwargs):
+        super().__init__(
+            option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs
+        )
+        self._level = level
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setup_logging(self._level)
+
+
+def verbosity_args():
+    """
+    Creates an argument parser for the console verbosity.
+
+    -q is not available as a short form of --quiet, because search uses it for the
+    query file.
+
+    Returns:
+        argparse.ArgumentParser: The argument parser with the verbosity arguments.
+    """
+    p = argparse.ArgumentParser(add_help=False)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument(
+        "-v",
+        "--verbose",
+        action=_VerbosityAction,
+        level=logging.DEBUG,
+        help="Also show debug messages and stacktraces on the console.",
+    )
+    g.add_argument(
+        "--quiet",
+        action=_VerbosityAction,
+        level=logging.WARNING,
+        help="Only show warnings and errors on the console.",
     )
 
     return p
@@ -511,6 +559,7 @@ def analyzer_parser():
         bs_args(),
         computing_resources_args(),
         load_params_args("analysis", "birdnet.analyze-params.csv"),
+        verbosity_args(),
     ]
 
     parser = argparse.ArgumentParser(
@@ -596,6 +645,7 @@ def embeddings_parser():
         overlap_args(),
         bs_args(default=8),
         computing_resources_args(),
+        verbosity_args(),
     ]
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -633,7 +683,7 @@ def search_parser():
     - db_args(): Handles database arguments.
     """
 
-    parents = [overlap_args(), db_args()]
+    parents = [overlap_args(), db_args(), verbosity_args()]
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents
     )
@@ -685,7 +735,13 @@ def client_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[io_args(), species_args(), sigmoid_args(), overlap_args()],
+        parents=[
+            io_args(),
+            species_args(),
+            sigmoid_args(),
+            overlap_args(),
+            verbosity_args(),
+        ],
     )
 
     parser.add_argument(
@@ -724,7 +780,12 @@ def segments_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[audio_speed_args(), threads_args(), min_conf_args()],
+        parents=[
+            audio_speed_args(),
+            threads_args(),
+            min_conf_args(),
+            verbosity_args(),
+        ],
     )
 
     parser.add_argument(
@@ -784,7 +845,7 @@ def server_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[threads_args(), locale_args()],
+        parents=[threads_args(), locale_args(), verbosity_args()],
     )
 
     parser.add_argument(
@@ -817,7 +878,7 @@ def species_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[species_list_args(), locale_args()],
+        parents=[species_list_args(), locale_args(), verbosity_args()],
     )
 
     parser.add_argument(
@@ -850,6 +911,7 @@ def train_parser():
                 help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."
             ),
             load_params_args("training run", "*.birdnet.train-params.csv"),
+            verbosity_args(),
         ],
     )
     c = (

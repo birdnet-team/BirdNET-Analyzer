@@ -11,7 +11,9 @@ def main():
         species,
         train,
     )
+    from birdnet_analyzer.logs import setup_logging
 
+    setup_logging()
     gu.open_window(
         [
             sfa.build_single_analysis_tab,

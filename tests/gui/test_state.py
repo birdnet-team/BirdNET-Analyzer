@@ -5,7 +5,7 @@ import pytest
 # Building components needs gradio, which only comes with the gui and gui-tests extras.
 gr = pytest.importorskip("gradio")
 
-from birdnet_analyzer import settings  # noqa: E402
+from birdnet_analyzer import logs, settings  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 
 
@@ -13,16 +13,19 @@ from birdnet_analyzer.gui import state as gs  # noqa: E402
 def state_file(monkeypatch, tmp_path):
     """Points the GUI state at a state.json inside tmp_path.
 
-    The error log goes to tmp_path too: reading a broken state file logs the error, and
-    the log file is otherwise resolved from the real user data dir at import time.
+    The error log goes to tmp_path too: reading a broken state file logs the error,
+    which only reaches a file when logging is configured the way the apps do it.
     """
     path = tmp_path / "state.json"
     monkeypatch.setattr(settings, "APPDIR", tmp_path)
     monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(path))
     monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
     monkeypatch.setattr(gs, "_PERSISTED", [])
+    logs.setup_logging()
 
-    return path
+    yield path
+
+    logs._remove_installed_handlers()
 
 
 def test_settings_are_kept_per_tab(state_file):

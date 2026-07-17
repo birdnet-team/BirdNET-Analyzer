@@ -1,10 +1,10 @@
 import io
 import json
+import logging
 import os
 import re
 import sys
 import threading
-import traceback
 from contextlib import suppress
 from pathlib import Path
 
@@ -458,62 +458,14 @@ def theme():
     return current_time if current_time in options else "light"
 
 
-def _shorten_error_log_entry(entry: str) -> str:
-    """Shortens a stacktrace that exceeds MAX_ERROR_LOG_ENTRY_SIZE.
-
-    Keeps the beginning and the end of the entry, since the first frames and the final
-    exception of a chained traceback are the parts needed to track a bug down.
-
-    Args:
-        entry: The formatted stacktrace.
-
-    Returns:
-        str: The stacktrace, shortened to about MAX_ERROR_LOG_ENTRY_SIZE characters.
-    """
-    if len(entry) <= MAX_ERROR_LOG_ENTRY_SIZE:
-        return entry
-
-    head = MAX_ERROR_LOG_ENTRY_SIZE // 2
-    tail = MAX_ERROR_LOG_ENTRY_SIZE - head
-    omitted = len(entry) - MAX_ERROR_LOG_ENTRY_SIZE
-
-    return f"{entry[:head]}\n[... {omitted} characters omitted ...]\n{entry[-tail:]}"
-
-
-def _rotate_error_log(log_path: Path) -> None:
-    """Moves the error log into a backup file once it exceeds MAX_ERROR_LOG_SIZE.
-
-    An existing backup is overwritten, so at most two log files are kept around.
-
-    Args:
-        log_path: The path of the error log file.
-    """
-    with suppress(OSError):
-        if log_path.stat().st_size > MAX_ERROR_LOG_SIZE:
-            log_path.replace(_backup_path(log_path))
-
-
 def write_error_log(ex: Exception):
-    """Writes an exception to the error log.
+    """Logs an exception with its stacktrace.
 
-    Formats the stacktrace and writes it in the error log file. Overly long stacktraces
-    are shortened and the log is rotated once it grows too large.
+    The single funnel for unexpected exceptions: the shipped applications install a
+    handler that collects these in the error log file (see logs.setup_logging), while
+    a host application using birdnet_analyzer as a library configures logging itself.
 
     Args:
         ex: An exception that occurred.
     """
-    import datetime
-
-    log_path = Path(ERROR_LOG_FILE)
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    _rotate_error_log(log_path)
-
-    entry = "".join(traceback.TracebackException.from_exception(ex).format())
-
-    with open(log_path, "a", encoding="utf-8") as elog:
-        elog.write(
-            datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-            + "\n"
-            + _shorten_error_log_entry(entry)
-            + "\n"
-        )
+    logging.getLogger(__name__).error("Unhandled exception:", exc_info=ex)
