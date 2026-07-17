@@ -1,7 +1,9 @@
+import io
 import json
 import os
 import re
 import sys
+import threading
 import traceback
 from contextlib import suppress
 from pathlib import Path
@@ -30,21 +32,104 @@ def _ensure_appdir_exists() -> None:
     APPDIR.mkdir(parents=True, exist_ok=True)
 
 
-if FROZEN:
-    # divert stdout & stderr to logs.txt file since we have no console when deployed
-    _ensure_appdir_exists()
-    sys.stderr = sys.stdout = open(APPDIR / "logs.txt", "a")  # noqa: SIM115
-
 FALLBACK_LANGUAGE = "en"
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ERROR_LOG_FILE = str(APPDIR / "error_log.txt")
+MAX_ERROR_LOG_ENTRY_SIZE = 20 * 1024
+MAX_ERROR_LOG_SIZE = 1024 * 1024
+LOG_FILE = str(APPDIR / "logs.txt")
+MAX_LOG_SIZE = 5 * 1024 * 1024
 GUI_SETTINGS_PATH = str(APPDIR / "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
 STATE_SETTINGS_PATH = str(APPDIR / "state.json")
-
-# The values of the GUI settings live under this key, one sub-dict per tab, so they
-# stay separate from the flat keys used to remember the last directory of a dialog.
 TAB_SETTINGS_KEY = "tab-settings"
+
+
+def _backup_path(log_path: Path) -> Path:
+    """Returns the path a log file is rotated into once it gets too large."""
+    return log_path.with_name(log_path.name + ".1")
+
+
+class _RotatingLogFile(io.TextIOBase):
+    """A write-only text stream that keeps its file below a maximum size.
+
+    Nothing ever truncates the log stdout & stderr are diverted into, while tensorflow
+    warnings and the tqdm progress bars of a long run keep appending to it for as long
+    as the app is used. Once the file passes max_size it is rotated into a backup, so
+    the log costs at most about 2 * max_size on disk.
+    """
+
+    def __init__(self, path: Path, max_size: int):
+        self._path = path
+        self._max_size = max_size
+        self._lock = threading.Lock()
+        self._rotate_at = max_size
+        self._file = self._open()
+
+        if self._size >= self._rotate_at:
+            self._rotate()
+
+    def _open(self):
+        # errors="replace" keeps output that the file encoding cannot represent from
+        # raising in whichever thread happened to write it.
+        file = open(self._path, "a", encoding="utf-8", errors="replace")  # noqa: SIM115
+        self._size = file.tell()
+
+        return file
+
+    def _rotate(self) -> None:
+        """Starts a new log file, keeping the current one as the backup."""
+        self._file.close()
+
+        with suppress(OSError):
+            self._path.replace(_backup_path(self._path))
+
+        self._file = self._open()
+        # The rename fails while another process (e.g. an analysis worker) holds the log
+        # open on Windows, which leaves the file too large. Only try again after another
+        # max_size worth of output, instead of on every following write.
+        self._rotate_at = self._size + self._max_size
+
+    def write(self, text: str) -> int:
+        with self._lock:
+            written = self._file.write(text)
+            # Counting characters is close enough for a rough limit and avoids tell(),
+            # which would flush the buffer on every write.
+            self._size += len(text)
+
+            if self._size >= self._rotate_at:
+                self._rotate()
+
+            return written
+
+    def flush(self) -> None:
+        with self._lock:
+            self._file.flush()
+
+    def close(self) -> None:
+        super().close()  # flushes through flush()
+
+        with self._lock:
+            self._file.close()
+
+    def fileno(self) -> int:
+        return self._file.fileno()
+
+    def isatty(self) -> bool:
+        return False
+
+    def writable(self) -> bool:
+        return True
+
+    @property
+    def encoding(self) -> str:
+        return self._file.encoding
+
+
+if FROZEN:
+    # divert stdout & stderr to logs.txt file since we have no console when deployed
+    _ensure_appdir_exists()
+    sys.stderr = sys.stdout = _RotatingLogFile(Path(LOG_FILE), MAX_LOG_SIZE)
 
 
 def get_state_dict() -> dict:
@@ -373,21 +458,62 @@ def theme():
     return current_time if current_time in options else "light"
 
 
+def _shorten_error_log_entry(entry: str) -> str:
+    """Shortens a stacktrace that exceeds MAX_ERROR_LOG_ENTRY_SIZE.
+
+    Keeps the beginning and the end of the entry, since the first frames and the final
+    exception of a chained traceback are the parts needed to track a bug down.
+
+    Args:
+        entry: The formatted stacktrace.
+
+    Returns:
+        str: The stacktrace, shortened to about MAX_ERROR_LOG_ENTRY_SIZE characters.
+    """
+    if len(entry) <= MAX_ERROR_LOG_ENTRY_SIZE:
+        return entry
+
+    head = MAX_ERROR_LOG_ENTRY_SIZE // 2
+    tail = MAX_ERROR_LOG_ENTRY_SIZE - head
+    omitted = len(entry) - MAX_ERROR_LOG_ENTRY_SIZE
+
+    return f"{entry[:head]}\n[... {omitted} characters omitted ...]\n{entry[-tail:]}"
+
+
+def _rotate_error_log(log_path: Path) -> None:
+    """Moves the error log into a backup file once it exceeds MAX_ERROR_LOG_SIZE.
+
+    An existing backup is overwritten, so at most two log files are kept around.
+
+    Args:
+        log_path: The path of the error log file.
+    """
+    with suppress(OSError):
+        if log_path.stat().st_size > MAX_ERROR_LOG_SIZE:
+            log_path.replace(_backup_path(log_path))
+
+
 def write_error_log(ex: Exception):
     """Writes an exception to the error log.
 
-    Formats the stacktrace and writes it in the error log file.
+    Formats the stacktrace and writes it in the error log file. Overly long stacktraces
+    are shortened and the log is rotated once it grows too large.
 
     Args:
         ex: An exception that occurred.
     """
     import datetime
 
-    Path(ERROR_LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
-    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as elog:
+    log_path = Path(ERROR_LOG_FILE)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    _rotate_error_log(log_path)
+
+    entry = "".join(traceback.TracebackException.from_exception(ex).format())
+
+    with open(log_path, "a", encoding="utf-8") as elog:
         elog.write(
             datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
             + "\n"
-            + "".join(traceback.TracebackException.from_exception(ex).format())
+            + _shorten_error_log_entry(entry)
             + "\n"
         )
