@@ -274,11 +274,11 @@ def _species_choice(option: str) -> str:
     return loc.localize(f"species-list-radio-option-{option}")
 
 
-def _load_params_file(loader, path: str) -> dict[str, Any]:
+def _load_params_file(loader, path: str, error_key: str) -> dict[str, Any]:
     try:
         return loader(path)
     except ValueError as e:
-        raise gr.Error(loc.localize("presets-invalid-params-file-error")) from e
+        raise gr.Error(loc.localize(error_key)) from e
 
 
 def _rename(kwargs: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:
@@ -312,7 +312,9 @@ def load_analysis_params(path: str) -> dict[str, Any]:
     Raises:
         gr.Error: If the file is not an analysis parameters file.
     """
-    kwargs = _load_params_file(params.load_analysis_params, path)
+    kwargs = _load_params_file(
+        params.load_analysis_params, path, "presets-invalid-analyze-params-file-error"
+    )
     values = _rename(
         kwargs,
         {
@@ -383,7 +385,9 @@ def load_train_params(path: str) -> dict[str, Any]:
     Raises:
         gr.Error: If the file is not a training parameters file.
     """
-    kwargs = _load_params_file(params.load_train_params, path)
+    kwargs = _load_params_file(
+        params.load_train_params, path, "presets-invalid-train-params-file-error"
+    )
     values = _rename(
         kwargs,
         {

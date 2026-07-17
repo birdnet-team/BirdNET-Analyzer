@@ -224,11 +224,18 @@ def read_lines(
     return cleaned_lines
 
 
+# The shipped BirdNET models drop this suffix to name their label file, e.g.
+# BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite -> BirdNET_GLOBAL_6K_V2.4_Labels.txt, while
+# a trained classifier keeps its full name, e.g. Custom.tflite -> Custom_Labels.txt.
+_BIRDNET_SUFFIX = "Model_FP32.tflite"
+
+
 def read_classifier_labels(classifier_file: str) -> list[str] | None:
     """Reads the labels belonging to a custom classifier.
 
     Looks for the label file next to the classifier, following the naming used when a
-    custom classifier is trained.
+    custom classifier is trained, and falls back to the naming of the shipped BirdNET
+    models.
 
     Args:
         classifier_file: Absolute path to the classifier file.
@@ -239,8 +246,8 @@ def read_classifier_labels(classifier_file: str) -> list[str] | None:
     base_name = os.path.splitext(classifier_file)[0]
     labels_file = base_name + "_Labels.txt"
 
-    if not os.path.isfile(labels_file):
-        labels_file = classifier_file.replace("Model_FP32.tflite", "Labels.txt")
+    if not os.path.isfile(labels_file) and classifier_file.endswith(_BIRDNET_SUFFIX):
+        labels_file = classifier_file.removesuffix(_BIRDNET_SUFFIX) + "Labels.txt"
 
     if not os.path.isfile(labels_file):
         return None
