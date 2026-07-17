@@ -126,3 +126,6 @@ def _remove_installed_handlers():
         handler.close()
 
     _installed_handlers.clear()
+    # Also drop the configured level, so a host application that configures logging
+    # afterwards decides again which records get through.
+    logger.setLevel(logging.NOTSET)

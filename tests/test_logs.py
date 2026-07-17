@@ -63,6 +63,16 @@ def test_setup_can_be_called_again_without_duplicating_output(error_log, capsys)
     assert capsys.readouterr().out == "once\n"
 
 
+def test_removing_the_handlers_also_resets_the_logger_level(error_log):
+    assert logs.logger.level != logging.NOTSET
+
+    logs._remove_installed_handlers()
+
+    # Back to the library state: a host application configuring logging afterwards
+    # decides which records get through, including DEBUG.
+    assert logs.logger.level == logging.NOTSET
+
+
 def test_unconfigured_library_use_writes_no_files(monkeypatch, tmp_path):
     log_path = tmp_path / "error_log.txt"
     monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(log_path))

@@ -1239,8 +1239,8 @@ def _get_network_shortcuts():
 
                         shortcuts.append(path_buffer)
                     except Exception as e:
-                        logger.error(f"Error reading {target_lnk}: {e}")
-                        raise e
+                        logger.exception(f"Error reading {target_lnk}: {e}")
+                        raise
 
         return shortcuts
     except Exception as e:
