@@ -1,0 +1,30 @@
+# Version control and CI
+.git
+.github
+
+# Python build/cache artifacts
+__pycache__
+*.pyc
+*.egg-info
+build
+dist
+
+# Local environments
+.venv*
+venv
+
+# Large local-only artifacts (untracked, not needed at runtime).
+# The BirdNET model is downloaded by the `birdnet` dependency on first run,
+# so bundled checkpoints are not required in the image.
+installers
+birdnet_analyzer/checkpoints
+
+# Not needed inside the image
+tests
+docs
+.pytest_cache
+.ruff_cache
+.vscode
+.idea
+Dockerfile
+.dockerignore
