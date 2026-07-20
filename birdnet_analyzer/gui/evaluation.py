@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -6,17 +8,17 @@ import tempfile
 import typing
 
 import gradio as gr
-import matplotlib.pyplot as plt
 import pandas as pd
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.evaluation import process_data
-from birdnet_analyzer.evaluation.assessment.performance_assessor import (
-    PerformanceAssessor,
-)
-from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 from birdnet_analyzer.gui.state import TabState
+
+if typing.TYPE_CHECKING:
+    from birdnet_analyzer.evaluation.assessment.performance_assessor import (
+        PerformanceAssessor,
+    )
+    from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +197,10 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         annotation_dir=None,
         prediction_dir=None,
     ):
+        from birdnet_analyzer.evaluation.preprocessing.data_processor import (
+            DataProcessor,
+        )
+
         if not annotation_files or not prediction_files:
             return [], [], None, None, None
 
@@ -790,6 +796,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             proc_state: ProcessorState,
             *metrics_checkbox_values,
         ):
+            from birdnet_analyzer.evaluation import process_data
+
             metrics = tuple(
                 metric_id
                 for value, metric_id in zip(
@@ -910,6 +918,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         def plot_metrics(
             pa: PerformanceAssessor, predictions, labels, class_wise_value
         ):
+            import matplotlib.pyplot as plt
+
             if pa is None or predictions is None or labels is None:
                 raise gr.Error(
                     loc.localize("eval-tab-error-calc-metrics-first"),
@@ -934,6 +944,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         )
 
         def plot_confusion_matrix(pa: PerformanceAssessor, predictions, labels):
+            import matplotlib.pyplot as plt
+
             if pa is None or predictions is None or labels is None:
                 raise gr.Error(
                     loc.localize("eval-tab-error-calc-metrics-first"),
@@ -1016,6 +1028,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         def plot_metrics_all_thresholds(
             pa: PerformanceAssessor, predictions, labels, class_wise_value
         ):
+            import matplotlib.pyplot as plt
+
             if pa is None or predictions is None or labels is None:
                 raise gr.Error(
                     loc.localize("eval-tab-error-calc-metrics-first"),

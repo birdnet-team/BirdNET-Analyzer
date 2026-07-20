@@ -6,7 +6,7 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import audio, utils
+from birdnet_analyzer import utils
 from birdnet_analyzer.analyze.core import (
     save_as_csv,
     save_as_kaleidoscope,
@@ -237,6 +237,8 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         def select_and_load_audio_file(generate_spectrogram=False):
             """Use webview dialog to select audio file and load it."""
+            from birdnet_analyzer import audio
+
             file_path = gu.select_file(
                 filetypes=(
                     "Audio files (*.wav;*.flac;*.mp3;*.ogg;*.m4a;*.wma;*.aiff;*.aif)",
@@ -368,6 +370,8 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 ) from e
 
         def get_selected_audio(evt: gr.SelectData, audio_path):
+            from birdnet_analyzer import audio
+
             if evt.index[1] == 0 and evt.row_value[1] and evt.row_value[2]:
                 start = time_to_seconds(evt.row_value[1])
                 end = time_to_seconds(evt.row_value[2])
