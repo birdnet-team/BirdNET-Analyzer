@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>BirdNET Projects Map</title>
+    <link rel="icon" href="_static/birdnet-icon.ico" type="image/x-icon">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+    <!-- Font Awesome CSS 5.15.4 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div id="header" class="container-fluid bg-dark text-white text-left p-3 ">
+        <!--Logo and title-->
+        <div class="row align-items-center justify-content-left">
+            <div class="col-auto">
+                <img src="_static/birdnet_logo.png" alt="BirdNET Logo" style="height: 40px;">
+            </div>
+            <div class="col-auto">
+                <h4>BirdNET Projects Map</h4>
+            </div>
+            <!-- Show number of project as right-most column-->
+            <div class="col-auto ml-auto">
+                <h6 class="text-muted"><span id="projects-count"></span> projects worldwide</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Column for the Map -->
+            <div class="col-md-9" id="map"></div>
+
+            <!-- Column for the Projects List -->
+            <div class="col-md-3 bg-secondary p-0">
+                <div id="projects-list" class="list-group overflow-auto"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <div id="footer" class="container-fluid bg-dark text-white text-center p-1">
+        <p>Working on another cool project using BirdNET? Let us know <a
+                href="https://github.com/birdnet-team/BirdNET-Analyzer/issues/221">here</a> and we'll add it to the map. | Last
+            update: 2025-01-15</p>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+    <!-- jQuery (required for Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <!-- Projects JavaScript File -->
+    <script src="projects_data.js"></script>
+
+    <script>
+
+        // Set map height based on window height
+        var mapHeight = $(window).height() - $('#footer').height() - $('#header').height() - 40;
+        $('#map').height(mapHeight);
+        $('#projects-list').height(mapHeight);
+
+        // Initialize the map
+        var map = L.map('map').setView([15.0, 0], 3);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Show number of projects
+        document.getElementById('projects-count').innerHTML = projects_data.length;
+
+        // Sort projects by name
+        projects_data.sort(function (a, b) {
+            var nameA = a['Project name'].toUpperCase(); // ignore upper and lowercase
+            var nameB = b['Project name'].toUpperCase(); // ignore upper and lowercase
+            if (nameA < nameB) {
+                return -1;
+            }
+            if (nameA > nameB) {
+                return 1;
+            }
+
+            // names must be equal
+            return 0;
+        });
+
+        // Function to add markers to the map
+        projects_data.forEach(function (item) {
+            if (item.Latitude && item.Longitude) {
+                var marker = L.marker([item.Latitude, item.Longitude]).addTo(map);
+                var popupContent = '';
+
+                if (item['Species Image']) {
+                    popupContent += '<p><img src="' + item['Species Image'] + '" alt="Species Image" style="width:100%;height:auto;"></p>';
+                }
+                if (item['Project name']) {
+                    popupContent += '<h6>' + item['Project name'] + '</h6>';
+                }
+                if (item['Organization/Project lead']) {
+                    popupContent += '<b>Lead:</b> ' + item['Organization/Project lead'] + '<br/>';
+                }
+                // 'Region/Location' and 'Country'
+                popupContent += '<b>Location:</b> ';
+                if (item['Region/Location']) {
+                    popupContent += item['Region/Location'];
+                }
+                if (item['Country'] && item['Country'] != item['Region/Location']) {
+                    popupContent += ', ' + item['Country'];
+                }
+                popupContent += '<br/>';
+                if (item['Target species']) {
+                    popupContent += '<b>Target species:</b> ' + item['Target species'] + '<br/>';
+                }
+                if (item['Contact']) {
+                    popupContent += '<b>Contact:</b> ' + item['Contact'] + '<br/>';
+                }
+                if (item['Website']) {
+                    popupContent += '<b>Website:</b> <a href="' + item['Website'] + '">' + item['Website'] + '</a><br/>';
+                }
+                if (item['Paper']) {
+                    popupContent += '<b>Paper:</b> <a href="' + item['Paper'] + '">' + item['Paper'] + '</a><br/>';
+                }
+                if (item['Species Image Credit']) {
+                    popupContent += '<p style="font-size:8px;">Image credit: ' + item['Species Image Credit'] + '</p>';
+                }
+
+                marker.bindPopup(popupContent);
+
+                var listItem = document.createElement('a');
+                listItem.className = 'list-group-item list-group-item-action';
+                listItem.href = '#'; // Or 'javascript:void(0);' to prevent redirection
+
+                var rowDiv = document.createElement('div');
+                rowDiv.className = 'row align-items-center'; // Row for icon and text
+
+                var iconDiv = document.createElement('div');
+                iconDiv.className = 'col-auto'; // Column for the icon
+
+                // Add Font Awesome icon
+                var icon = document.createElement('i');
+                icon.className = 'fas fa-' + item['Species Icon'] || 'fas fa-question-circle';
+                icon.style.fontSize = '25px';
+                iconDiv.appendChild(icon);
+
+                var textDiv = document.createElement('div');
+                textDiv.className = 'col'; // Column for the text
+                textDiv.innerHTML = '<strong>' + (item['Project name'] || 'No Project Name') + '</strong><br>' +
+                    (item['Region/Location'] || 'No Region')
+                if (item['Country'] && item['Country'] != item['Region/Location']) {
+                    textDiv.innerHTML += ', ' + item['Country'];
+                }
+
+                rowDiv.appendChild(iconDiv);
+                rowDiv.appendChild(textDiv);
+                listItem.appendChild(rowDiv);
+
+                listItem.onclick = function () {
+                    // Function to zoom and open popup on map
+                    map.setView([item.Latitude + 3, item.Longitude], 6);
+                    marker.openPopup();
+                };
+
+                document.getElementById('projects-list').appendChild(listItem);
+            }
+        });
+
+    </script>
+</body>
+
+</html>
