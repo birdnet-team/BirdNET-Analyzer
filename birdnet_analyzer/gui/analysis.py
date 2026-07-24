@@ -110,6 +110,9 @@ def run_analysis(
         custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
     )
     use_perch = selected_model == gu._USE_PERCH
+    # Custom classifiers are trained on 2.4 embeddings and perch ignores the version,
+    # so only an explicit BirdNET model choice changes the acoustic model version.
+    birdnet_version = gu.birdnet_version(selected_model)
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
     lon = lon if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
@@ -149,7 +152,7 @@ def run_analysis(
         merge_consecutive=merge_consecutive,
         additional_columns=additional_columns,
         model="perch" if use_perch else "birdnet",
-        birdnet="2.4",
+        birdnet=birdnet_version,
         classifier=custom_classifier,
         cc_species_list=None,  # always default search path in GUI currently
         on_update=on_update,

@@ -230,6 +230,7 @@ def test_analyze_with_speed_up_and_overlap(
     analyze(
         soundscape_path,
         env["output_dir"],
+        birdnet="2.4",
         audio_speed=audio_speed,
         top_n=1,
         overlap=overlap,
@@ -271,10 +272,13 @@ def test_analyze_with_additional_columns_parquet(setup_test_environment):
 
     assert os.path.exists(soundscape_path), "Soundscape file does not exist"
 
-    # Call function under test
+    # Call function under test. Pinned to the 2.4 acoustic model (its labels are the
+    # baseline the "model" column is checked against); the geo species filter still
+    # uses the newest geo model, matched onto 2.4 by scientific name.
     analyze(
         soundscape_path,
         env["output_dir"],
+        birdnet="2.4",
         top_n=1,
         min_conf=0,
         additional_columns=[
@@ -344,6 +348,7 @@ def test_analyze_with_additional_columns(setup_test_environment):
     analyze(
         soundscape_path,
         env["output_dir"],
+        birdnet="2.4",
         top_n=1,
         min_conf=0,
         additional_columns=[
@@ -413,7 +418,7 @@ def test_sensitivity(setup_test_environment):
     low_sensitivity_result = {}
     high_sensitivity_result = {}
 
-    analyze(soundscape_path, env["output_dir"], top_n=1, min_conf=0)
+    analyze(soundscape_path, env["output_dir"], birdnet="2.4", top_n=1, min_conf=0)
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file)
 
@@ -429,13 +434,27 @@ def test_sensitivity(setup_test_environment):
 
     extract_confidence_from_output(output_file, normal_sensitivity_result)
 
-    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=0.75, min_conf=0)
+    analyze(
+        soundscape_path,
+        env["output_dir"],
+        birdnet="2.4",
+        top_n=1,
+        sensitivity=0.75,
+        min_conf=0,
+    )
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file)
 
     extract_confidence_from_output(output_file, low_sensitivity_result)
 
-    analyze(soundscape_path, env["output_dir"], top_n=1, sensitivity=1.25, min_conf=0)
+    analyze(
+        soundscape_path,
+        env["output_dir"],
+        birdnet="2.4",
+        top_n=1,
+        sensitivity=1.25,
+        min_conf=0,
+    )
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file)
 
@@ -456,3 +475,71 @@ def test_sensitivity(setup_test_environment):
             "High sensitivity confidence should be greater than or equal to normal "
             "sensitivity"
         )
+
+
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_defaults_to_birdnet_3_0_and_matches_geo_by_scientific_name(
+    mock_run_inference, mock_run_geomodel, setup_test_environment
+):
+    """The default analysis uses the 3.0 model and reconciles the geo species list."""
+    env = setup_test_environment
+
+    mock_run_geomodel.return_value.to_set.return_value = {"Cardinalis cardinalis_x"}
+    mock_run_inference.return_value = object()
+
+    analyze(
+        env["input_dir"],
+        env["output_dir"],
+        lat=42.5,
+        lon=-76.45,
+        week=20,
+        _return_only=True,
+    )
+
+    mock_run_geomodel.assert_called_once()
+    mock_run_inference.assert_called_once()
+    call_kwargs = mock_run_inference.call_args.kwargs
+    assert call_kwargs["version"] == "3.0"
+    assert call_kwargs["match_species_by_scientific_name"] is True
+    # The geo prediction is handed to run_inference to be matched onto the model.
+    assert call_kwargs["custom_species_list"] == {"Cardinalis cardinalis_x"}
+
+
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_without_location_does_not_match_by_scientific_name(
+    mock_run_inference, setup_test_environment
+):
+    """Without lat/lon there is no geo species list to reconcile."""
+    env = setup_test_environment
+    mock_run_inference.return_value = object()
+
+    analyze(env["input_dir"], env["output_dir"], _return_only=True)
+
+    call_kwargs = mock_run_inference.call_args.kwargs
+    assert call_kwargs["match_species_by_scientific_name"] is False
+    assert call_kwargs["custom_species_list"] is None
+
+
+def test_match_species_to_model_joins_on_scientific_name():
+    """Geo species are mapped onto a model's labels by scientific name only."""
+    from birdnet_analyzer.model_utils import match_species_to_model
+
+    model_species = [
+        "Cardinalis cardinalis_Northern Cardinal",
+        "Turdus migratorius_American Robin",
+        "Astur gentilis_Eurasian Goshawk",
+    ]
+    # Common names differ between taxonomies and one request is a non-bird the model
+    # does not know; only the shared scientific names should survive, as model labels.
+    requested = {
+        "Cardinalis cardinalis_Cardenal Norteno",
+        "Astur gentilis_Northern Goshawk",
+        "Tibicina garricola_A Cicada",
+    }
+
+    assert match_species_to_model(requested, model_species) == {
+        "Cardinalis cardinalis_Northern Cardinal",
+        "Astur gentilis_Eurasian Goshawk",
+    }
+    assert match_species_to_model(set(), model_species) == set()

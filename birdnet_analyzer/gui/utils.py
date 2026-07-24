@@ -14,8 +14,9 @@ from typing import Literal, cast, get_args
 
 import gradio as gr
 import webview
-from birdnet.globals import MODEL_LANGUAGE_EN_US, MODEL_LANGUAGES
+from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
 
+import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
 from birdnet_analyzer import settings, utils
@@ -31,7 +32,14 @@ _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
 _CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
 _ALL_SPECIES = loc.localize("species-list-radio-option-all")
 _USE_PERCH = loc.localize("species-list-radio-option-use-perch")
+# BirdNET acoustic model choices. Not localized: the version number is the label.
 _USE_BIRDNET_2_4 = "BirdNET 2.4"
+_USE_BIRDNET_3_0 = "BirdNET 3.0"
+_BIRDNET_MODEL_VERSIONS: dict[str, str] = {
+    _USE_BIRDNET_2_4: "2.4",
+    _USE_BIRDNET_3_0: "3.0",
+}
+
 _WINDOW: webview.Window | None = None
 _URL = ""
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
@@ -70,6 +78,16 @@ _SPECTROGRAM_DEFAULTS = {
     "spectrogram_dynamic_range_slider": 80,
     "spectrogram_freq_scale_radio": "linear",
 }
+
+
+def is_birdnet_model(model_choice: str) -> bool:
+    """Whether the selected model is an official BirdNET acoustic model."""
+    return model_choice in _BIRDNET_MODEL_VERSIONS
+
+
+def birdnet_version(model_choice: str) -> str:
+    """The acoustic model version for a BirdNET model choice (falls back to 2.4)."""
+    return _BIRDNET_MODEL_VERSIONS.get(model_choice, "2.4")
 
 
 def spectrogram_settings() -> dict:
@@ -534,20 +552,41 @@ def build_settings():
 
 
 def model_choices():
-    """Returns the models that can be selected on the current platform."""
-    values = [_USE_BIRDNET_2_4, _CUSTOM_CLASSIFIER, _USE_PERCH]
+    """Returns the models that can be selected on the current platform.
+
+    The BirdNET acoustic versions are taken from the installed birdnet library, newest
+    first, so a new model becomes selectable (and the default) without a code change.
+    """
+    available = get_args(ACOUSTIC_MODEL_VERSIONS)
+    birdnet_models = [
+        label
+        for label, version in (
+            (_USE_BIRDNET_3_0, "3.0"),
+            (_USE_BIRDNET_2_4, "2.4"),
+        )
+        if version in available
+    ]
+
+    values = [*birdnet_models, _CUSTOM_CLASSIFIER, _USE_PERCH]
 
     if platform.system() == "Darwin":
-        values.pop()  # TODO: Remove when tf 2.21+ is available on macOS
+        values.remove(_USE_PERCH)  # TODO: Remove when tf 2.21+ is available on macOS
 
     return values
+
+
+def default_model():
+    """The model selected by default: the newest available BirdNET acoustic model."""
+    choices = model_choices()
+
+    return _USE_BIRDNET_3_0 if _USE_BIRDNET_3_0 in choices else choices[0]
 
 
 def sample_species_model_settings(state: TabState, opened=True):
     # The model decides which sample and species settings are available, so it has to
     # be known before those are built, even though it is shown below them.
     is_perch = (
-        state.get("model_selection_radio", _USE_BIRDNET_2_4, choices=model_choices())
+        state.get("model_selection_radio", default_model(), choices=model_choices())
         == _USE_PERCH
     )
 
@@ -748,12 +787,12 @@ def locale(state: TabState, visible=True):
     Returns:
         The dropdown element.
     """
-    options = get_args(MODEL_LANGUAGES)[0]
-
+    # The union of every acoustic model version's languages; the birdnet library
+    # validates the concrete (model version, locale) pair when the model is loaded.
     return state.persist(
         "locale_dropdown",
         gr.Dropdown,
-        choices=get_args(options),
+        choices=cfg.ALL_MODEL_LANGUAGES,
         value=cast("str", MODEL_LANGUAGE_EN_US),
         visible=visible,
         label=loc.localize("analyze-locale-dropdown-label"),
@@ -963,7 +1002,7 @@ def model_selection(state: TabState, opened=True):
                 "model_selection_radio",
                 gr.Radio,
                 choices=model_choices(),
-                value=_USE_BIRDNET_2_4,
+                value=default_model(),
                 label=loc.localize("model-selection-radio-label"),
                 info=loc.localize("model-selection-radio-info"),
             )
@@ -1015,7 +1054,7 @@ def model_selection(state: TabState, opened=True):
                         gr.update(value=labels, visible=True),
                     )
 
-        locale_settings = locale(state, visible=selected_model == _USE_BIRDNET_2_4)
+        locale_settings = locale(state, visible=is_birdnet_model(selected_model))
 
         species_list_df = gr.List(
             value=[],
@@ -1042,7 +1081,7 @@ def model_selection(state: TabState, opened=True):
         return (
             gr.update(visible=False),
             gr.update(visible=False),
-            gr.update(visible=choice == _USE_BIRDNET_2_4),
+            gr.update(visible=is_birdnet_model(choice)),
         )
 
     model_selection_radio.change(

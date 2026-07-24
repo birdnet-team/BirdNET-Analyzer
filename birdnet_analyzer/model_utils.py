@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import birdnet
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Collection
 
     import numpy as np
     from birdnet.acoustic.inference.core.encoding.encoding_result import (
@@ -26,6 +26,48 @@ if TYPE_CHECKING:
     from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGES
 
 GLOBAL_PREFETCH_RATIO = 2
+
+
+def _scientific_name(species_label: str) -> str:
+    """Return the scientific-name key of a ``"Scientific name_Common name"`` label."""
+    return species_label.split("_", 1)[0]
+
+
+def match_species_to_model(
+    requested_species: Collection[str], model_species: Collection[str]
+) -> set[str]:
+    """Map requested species onto a model's labels by scientific name.
+
+    The geo model and the acoustic model can use different taxonomies and label
+    languages, so their ``"Scientific name_Common name"`` strings rarely match
+    exactly even when they mean the same bird (the common name differs). The
+    scientific name is stable across both, so it is used as the join key.
+
+    Returns the subset of ``model_species`` whose scientific name also occurs in
+    ``requested_species`` - i.e. the labels the acoustic model actually knows, which
+    is what its custom species list requires (an unknown species raises in the
+    library). This lets the (global) geo model filter any acoustic model version.
+
+    Args:
+        requested_species: Species names to keep, e.g. a geo model prediction.
+        model_species: The acoustic model's own species labels.
+
+    Returns:
+        The matching labels, taken verbatim from ``model_species``.
+    """
+    model_by_scientific_name: dict[str, str] = {}
+    for label in model_species:
+        # First label wins should a scientific name ever appear twice.
+        model_by_scientific_name.setdefault(_scientific_name(label), label)
+
+    requested_scientific_names = {_scientific_name(name) for name in requested_species}
+
+    return {
+        label
+        for scientific_name, label in model_by_scientific_name.items()
+        if scientific_name in requested_scientific_names
+    }
+
 
 # list of sessions so they can be cancelled from another
 # thread. Access is guarded by a lock
@@ -93,7 +135,7 @@ def cancel_active_analyses() -> int:
 def run_inference(
     path,
     model="birdnet",
-    version: ACOUSTIC_MODEL_VERSIONS = "2.4",
+    version: ACOUSTIC_MODEL_VERSIONS = "3.0",
     top_k: int | None = 5,
     batch_size=1,
     n_workers: int | None = None,
@@ -109,14 +151,17 @@ def run_inference(
     label_language: MODEL_LANGUAGES = "en_us",
     classifier: str | None = None,
     cc_species_list: str | None = None,
+    match_species_by_scientific_name: bool = False,
     callback: Callable[[AcousticProgressStats], None] | None = None,
 ) -> AcousticFilePredictionResult:
     if classifier:
         if not cc_species_list:
             cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
 
+        # Custom classifiers are trained on 2.4 embeddings (training does not support
+        # 3.0 yet), so they are loaded on the 2.4 base regardless of ``version``.
         acoustic_model = birdnet.load_custom(
-            "acoustic", version, "tf", classifier, cc_species_list
+            "acoustic", "2.4", "tf", classifier, cc_species_list
         )
     elif model == "birdnet":
         acoustic_model = birdnet.load("acoustic", version, "tf", lang=label_language)
@@ -126,6 +171,14 @@ def run_inference(
         raise ValueError(
             f"Unsupported model: {model}\nSupported models are: 'birdnet', 'perch' or "
             "use a custom classifier."
+        )
+
+    # A species list derived from the geo model can name species the acoustic model
+    # does not know (the geo model is global and uses a different taxonomy), which the
+    # library would reject. Reconcile it against the loaded model by scientific name.
+    if custom_species_list is not None and match_species_by_scientific_name:
+        custom_species_list = match_species_to_model(
+            custom_species_list, acoustic_model.species_list
         )
 
     from birdnet.acoustic.inference.configs import InferenceConfig
@@ -160,7 +213,16 @@ def run_inference(
 def run_geomodel(
     lat, lon, week=None, language: MODEL_LANGUAGES = "en_us", threshold: float = 0.03
 ) -> birdnet.GeoPredictionResult:
-    model = birdnet.load("geo", "2.4", "tf", lang=language)
+    from birdnet_analyzer.config import DEFAULT_GEO_MODEL_VERSION
+
+    # The newest geo model replaces the older ones outright; it is never a choice.
+    # ``language`` only affects the localized species names, so callers that match on
+    # scientific name (e.g. acoustic species filtering) can leave it at the default.
+    #
+    # The pb (SavedModel) backend is used rather than tf: the v3.0 geo TFLite backend
+    # only supports TensorFlow 2.18/2.19, while we require >=2.20 - pb has no such
+    # version constraint and works across both geo model versions.
+    model = birdnet.load("geo", DEFAULT_GEO_MODEL_VERSION, "pb", lang=language)
     return model.predict(lat, lon, week=week, min_confidence=threshold)
 
 
