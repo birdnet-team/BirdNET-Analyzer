@@ -1,6 +1,10 @@
 # Match the Python version used to build the release (see publish.yml / CI matrix)
 FROM python:3.13-slim
 
+# uv installs the (large scientific) dependency tree far faster than pip via
+# parallel downloads and a faster resolver. Pin the version for reproducibility.
+COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /bin/uv
+
 # Install required packages while keeping the image small
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg  && rm -rf /var/lib/apt/lists/*
 
@@ -21,10 +25,10 @@ WORKDIR /app
 COPY pyproject.toml ./
 ARG TARGETARCH
 RUN python3 -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > /tmp/requirements.txt \
-    && pip3 install --no-cache-dir -r /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt \
     && if [ "$TARGETARCH" = "amd64" ]; then \
-         pip3 uninstall -y tensorflow \
-         && pip3 install --no-cache-dir "tensorflow-cpu>=2.20"; \
+         uv pip uninstall --system tensorflow \
+         && uv pip install --system --no-cache "tensorflow-cpu>=2.20"; \
        fi
 
 # Bake the models into the image. The birdnet dependency otherwise fetches them
@@ -43,7 +47,7 @@ RUN python3 -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_u
 COPY . ./
 
 # Dependencies are already installed above, so this only registers the package.
-RUN pip3 install --no-cache-dir --no-deps .
+RUN uv pip install --system --no-cache --no-deps .
 
 # Add entry point to run the script
 ENTRYPOINT [ "python3" ]
