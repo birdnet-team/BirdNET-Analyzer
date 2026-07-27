@@ -276,33 +276,33 @@ def upsample_core(
     x_temp = []
 
     if is_binary:
-        minority_label = 1 if y.sum(axis=0) < len(y) - y.sum(axis=0) else 0
+        positive_count = y.sum(axis=0)
+        minority_label = 1 if positive_count < len(y) - positive_count else 0
+        source_indices = np.flatnonzero(y == minority_label)
+        missing_samples = min_samples - len(source_indices)
 
-        while np.where(y == minority_label)[0].shape[0] + len(y_temp) < min_samples:
-            random_index = rng.choice(np.where(y == minority_label)[0], size=size)
-            x_app, y_app = apply(x, y, random_index)
+        for _ in range(max(0, missing_samples)):
+            random_index = rng.choice(source_indices, size=size)
+            x_app, y_app = apply(x, y, random_index, source_indices)
 
             y_temp.append(y_app)
             x_temp.append(x_app)
     else:
         for i in range(y.shape[1]):
-            class_x_temp = []
-            class_y_temp = []
+            source_indices = np.flatnonzero(y[:, i] == 1)
+            missing_samples = min_samples - len(source_indices)
 
-            while y[:, i].sum() + len(class_y_temp) < min_samples:
-                try:
-                    random_index = rng.choice(np.where(y[:, i] == 1)[0], size=size)
-                except ValueError as e:
-                    raise get_empty_class_exception()(index=i) from e
+            if missing_samples <= 0:
+                continue
 
-                # Apply
-                x_app, y_app = apply(x, y, random_index)
-                class_y_temp.append(y_app)
-                class_x_temp.append(x_app)
+            if not len(source_indices):
+                raise get_empty_class_exception()(index=i)
 
-            if len(class_y_temp) > 0:
-                x_temp.extend(class_x_temp)
-                y_temp.extend(class_y_temp)
+            for _ in range(missing_samples):
+                random_index = rng.choice(source_indices, size=size)
+                x_app, y_app = apply(x, y, random_index, source_indices)
+                y_temp.append(y_app)
+                x_temp.append(x_app)
 
     return x_temp, y_temp
 
@@ -339,43 +339,60 @@ def upsampling(
     x_temp = []
     y_temp = []
 
-    if mode == "repeat":
+    if mode in {"repeat", "mean", "linear"}:
+        if is_binary:
+            positive_count = y.sum(axis=0)
+            minority_label = 1 if positive_count < len(y) - positive_count else 0
+            source_groups = [(None, np.flatnonzero(y == minority_label))]
+        else:
+            source_groups = [
+                (class_index, np.flatnonzero(y[:, class_index] == 1))
+                for class_index in range(y.shape[1])
+            ]
 
-        def applyRepeat(x, y, random_index):
-            return x[random_index[0]], y[random_index[0]]
+        sample_size = 1 if mode == "repeat" else 2
+        for class_index, source_indices in source_groups:
+            missing_samples = min_samples - len(source_indices)
+            if missing_samples <= 0:
+                continue
 
-        x_temp, y_temp = upsample_core(
-            x, y, min_samples, rng, applyRepeat, is_binary, size=1
-        )
+            if not len(source_indices):
+                if class_index is None:
+                    raise ValueError("The minority class is empty.")
+                raise get_empty_class_exception()(index=class_index)
 
-    elif mode == "mean":
-
-        def applyMean(x, y, random_indices):
-            mean = np.mean(x[random_indices], axis=0)
-
-            return mean, y[random_indices[0]]
-
-        x_temp, y_temp = upsample_core(x, y, min_samples, rng, applyMean, is_binary)
-    elif mode == "linear":
-
-        def applyLinearCombination(x, y, random_indices):
-            alpha = rng.uniform(0, 1)
-            new_sample = (
-                alpha * x[random_indices[0]] + (1 - alpha) * x[random_indices[1]]
+            sampled_indices = rng.choice(
+                source_indices, size=(missing_samples, sample_size)
             )
+            x_sources = x[sampled_indices]
 
-            return new_sample, y[random_indices[0]]
+            if mode == "repeat":
+                x_temp.append(x_sources[:, 0])
+            elif mode == "mean":
+                x_temp.append(np.mean(x_sources, axis=1))
+            else:
+                alpha = rng.uniform(0, 1, size=(missing_samples, 1))
+                x_temp.append(
+                    alpha * x_sources[:, 0] + (1 - alpha) * x_sources[:, 1]
+                )
 
-        x_temp, y_temp = upsample_core(
-            x, y, min_samples, rng, applyLinearCombination, is_binary
-        )
+            y_temp.append(y[sampled_indices[:, 0]])
 
     elif mode == "smote":
 
-        def applySmote(x, y, random_index, k=5):
-            distances = np.sqrt(np.sum((x - x[random_index[0]]) ** 2, axis=1))
-            indices = np.argsort(distances)[1 : k + 1]
-            random_neighbor = rng.choice(indices)
+        def applySmote(x, y, random_index, source_indices, k=5):
+            source_index = random_index[0]
+            neighbor_indices = source_indices[source_indices != source_index]
+            if not len(neighbor_indices):
+                return x[source_index], y[source_index]
+
+            differences = x[neighbor_indices] - x[source_index]
+            distances = np.einsum("ij,ij->i", differences, differences)
+            nearest_count = min(k, len(neighbor_indices))
+            nearest_indices = neighbor_indices[
+                np.argpartition(distances, nearest_count - 1)[:nearest_count]
+            ]
+            random_neighbor = rng.choice(nearest_indices)
             diff = x[random_neighbor] - x[random_index[0]]
             weight = rng.uniform(0, 1)
             new_sample = x[random_index[0]] + weight * diff
@@ -387,16 +404,8 @@ def upsampling(
         )
 
     if len(x_temp) > 0:
-        x = np.vstack((x, np.array(x_temp)))
-        y = np.vstack((y, np.array(y_temp)))
-
-    indices = np.arange(len(x))
-    rng.shuffle(indices)
-    x = x[indices]
-    y = y[indices]
-
-    del x_temp
-    del y_temp
+        x = np.vstack((x, *x_temp))
+        y = np.vstack((y, *y_temp))
 
     return x, y
 
@@ -608,6 +617,7 @@ def train_linear_classifier(
         batch_size=batch_size,
         validation_data=(x_val, y_val),
         callbacks=callbacks,
+        shuffle=True,
     )
 
     os.environ["CUDA_VISIBLE_DEVICES"] = setting_cache
