@@ -151,11 +151,10 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
         A tuple of (x_train, y_train, x_val, y_val).
     """
     num_classes = y.shape[1]
-    x_train, y_train, x_val, y_val = [], [], [], []
+    train_indices, val_indices = [], []
 
     for i in range(num_classes):
         positive_indices = np.where(y[:, i] == 1)[0]
-        negative_indices = np.where(y[:, i] == -1)[0]
 
         num_samples = len(positive_indices)
         num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
@@ -163,18 +162,18 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
 
         rng.shuffle(positive_indices)
 
-        train_indices = positive_indices[:num_samples_train]
-        val_indices = positive_indices[
+        class_train_indices = positive_indices[:num_samples_train]
+        class_val_indices = positive_indices[
             num_samples_train : num_samples_train + num_samples_val
         ]
 
-        x_train.append(x[train_indices])
-        y_train.append(y[train_indices])
-        x_val.append(x[val_indices])
-        y_val.append(y[val_indices])
+        train_indices.append(class_train_indices)
+        val_indices.append(class_val_indices)
 
-        x_train.append(x[negative_indices])
-        y_train.append(y[negative_indices])
+    # Negative samples are not class-specific in single-label training. Appending
+    # them in the loop above duplicates every negative sample once per class.
+    negative_indices = np.unique(np.where(y == -1)[0])
+    train_indices.append(negative_indices)
 
     non_event_indices = np.where(np.sum(y[:, :], axis=1) == 0)[0]
     num_samples = len(non_event_indices)
@@ -183,36 +182,21 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
 
     rng.shuffle(non_event_indices)
 
-    train_indices = non_event_indices[:num_samples_train]
-    val_indices = non_event_indices[
+    non_event_train_indices = non_event_indices[:num_samples_train]
+    non_event_val_indices = non_event_indices[
         num_samples_train : num_samples_train + num_samples_val
     ]
 
-    x_train.append(x[train_indices])
-    y_train.append(y[train_indices])
-    x_val.append(x[val_indices])
-    y_val.append(y[val_indices])
+    train_indices.append(non_event_train_indices)
+    val_indices.append(non_event_val_indices)
 
-    x_train = np.concatenate(x_train)
-    y_train = np.concatenate(y_train)
-    x_val = np.concatenate(x_val)
-    y_val = np.concatenate(y_val)
+    train_indices = np.concatenate(train_indices)
+    val_indices = np.concatenate(val_indices)
 
-    indices = np.arange(len(x_train))
+    rng.shuffle(train_indices)
+    rng.shuffle(val_indices)
 
-    rng.shuffle(indices)
-
-    x_train = x_train[indices]
-    y_train = y_train[indices]
-
-    indices = np.arange(len(x_val))
-
-    rng.shuffle(indices)
-
-    x_val = x_val[indices]
-    y_val = y_val[indices]
-
-    return x_train, y_train, x_val, y_val
+    return x[train_indices], y[train_indices], x[val_indices], y[val_indices]
 
 
 def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
@@ -230,15 +214,16 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
         A tuple of (x_train, y_train, x_val, y_val).
 
     """
-    class_combinations = np.unique(y, axis=0)
-    x_train, y_train, x_val, y_val = [], [], [], []
+    class_combinations, combination_ids = np.unique(
+        y, axis=0, return_inverse=True
+    )
+    train_indices, val_indices = [], []
 
-    for class_combination in class_combinations:
-        indices = np.where((y == class_combination).all(axis=1))[0]
+    for combination_id, class_combination in enumerate(class_combinations):
+        indices = np.flatnonzero(combination_ids == combination_id)
 
         if -1 in class_combination:
-            x_train.append(x[indices])
-            y_train.append(y[indices])
+            train_indices.append(indices)
         else:
             num_samples = len(indices)
             num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
@@ -246,32 +231,20 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
 
             rng.shuffle(indices)
 
-            train_indices = indices[:num_samples_train]
-            val_indices = indices[
+            combination_train_indices = indices[:num_samples_train]
+            combination_val_indices = indices[
                 num_samples_train : num_samples_train + num_samples_val
             ]
 
-            x_train.append(x[train_indices])
-            y_train.append(y[train_indices])
-            x_val.append(x[val_indices])
-            y_val.append(y[val_indices])
+            train_indices.append(combination_train_indices)
+            val_indices.append(combination_val_indices)
 
-    x_train = np.concatenate(x_train)
-    y_train = np.concatenate(y_train)
-    x_val = np.concatenate(x_val)
-    y_val = np.concatenate(y_val)
+    train_indices = np.concatenate(train_indices)
+    val_indices = np.concatenate(val_indices)
+    rng.shuffle(train_indices)
+    rng.shuffle(val_indices)
 
-    indices = np.arange(len(x_train))
-    rng.shuffle(indices)
-    x_train = x_train[indices]
-    y_train = y_train[indices]
-
-    indices = np.arange(len(x_val))
-    rng.shuffle(indices)
-    x_val = x_val[indices]
-    y_val = y_val[indices]
-
-    return x_train, y_train, x_val, y_val
+    return x[train_indices], y[train_indices], x[val_indices], y[val_indices]
 
 
 def upsample_core(
@@ -540,10 +513,6 @@ def train_linear_classifier(
                 self.on_epoch_end_fn(epoch, logs)
 
     rng = np.random.default_rng(RANDOM_SEED)
-    idx = np.arange(x_train.shape[0])
-    rng.shuffle(idx)
-    x_train = x_train[idx]
-    y_train = y_train[idx]
 
     if val_split > 0:
         if not is_multi_label:
@@ -554,6 +523,11 @@ def train_linear_classifier(
             x_train, y_train, x_val, y_val = random_multilabel_split(
                 x_train, y_train, rng, val_split
             )
+    else:
+        idx = np.arange(x_train.shape[0])
+        rng.shuffle(idx)
+        x_train = x_train[idx]
+        y_train = y_train[idx]
 
     if upsampling_ratio > 0:
         x_train, y_train = upsampling(
