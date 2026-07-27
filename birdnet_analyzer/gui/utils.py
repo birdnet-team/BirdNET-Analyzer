@@ -554,8 +554,9 @@ def build_settings():
 def model_choices():
     """Returns the models that can be selected on the current platform.
 
-    The BirdNET acoustic versions are taken from the installed birdnet library, newest
-    first, so a new model becomes selectable (and the default) without a code change.
+    The known BirdNET acoustic versions (newest first) are filtered down to those the
+    installed birdnet library ships, so a dropped version stops being offered without a
+    code change. A brand-new major version still needs a label added here.
     """
     available = get_args(ACOUSTIC_MODEL_VERSIONS)
     birdnet_models = [
