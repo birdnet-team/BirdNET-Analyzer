@@ -1,13 +1,23 @@
 Docker
 ======
 
-Official Docker images are published to the GitHub Container Registry with every release, for ``linux/amd64`` and ``linux/arm64``:
+.. note::
+
+   Image publishing was added after the ``2.4.0`` release, so **no image exists
+   for 2.4.0** (and there is no ``2.4.0``/``2.4`` tag on the registry). The first
+   published images will ship with the next release. Until then, or if you need
+   ``2.4.0``, build the image locally (see `Building locally`_ below).
+
+Starting with the next release, official Docker images are published to the GitHub
+Container Registry on every release, for ``linux/amd64`` and ``linux/arm64``:
 
 .. code-block:: bash
 
    docker pull ghcr.io/birdnet-team/birdnet-analyzer:latest
 
-Version tags follow the GitHub releases, so ``2.4.0`` and ``2.4`` point to that release while ``latest`` always points to the most recent one.
+Each release publishes version tags following the GitHub release (``<major>.<minor>.<patch>``
+and ``<major>.<minor>``, e.g. ``2.5.0`` and ``2.5``), while ``latest`` always points to
+the most recent release.
 
 Usage
 -----

@@ -35,6 +35,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -44,6 +47,18 @@ jobs:
           context: .
           load: true
           tags: birdnet:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # linux/arm64 has no tensorflow-cpu wheel, so the arm64 leg breaks
+      # differently from amd64. The publish job builds it, but only on release —
+      # validate it here (build only, no load/smoke test under emulation) so a
+      # broken arm64 build fails the PR instead of the release.
+      - name: Validate arm64 build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
