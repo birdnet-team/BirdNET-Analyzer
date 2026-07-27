@@ -6,12 +6,14 @@ on:
     paths:
       - "Dockerfile"
       - ".dockerignore"
+      - "pyproject.toml"
       - ".github/workflows/docker-build.yml"
   pull_request:
     branches: [main]
     paths:
       - "Dockerfile"
       - ".dockerignore"
+      - "pyproject.toml"
       - ".github/workflows/docker-build.yml"
   release:
     types: [published]

@@ -3,13 +3,12 @@ Docker
 
 .. note::
 
-   Image publishing was added after the ``2.4.0`` release, so **no image exists
-   for 2.4.0** (and there is no ``2.4.0``/``2.4`` tag on the registry). The first
-   published images will ship with the next release. Until then, or if you need
-   ``2.4.0``, build the image locally (see `Building locally`_ below).
+   Image publishing was added after the ``2.4.0`` release, so **no image exists for
+   2.4.0** — the registry has no ``2.4.0`` or ``2.4`` tag. To run ``2.4.0`` itself,
+   build the image locally (see `Building locally`_ below).
 
-Starting with the next release, official Docker images are published to the GitHub
-Container Registry on every release, for ``linux/amd64`` and ``linux/arm64``:
+Official Docker images are published to the GitHub Container Registry for every
+release after ``2.4.0``, for ``linux/amd64`` and ``linux/arm64``:
 
 .. code-block:: bash
 
@@ -30,6 +29,13 @@ The image runs the command line interface. Mount your audio data into the contai
    docker run --rm -v "$PWD:/audio" ghcr.io/birdnet-team/birdnet-analyzer -m birdnet_analyzer.analyze /audio -o /audio/output
 
 Any of the CLI entry points can be used, e.g. ``-m birdnet_analyzer.species`` or ``-m birdnet_analyzer.segments``.
+
+The acoustic and geo models are baked into the image, so containers start analyzing
+immediately and run without network access:
+
+.. code-block:: bash
+
+   docker run --rm --network none -v "$PWD:/audio" ghcr.io/birdnet-team/birdnet-analyzer -m birdnet_analyzer.analyze /audio -o /audio/output
 
 Building locally
 ----------------
