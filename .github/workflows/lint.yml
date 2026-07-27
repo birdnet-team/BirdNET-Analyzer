@@ -26,14 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install .[dev]
+      # ruff is a static analyzer and doesn't import the package, so skip the
+      # (heavy) dependency install entirely. Keep the version in sync with the
+      # ruff pin in pyproject.toml's [dev] extra.
       - name: Lint with Ruff
-        run: |
-          ruff check
+        uses: astral-sh/ruff-action@v4.1.0
+        with:
+          version: "0.15.10"
