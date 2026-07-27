@@ -20,6 +20,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       IS_GITHUB_RUNNER: "true"
+      # Fixed, cacheable location for birdnet's model/label downloads. The acoustic
+      # (~120 MB), geo (~35 MB) and perch-v2 (~380 MB) models all land here, and
+      # birdnet reads this env var at import time and skips the download when the
+      # files already exist - so a cache hit avoids re-fetching them from tuc.cloud
+      # on every job. Placed under the workspace because the `runner` context isn't
+      # available in job-level env but `github.workspace` is; checkout runs before
+      # the cache is restored, so it never wipes the restored models.
+      BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -37,6 +45,17 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+      # Cache the downloaded models across runs. Keyed on the birdnet dependency
+      # (via pyproject.toml) and the OS only - the model files are identical across
+      # Python versions, so all matrix jobs on an OS share one cache. birdnet
+      # re-downloads only missing/updated models, so restoring an older cache is safe.
+      - name: Cache birdnet models
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BIRDNET_APP_DATA }}
+          key: birdnet-models-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            birdnet-models-${{ runner.os }}-
       - name: Install dependencies
         run: uv pip install --system .[embeddings,train,tests,gui-tests]
       - name: Run tests
