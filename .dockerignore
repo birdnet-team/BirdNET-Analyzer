@@ -2,6 +2,9 @@
 .git
 .github
 
+# OS cruft (picked up when building from a macOS checkout)
+.DS_Store
+
 # Python build/cache artifacts
 __pycache__
 *.pyc
