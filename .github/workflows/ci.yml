@@ -20,6 +20,10 @@ concurrency:
 jobs:
   running-tests:
     runs-on: ${{ matrix.os }}
+    # Backstop for a wedged run (e.g. a hung model download or a native deadlock
+    # that pytest-timeout can't interrupt). Healthy jobs finish in ~2-6 min, plus a
+    # few for a cold-cache pre-download, so 30 caps a hang's cost with wide margin.
+    timeout-minutes: 30
     env:
       IS_GITHUB_RUNNER: "true"
       # Fixed, cacheable location for birdnet's model/label downloads. The acoustic
@@ -60,6 +64,15 @@ jobs:
             birdnet-models-${{ runner.os }}-
       - name: Install dependencies
         run: uv pip install --system .[embeddings,train,tests,gui-tests]
+      # Pre-download the models outside pytest's per-test 120s timeout. On a cold
+      # cache the acoustic-model download from tuc.cloud can exceed 120s on slower
+      # (Windows/macOS) runners and trip the timeout mid-download - which also means
+      # the model cache never captures a complete model, so the next run is cold
+      # again and the flake is permanent. Fetching them here (no per-test timeout)
+      # breaks that cycle and lets the cache actually populate. Mirrors the models
+      # baked into the Docker image.
+      - name: Pre-download birdnet models
+        run: python -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '2.4', 'tf', lang='en_us')"
       - name: Run tests
         run: |
           python -m pytest
