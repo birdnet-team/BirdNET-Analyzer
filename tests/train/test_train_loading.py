@@ -14,13 +14,14 @@ the batched-encode test uses a fake session, so the suite stays fast.
 
 import os
 import tempfile
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 import soundfile as sf
 
 from birdnet_analyzer import model_utils
-from birdnet_analyzer.train.utils import _read_and_crop_file
+from birdnet_analyzer.train.utils import _load_training_data, _read_and_crop_file
 
 SR = 48000
 SIG_LENGTH = 3.0
@@ -79,6 +80,22 @@ def test_read_and_crop_bad_file_returns_empty():
     )
     assert segs == []
     assert labels == []
+
+
+def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
+    (tmp_path / "blackbird").mkdir()
+    (tmp_path / "bluebird").mkdir()
+    robin_dir = tmp_path / "robin"
+    robin_dir.mkdir()
+    (robin_dir / "recording.wav").touch()
+
+    with patch("birdnet_analyzer.train.utils.load") as mock_load, pytest.raises(
+        ValueError, match=r"blackbird.*bluebird"
+    ) as error:
+        _load_training_data(str(tmp_path))
+
+    assert "robin" not in str(error.value)
+    mock_load.assert_not_called()
 
 
 @pytest.fixture

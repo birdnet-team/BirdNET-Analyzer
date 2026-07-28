@@ -158,6 +158,29 @@ def _read_and_crop_file(
     return sig_splits, labels
 
 
+def _check_input_folders(audio_input: str, train_folders: list[str]):
+    """Reject training folders without supported audio files before model setup."""
+    empty_folders = []
+
+    for folder in train_folders:
+        folder_path = os.path.join(audio_input, folder)
+        has_audio_file = any(
+            entry.is_file()
+            and not entry.name.startswith(".")
+            and entry.name.rsplit(".", 1)[-1].lower() in ALLOWED_FILETYPES
+            for entry in os.scandir(folder_path)
+        )
+
+        if not has_audio_file:
+            empty_folders.append(folder)
+
+    if empty_folders:
+        raise ValueError(
+            "The following training data folders do not contain any supported audio "
+            f"files: {', '.join(empty_folders)}"
+        )
+
+
 def _load_training_data(
     audio_input: str,
     test_data: str | None = None,
@@ -247,6 +270,8 @@ def _load_training_data(
             "Only repeat-upsampling ist available for multi-label",
             "validation-only-repeat-upsampling-for-multi-label",
         )
+
+    _check_input_folders(audio_input, train_folders)
 
     x_train, y_train, x_test, y_test = [], [], [], []
     model = load("acoustic", "2.4", "tf")
