@@ -13,7 +13,9 @@ on:
 
 concurrency:
   group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
-  cancel-in-progress: true
+  # Cancel superseded PR runs when new commits are pushed, but let pushes to main
+  # run to completion so a merge's CI is never cancelled by the next merge.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   running-tests:
