@@ -347,6 +347,8 @@ def save_params_file(file_path, params: dict):
     """
     import csv
 
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
     with open(file_path, "w", newline="", encoding="utf-8-sig") as paramsfile:
         paramswriter = csv.writer(paramsfile)
         paramswriter.writerow(("Parameter", "Value"))
