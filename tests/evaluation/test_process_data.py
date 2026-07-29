@@ -171,3 +171,55 @@ def test_averaging_methods_differ_end_to_end(tmp_path):
     assert micro == pytest.approx(0.5, rel=1e-6)
     assert weighted == pytest.approx(0.5, rel=1e-6)
     assert macro != micro
+
+
+def test_raven_annotation_matches_birdnet_prediction_table(tmp_path):
+    """Real-world Raven/BirdNET naming and columns still line up.
+
+    Mirrors a real dataset: the annotation is a Raven table whose name contains dots
+    (``.Table.1.selections``) and whose class lives in a ``Call type`` column, matched
+    via its ``Begin File`` column. The prediction is a BirdNET selection table whose
+    name carries the ``.BirdNET.selection.table`` suffix and which only has a
+    ``Begin Path`` column (no ``Begin File``), so it is matched via its file name.
+    Both must collapse to the same recording key.
+    """
+    ann, pred = _dirs(tmp_path)
+    audio = "S19_20180214_080003_resampled.wav"
+    _write_table(
+        ann / "S19_20180214_080003.Table.1.selections.txt",
+        ["Begin Time (s)", "End Time (s)", "Begin File", "Call type"],
+        [[0, 3, audio, "gibbon.female"], [6, 9, audio, "noise"]],
+    )
+    _write_table(
+        pred / "S19_20180214_080003_resampled.BirdNET.selection.table.txt",
+        ["Begin Time (s)", "End Time (s)", "Common Name", "Confidence", "Begin Path"],
+        [[0, 3, "gibbon.female", 0.9, f"/data/{audio}"]],
+    )
+
+    result = process_data(
+        annotation_path=str(ann),
+        prediction_path=str(pred),
+        recording_duration=9,
+        columns_annotations={
+            "Start Time": "Begin Time (s)",
+            "End Time": "End Time (s)",
+            "Class": "Call type",
+            "Recording": "Begin File",
+        },
+        columns_predictions={
+            "Start Time": "Begin Time (s)",
+            "End Time": "End Time (s)",
+            "Class": "Common Name",
+            "Confidence": "Confidence",
+        },
+        metrics_list=("precision", "recall"),
+        class_wise=True,
+    )
+
+    # The dotted annotation name and the BirdNET suffix resolve to the same recording.
+    assert result.unmatched_recordings == ()
+    assert set(result.classes) == {"gibbon.female", "noise"}
+    # "noise" is annotated (so not empty) but never predicted.
+    assert result.empty_classes == ()
+    assert result.metrics_df.loc["Precision", "gibbon.female"] == 1.0
+    assert result.metrics_df.loc["Recall", "noise"] == 0.0
