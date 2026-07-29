@@ -621,10 +621,25 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         # ----------------------- Results -----------------------
         with gr.Column(visible=False) as results_col:
-            # One row per class plus a final aggregate row ("Overall").
-            metrics_table = gr.Dataframe(
-                show_label=False, type="pandas", interactive=False, buttons=[]
-            )
+            # One row per class, with the aggregate in a separate one-row footer
+            # table that stays visible while the class rows scroll. (The virtualized
+            # gradio Dataframe cannot pin a row, so the footer is its own component;
+            # shared column widths keep the two aligned.)
+            with gr.Group():
+                metrics_table = gr.Dataframe(
+                    show_label=False,
+                    type="pandas",
+                    interactive=False,
+                    buttons=[],
+                    elem_classes="eval-metrics-table",
+                )
+                overall_table = gr.Dataframe(
+                    show_label=False,
+                    type="pandas",
+                    interactive=False,
+                    buttons=[],
+                    elem_classes="eval-overall-footer",
+                )
 
             notes_markdown = gr.Markdown(visible=False)
 
@@ -809,11 +824,12 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
             return pa, predictions, labels
 
-        def _build_metrics_table(pa, predictions, labels, averaging_value):
-            """One table with a row per class and a final aggregate "Overall" row.
+        def _build_metrics_tables(pa, predictions, labels, averaging_value):
+            """The per-class table and the aggregate "Overall" footer row.
 
-            The aggregate is recomputed with the selected averaging; its support is the
-            total number of positive samples across classes.
+            The aggregate is computed with the selected averaging; its support is the
+            total number of positive samples across classes. Both tables share the
+            same column layout, so the returned widths keep them aligned.
             """
             per_class_df = pa.calculate_metrics(
                 predictions, labels, per_class_metrics=True, include_support=True
@@ -826,12 +842,18 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 [loc.localize("eval-tab-overall-row-label")]
             )
 
-            merged = pd.concat([per_class_df, overall_df], axis=1)
-            # One row per class/aggregate, one column per metric.
-            table = merged.T.reset_index(names=[""]).round(3)
-            table["Support"] = table["Support"].astype(int)
+            def display(df):
+                # One row per class/aggregate, one column per metric.
+                table = df.T.reset_index(names=[""]).round(3)
+                table["Support"] = table["Support"].astype(int)
 
-            return table
+                return table
+
+            # The name column gets a fixed share, the metric columns split the rest.
+            n_metric_cols = len(per_class_df.index)
+            widths = ["22%"] + [f"{round(78 / n_metric_cols, 2)}%"] * n_metric_cols
+
+            return display(per_class_df), display(overall_df), widths
 
         def _build_figures(pa, predictions, labels, class_wise_value):
             """Builds the three result plots, tolerating individual failures.
@@ -933,7 +955,9 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     metric_ids,
                 )
 
-                table = _build_metrics_table(pa, predictions, labels, averaging_value)
+                class_table, overall_row, widths = _build_metrics_tables(
+                    pa, predictions, labels, averaging_value
+                )
                 empty_classes = pa.empty_classes(labels)
                 notes = _build_notes(proc_state, empty_classes, score_unannotated_value)
             except gr.Error:
@@ -950,7 +974,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
             return (
                 gr.update(visible=True),
-                gr.update(value=table),
+                gr.update(value=class_table, column_widths=widths),
+                gr.update(value=overall_row, column_widths=widths),
                 gr.update(value=notes, visible=bool(notes)),
                 fig_metrics,
                 fig_confusion,
@@ -975,6 +1000,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             outputs=[
                 results_col,
                 metrics_table,
+                overall_table,
                 notes_markdown,
                 metrics_plot,
                 confusion_plot,
@@ -991,14 +1017,17 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             if pa is None or predictions is None or labels is None:
                 return gr.update()
 
-            return gr.update(
-                value=_build_metrics_table(pa, predictions, labels, averaging_value)
+            # Only the aggregate depends on the averaging method.
+            _, overall_row, widths = _build_metrics_tables(
+                pa, predictions, labels, averaging_value
             )
+
+            return gr.update(value=overall_row, column_widths=widths)
 
         averaging_radio.input(
             recompute_overall,
             inputs=[pa_state, predictions_state, labels_state, averaging_radio],
-            outputs=[metrics_table],
+            outputs=[overall_table],
         )
 
         annotation_select_directory_btn.click(
