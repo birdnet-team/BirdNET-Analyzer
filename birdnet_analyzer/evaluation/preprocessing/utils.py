@@ -26,7 +26,7 @@ _TABLE_SUFFIXES = (
 _AUDIO_EXTENSIONS = (".wav", ".flac", ".mp3", ".ogg", ".m4a", ".aac", ".wave")
 
 
-def recording_key(name) -> str:
+def recording_key(name):
     """Derives the recording identifier a prediction/annotation entry belongs to.
 
     This is the single source of truth for matching prediction files to annotation

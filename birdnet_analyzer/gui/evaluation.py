@@ -327,17 +327,29 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     ]
 
                 files = get_selection_tables(folder)
-                files_to_display = (
-                    [*files[:100], [f"{len(files) - 100} more..."]]
-                    if len(files) > 100
-                    else files
-                )
+
+                if not files:
+                    # Folder has no selection tables: tell the user and leave the tab
+                    # unarmed (no directory stored, column box hidden).
+                    return [
+                        [],
+                        "",
+                        folder,
+                        [[loc.localize("eval-tab-no-files-found")]],
+                        gr.update(visible=False),
+                        *on_select([]),
+                    ]
+
+                # gr.Matrix expects 2D data: one row per file in the single column.
+                rows = [[f.name] for f in files[:100]]
+                if len(files) > 100:
+                    rows.append([f"{len(files) - 100} more..."])
 
                 return [
                     files,
                     folder,
                     folder,
-                    files_to_display,
+                    rows,
                     gr.update(visible=True),
                     *on_select(files),
                 ]
