@@ -273,7 +273,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         prediction_files_state = gr.State()
         annotation_dir_state = gr.State()
         prediction_dir_state = gr.State()
-        plot_name_state = gr.State()
 
         gu.info_box(
             description=loc.localize("eval-tab-info-text"),
@@ -548,7 +547,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         with (
             gr.Group(),
             gr.Accordion(loc.localize("eval-tab-metrics-accordian-label"), open=False),
-            gr.Row(),
         ):
             # The labels are translated, so the metrics are keyed by the id the
             # PerformanceAssessor expects, which does not change with the GUI language.
@@ -588,30 +586,20 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             }
             metrics_checkboxes = {}
 
-            for metric_id, (metric_name, description, default) in metric_info.items():
-                metrics_checkboxes[metric_id] = state.persist(
-                    f"{metric_id}_checkbox",
-                    gr.Checkbox,
-                    label=metric_name,
-                    value=default,
-                    info=description,
-                )
+            with gr.Row():
+                for metric_id, (
+                    metric_name,
+                    description,
+                    default,
+                ) in metric_info.items():
+                    metrics_checkboxes[metric_id] = state.persist(
+                        f"{metric_id}_checkbox",
+                        gr.Checkbox,
+                        label=metric_name,
+                        value=default,
+                        info=description,
+                    )
 
-        # ----------------------- Actions Box -----------------------
-
-        calculate_button = gr.Button(
-            loc.localize("eval-tab-calculate-metrics-button-label"),
-            variant="primary",
-        )
-
-        # ----------------------- Results -----------------------
-        with gr.Column(visible=False) as results_col:
-            gr.Markdown(f"### {loc.localize('eval-tab-per-class-metrics-label')}")
-            per_class_table = gr.Dataframe(
-                show_label=False, type="pandas", interactive=False, buttons=[]
-            )
-
-            gr.Markdown(f"### {loc.localize('eval-tab-overall-metrics-label')}")
             averaging_radio = state.persist(
                 "averaging_radio",
                 gr.Radio,
@@ -623,22 +611,41 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 label=loc.localize("eval-tab-averaging-radio-label"),
                 info=loc.localize("eval-tab-averaging-radio-info"),
             )
-            overall_table = gr.Dataframe(
+
+        # ----------------------- Actions Box -----------------------
+
+        calculate_button = gr.Button(
+            loc.localize("eval-tab-calculate-metrics-button-label"),
+            variant="primary",
+        )
+
+        # ----------------------- Results -----------------------
+        with gr.Column(visible=False) as results_col:
+            # One row per class plus a final aggregate row ("Overall").
+            metrics_table = gr.Dataframe(
                 show_label=False, type="pandas", interactive=False, buttons=[]
             )
 
             notes_markdown = gr.Markdown(visible=False)
 
-            with gr.Row():
-                plot_metrics_button = gr.Button(
-                    loc.localize("eval-tab-plot-metrics-button-label")
-                )
-                plot_confusion_button = gr.Button(
-                    loc.localize("eval-tab-plot-confusion-matrix-button-label")
-                )
-                plot_metrics_all_thresholds_button = gr.Button(
-                    loc.localize("eval-tab-plot-metrics-all-thresholds-button-label")
-                )
+            # The plots are generated with the metrics and always shown, one
+            # switchable tab per plot.
+            with gr.Tabs():
+                with gr.Tab(loc.localize("eval-tab-plot-tab-metrics-label")):
+                    metrics_plot = gr.Plot(show_label=False)
+                    metrics_plot_dl_btn = gr.Button(
+                        loc.localize("eval-tab-download-plot-button-label"), size="sm"
+                    )
+                with gr.Tab(loc.localize("eval-tab-plot-tab-confusion-matrix-label")):
+                    confusion_plot = gr.Plot(show_label=False)
+                    confusion_plot_dl_btn = gr.Button(
+                        loc.localize("eval-tab-download-plot-button-label"), size="sm"
+                    )
+                with gr.Tab(loc.localize("eval-tab-plot-tab-thresholds-label")):
+                    thresholds_plot = gr.Plot(show_label=False)
+                    thresholds_plot_dl_btn = gr.Button(
+                        loc.localize("eval-tab-download-plot-button-label"), size="sm"
+                    )
 
             with gr.Row():
                 download_results_button = gr.DownloadButton(
@@ -660,11 +667,22 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         )
         download_data_button.click(fn=download_data_table, inputs=[processor_state])
 
-        with gr.Group(visible=False) as plot_group:
-            plot_output = gr.Plot(show_label=False)
-            plot_output_dl_btn = gr.Button(
-                loc.localize("eval-tab-download-plot-button-label"),
-                size="sm",
+        def download_plot_guarded(plot, plot_name):
+            if plot is None:
+                raise gr.Error(
+                    loc.localize("eval-tab-error-calc-metrics-first"),
+                    print_exception=False,
+                )
+
+            gu.download_plot(plot, plot_name)
+
+        for dl_btn, plot_comp, plot_name in (
+            (metrics_plot_dl_btn, metrics_plot, "metrics"),
+            (confusion_plot_dl_btn, confusion_plot, "confusion_matrix"),
+            (thresholds_plot_dl_btn, thresholds_plot, "metrics_all_thresholds"),
+        ):
+            dl_btn.click(
+                download_plot_guarded, inputs=[plot_comp, gr.State(plot_name)]
             )
 
         # ------------------------------------------------------------------
@@ -791,10 +809,69 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
             return pa, predictions, labels
 
-        def _as_display_table(metrics_df: pd.DataFrame) -> pd.DataFrame:
-            # Metrics are the index and classes the columns; transpose so each row is a
-            # class (or the overall score) and each metric a column, which reads better.
-            return metrics_df.T.reset_index(names=[""]).round(3)
+        def _build_metrics_table(pa, predictions, labels, averaging_value):
+            """One table with a row per class and a final aggregate "Overall" row.
+
+            The aggregate is recomputed with the selected averaging; its support is the
+            total number of positive samples across classes.
+            """
+            per_class_df = pa.calculate_metrics(
+                predictions, labels, per_class_metrics=True, include_support=True
+            )
+            overall_df = pa.calculate_metrics(
+                predictions, labels, averaging=averaging_value
+            )
+            overall_df.loc["Support"] = int(pa.class_support(labels).sum())
+            overall_df.columns = pd.Index(
+                [loc.localize("eval-tab-overall-row-label")]
+            )
+
+            merged = pd.concat([per_class_df, overall_df], axis=1)
+            # One row per class/aggregate, one column per metric.
+            table = merged.T.reset_index(names=[""]).round(3)
+            table["Support"] = table["Support"].astype(int)
+
+            return table
+
+        def _build_figures(pa, predictions, labels, class_wise_value):
+            """Builds the three result plots, tolerating individual failures.
+
+            A plot that cannot be drawn (e.g. a degenerate confusion matrix) must not
+            take down the whole calculation, so each failure is reported as a warning
+            and its pane is simply left empty.
+            """
+            import matplotlib.pyplot as plt
+
+            def safe(build, error_key):
+                try:
+                    fig = build()
+                    plt.close(fig)
+
+                    return fig
+                except Exception as e:
+                    logger.error(f"Error building plot: {e}", exc_info=e)
+                    gr.Warning(f"{loc.localize(error_key)}: {e}")
+
+                    return None
+
+            return (
+                safe(
+                    lambda: pa.plot_metrics(
+                        predictions, labels, per_class_metrics=class_wise_value
+                    ),
+                    "eval-tab-error-plotting-metrics",
+                ),
+                safe(
+                    lambda: pa.plot_confusion_matrix(predictions, labels),
+                    "eval-tab-error-plotting-confusion-matrix",
+                ),
+                safe(
+                    lambda: pa.plot_metrics_all_thresholds(
+                        predictions, labels, per_class_metrics=class_wise_value
+                    ),
+                    "eval-tab-error-plotting-metrics-all-thresholds",
+                ),
+            )
 
         def _build_notes(proc_state, empty_classes, score_unannotated_value):
             lines = []
@@ -856,12 +933,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     metric_ids,
                 )
 
-                per_class_df = pa.calculate_metrics(
-                    predictions, labels, per_class_metrics=True, include_support=True
-                )
-                overall_df = pa.calculate_metrics(
-                    predictions, labels, averaging=averaging_value
-                )
+                table = _build_metrics_table(pa, predictions, labels, averaging_value)
                 empty_classes = pa.empty_classes(labels)
                 notes = _build_notes(proc_state, empty_classes, score_unannotated_value)
             except gr.Error:
@@ -872,11 +944,17 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     f"{loc.localize('eval-tab-error-during-processing')}: {e}"
                 ) from e
 
+            fig_metrics, fig_confusion, fig_thresholds = _build_figures(
+                pa, predictions, labels, class_wise_value
+            )
+
             return (
                 gr.update(visible=True),
-                gr.update(value=_as_display_table(per_class_df)),
-                gr.update(value=_as_display_table(overall_df)),
+                gr.update(value=table),
                 gr.update(value=notes, visible=bool(notes)),
+                fig_metrics,
+                fig_confusion,
+                fig_thresholds,
                 pa,
                 predictions,
                 labels,
@@ -896,9 +974,11 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             outputs=[
                 results_col,
-                per_class_table,
-                overall_table,
+                metrics_table,
                 notes_markdown,
+                metrics_plot,
+                confusion_plot,
+                thresholds_plot,
                 pa_state,
                 predictions_state,
                 labels_state,
@@ -911,16 +991,14 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             if pa is None or predictions is None or labels is None:
                 return gr.update()
 
-            overall_df = pa.calculate_metrics(
-                predictions, labels, averaging=averaging_value
+            return gr.update(
+                value=_build_metrics_table(pa, predictions, labels, averaging_value)
             )
-
-            return gr.update(value=_as_display_table(overall_df))
 
         averaging_radio.input(
             recompute_overall,
             inputs=[pa_state, predictions_state, labels_state, averaging_radio],
-            outputs=[overall_table],
+            outputs=[metrics_table],
         )
 
         annotation_select_directory_btn.click(
@@ -975,99 +1053,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             inputs=[annotation_dir_state, prediction_dir_state],
             outputs=[mapping_group, class_recording_group],
         )
-
-        # ------------------------------------------------------------------
-        # Plots
-        # ------------------------------------------------------------------
-        def plot_metrics(
-            pa: PerformanceAssessor, predictions, labels, class_wise_value
-        ):
-            import matplotlib.pyplot as plt
-
-            if pa is None or predictions is None or labels is None:
-                raise gr.Error(
-                    loc.localize("eval-tab-error-calc-metrics-first"),
-                    print_exception=False,
-                )
-            try:
-                fig = pa.plot_metrics(
-                    predictions, labels, per_class_metrics=class_wise_value
-                )
-                plt.close(fig)
-
-                return gr.update(visible=True), gr.update(value=fig), "metrics"
-            except Exception as e:
-                raise gr.Error(
-                    f"{loc.localize('eval-tab-error-plotting-metrics')}: {e}"
-                ) from e
-
-        plot_metrics_button.click(
-            plot_metrics,
-            inputs=[pa_state, predictions_state, labels_state, class_wise],
-            outputs=[plot_group, plot_output, plot_name_state],
-        )
-
-        def plot_confusion_matrix(pa: PerformanceAssessor, predictions, labels):
-            import matplotlib.pyplot as plt
-
-            if pa is None or predictions is None or labels is None:
-                raise gr.Error(
-                    loc.localize("eval-tab-error-calc-metrics-first"),
-                    print_exception=False,
-                )
-            try:
-                fig = pa.plot_confusion_matrix(predictions, labels)
-                plt.close(fig)
-
-                return gr.update(visible=True), fig, "confusion_matrix"
-            except Exception as e:
-                raise gr.Error(
-                    f"{loc.localize('eval-tab-error-plotting-confusion-matrix')}: {e}"
-                ) from e
-
-        plot_confusion_button.click(
-            plot_confusion_matrix,
-            inputs=[pa_state, predictions_state, labels_state],
-            outputs=[plot_group, plot_output, plot_name_state],
-        )
-
-        def plot_metrics_all_thresholds(
-            pa: PerformanceAssessor, predictions, labels, class_wise_value
-        ):
-            import matplotlib.pyplot as plt
-
-            if pa is None or predictions is None or labels is None:
-                raise gr.Error(
-                    loc.localize("eval-tab-error-calc-metrics-first"),
-                    print_exception=False,
-                )
-            try:
-                fig = pa.plot_metrics_all_thresholds(
-                    predictions, labels, per_class_metrics=class_wise_value
-                )
-                plt.close(fig)
-
-                return (
-                    gr.update(visible=True),
-                    gr.update(value=fig),
-                    "metrics_all_thresholds",
-                )
-            except Exception as e:
-                raise gr.Error(
-                    f"{loc.localize('eval-tab-error-plotting-metrics-all-thresholds')}:"
-                    f" {e}"
-                ) from e
-
-        plot_metrics_all_thresholds_button.click(
-            plot_metrics_all_thresholds,
-            inputs=[pa_state, predictions_state, labels_state, class_wise],
-            outputs=[plot_group, plot_output, plot_name_state],
-        )
-
-        plot_output_dl_btn.click(
-            gu.download_plot, inputs=[plot_output, plot_name_state]
-        )
-
 
 if __name__ == "__main__":
     gu.open_window(build_evaluation_tab)
