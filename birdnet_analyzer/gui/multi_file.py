@@ -12,6 +12,7 @@ def _output_type_map():
         loc.localize("multi-tab-output-type-raven-label"): "table",
         loc.localize("multi-tab-output-type-audacity-label"): "audacity",
         loc.localize("multi-tab-output-type-csv-label"): "csv",
+        loc.localize("multi-tab-output-type-parquet-label"): "parquet",
         loc.localize("multi-tab-output-type-kaleidoscope-label"): "kaleidoscope",
     }
 
@@ -249,7 +250,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 gr.CheckboxGroup,
                 choices=list(_additional_columns_map().items()),
                 value=[],
-                visible="csv" in output_type_radio.value,
+                visible=bool({"csv", "parquet"} & set(output_type_radio.value)),
                 label=loc.localize("multi-tab-additional-columns-checkbox-label"),
                 info=loc.localize("multi-tab-additional-columns-checkbox-info"),
             )
@@ -297,7 +298,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         ]
 
         def show_additional_columns(values):
-            return gr.update(visible="csv" in values)
+            return gr.update(visible=bool({"csv", "parquet"} & set(values)))
 
         start_batch_analysis_btn.click(
             run_batch_analysis, inputs=inputs, outputs=result_grid

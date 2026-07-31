@@ -33,7 +33,8 @@ class EvaluationResult(NamedTuple):
     Besides the metrics and the tensors the assessment ran on, it carries the context
     a caller needs to explain the numbers: which recordings had predictions but no
     annotations, and which classes were empty (and therefore excluded from any
-    aggregate score).
+    aggregate score). ``sample_data`` is the per-window matrix the metrics were derived
+    from -- the same table the GUI offers as the "data table" download.
     """
 
     metrics_df: "pd.DataFrame"
@@ -43,6 +44,7 @@ class EvaluationResult(NamedTuple):
     classes: tuple[str, ...]
     unmatched_recordings: tuple[str, ...]
     empty_classes: tuple[str, ...]
+    sample_data: "pd.DataFrame"
 
 
 def process_data(
@@ -56,7 +58,7 @@ def process_data(
     columns_predictions: dict[str, str] | None = None,
     selected_classes: Sequence[str] | None = None,
     selected_recordings: list[str] | None = None,
-    metrics_list: tuple[str, ...] = ("accuracy", "precision", "recall"),
+    metrics_list: tuple[str, ...] = ("auroc", "precision", "recall", "f1", "ap"),
     threshold: float = 0.1,
     class_wise: bool = False,
     averaging: Literal["macro", "micro", "weighted"] = "macro",
@@ -176,7 +178,26 @@ def process_data(
         classes=classes,
         unmatched_recordings=tuple(sorted(processor.unmatched_prediction_files)),
         empty_classes=pa.empty_classes(labels),
+        sample_data=processor.get_sample_data(),
     )
+
+
+# The metrics the PerformanceAssessor understands; also the CLI's allowed choices.
+VALID_METRICS = ("accuracy", "recall", "precision", "f1", "ap", "auroc")
+
+
+def _threshold_arg(value: str) -> float:
+    """argparse type for ``--threshold``: a float strictly between 0 and 1.
+
+    Fails at the parser with a clear message instead of deep inside the
+    PerformanceAssessor, which requires ``0 < threshold < 1``.
+    """
+    number = float(value)
+    if not 0 < number < 1:
+        raise argparse.ArgumentTypeError(
+            f"threshold must be between 0 and 1 (exclusive), got {value}"
+        )
+    return number
 
 
 def main():
@@ -232,11 +253,16 @@ def main():
     parser.add_argument(
         "--metrics",
         nargs="+",
-        default=["accuracy", "precision", "recall"],
-        help="List of metrics",
+        choices=VALID_METRICS,
+        default=["auroc", "precision", "recall", "f1", "ap"],
+        help="List of metrics (accuracy is excluded by default; in this sample-based "
+        "multilabel setting it is dominated by true negatives and misleadingly high)",
     )
     parser.add_argument(
-        "--threshold", type=float, default=0.1, help="Threshold value (0-1)"
+        "--threshold",
+        type=_threshold_arg,
+        default=0.1,
+        help="Threshold value, strictly between 0 and 1",
     )
     parser.add_argument(
         "--class_wise", action="store_true", help="Calculate class-wise metrics"
@@ -301,9 +327,18 @@ def main():
             ", ".join(result.empty_classes),
         )
 
-    # Create output directory if needed
-    if args.output_dir and not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+    # Write the result tables (and later the plots) when an output directory is given.
+    # These mirror the GUI's "results table" and "data table" downloads.
+    if args.output_dir:
+        os.makedirs(args.output_dir, exist_ok=True)
+
+        results_table_path = os.path.join(args.output_dir, "results_table.csv")
+        result.metrics_df.to_csv(results_table_path, index=True)
+        logger.info("Saved results table to %s", results_table_path)
+
+        data_table_path = os.path.join(args.output_dir, "data_table.csv")
+        result.sample_data.to_csv(data_table_path, index=False)
+        logger.info("Saved data table to %s", data_table_path)
 
     # Generate plots if specified
     if args.plot_metrics:
