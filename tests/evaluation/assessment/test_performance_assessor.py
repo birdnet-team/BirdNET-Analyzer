@@ -290,6 +290,85 @@ class TestPerformanceAssessorCalculateMetrics:
         assert list(metrics_df.columns) == expected_columns
 
 
+class TestPerformanceAssessorAggregation:
+    """Tests for empty-class handling, averaging, and support."""
+
+    def setup_method(self):
+        # Class 0: 2 positives, both predicted (recall 1). Class 1: never positive
+        # (empty). Class 2: 1 positive, predicted (recall 1).
+        self.classes = ("A", "Empty", "C")
+        self.labels = np.zeros((10, 3), dtype=int)
+        self.labels[:2, 0] = 1
+        self.labels[0, 2] = 1
+        self.predictions = np.zeros((10, 3))
+        self.predictions[:2, 0] = 0.9
+        self.predictions[:3, 1] = 0.9  # false positives on the empty class
+        self.predictions[0, 2] = 0.9
+
+    def _assessor(self):
+        return PerformanceAssessor(
+            num_classes=3,
+            threshold=0.1,
+            classes=self.classes,
+            metrics_list=("precision", "recall"),
+        )
+
+    def test_empty_classes_detected(self):
+        pa = self._assessor()
+        assert pa.empty_classes(self.labels) == ("Empty",)
+
+    def test_class_support(self):
+        pa = self._assessor()
+        assert list(pa.class_support(self.labels)) == [2, 0, 1]
+
+    def test_empty_class_excluded_from_overall(self):
+        pa = self._assessor()
+        overall = pa.calculate_metrics(self.predictions, self.labels)
+        # A and C are perfect; the empty class is excluded so precision stays 1.
+        assert overall.loc["Precision", "Overall"] == pytest.approx(1.0)
+
+    def test_drop_empty_false_includes_empty_class(self):
+        pa = self._assessor()
+        overall = pa.calculate_metrics(
+            self.predictions, self.labels, drop_empty=False
+        )
+        # The empty class contributes precision 0, pulling the macro mean below 1.
+        assert overall.loc["Precision", "Overall"] < 1.0
+
+    def test_per_class_includes_support_row(self):
+        pa = self._assessor()
+        per_class = pa.calculate_metrics(
+            self.predictions, self.labels, per_class_metrics=True, include_support=True
+        )
+        assert "Support" in per_class.index
+        assert list(per_class.loc["Support"]) == [2, 0, 1]
+
+    def test_all_empty_labels_give_nan(self):
+        pa = self._assessor()
+        overall = pa.calculate_metrics(self.predictions, np.zeros((10, 3), dtype=int))
+        assert np.isnan(overall.loc["Precision", "Overall"])
+
+    def test_micro_and_macro_differ(self):
+        # Class A: 4 positives, 1 recalled (recall 1/4). Class C: 1 positive, recalled.
+        labels = np.zeros((10, 3), dtype=int)
+        labels[:4, 0] = 1
+        labels[0, 2] = 1
+        predictions = np.zeros((10, 3))
+        predictions[0, 0] = 0.9
+        predictions[0, 2] = 0.9
+        pa = PerformanceAssessor(
+            num_classes=3,
+            threshold=0.1,
+            classes=self.classes,
+            metrics_list=("recall",),
+        )
+        macro = pa.calculate_metrics(predictions, labels, averaging="macro")
+        micro = pa.calculate_metrics(predictions, labels, averaging="micro")
+        # macro = mean(1/4, 1) = 0.625; micro = 2/5 = 0.4.
+        assert macro.loc["Recall", "Overall"] == pytest.approx(0.625)
+        assert micro.loc["Recall", "Overall"] == pytest.approx(0.4)
+
+
 class TestPerformanceAssessorPlotMetrics:
     """
     Test suite for the PerformanceAssessor plot_metrics method.

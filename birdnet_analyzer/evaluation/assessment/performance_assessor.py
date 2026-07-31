@@ -7,7 +7,7 @@ It includes methods to compute metrics like precision, recall, F1 score, AUROC, 
 accuracy, as well as utilities for generating related plots.
 """
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 import numpy as np
 import pandas as pd
@@ -94,11 +94,121 @@ class PerformanceAssessor:
         # Set default colors for plotting
         self.colors = ["#3A50B1", "#61A83E", "#D74C4C", "#A13FA1", "#D9A544", "#F3A6E0"]
 
+    # Display labels for each supported metric id, in a stable order.
+    _METRIC_DISPLAY_NAMES: ClassVar[dict[str, str]] = {
+        "recall": "Recall",
+        "precision": "Precision",
+        "f1": "F1",
+        "ap": "AP",
+        "auroc": "AUROC",
+        "accuracy": "Accuracy",
+    }
+
+    def _class_names(self) -> list[str]:
+        """The class labels to use as columns, falling back to ``Class i``."""
+        return list(self.classes or [f"Class {i}" for i in range(self.num_classes)])
+
+    def _compute_metrics_dict(
+        self,
+        predictions: np.ndarray,
+        labels: np.ndarray,
+        averaging_method,
+        num_classes: int,
+    ) -> dict[str, np.ndarray]:
+        """Compute every requested metric, keyed by its display name.
+
+        Args:
+            predictions (np.ndarray): Prediction probabilities.
+            labels (np.ndarray): Ground truth labels, same shape as predictions.
+            averaging_method: Averaging passed to the metric functions. ``None`` yields
+                one value per class; ``"macro"``/``"micro"``/``"weighted"`` aggregate.
+            num_classes (int): Number of columns in the arrays (needed by accuracy).
+
+        Returns:
+            An ordered mapping of display name to a 1D array of metric values.
+        """
+        results: dict[str, np.ndarray] = {}
+
+        for metric_name in self.metrics_list:
+            if metric_name == "recall":
+                value = metrics.calculate_recall(
+                    predictions=predictions,
+                    labels=labels,
+                    task=self.task,
+                    threshold=self.threshold,
+                    averaging_method=averaging_method,
+                )
+            elif metric_name == "precision":
+                value = metrics.calculate_precision(
+                    predictions=predictions,
+                    labels=labels,
+                    task=self.task,
+                    threshold=self.threshold,
+                    averaging_method=averaging_method,
+                )
+            elif metric_name == "f1":
+                value = metrics.calculate_f1_score(
+                    predictions=predictions,
+                    labels=labels,
+                    task=self.task,
+                    threshold=self.threshold,
+                    averaging_method=averaging_method,
+                )
+            elif metric_name == "ap":
+                value = metrics.calculate_average_precision(
+                    predictions=predictions,
+                    labels=labels,
+                    task=self.task,
+                    averaging_method=averaging_method,
+                )
+            elif metric_name == "auroc":
+                value = metrics.calculate_auroc(
+                    predictions=predictions,
+                    labels=labels,
+                    task=self.task,
+                    averaging_method=averaging_method,
+                )
+            elif metric_name == "accuracy":
+                value = metrics.calculate_accuracy(
+                    predictions=predictions,
+                    labels=labels,
+                    task=self.task,
+                    num_classes=num_classes,
+                    threshold=self.threshold,
+                    averaging_method=averaging_method,
+                )
+            else:
+                continue
+
+            results[self._METRIC_DISPLAY_NAMES[metric_name]] = np.atleast_1d(value)
+
+        return results
+
+    def class_support(self, labels: np.ndarray) -> np.ndarray:
+        """Number of positive samples per class (the support of each class)."""
+        return labels.astype(bool).sum(axis=0).astype(int)
+
+    def empty_classes(self, labels: np.ndarray) -> tuple[str, ...]:
+        """Names of the classes that have no positive annotation in ``labels``.
+
+        These classes are excluded from the aggregate score, because precision,
+        recall, F1 and AUROC are undefined without a single positive example.
+        """
+        support = self.class_support(labels)
+        return tuple(
+            name
+            for name, count in zip(self._class_names(), support, strict=True)
+            if count == 0
+        )
+
     def calculate_metrics(
         self,
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
+        averaging: Literal["macro", "micro", "weighted"] = "macro",
+        drop_empty: bool = True,
+        include_support: bool = False,
     ) -> pd.DataFrame:
         """
         Calculate multiple performance metrics for the given predictions and labels.
@@ -108,7 +218,15 @@ class PerformanceAssessor:
                 (probabilities or logits).
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
             per_class_metrics (bool): If True, compute metrics for each class
-                individually.
+                individually. If False, return a single aggregate column.
+            averaging (Literal["macro", "micro", "weighted"]): How to aggregate the
+                per-class metrics into the single ``Overall`` column. Ignored when
+                ``per_class_metrics`` is True.
+            drop_empty (bool): When aggregating, exclude classes with no positive labels
+                (their metrics are undefined) instead of counting them as zero. Applies
+                only to the aggregate column.
+            include_support (bool): When ``per_class_metrics`` is True, append a
+                ``Support`` row with the number of positive samples per class.
 
         Returns:
             pd.DataFrame: A DataFrame containing the computed metrics.
@@ -135,83 +253,54 @@ class PerformanceAssessor:
                 + f"must match num_classes ({self.num_classes})."
             )
 
-        # Determine the averaging method for metrics
-        averaging_method = (
-            None if per_class_metrics or self.num_classes == 1 else "macro"
+        if per_class_metrics:
+            # One value per class: no averaging across classes.
+            results = self._compute_metrics_dict(
+                predictions, labels, averaging_method=None, num_classes=self.num_classes
+            )
+            metrics_df = pd.DataFrame.from_dict(
+                results, orient="index", columns=pd.Index(self._class_names())
+            )
+            if include_support:
+                metrics_df.loc["Support"] = self.class_support(labels)
+
+            return metrics_df
+
+        # Aggregate into a single column. Undefined (empty) classes are dropped so they
+        # cannot silently pull the average down, unless the caller keeps them.
+        keep = (
+            self.class_support(labels) > 0
+            if drop_empty
+            else np.ones(self.num_classes, dtype=bool)
+        )
+        kept = np.flatnonzero(keep)
+
+        if kept.size == 0:
+            # Nothing scoreable -- report NaN rather than a misleading zero.
+            results = {
+                self._METRIC_DISPLAY_NAMES[m]: np.array([np.nan])
+                for m in self.metrics_list
+            }
+            return pd.DataFrame.from_dict(
+                results, orient="index", columns=pd.Index(["Overall"])
+            )
+
+        predictions_kept = predictions[:, kept]
+        labels_kept = labels[:, kept]
+        # For a binary task the metric functions want no averaging (they use the
+        # positive-class value). For multilabel we always aggregate across the kept
+        # classes -- even a single kept column, where ``average=None`` would wrongly
+        # return one value per binary outcome instead of a single score.
+        averaging_method = None if self.task == "binary" else averaging
+        results = self._compute_metrics_dict(
+            predictions_kept,
+            labels_kept,
+            averaging_method=averaging_method,
+            num_classes=kept.size,
         )
 
-        # Dictionary to store the results of each metric
-        metrics_results = {}
-
-        # Compute each metric in the metrics list
-        for metric_name in self.metrics_list:
-            if metric_name == "recall":
-                result = metrics.calculate_recall(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-                metrics_results["Recall"] = np.atleast_1d(result)
-            elif metric_name == "precision":
-                result = metrics.calculate_precision(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-                metrics_results["Precision"] = np.atleast_1d(result)
-            elif metric_name == "f1":
-                result = metrics.calculate_f1_score(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-                metrics_results["F1"] = np.atleast_1d(result)
-            elif metric_name == "ap":
-                result = metrics.calculate_average_precision(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    averaging_method=averaging_method,
-                )
-                metrics_results["AP"] = np.atleast_1d(result)
-            elif metric_name == "auroc":
-                result = metrics.calculate_auroc(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    averaging_method=averaging_method,
-                )
-                metrics_results["AUROC"] = np.atleast_1d(result)
-            elif metric_name == "accuracy":
-                result = metrics.calculate_accuracy(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    num_classes=self.num_classes,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-                metrics_results["Accuracy"] = np.atleast_1d(result)
-
-        # Define column names for the DataFrame
-        columns = (
-            (self.classes or [f"Class {i}" for i in range(self.num_classes)])
-            if per_class_metrics
-            else ["Overall"]
-        )
-
-        # Create a DataFrame to organize metric results
-        metrics_data = {
-            key: np.atleast_1d(value) for key, value in metrics_results.items()
-        }
         return pd.DataFrame.from_dict(
-            metrics_data, orient="index", columns=pd.Index(columns)
+            results, orient="index", columns=pd.Index(["Overall"])
         )
 
     def plot_metrics(
@@ -268,7 +357,8 @@ class PerformanceAssessor:
         Returns:
             None
         """
-        # Save the original threshold value to restore it later
+        # Save the original threshold so the sweep never leaks out of this method,
+        # even if a metric computation or the plotting call raises.
         original_threshold = self.threshold
 
         # Define a range of thresholds for analysis
@@ -277,88 +367,82 @@ class PerformanceAssessor:
         # Exclude metrics that are not threshold-dependent
         metrics_to_plot = [m for m in self.metrics_list if m not in ["auroc", "ap"]]
 
-        if per_class_metrics:
-            # Define class names for plotting
-            class_names = (
-                list(self.classes)
-                if self.classes
-                else [f"Class {i}" for i in range(self.num_classes)]
-            )
+        try:
+            if per_class_metrics:
+                class_names = self._class_names()
 
-            # Initialize a dictionary to store metric values per class
-            metric_values_dict_per_class = {
-                class_name: {metric: [] for metric in metrics_to_plot}
-                for class_name in class_names
-            }
-
-            # Compute metrics for each threshold
-            for thresh in thresholds:
-                self.threshold = thresh
-                metrics_df = self.calculate_metrics(
-                    predictions, labels, per_class_metrics=True
-                )
-                for metric_name in metrics_to_plot:
-                    metric_label = (
-                        metric_name.capitalize() if metric_name != "f1" else "F1"
-                    )
-                    for class_name in class_names:
-                        value = metrics_df.loc[metric_label, class_name]
-                        metric_values_dict_per_class[class_name][metric_name].append(
-                            value
-                        )
-
-            # Restore the original threshold
-            self.threshold = original_threshold
-
-            # Convert lists to NumPy arrays
-            metric_values_dict_per_class = {
-                class_name: {
-                    metric: np.array(values) for metric, values in metrics_dict.items()
+                # Initialize a dictionary to store metric values per class
+                metric_values_dict_per_class = {
+                    class_name: {metric: [] for metric in metrics_to_plot}
+                    for class_name in class_names
                 }
-                for class_name, metrics_dict in metric_values_dict_per_class.items()
-            }
 
-            # Plot metrics across thresholds per class
-            fig = plotting.plot_metrics_across_thresholds_per_class(
-                thresholds,
-                metric_values_dict_per_class,
-                metrics_to_plot,
-                class_names,
-                self.colors,
-            )
-        else:
-            # Initialize a dictionary to store overall metric values
-            metric_values_dict = {metric_name: [] for metric_name in metrics_to_plot}
-
-            # Compute metrics for each threshold
-            for thresh in thresholds:
-                self.threshold = thresh
-                metrics_df = self.calculate_metrics(
-                    predictions, labels, per_class_metrics=False
-                )
-                for metric_name in metrics_to_plot:
-                    metric_label = (
-                        metric_name.capitalize() if metric_name != "f1" else "F1"
+                # Compute metrics for each threshold
+                for thresh in thresholds:
+                    self.threshold = thresh
+                    metrics_df = self.calculate_metrics(
+                        predictions, labels, per_class_metrics=True
                     )
-                    value = metrics_df.loc[metric_label, "Overall"]
-                    metric_values_dict[metric_name].append(value)
+                    for metric_name in metrics_to_plot:
+                        metric_label = self._METRIC_DISPLAY_NAMES[metric_name]
+                        for class_name in class_names:
+                            value = metrics_df.loc[metric_label, class_name]
+                            metric_values_dict_per_class[class_name][
+                                metric_name
+                            ].append(value)
 
-            # Restore the original threshold
+                # Convert lists to NumPy arrays
+                metric_values_dict_per_class = {
+                    class_name: {
+                        metric: np.array(values)
+                        for metric, values in metrics_dict.items()
+                    }
+                    for class_name, metrics_dict in (
+                        metric_values_dict_per_class.items()
+                    )
+                }
+
+                # Plot metrics across thresholds per class
+                fig = plotting.plot_metrics_across_thresholds_per_class(
+                    thresholds,
+                    metric_values_dict_per_class,
+                    metrics_to_plot,
+                    class_names,
+                    self.colors,
+                )
+            else:
+                # Initialize a dictionary to store overall metric values
+                metric_values_dict = {
+                    metric_name: [] for metric_name in metrics_to_plot
+                }
+
+                # Compute metrics for each threshold
+                for thresh in thresholds:
+                    self.threshold = thresh
+                    metrics_df = self.calculate_metrics(
+                        predictions, labels, per_class_metrics=False
+                    )
+                    for metric_name in metrics_to_plot:
+                        metric_label = self._METRIC_DISPLAY_NAMES[metric_name]
+                        value = metrics_df.loc[metric_label, "Overall"]
+                        metric_values_dict[metric_name].append(value)
+
+                # Convert lists to NumPy arrays
+                metric_values_dict = {
+                    metric_name: np.array(values)
+                    for metric_name, values in metric_values_dict.items()
+                }
+
+                # Plot metrics across thresholds
+                fig = plotting.plot_metrics_across_thresholds(
+                    thresholds,
+                    metric_values_dict,
+                    metrics_to_plot,
+                    self.colors,
+                )
+        finally:
+            # Always restore the original threshold
             self.threshold = original_threshold
-
-            # Convert lists to NumPy arrays
-            metric_values_dict = {
-                metric_name: np.array(values)
-                for metric_name, values in metric_values_dict.items()
-            }
-
-            # Plot metrics across thresholds
-            fig = plotting.plot_metrics_across_thresholds(
-                thresholds,
-                metric_values_dict,
-                metrics_to_plot,
-                self.colors,
-            )
 
         return fig
 
