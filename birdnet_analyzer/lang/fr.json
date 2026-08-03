@@ -424,6 +424,8 @@
     "training-tab-start-training-button-label": "Commencer l’apprentissage",
     "training-tab-test-data-selection-button-label": "Sélectionner les données de test (optionnel)",
     "training-tab-test-data-selection-textbox-placeholder": "Aucun répertoire de données de test sélectionné",
+    "training-tab-threads-number-info": "Nombre de threads CPU parallèles utilisés pour charger et décoder l'audio d'entraînement. Plus de threads peut accélérer le chargement des données mais utilise plus de CPU et de mémoire. Ignoré lors de l'entraînement à partir d'un fichier cache.",
+    "training-tab-threads-number-label": "Threads de chargement des données",
     "training-tab-title": "Apprentissage",
     "training-tab-upsampling-radio-info": "Équilibrer les données de formation en suréchantillonnant les classes minoritaires.",
     "training-tab-upsampling-radio-label": "Mode de suréchantillonnage",

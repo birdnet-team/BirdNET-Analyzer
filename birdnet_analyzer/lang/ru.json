@@ -424,6 +424,8 @@
     "training-tab-start-training-button-label": "Начало обучения",
     "training-tab-test-data-selection-button-label": "Выбор данных для тестирования (опционально)",
     "training-tab-test-data-selection-textbox-placeholder": "Каталог тестовых данных не выбран",
+    "training-tab-threads-number-info": "Количество параллельных потоков ЦП для загрузки и декодирования обучающего аудио. Больше потоков может ускорить загрузку данных, но требует больше ресурсов ЦП и памяти. Игнорируется при обучении из файла кэша.",
+    "training-tab-threads-number-label": "Потоки загрузки данных",
     "training-tab-title": "Обучить",
     "training-tab-upsampling-radio-info": "Балансировка тренировочных данных с помощью повышающей дискретизации меньших классов",
     "training-tab-upsampling-radio-label": "Режим повышающей дискретизации",

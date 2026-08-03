@@ -70,6 +70,7 @@ def start_training(
     upsampling_mode,
     model_formats,
     audio_speed,
+    threads,
     progress=gr.Progress(),
 ):
     """Starts the training of a custom classifier.
@@ -106,6 +107,8 @@ def start_training(
         upsampling_mode: Mode for upsampling (repeat, mean, smote).
         model_formats: Formats to save the trained model (tflite, raven, detached).
         audio_speed: Speed factor for audio playback.
+        threads: Number of parallel CPU threads for loading and decoding the training
+            audio. Ignored when training from a cache file.
         save_detached_classifier: Whether to save the detached classifier.
     Returns:
         Returns a matplotlib.pyplot figure.
@@ -212,7 +215,9 @@ def start_training(
             else None,
             dropout=max(0.0, min(1.0, float(dropout))),
             overlap=max(0.0, min(2.9, float(crop_overlap))),
-            threads=max(1, multiprocessing.cpu_count()),
+            threads=int(threads)
+            if threads and int(threads) > 0
+            else max(1, multiprocessing.cpu_count()),
             on_epoch_end=epoch_progression,
             on_trial_result=trial_progression,
             on_data_load_end=data_load_progression,
@@ -534,6 +539,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
+                    gr.update(interactive=value != "load"),
                 )
 
         with (
@@ -620,6 +626,18 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     interactive=crops_segments and not uses_cache_file,
                 )
 
+                threads_number = state.persist(
+                    "threads_number",
+                    gr.Number,
+                    value=multiprocessing.cpu_count(),
+                    minimum=1,
+                    step=1,
+                    precision=0,
+                    interactive=not uses_cache_file,
+                    label=loc.localize("training-tab-threads-number-label"),
+                    info=loc.localize("training-tab-threads-number-info"),
+                )
+
             def on_crop_select(new_crop_mode):
                 # Make overlap slider visible for both "segments" and "smart" crop modes
                 return gr.update(
@@ -644,6 +662,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     audio_speed_slider,
                     crop_mode,
                     crop_overlap,
+                    threads_number,
                 ],
                 show_progress="hidden",
             )
@@ -684,8 +703,13 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("training-tab-autotune-repeats-number-info"),
                 )
 
+        # The custom-parameters accordion stays visible while autotuning; every field
+        # the tuner searches is disabled instead (its value is only a seed and gets
+        # overridden), so users can still see the values but not waste time tuning them
+        # by hand. "epochs" is not autotuned and stays editable -- it applies to every
+        # trial.
         with (
-            gr.Group(visible=not autotunes) as custom_params,
+            gr.Group(),
             gr.Accordion(
                 open=False,
                 label=loc.localize("training-tab-custom-params-accordion-label"),
@@ -707,6 +731,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     value=32,
                     minimum=1,
                     step=8,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-batchsize-number-label"),
                     info=loc.localize("training-tab-batchsize-number-info"),
                 )
@@ -716,6 +741,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     value=0.0001,
                     minimum=0.0001,
                     step=0.0001,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-learningrate-number-label"),
                     info=loc.localize("training-tab-learningrate-number-info"),
                 )
@@ -727,6 +753,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     value=0,
                     minimum=0,
                     step=64,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-hiddenunits-number-label"),
                     info=loc.localize("training-tab-hiddenunits-number-info"),
                 )
@@ -737,6 +764,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     minimum=0.0,
                     maximum=0.9,
                     step=0.1,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-dropout-number-label"),
                     info=loc.localize("training-tab-dropout-number-info"),
                 )
@@ -744,6 +772,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     "use_label_smoothing_checkbox",
                     gr.Checkbox,
                     value=False,
+                    interactive=not autotunes,
                     label=loc.localize(
                         "training-tab-use-labelsmoothing-checkbox-label"
                     ),
@@ -774,6 +803,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                         ),
                     ],
                     value="repeat",
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-upsampling-radio-label"),
                     info=loc.localize("training-tab-upsampling-radio-info"),
                 )
@@ -784,6 +814,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     maximum=1.0,
                     value=0.0,
                     step=0.05,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-upsampling-ratio-slider-label"),
                     info=loc.localize("training-tab-upsampling-ratio-slider-info"),
                 )
@@ -793,6 +824,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     "use_mixup_checkbox",
                     gr.Checkbox,
                     value=False,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-use-mixup-checkbox-label"),
                     info=loc.localize("training-tab-use-mixup-checkbox-info"),
                     show_label=True,
@@ -801,14 +833,13 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     "use_focal_loss_checkbox",
                     gr.Checkbox,
                     value=False,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-use-focal-loss-checkbox-label"),
                     info=loc.localize("training-tab-use-focal-loss-checkbox-info"),
                     show_label=True,
                 )
 
-            with gr.Row(
-                visible=bool(use_focal_loss.value) and not autotunes
-            ) as focal_loss_params:
+            with gr.Row(visible=bool(use_focal_loss.value)) as focal_loss_params:
                 focal_loss_gamma = state.persist(
                     "focal_loss_gamma_slider",
                     gr.Slider,
@@ -816,9 +847,9 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     maximum=5.0,
                     value=2.0,
                     step=0.1,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
                     info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
-                    interactive=True,
                 )
                 focal_loss_alpha = state.persist(
                     "focal_loss_alpha_slider",
@@ -827,9 +858,9 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     maximum=0.9,
                     value=0.25,
                     step=0.05,
+                    interactive=not autotunes,
                     label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
                     info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
-                    interactive=True,
                 )
 
         def on_focal_loss_change(value):
@@ -842,17 +873,33 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             show_progress="hidden",
         )
 
+        # Every hyperparameter the tuner searches. When autotuning is on these are
+        # disabled (their values are only seeds and get overridden); "epochs" is not
+        # tuned and stays editable.
+        autotuned_params = [
+            batch_size_number,
+            learning_rate_number,
+            hidden_units_number,
+            dropout_number,
+            use_label_smoothing,
+            upsampling_mode,
+            upsampling_ratio,
+            use_mixup,
+            use_focal_loss,
+            focal_loss_gamma,
+            focal_loss_alpha,
+        ]
+
         def on_autotune_change(value):
-            return (
-                gr.update(visible=not value),
-                gr.update(visible=value),
-                gr.update(visible=not value and use_focal_loss.value),
-            )
+            return [
+                gr.update(visible=value),  # autotune_params
+                *[gr.update(interactive=not value) for _ in autotuned_params],
+            ]
 
         autotune_cb.change(
             on_autotune_change,
             inputs=autotune_cb,
-            outputs=[custom_params, autotune_params, focal_loss_params],
+            outputs=[autotune_params, *autotuned_params],
             show_progress="hidden",
         )
 
@@ -966,6 +1013,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 upsampling_mode,
                 output_formats,
                 audio_speed_slider,
+                threads_number,
             ],
             outputs=[train_history_plot, metrics_table],
         )

@@ -424,6 +424,8 @@
     "training-tab-start-training-button-label": "Aloita koulutus",
     "training-tab-test-data-selection-button-label": "Valitse testidataa (Valinnainen)",
     "training-tab-test-data-selection-textbox-placeholder": "Testidatahakemistoa ei valittu",
+    "training-tab-threads-number-info": "Rinnakkaisten suoritinsäikeiden määrä koulutusäänen lataamiseen ja purkamiseen. Useammat säikeet voivat nopeuttaa datan latausta, mutta käyttävät enemmän suoritinta ja muistia. Ei käytössä, kun koulutus tehdään välimuistitiedostosta.",
+    "training-tab-threads-number-label": "Datan latauksen säikeet",
     "training-tab-title": "Kouluta",
     "training-tab-upsampling-radio-info": "Tasapainota koulutusdataa ylösnäytteistämällä vähemmistöluokkia.",
     "training-tab-upsampling-radio-label": "Ylösnäytteistystila",

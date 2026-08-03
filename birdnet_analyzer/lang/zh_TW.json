@@ -424,6 +424,8 @@
     "training-tab-start-training-button-label": "開始訓練",
     "training-tab-test-data-selection-button-label": "選擇測試資料 (可選)",
     "training-tab-test-data-selection-textbox-placeholder": "未選擇測試資料目錄",
+    "training-tab-threads-number-info": "用於載入和解碼訓練音訊的平行 CPU 執行緒數量。更多執行緒可加快資料載入速度，但會使用更多 CPU 和記憶體。從快取檔案訓練時會忽略此設定。",
+    "training-tab-threads-number-label": "資料載入執行緒",
     "training-tab-title": "訓練客製化分類器",
     "training-tab-upsampling-radio-info": "上取樣樣本較少的類別已達到平衡的訓練資料",
     "training-tab-upsampling-radio-label": "上取樣模式",
