@@ -49,6 +49,12 @@ You can access documentation for this project [here](https://birdnet-team.github
 ## Download
 
 You can download installers for Windows and macOS from the [releases page](https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest).
+On Windows, once the package is published in the Windows Package Manager, you can also install it with:
+
+```powershell
+winget install BirdNET-Team.BirdNETAnalyzer
+```
+
 Models can be found on [Zenodo](https://zenodo.org/records/15050749).
 
 ## About
