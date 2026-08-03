@@ -444,16 +444,20 @@
     "training-tab-warning-detached-classifier-append": "附加模式不適用於分離的分類器。",
     "validation-max-confidence-lower-than-min-confidence": "最大可信度必須大於最小可信度",
     "validation-no-audio-directory-selected": "請提供包含音檔的資料夾",
+    "validation-no-audio-files-in-training-folders": "下列訓練資料夾不含任何支援的音訊檔案:{0}",
     "validation-no-cache-file-selected": "請選擇快取檔案。",
     "validation-no-custom-classifier-selected": "尚未選擇客製化分類器",
     "validation-no-directory-for-classifier-selected": "請選擇分類器路徑",
     "validation-no-directory-selected": "請選擇資料夾",
     "validation-no-file-selected": "請選擇檔案",
+    "validation-no-negative-samples-in-binary-classification": "二元分類無法使用負標籤",
     "validation-no-species-list-selected": "請選擇物種清單",
     "validation-no-training-data-selected": "請選擇訓練用資料",
     "validation-no-valid-batch-size": "請輸入有效的批次量(在同一時間分析的音檔數量)",
     "validation-no-valid-classifier-name": "請輸入有效的分類器名稱",
     "validation-no-valid-epoch-number": "請輸入有效的訓練期(eopch)數量",
     "validation-no-valid-frequency": "請輸入有效的頻率",
-    "validation-no-valid-learning-rate": "請輸入有效的學習速率"
+    "validation-no-valid-learning-rate": "請輸入有效的學習速率",
+    "validation-non-event-samples-required-in-binary-classification": "二元分類需要非事件樣本",
+    "validation-only-repeat-upsampling-for-multi-label": "多標籤訓練僅支援重覆上取樣"
 }

@@ -444,16 +444,20 @@
     "training-tab-warning-detached-classifier-append": "Liitä-tila ei koske irrotettua luokitinta.",
     "validation-max-confidence-lower-than-min-confidence": "Enimmäisluotettavuuden on oltava suurempi kuin vähimmäisluotettavuus",
     "validation-no-audio-directory-selected": "Äänihakemistoa ei ole valittu",
+    "validation-no-audio-files-in-training-folders": "Seuraavat koulutusdatakansiot eivät sisällä tuettuja äänitiedostoja: {0}",
     "validation-no-cache-file-selected": "Valitse välimuistitiedosto.",
     "validation-no-custom-classifier-selected": "Mukautettua luokittelijaa ei ole valittu.",
     "validation-no-directory-for-classifier-selected": "Valitse hakemisto luokittelijalle.",
     "validation-no-directory-selected": "Valitse hakemisto.",
     "validation-no-file-selected": "Valitse tiedosto.",
+    "validation-no-negative-samples-in-binary-classification": "Negatiivisia luokkia ei voi käyttää binääriluokittelussa",
     "validation-no-species-list-selected": "Valitse lajilista.",
     "validation-no-training-data-selected": "Valitse koulutusdatasi.",
     "validation-no-valid-batch-size": "Anna kelvollinen eräkoko.",
     "validation-no-valid-classifier-name": "Anna kelvollinen nimi luokittelijalle.",
     "validation-no-valid-epoch-number": "Anna kelvollinen aikakausien määrä.",
     "validation-no-valid-frequency": "Anna kelvollinen taajuus",
-    "validation-no-valid-learning-rate": "Anna kelvollinen oppimistahti."
+    "validation-no-valid-learning-rate": "Anna kelvollinen oppimistahti.",
+    "validation-non-event-samples-required-in-binary-classification": "Binääriluokittelu vaatii ei-tapahtumanäytteitä",
+    "validation-only-repeat-upsampling-for-multi-label": "Monileimakoulutuksessa on käytettävissä vain toista-ylösnäytteistys"
 }

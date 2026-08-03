@@ -444,16 +444,20 @@
     "training-tab-warning-detached-classifier-append": "Tilläggsläget gäller inte för den fristående klassificeraren.",
     "validation-max-confidence-lower-than-min-confidence": "Maximal konfidens måste vara större än minimal konfidens",
     "validation-no-audio-directory-selected": "Ingen ljudkatalog vald",
+    "validation-no-audio-files-in-training-folders": "Följande mappar med träningsdata innehåller inga ljudfiler som stöds: {0}",
     "validation-no-cache-file-selected": "Vänligen välj en cachefil.",
     "validation-no-custom-classifier-selected": "Ingen anpassad klassificerare vald.",
     "validation-no-directory-for-classifier-selected": "Välj en katalog för klassificeraren.",
     "validation-no-directory-selected": "Välj en katalog.",
     "validation-no-file-selected": "Välj en fil.",
+    "validation-no-negative-samples-in-binary-classification": "Negativa etiketter kan inte användas med binär klassificering",
     "validation-no-species-list-selected": "Välj en artlista.",
     "validation-no-training-data-selected": "Välj dina träningsdata.",
     "validation-no-valid-batch-size": "Ange en giltig batchstorlek.",
     "validation-no-valid-classifier-name": "Ange ett giltigt namn för klassificeraren.",
     "validation-no-valid-epoch-number": "Ange ett giltigt antal epoker.",
     "validation-no-valid-frequency": "Ange en giltig frekvens i",
-    "validation-no-valid-learning-rate": "Ange en giltig inlärningshastighet."
+    "validation-no-valid-learning-rate": "Ange en giltig inlärningshastighet.",
+    "validation-non-event-samples-required-in-binary-classification": "Prover utan händelser krävs för binär klassificering",
+    "validation-only-repeat-upsampling-for-multi-label": "Endast upsampling med upprepning är tillgänglig för träning med flera etiketter"
 }

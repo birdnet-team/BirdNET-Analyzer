@@ -444,16 +444,20 @@
     "training-tab-warning-detached-classifier-append": "Режим добавления не применяется к отсоединённому классификатору.",
     "validation-max-confidence-lower-than-min-confidence": "Максимальная достоверность должна быть больше минимальной достоверности",
     "validation-no-audio-directory-selected": "Каталог аудио не выбран",
+    "validation-no-audio-files-in-training-folders": "Следующие папки с обучающими данными не содержат поддерживаемых аудиофайлов: {0}",
     "validation-no-cache-file-selected": "Пожалуйста, выберите файл кэша.",
     "validation-no-custom-classifier-selected": "Пользовательский классификатор не выбран.",
     "validation-no-directory-for-classifier-selected": "Пожалуйста, выберите каталог для классификатора.",
     "validation-no-directory-selected": "Пожалуйста, выберите каталог.",
     "validation-no-file-selected": "Пожалуйста, выберите файл.",
+    "validation-no-negative-samples-in-binary-classification": "Отрицательные метки нельзя использовать при бинарной классификации",
     "validation-no-species-list-selected": "Пожалуйста, выберите список видов.",
     "validation-no-training-data-selected": "Выберите данные обучения.",
     "validation-no-valid-batch-size": "Пожалуйста, введите допустимый размер пакета.",
     "validation-no-valid-classifier-name": "Пожалуйста, введите имя для классификатора.",
     "validation-no-valid-epoch-number": "Пожалуйста, введите допустимое количество периодов.",
     "validation-no-valid-frequency": "Введите допустимую частоту в",
-    "validation-no-valid-learning-rate": "Пожалуйста, введите допустимый коэффициент обучения."
+    "validation-no-valid-learning-rate": "Пожалуйста, введите допустимый коэффициент обучения.",
+    "validation-non-event-samples-required-in-binary-classification": "Для бинарной классификации требуются образцы без событий",
+    "validation-only-repeat-upsampling-for-multi-label": "Для обучения с несколькими метками доступен только режим повышающей дискретизации «повтор»"
 }

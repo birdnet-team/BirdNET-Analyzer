@@ -444,16 +444,20 @@
     "training-tab-warning-detached-classifier-append": "O modo de acréscimo não será aplicado ao classificador desanexado.",
     "validation-max-confidence-lower-than-min-confidence": "A confiança máxima deve ser maior que a confiança mínima",
     "validation-no-audio-directory-selected": "Nenhum diretório de áudios selecionado",
+    "validation-no-audio-files-in-training-folders": "As seguintes pastas de dados de treinamento não contêm arquivos de áudio compatíveis: {0}",
     "validation-no-cache-file-selected": "Selecione um arquivo de cache.",
     "validation-no-custom-classifier-selected": "Nenhum classificador customizado selecionado.",
     "validation-no-directory-for-classifier-selected": "Selecione um diretório para o classificador.",
     "validation-no-directory-selected": "Selecione um diretório. ",
     "validation-no-file-selected": "Selecione um arquivo.",
+    "validation-no-negative-samples-in-binary-classification": "Rótulos negativos não podem ser usados com classificação binária",
     "validation-no-species-list-selected": "Selecione uma lista de espécies.",
     "validation-no-training-data-selected": "Selecione seus dados de treinamento.",
     "validation-no-valid-batch-size": "Adicionar um tamanho de lote (batch) válido.",
     "validation-no-valid-classifier-name": "Adicionar um nome válido para o classificador.",
     "validation-no-valid-epoch-number": "Adicionar um número de épocas (epochs) válido.",
     "validation-no-valid-frequency": "Adicionar uma frequência válida em",
-    "validation-no-valid-learning-rate": "Adicionar uma taxa de amostragem válida."
+    "validation-no-valid-learning-rate": "Adicionar uma taxa de amostragem válida.",
+    "validation-non-event-samples-required-in-binary-classification": "Amostras de não-evento são necessárias para a classificação binária",
+    "validation-only-repeat-upsampling-for-multi-label": "Apenas o upsampling de repetição está disponível para treinamento multirrótulo"
 }
