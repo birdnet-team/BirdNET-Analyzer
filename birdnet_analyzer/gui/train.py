@@ -109,7 +109,6 @@ def start_training(
         audio_speed: Speed factor for audio playback.
         threads: Number of parallel CPU threads for loading and decoding the training
             audio. Ignored when training from a cache file.
-        save_detached_classifier: Whether to save the detached classifier.
     Returns:
         Returns a matplotlib.pyplot figure.
     """

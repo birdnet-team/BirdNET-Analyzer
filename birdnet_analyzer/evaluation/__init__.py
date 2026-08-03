@@ -192,7 +192,12 @@ def _threshold_arg(value: str) -> float:
     Fails at the parser with a clear message instead of deep inside the
     PerformanceAssessor, which requires ``0 < threshold < 1``.
     """
-    number = float(value)
+    try:
+        number = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"threshold must be a number between 0 and 1 (exclusive), got {value!r}"
+        ) from None
     if not 0 < number < 1:
         raise argparse.ArgumentTypeError(
             f"threshold must be between 0 and 1 (exclusive), got {value}"
