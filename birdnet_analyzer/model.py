@@ -170,8 +170,8 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
         train_indices.append(class_train_indices)
         val_indices.append(class_val_indices)
 
-    # Negative samples are not class-specific in single-label training. Appending
-    # them in the loop above duplicates every negative sample once per class.
+    # Add every row with a negative label to the training set exactly once; a
+    # per-class scan would duplicate rows that are negative for several classes.
     negative_indices = np.unique(np.where(y == -1)[0])
     train_indices.append(negative_indices)
 
@@ -334,7 +334,7 @@ def upsampling(
     min_samples = (
         int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio)
         if is_binary
-        else int(np.max(y.sum(axis=0)) * ratio)
+        else int(np.max((y == 1).sum(axis=0)) * ratio)
     )
     x_temp = []
     y_temp = []

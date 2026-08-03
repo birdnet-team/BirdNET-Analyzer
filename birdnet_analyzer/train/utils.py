@@ -175,9 +175,12 @@ def _check_input_folders(audio_input: str, train_folders: list[str]):
             empty_folders.append(folder)
 
     if empty_folders:
+        folder_list = ", ".join(sorted(empty_folders))
         raise ValueError(
             "The following training data folders do not contain any supported audio "
-            f"files: {', '.join(empty_folders)}"
+            f"files: {folder_list}",
+            "validation-no-audio-files-in-training-folders",
+            folder_list,
         )
 
 
@@ -267,7 +270,7 @@ def _load_training_data(
 
     if is_multi_label and upsampling_ratio > 0 and upsampling_mode != "repeat":
         raise Exception(
-            "Only repeat-upsampling ist available for multi-label",
+            "Only repeat-upsampling is available for multi-label",
             "validation-only-repeat-upsampling-for-multi-label",
         )
 

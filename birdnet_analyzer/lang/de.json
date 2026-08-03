@@ -432,16 +432,20 @@
     "training-tab-warning-detached-classifier-append": "Der \"Anhängen\"-Modus wird für den abgekoppelten Klassifikator nicht angewendet.",
     "validation-max-confidence-lower-than-min-confidence": "Maximaler Konfidenz-Schwellwert muss größer sein als der minimale Schwellwert.",
     "validation-no-audio-directory-selected": "Kein Audioverzeichnis ausgewählt",
+    "validation-no-audio-files-in-training-folders": "Die folgenden Trainingsdaten-Ordner enthalten keine unterstützten Audiodateien: {0}",
     "validation-no-cache-file-selected": "Bitte wählen Sie eine Cache-Datei aus.",
     "validation-no-custom-classifier-selected": "Kein benutzerdefinierter Klassifikator ausgewählt.",
     "validation-no-directory-for-classifier-selected": "Bitte wählen Sie ein Verzeichnis für den Klassifikator.",
     "validation-no-directory-selected": "Bitte wählen Sie ein Verzeichnis.",
     "validation-no-file-selected": "Bitte wählen Sie eine Datei aus.",
+    "validation-no-negative-samples-in-binary-classification": "Negative Labels können bei binärer Klassifikation nicht verwendet werden",
     "validation-no-species-list-selected": "Bitte wählen Sie eine Artenliste.",
     "validation-no-training-data-selected": "Bitte wählen Sie Ihre Trainingsdaten.",
     "validation-no-valid-batch-size": "Bitte geben Sie eine gültige Batch-Größe an.",
     "validation-no-valid-classifier-name": "Bitte geben Sie einen gültigen Namen für den Klassifikator an.",
     "validation-no-valid-epoch-number": "Bitte geben Sie eine gültige Anzahl von Epochen an.",
     "validation-no-valid-frequency": "Bitte geben Sie eine gültige Frequenz an",
-    "validation-no-valid-learning-rate": "Bitte geben Sie eine gültige Lernrate an."
+    "validation-no-valid-learning-rate": "Bitte geben Sie eine gültige Lernrate an.",
+    "validation-non-event-samples-required-in-binary-classification": "Für die binäre Klassifikation sind Non-Event-Beispiele erforderlich",
+    "validation-only-repeat-upsampling-for-multi-label": "Für Multi-Label-Training ist nur Wiederholen-Upsampling verfügbar"
 }

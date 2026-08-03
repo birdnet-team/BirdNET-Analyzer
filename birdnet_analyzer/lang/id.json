@@ -432,16 +432,20 @@
     "training-tab-warning-detached-classifier-append": "Mode tambah tidak akan berlaku untuk pengklasifikasi terlepas.",
     "validation-max-confidence-lower-than-min-confidence": "Kepercayaan maksimum harus lebih besar dari kepercayaan minimum",
     "validation-no-audio-directory-selected": "Tidak ada audio direktori yang dipilih",
+    "validation-no-audio-files-in-training-folders": "Folder data pelatihan berikut tidak berisi berkas audio yang didukung: {0}",
     "validation-no-cache-file-selected": "Silakan pilih berkas cache.",
     "validation-no-custom-classifier-selected": "Tidak ada klasifikator kustom yang dipilih.",
     "validation-no-directory-for-classifier-selected": "Silakan pilih direktori untuk klasifikator.",
     "validation-no-directory-selected": "Silakan pilih direktori.",
     "validation-no-file-selected": "Silakan pilih file.",
+    "validation-no-negative-samples-in-binary-classification": "Label negatif tidak dapat digunakan dengan klasifikasi biner",
     "validation-no-species-list-selected": "Silakan pilih daftar spesies.",
     "validation-no-training-data-selected": "Silakan pilih data pelatihan Anda.",
     "validation-no-valid-batch-size": "Silakan masukkan ukuran batch yang valid.",
     "validation-no-valid-classifier-name": "Silakan masukkan nama yang valid untuk klasifikator.",
     "validation-no-valid-epoch-number": "Silakan masukkan jumlah epochs yang valid.",
     "validation-no-valid-frequency": "Silakan masukkan frekuensi yang valid dalam",
-    "validation-no-valid-learning-rate": "Silakan masukkan laju pembelajaran yang valid."
+    "validation-no-valid-learning-rate": "Silakan masukkan laju pembelajaran yang valid.",
+    "validation-non-event-samples-required-in-binary-classification": "Sampel non-event diperlukan untuk klasifikasi biner",
+    "validation-only-repeat-upsampling-for-multi-label": "Hanya peningkatan sampel mode ulang yang tersedia untuk pelatihan multi-label"
 }

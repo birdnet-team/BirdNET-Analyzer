@@ -432,16 +432,20 @@
     "training-tab-warning-detached-classifier-append": "Le mode d'ajout ne s'appliquera pas au classificateur détaché.",
     "validation-max-confidence-lower-than-min-confidence": "La confiance maximale doit être supérieure à la confiance minimale",
     "validation-no-audio-directory-selected": "Aucun dossiers audio sélectionnés",
+    "validation-no-audio-files-in-training-folders": "Les dossiers de données d'entraînement suivants ne contiennent aucun fichier audio pris en charge : {0}",
     "validation-no-cache-file-selected": "Veuillez sélectionner un fichier cache.",
     "validation-no-custom-classifier-selected": "Aucun classificateur personnalisé n'a été sélectionné.",
     "validation-no-directory-for-classifier-selected": "Veuillez sélectionner un dossier pour le classificateur.",
     "validation-no-directory-selected": "Veuillez sélectionner un dossier",
     "validation-no-file-selected": "Sélectionnez un fichier",
+    "validation-no-negative-samples-in-binary-classification": "Les étiquettes négatives ne peuvent pas être utilisées avec la classification binaire",
     "validation-no-species-list-selected": "Veuillez sélectionner une liste d’espèces",
     "validation-no-training-data-selected": "Veuillez sélectionner des données d’entraînement",
     "validation-no-valid-batch-size": "Veuillez saisir une taille de lot valide.",
     "validation-no-valid-classifier-name": "Veuillez saisir un nom valide pour le classificateur.",
     "validation-no-valid-epoch-number": "Veuillez saisir un nombre valide d'époques.",
     "validation-no-valid-frequency": "Veuillez saisir une fréquence valide dans",
-    "validation-no-valid-learning-rate": "Veuillez saisir un taux d'apprentissage valide."
+    "validation-no-valid-learning-rate": "Veuillez saisir un taux d'apprentissage valide.",
+    "validation-non-event-samples-required-in-binary-classification": "Des échantillons non-événement sont requis pour la classification binaire",
+    "validation-only-repeat-upsampling-for-multi-label": "Seul le suréchantillonnage par répétition est disponible pour l'entraînement multi-étiquettes"
 }

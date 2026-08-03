@@ -226,7 +226,14 @@ def start_training(
         )
     except Exception as e:
         if e.args and len(e.args) > 1:
-            raise gr.Error(loc.localize(e.args[1])) from e
+            message = loc.localize(e.args[1])
+
+            # Args beyond the localization key are payload for the message's
+            # placeholders (e.g. the list of offending folders).
+            if len(e.args) > 2:
+                message = message.format(*e.args[2:])
+
+            raise gr.Error(message) from e
 
         raise gr.Error(f"{e}") from e
 

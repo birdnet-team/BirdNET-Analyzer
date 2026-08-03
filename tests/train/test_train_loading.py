@@ -95,6 +95,7 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
         _load_training_data(str(tmp_path))
 
     assert "robin" not in str(error.value)
+    assert error.value.args[1] == "validation-no-audio-files-in-training-folders"
     mock_load.assert_not_called()
 
 

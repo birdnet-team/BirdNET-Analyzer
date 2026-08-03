@@ -432,16 +432,20 @@
     "training-tab-warning-detached-classifier-append": "chel mIw DetlhHa' ghovwI'vaD lInglaHbe'.",
     "validation-max-confidence-lower-than-min-confidence": "nIvbogh vIt patlh tIn law' minimum vIt patlh tIn puS",
     "validation-no-audio-directory-selected": "wav Daq tu'Ha'.",
+    "validation-no-audio-files-in-training-folders": "qeq De' pa'meyvamDaq wab De' tu'lu'be': {0}",
     "validation-no-cache-file-selected": "polmeH teywI' yIwIv.",
     "validation-no-custom-classifier-selected": "chu' tu'law' yIwIvHa'.",
     "validation-no-directory-for-classifier-selected": "tu'law' Daq yIwIv.",
     "validation-no-directory-selected": "Daq yIwIv.",
     "validation-no-file-selected": "wav yIwIv.",
+    "validation-no-negative-samples-in-binary-classification": "cha' buv qeqvaD qechmey Qup lo'laHbe'",
     "validation-no-species-list-selected": "Seghmey wav yIwIv.",
     "validation-no-training-data-selected": "qeq De' yIwIv.",
     "validation-no-valid-batch-size": "batch chu' yIchoH.",
     "validation-no-valid-classifier-name": "tu'law' pong yIchoH.",
     "validation-no-valid-epoch-number": "epQochmey yIchoH.",
     "validation-no-valid-frequency": "qeq 'eS patlh yIchoH",
-    "validation-no-valid-learning-rate": "qeq patlh yIchoH."
+    "validation-no-valid-learning-rate": "qeq patlh yIchoH.",
+    "validation-non-event-samples-required-in-binary-classification": "cha' buv qeqvaD wanI'Ha' De' poQlu'",
+    "validation-only-repeat-upsampling-for-multi-label": "multi-label qeqvaD qechmey ghun neH lo'laH"
 }
