@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         SAMPLE_CROP_MODES,
         TRAINED_MODEL_OUTPUT_FORMATS,
         TRAINED_MODEL_SAVE_MODES,
+        TRAINING_MODEL_PRECISIONS,
         UPSAMPLING_MODES,
     )
 
@@ -196,6 +197,7 @@ def _load_training_data(
     overlap=0.0,
     min_len=1.0,
     threads=1,
+    model_precision: TRAINING_MODEL_PRECISIONS = "fp32",
     save_cache_to: str | None = None,
     progress_callback=None,
 ):
@@ -222,13 +224,15 @@ def _load_training_data(
         crop_mode: Mode for cropping audio samples. Defaults to "center".
         overlap: Overlap between audio chunks. Defaults to 0.0.
         min_len: Minimum length of audio chunks. Defaults to 1.0.
+        model_precision: Precision of the BirdNET model used to create embeddings.
+            Defaults to "fp32".
 
     Returns:
         A tuple of (x_train, y_train, x_test, y_test, labels, is_binary, is_multi_label)
     """
 
     if audio_input.endswith(".npz"):
-        return _load_from_cache(audio_input)
+        return _load_from_cache(audio_input, model_precision)
 
     train_folders = list(utils.list_subdirectories(audio_input))
     labels: list[str] = []
@@ -277,7 +281,7 @@ def _load_training_data(
     _check_input_folders(audio_input, train_folders)
 
     x_train, y_train, x_test, y_test = [], [], [], []
-    model = load("acoustic", "2.4", "tf")
+    model = load("acoustic", "2.4", "tf", precision=model_precision)
     model_sr = int(model.get_sample_rate())
 
     # Number of parallel decode workers for the read/crop phase. librosa/scipy release
@@ -433,6 +437,7 @@ def _load_training_data(
                 fmax=fmax,
                 audio_speed=audio_speed,
                 crop_mode=crop_mode,
+                model_precision=model_precision,
                 is_binary=is_binary,
                 is_multi_label=is_multi_label,
             )
@@ -465,6 +470,7 @@ def train_model(
     model_formats: list[TRAINED_MODEL_OUTPUT_FORMATS]
     | TRAINED_MODEL_OUTPUT_FORMATS = "tflite",
     model_save_mode: TRAINED_MODEL_SAVE_MODES = "replace",
+    model_precision: TRAINING_MODEL_PRECISIONS = "fp32",
     save_cache_to: str | None = None,
     threads: int = 1,
     fmin: float = 0.0,
@@ -492,6 +498,15 @@ def train_model(
     Returns:
         A keras `History` object, whose `history` property contains all the metrics.
     """
+    formats = [model_formats] if isinstance(model_formats, str) else model_formats
+    combined_formats = {"tflite", "raven"}.intersection(formats)
+    if model_precision == "int8" and combined_formats:
+        requested_formats = ", ".join(sorted(combined_formats))
+        raise ValueError(
+            "BirdNET 2.4 INT8 is distributed only as a TFLite model and cannot be "
+            f"combined with a custom classifier for {requested_formats} export. "
+            "Use model_precision='fp32' or export a detached classifier."
+        )
 
     (
         x_train_full,
@@ -513,6 +528,7 @@ def train_model(
         overlap=overlap,
         min_len=1.0,
         threads=threads,
+        model_precision=model_precision,
         save_cache_to=save_cache_to,
         progress_callback=on_data_load_end,
     )
@@ -783,7 +799,6 @@ def train_model(
     try:
         # Remove activation from last layer before saving
         classifier.pop()
-        formats = [model_formats] if isinstance(model_formats, str) else model_formats
         classifier_path = output.removesuffix(".tflite")
 
         # The settings the classifier was trained with, saved next to it both as a
@@ -795,6 +810,7 @@ def train_model(
                 "Classifier name": os.path.basename(classifier_path),
                 "Model formats": ", ".join(formats),
                 "Model save mode": model_save_mode,
+                "BirdNET model precision": model_precision,
                 "Bandpass filter minimum": fmin,
                 "Bandpass filter maximum": fmax,
                 "Audio speed": audio_speed,
@@ -1139,6 +1155,7 @@ def _save_to_cache(
     fmax=15000.0,
     audio_speed=1.0,
     crop_mode="center",
+    model_precision="fp32",
     is_binary=False,
     is_multi_label=False,
 ):
@@ -1156,6 +1173,7 @@ def _save_to_cache(
         fmax: Maximum frequency for bandpass filter.
         audio_speed: Speed of audio playback.
         crop_mode: Mode for cropping samples.
+        model_precision: Precision of the BirdNET model used to create embeddings.
         is_binary: Whether it's a binary classification task.
         is_multi_label: Whether it's a multi-label classification task.
     """
@@ -1181,14 +1199,14 @@ def _save_to_cache(
         audio_speed=audio_speed,
         crop_mode=crop_mode,
         overlap=overlap,
+        model_precision=model_precision,
     )
-
-
-def _load_from_cache(path):
+def _load_from_cache(path, model_precision="fp32"):
     """Loads training data from cache.
 
     Args:
         path: Path to the cache file.
+        model_precision: Precision expected by the training run.
 
     Returns:
         A tuple of (x_train, y_train, labels, binary_classification, multi_label).
@@ -1203,5 +1221,12 @@ def _load_from_cache(path):
     labels = data["labels"]
     binary_classification = bool(data.get("binary_classification", False))
     multi_label = bool(data.get("multi_label", False))
+    cached_precision = str(data.get("model_precision", "fp32"))
+
+    if cached_precision != model_precision:
+        raise ValueError(
+            f"Cache was created with model_precision='{cached_precision}', but "
+            f"model_precision='{model_precision}' was requested."
+        )
 
     return x_train, y_train, x_test, y_test, labels, binary_classification, multi_label

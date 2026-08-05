@@ -171,6 +171,7 @@ def load_train_params(path: str) -> dict[str, Any]:
     parse("classifier_name", str, "Classifier name")
     parse("model_formats", _to_list, "Model formats")
     parse("model_save_mode", str, "Model save mode")
+    parse("model_precision", str, "BirdNET model precision")
     parse("fmin", _to_int, "Bandpass filter minimum")
     parse("fmax", _to_int, "Bandpass filter maximum")
     parse("audio_speed", float, "Audio speed")

@@ -21,7 +21,12 @@ import pytest
 import soundfile as sf
 
 from birdnet_analyzer import model_utils
-from birdnet_analyzer.train.utils import _load_training_data, _read_and_crop_file
+from birdnet_analyzer.train.utils import (
+    _load_from_cache,
+    _load_training_data,
+    _read_and_crop_file,
+    _save_to_cache,
+)
 
 SR = 48000
 SIG_LENGTH = 3.0
@@ -97,6 +102,22 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
     assert "robin" not in str(error.value)
     assert error.value.args[1] == "validation-no-audio-files-in-training-folders"
     mock_load.assert_not_called()
+
+
+def test_cache_rejects_embeddings_from_a_different_model_precision(tmp_path):
+    cache_path = tmp_path / "train_cache.npz"
+    _save_to_cache(
+        cache_path,
+        np.zeros((1, 2), dtype="float32"),
+        np.zeros((1, 1), dtype="float32"),
+        np.array([]),
+        np.array([]),
+        ["bird"],
+        model_precision="int8",
+    )
+
+    with pytest.raises(ValueError, match="created with model_precision='int8'"):
+        _load_from_cache(cache_path, model_precision="fp32")
 
 
 @pytest.fixture

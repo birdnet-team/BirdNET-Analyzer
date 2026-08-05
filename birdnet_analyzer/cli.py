@@ -10,7 +10,11 @@ from birdnet.globals import (
     MODEL_LANGUAGES,
 )
 
-from birdnet_analyzer.config import AUTOTUNE_METRICS, TRAINED_MODEL_OUTPUT_FORMATS
+from birdnet_analyzer.config import (
+    AUTOTUNE_METRICS,
+    TRAINED_MODEL_OUTPUT_FORMATS,
+    TRAINING_MODEL_PRECISIONS,
+)
 from birdnet_analyzer.logs import setup_logging
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -1023,6 +1027,12 @@ def train_parser():
         default="replace",
         choices=["replace", "append"],
         help="Model save mode. 'replace' will overwrite the original classification layer and 'append' will combine the original classification layer with the new one.",
+    )
+    parser.add_argument(
+        "--model_precision",
+        default="fp32",
+        choices=get_args(TRAINING_MODEL_PRECISIONS),
+        help="Precision of the BirdNET model used to extract training embeddings.",
     )
     parser.add_argument(
         "--save_cache_to", default="train_cache.npz", help="Path to cache file."

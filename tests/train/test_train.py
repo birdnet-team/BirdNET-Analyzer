@@ -7,6 +7,7 @@ import pytest
 
 from birdnet_analyzer.cli import train_parser
 from birdnet_analyzer.train.core import train
+from birdnet_analyzer.train.utils import train_model
 
 
 @pytest.fixture
@@ -93,6 +94,8 @@ def test_train_cli_accepts_full_parser_surface(
             "detached",
             "--model_save_mode",
             "append",
+            "--model_precision",
+            "int8",
             "--save_cache_to",
             cache_path,
             "--fmin",
@@ -131,6 +134,7 @@ def test_train_cli_accepts_full_parser_surface(
     assert call_kwargs["crop_mode"] == "smart"
     assert call_kwargs["model_formats"] == ["tflite", "raven", "detached"]
     assert call_kwargs["model_save_mode"] == "append"
+    assert call_kwargs["model_precision"] == "int8"
     assert call_kwargs["save_cache_to"] == cache_path
     assert call_kwargs["autotune"] is True
     assert call_kwargs["autotune_metric"] == "val_loss"
@@ -141,6 +145,14 @@ def _make_dummy_history():
         history = {"val_AUPRC": [0.123]}  # noqa: RUF012
 
     return DummyHistory()
+
+
+@patch("birdnet_analyzer.train.utils._load_training_data")
+def test_train_model_rejects_int8_combined_exports_before_loading_data(mock_load):
+    with pytest.raises(ValueError, match="INT8.*cannot be combined"):  # noqa: RUF043
+        train_model("train_data", model_precision="int8")
+
+    mock_load.assert_not_called()
 
 
 @patch("birdnet_analyzer.train.utils.model.save_raven_model")

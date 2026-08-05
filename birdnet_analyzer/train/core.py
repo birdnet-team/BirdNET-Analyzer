@@ -8,6 +8,7 @@ if TYPE_CHECKING:
         SAMPLE_CROP_MODES,
         TRAINED_MODEL_OUTPUT_FORMATS,
         TRAINED_MODEL_SAVE_MODES,
+        TRAINING_MODEL_PRECISIONS,
         UPSAMPLING_MODES,
     )
 
@@ -35,6 +36,7 @@ def train(
     model_formats: list[TRAINED_MODEL_OUTPUT_FORMATS]
     | TRAINED_MODEL_OUTPUT_FORMATS = "tflite",
     model_save_mode: TRAINED_MODEL_SAVE_MODES = "replace",
+    model_precision: TRAINING_MODEL_PRECISIONS = "fp32",
     save_cache_to: str | None = None,
     threads: int = 1,
     fmin: float = 0.0,
@@ -84,6 +86,8 @@ def train(
             One or more formats to save the trained model. Defaults to "tflite".
         model_save_mode (Literal["replace", "append"], optional): Save mode for the
             model. Defaults to "replace".
+        model_precision (Literal["fp32", "int8"], optional): Precision of the BirdNET
+            model used for embedding extraction. Defaults to "fp32".
         save_cache_to (str | None, optional): Path to save the cache file.
                                               Defaults to None.
         threads (int, optional): Number of CPU threads to use. Defaults to 1.
@@ -130,6 +134,7 @@ def train(
         upsampling_mode=upsampling_mode,
         model_formats=model_formats,
         model_save_mode=model_save_mode,
+        model_precision=model_precision,
         save_cache_to=save_cache_to,
         threads=threads,
         fmin=fmin,
