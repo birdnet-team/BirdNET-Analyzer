@@ -49,6 +49,7 @@ def start_training(
     output_dir,
     classifier_name,
     model_save_mode,
+    model_precision,
     cache_mode,
     cache_file,
     cache_file_name,
@@ -85,6 +86,7 @@ def start_training(
         output_dir: Directory to save the trained model.
         classifier_name: Name of the custom classifier.
         model_save_mode: Save mode for the model (replace or append).
+        model_precision: Precision of the BirdNET model used for embedding extraction.
         cache_mode: Cache mode for training data (load, save, or None).
         cache_file: Path to the cache file.
         cache_file_name: Name of the cache file.
@@ -209,6 +211,7 @@ def start_training(
             fmin=max(0, min(15000, int(fmin))),
             fmax=max(0, min(15000, int(fmax))),
             model_save_mode=model_save_mode,
+            model_precision=model_precision,
             save_cache_to=os.path.join(cache_file, cache_file_name)
             if cache_mode == "save"
             else None,
@@ -397,6 +400,23 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 label=loc.localize("training-tab-output-format-radio-label"),
                 info=loc.localize("training-tab-output-format-radio-info"),
                 interactive=True,
+            )
+            model_precision = state.persist(
+                "model_precision_radio",
+                gr.Radio,
+                choices=[
+                    (
+                        loc.localize("training-tab-model-precision-radio-option-fp32"),
+                        "fp32",
+                    ),
+                    (
+                        loc.localize("training-tab-model-precision-radio-option-int8"),
+                        "int8",
+                    ),
+                ],
+                value="fp32",
+                label=loc.localize("training-tab-model-precision-radio-label"),
+                info=loc.localize("training-tab-model-precision-radio-info"),
             )
 
         def select_classifier_directory_and_update_tb():
@@ -998,6 +1018,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 output_directory_state,
                 classifier_name,
                 model_save_mode,
+                model_precision,
                 cache_mode,
                 cache_file_state,
                 cache_file_name,

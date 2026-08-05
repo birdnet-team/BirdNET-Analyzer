@@ -394,6 +394,7 @@ def load_train_params(path: str) -> dict[str, Any]:
             "classifier_name": "classifier_name_textbox",
             "model_formats": "output_format_checkboxgroup",
             "model_save_mode": "model_save_mode_radio",
+            "model_precision": "model_precision_radio",
             "fmin": "fmin_number",
             "fmax": "fmax_number",
             "crop_mode": "crop_mode_radio",
