@@ -7,10 +7,15 @@ from typing import cast, get_args
 from birdnet.globals import (
     ACOUSTIC_MODEL_VERSIONS,
     MODEL_LANGUAGE_EN_US,
-    MODEL_LANGUAGES,
 )
 
-from birdnet_analyzer.config import AUTOTUNE_METRICS, TRAINED_MODEL_OUTPUT_FORMATS
+from birdnet_analyzer.config import (
+    ALL_MODEL_LANGUAGES,
+    AUTOTUNE_METRICS,
+    DEFAULT_ACOUSTIC_MODEL_VERSION,
+    GEO_MODEL_LANGUAGES,
+    TRAINED_MODEL_OUTPUT_FORMATS,
+)
 from birdnet_analyzer.logs import setup_logging
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -138,8 +143,8 @@ def birdnet_arg():
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument(
         "--birdnet",
-        default="2.4",
-        const="2.4",
+        default=DEFAULT_ACOUSTIC_MODEL_VERSION,
+        const=DEFAULT_ACOUSTIC_MODEL_VERSION,
         nargs="?",
         choices=get_args(ACOUSTIC_MODEL_VERSIONS),
         action=set_model_action("birdnet"),
@@ -431,19 +436,25 @@ def min_conf_args():
     return p
 
 
-def locale_args():
+def locale_args(languages=None):
     """
     Creates an argument parser for locale settings.
     This function creates an argument parser with a single argument `--locale`
     (or `-l`) which specifies the locale for translated species common names.
-    The default value is 'en' (US English). The available locale values include
-    'af', 'en_UK', 'de', 'it', and others.
+    The default value is 'en_us' (US English).
+
+    Args:
+        languages: The locale codes to offer. Defaults to the union of every model
+            version's languages; the birdnet library validates the concrete
+            (model version, locale) pair when the model is loaded. Pass a narrower
+            set for commands bound to a single model (e.g. the geo model).
+
     Returns:
         argparse.ArgumentParser: An argument parser with the locale argument.
     """
     p = argparse.ArgumentParser(add_help=False)
 
-    locale_choices = get_args(get_args(MODEL_LANGUAGES)[0])
+    locale_choices = list(languages) if languages is not None else ALL_MODEL_LANGUAGES
     p.add_argument(
         "-l",
         "--locale",
@@ -878,7 +889,12 @@ def species_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[species_list_args(), locale_args(), verbosity_args()],
+        parents=[
+            species_list_args(),
+            # The species list comes from the geo model, so only its languages apply.
+            locale_args(languages=GEO_MODEL_LANGUAGES),
+            verbosity_args(),
+        ],
     )
 
     parser.add_argument(

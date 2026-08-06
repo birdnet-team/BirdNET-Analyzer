@@ -25,7 +25,7 @@ def analyze(
     output: str | None = None,
     *,
     model: str = "birdnet",
-    birdnet: ACOUSTIC_MODEL_VERSIONS = "2.4",
+    birdnet: ACOUSTIC_MODEL_VERSIONS = "3.0",
     min_conf: float = 0.25,
     classifier: str | None = None,
     cc_species_list: str | None = None,
@@ -111,16 +111,19 @@ def analyze(
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
     rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype
 
-    if lat is not None and lon is not None:
+    species_from_location = lat is not None and lon is not None
+
+    if species_from_location:
         if slist is not None:
             raise ValueError(
                 "Cannot use both location (lat/lon) and custom species list (slist) "
                 "together."
             )
 
-        slist = run_geomodel(
-            lat, lon, week=week, language=locale, threshold=sf_thresh
-        ).to_set()
+        # The geo model is global and uses its own taxonomy; run_inference reconciles
+        # its species with the selected acoustic model by scientific name, so the geo
+        # label language is irrelevant here and left at its default.
+        slist = run_geomodel(lat, lon, week=week, threshold=sf_thresh).to_set()
 
     predictions = run_inference(
         audio_input,
@@ -139,6 +142,7 @@ def analyze(
         classifier=classifier,
         cc_species_list=cc_species_list,
         version=birdnet,
+        match_species_by_scientific_name=species_from_location,
         callback=on_update,
         n_workers=n_workers,
         n_producers=n_producers,
