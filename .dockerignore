@@ -2,6 +2,17 @@
 .git
 .github
 
+# Agent instructions and local agent state - documentation for humans/agents
+# working on the source, with no role at runtime.
+AGENTS.md
+AGENTS.local.md
+CLAUDE.md
+CLAUDE.local.md
+.claude
+.codex
+.cursor
+.gemini
+
 # OS cruft (picked up when building from a macOS checkout)
 .DS_Store
 

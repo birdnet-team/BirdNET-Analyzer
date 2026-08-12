@@ -1,9 +1,19 @@
-# The sdist ships the installable package only. The test suite is deliberately
-# excluded: it depends on the tests/data git submodule for its audio fixtures,
-# which is not part of the distribution, so a shipped suite could not be run.
-# Run the tests from a repository checkout instead (see CONTRIBUTING).
+# What ends up in the sdist is governed mainly by the explicit
+# `[tool.setuptools] packages` / `package-data` lists in pyproject.toml, not by this
+# file. Verified by building an sdist with this file removed: docs/, .github/,
+# Dockerfile, .gitmodules and the agent instruction files are all left out anyway.
+# The one thing setuptools adds by itself is a top-level tests/ directory, so the
+# prune below is the only load-bearing line here.
+#
+# The test suite is deliberately excluded: its audio fixtures come from the
+# tests/data git submodule, which is not part of the distribution, so a shipped
+# suite could not be run. Run the tests from a repository checkout instead
+# (see CONTRIBUTING.md).
 prune tests
+
+# Belt and braces, in case a future setuptools widens its sdist defaults: keep the
+# non-package trees, every dot-directory (.github/, .claude/, .cursor/, ...) and the
+# usual editor/OS junk out regardless.
 prune docs
-prune .github
-exclude .gitmodules
-exclude CLAUDE.md
+prune .*/
+global-exclude *~ *.py[cod] *.so .DS_Store

@@ -8,9 +8,19 @@ from birdnet_analyzer.settings import LANG_DIR
 FALLBACK_LANGUAGE_FILE = Path(LANG_DIR) / "en.json"
 
 
-def _format_fields(text: str) -> set:
-    """Returns the str.format field names used in text, e.g. {"0"} for "{0} files"."""
-    return {field for _, field, _, _ in Formatter().parse(text) if field is not None}
+def _format_fields(text: str) -> set | None:
+    """Returns the str.format field names used in text, e.g. {"0"} for "{0} files".
+
+    Returns None if text is not a valid format string. A stray brace is itself the
+    kind of defect this check exists to catch, so it is reported alongside the file
+    and key rather than escaping as a bare ValueError from the middle of a loop.
+    """
+    try:
+        return {
+            field for _, field, _, _ in Formatter().parse(text) if field is not None
+        }
+    except ValueError:
+        return None
 
 
 def test_language_keys():
@@ -59,7 +69,12 @@ def test_language_format_fields_match_fallback():
     with open(FALLBACK_LANGUAGE_FILE, encoding="utf-8") as f:
         fallback: dict = json.load(f)
 
-    mismatches = []
+    expected_fields = {key: _format_fields(text) for key, text in fallback.items()}
+    mismatches = [
+        f"en: '{key}' is not a valid format string: {fallback[key]!r}"
+        for key, fields in expected_fields.items()
+        if fields is None
+    ]
 
     for language_file in sorted(Path(LANG_DIR).glob("*.json")):
         if language_file == FALLBACK_LANGUAGE_FILE:
@@ -69,13 +84,21 @@ def test_language_format_fields_match_fallback():
             language_data: dict = json.load(f)
 
         for key, value in language_data.items():
-            if key not in fallback:
+            expected = expected_fields.get(key)
+
+            if expected is None:
+                # Key absent from en.json (reported by test_language_keys) or an
+                # invalid English source already recorded above.
                 continue
 
-            expected = _format_fields(fallback[key])
             actual = _format_fields(value)
 
-            if expected != actual:
+            if actual is None:
+                mismatches.append(
+                    f"{language_file.stem}: '{key}' is not a valid format string: "
+                    f"{value!r}"
+                )
+            elif expected != actual:
                 mismatches.append(
                     f"{language_file.stem}: '{key}' has fields {sorted(actual)}, "
                     f"expected {sorted(expected)}"

@@ -39,8 +39,9 @@ dependencies = [
     "scipy",
     "soundfile",
     "scikit-learn",
-    "pyarrow", # parquet result tables
-    "pyarrow>=22.0.0;platform_system=='Darwin'", # https://github.com/apache/arrow/issues/40088
+    # parquet result tables; macOS needs >=22 for https://github.com/apache/arrow/issues/40088
+    "pyarrow;platform_system!='Darwin'",
+    "pyarrow>=22.0.0;platform_system=='Darwin'",
     "tqdm",
     "pandas",
     "matplotlib",
@@ -63,7 +64,7 @@ gui = [
 embeddings = ["perch-hoplite>=1.0.1,<2.0.0", "ml-collections"]
 all = ["birdnet-analyzer[gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
-tests = ["pytest", "pytest-timeout", "pytest-order"]
+tests = ["pytest", "pytest-timeout"]
 gui-tests = ["birdnet-analyzer[tests]", "gradio==6.20.0"]
 dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.10"]
 

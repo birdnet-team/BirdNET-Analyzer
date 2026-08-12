@@ -64,10 +64,10 @@ Additional feature sets are available as extras:
 
 | Extra | Adds |
 | --- | --- |
-| `gui` | the graphical user interface (`birdnet-gui`) |
 | `embeddings` | embedding extraction and similarity search (`birdnet-embeddings`, `birdnet-search`) |
 | `train` | hyperparameter autotuning when training custom classifiers |
-| `all` | everything above |
+| `gui` | the graphical user interface (`birdnet-gui`), including `embeddings` and `train` |
+| `all` | everything above (currently the same set as `gui`) |
 
 ```bash
 pip install "birdnet_analyzer[all]"
