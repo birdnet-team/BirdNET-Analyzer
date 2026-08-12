@@ -1,0 +1,9 @@
+# The sdist ships the installable package only. The test suite is deliberately
+# excluded: it depends on the tests/data git submodule for its audio fixtures,
+# which is not part of the distribution, so a shipped suite could not be run.
+# Run the tests from a repository checkout instead (see CONTRIBUTING).
+prune tests
+prune docs
+prune .github
+exclude .gitmodules
+exclude CLAUDE.md

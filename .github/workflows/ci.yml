@@ -2,7 +2,10 @@ name: Tests
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    # No `edited`: that fires on title/description edits too, which re-runs the
+    # whole 3-OS x 3-Python matrix on an unchanged commit. `synchronize` already
+    # covers every code change.
+    types: [opened, synchronize, reopened]
     branches: [main]
     paths:
       [birdnet_analyzer/**, .github/workflows/ci.yml, tests/**, pyproject.toml]

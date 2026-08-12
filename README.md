@@ -51,6 +51,30 @@ You can access documentation for this project [here](https://birdnet-team.github
 You can download installers for Windows and macOS from the [releases page](https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest).
 Models can be found on [Zenodo](https://zenodo.org/records/15050749).
 
+## Installation
+
+Install the package from PyPI (Python 3.11 or newer):
+
+```bash
+pip install birdnet_analyzer
+```
+
+This provides the command line tools `birdnet-analyze`, `birdnet-segments`, `birdnet-species`, `birdnet-train` and `birdnet-evaluate`.
+Additional feature sets are available as extras:
+
+| Extra | Adds |
+| --- | --- |
+| `gui` | the graphical user interface (`birdnet-gui`) |
+| `embeddings` | embedding extraction and similarity search (`birdnet-embeddings`, `birdnet-search`) |
+| `train` | hyperparameter autotuning when training custom classifiers |
+| `all` | everything above |
+
+```bash
+pip install "birdnet_analyzer[all]"
+```
+
+For the standalone installers, the Docker image or a source installation, see the [installation documentation](https://birdnet-team.github.io/BirdNET-Analyzer/installation.html).
+
 ## About
 
 Developed by the [K. Lisa Yang Center for Conservation Bioacoustics](https://www.birds.cornell.edu/ccb/) at the [Cornell Lab of Ornithology](https://www.birds.cornell.edu/home) in collaboration with [Chemnitz University of Technology](https://www.tu-chemnitz.de/index.html.en).

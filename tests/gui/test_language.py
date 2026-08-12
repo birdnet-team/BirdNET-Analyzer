@@ -1,8 +1,16 @@
 import json
 from collections import defaultdict
 from pathlib import Path
+from string import Formatter
 
 from birdnet_analyzer.settings import LANG_DIR
+
+FALLBACK_LANGUAGE_FILE = Path(LANG_DIR) / "en.json"
+
+
+def _format_fields(text: str) -> set:
+    """Returns the str.format field names used in text, e.g. {"0"} for "{0} files"."""
+    return {field for _, field, _, _ in Formatter().parse(text) if field is not None}
 
 
 def test_language_keys():
@@ -38,4 +46,68 @@ def test_language_keys():
             f"Key '{key}' missing in: {', '.join(missing_in)}"
             for key, missing_in in missing_keys
         )
+    )
+
+
+def test_language_format_fields_match_fallback():
+    """Every translation has to keep the format fields of its English source.
+
+    A dropped field silently swallows the value it was meant to interpolate, and
+    an invented one raises IndexError/KeyError inside the GUI at format time -
+    neither is visible to a reviewer who doesn't read the language.
+    """
+    with open(FALLBACK_LANGUAGE_FILE, encoding="utf-8") as f:
+        fallback: dict = json.load(f)
+
+    mismatches = []
+
+    for language_file in sorted(Path(LANG_DIR).glob("*.json")):
+        if language_file == FALLBACK_LANGUAGE_FILE:
+            continue
+
+        with open(language_file, encoding="utf-8") as f:
+            language_data: dict = json.load(f)
+
+        for key, value in language_data.items():
+            if key not in fallback:
+                continue
+
+            expected = _format_fields(fallback[key])
+            actual = _format_fields(value)
+
+            if expected != actual:
+                mismatches.append(
+                    f"{language_file.stem}: '{key}' has fields {sorted(actual)}, "
+                    f"expected {sorted(expected)}"
+                )
+
+    assert not mismatches, "Format fields differ from en.json:\n" + "\n".join(
+        mismatches
+    )
+
+
+def test_language_files_are_canonically_formatted():
+    """Language files have to be sorted and indented the same way.
+
+    They are written by a json load/dump round-trip, so enforcing that shape keeps
+    a new or edited translation from showing up as a whole-file diff.
+    """
+    unformatted = []
+
+    for language_file in sorted(Path(LANG_DIR).glob("*.json")):
+        with open(language_file, encoding="utf-8") as f:
+            raw = f.read()
+
+        canonical = json.dumps(
+            json.loads(raw), ensure_ascii=False, indent=4, sort_keys=True
+        )
+
+        if raw.rstrip("\n") != canonical:
+            unformatted.append(language_file.stem)
+
+    assert not unformatted, (
+        "Language files are not canonically formatted: "
+        + ", ".join(unformatted)
+        + "\nRewrite them with json.dump(data, f, ensure_ascii=False, indent=4, "
+        "sort_keys=True)."
     )
