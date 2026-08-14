@@ -625,6 +625,16 @@ def analyzer_parser():
         default=False,
         help="Saves separate result tables for each input audio file in the output.",
     )
+    parser.add_argument(
+        "--strict",
+        dest="strict_species_list",
+        action="store_true",
+        help="Fail if any species in --slist is not in the model. By default such "
+        "species are skipped with a warning: labels drift across model versions (a "
+        "renamed genus or common name), so the list is matched to the model by "
+        "scientific and common name first, and only genuinely unknown species are "
+        "dropped.",
+    )
     parser.set_defaults(model="birdnet")
 
     return parser

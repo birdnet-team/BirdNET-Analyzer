@@ -649,6 +649,46 @@ def sample_species_model_settings(state: TabState, opened=True):
         show_progress="hidden",
     )
 
+    def warn_unmatched_species(file, model_choice, locale):
+        """Heads-up when a chosen custom list has species the selected model lacks.
+
+        The analysis reconciles a list to the model by scientific/common name and skips
+        the rest (see model_utils.run_inference); this surfaces that at selection time
+        so the user isn't surprised. Best-effort: only BirdNET models expose a
+        comparable species list here, and any failure (e.g. offline, labels not yet
+        downloaded) leaves file selection untouched.
+        """
+        if not file or not is_birdnet_model(model_choice):
+            return
+
+        try:
+            from birdnet_analyzer import model_utils
+
+            model_species = model_utils.acoustic_species_list(
+                birdnet_version(model_choice), locale
+            )
+            requested = [s for s in utils.read_lines(file, trim=True) if s]
+            _, unmatched = model_utils.match_species_to_model(requested, model_species)
+        except Exception:
+            return
+
+        if unmatched:
+            gr.Warning(
+                loc.localize("species-list-unmatched-warning").format(
+                    count=len(unmatched)
+                )
+            )
+
+    species_settings["species_file_input"].change(
+        warn_unmatched_species,
+        inputs=[
+            species_settings["species_file_input"],
+            model_settings["model_selection_radio"],
+            model_settings["locale_dropdown"],
+        ],
+        show_progress="hidden",
+    )
+
     return sample_settings, species_settings, model_settings
 
 

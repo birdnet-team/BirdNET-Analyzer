@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "客製化物種清單",
     "species-list-radio-option-predict-list": "依地點選擇物種清單",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "此清單中有 {count} 個物種不在所選模型中，將被跳過。",
     "species-tab-filename-textbox-label": "檔案名稱，若無指定，檔案將被命名為'species_list.txt'",
     "species-tab-finish-info": "儲存物種清單於",
     "species-tab-info-text": "為指定地點產生物種清單，可用於限制在單筆分析與批次分析期間所考量的物種。\n\n選擇清單的儲存位置，然後設定座標與季節（週）篩選條件。頻率閾值會控制某物種在該地點與時間必須具有多高的可能性才會被納入。\n\n將清單匯出為文字檔，日後可在分析分頁的物種選擇中載入。",

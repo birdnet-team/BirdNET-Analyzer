@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Mukautettu lajilista",
     "species-list-radio-option-predict-list": "Lajit sijainnin mukaan",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} tämän luettelon lajia ei löydy valitusta mallista, ja ne ohitetaan.",
     "species-tab-filename-textbox-label": "Tiedoston nimi, jos ei määritetty, käytetään nimeä 'species_list.txt'.",
     "species-tab-finish-info": "Lajilista tallennettu kohteeseen",
     "species-tab-info-text": "Luo lajiluettelo tietylle sijainnille, jonka avulla voit rajata yksittäis- ja eräanalyysissä huomioitavia lajeja.\n\nValitse, mihin luettelo tallennetaan, aseta sitten koordinaatit ja kausisuodatin (viikko). Frekvenssikynnys määrää, kuinka todennäköinen lajin on oltava kyseisessä paikassa ja aikana, jotta se sisällytetään.\n\nVie luettelo tekstitiedostoon, jonka voit myöhemmin ladata analyysivälilehtien lajivalintaan.",

@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "自定义物种列表",
     "species-list-radio-option-predict-list": "按地点选择物种",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "此列表中有 {count} 个物种不在所选模型中，将被跳过。",
     "species-tab-filename-textbox-label": "文件名，若未指定，将使用“species_list.txt”。",
     "species-tab-finish-info": "物种列表已保存至",
     "species-tab-info-text": "为给定地点生成物种列表，可用于限制“单文件分析”和“批量分析”期间考虑的物种。\n\n选择列表的保存位置，然后设置坐标和季节（周）筛选。频率阈值控制物种在该地点和时间被纳入所需的可能性。\n\n将列表导出为文本文件，之后可在分析选项卡的物种选择中加载。",

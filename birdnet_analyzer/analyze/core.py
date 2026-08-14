@@ -47,6 +47,7 @@ def analyze(
     additional_columns: list[ADDITIONAL_COLUMNS] | None = None,
     on_update: Callable[[AcousticProgressStats], None] | None = None,
     split_tables: bool = False,
+    strict_species_list: bool = False,
     save_params: bool = False,
     show_progress: bool = False,
     _return_only=False,
@@ -94,6 +95,10 @@ def analyze(
             Defaults to False.
         split_tables (bool, optional): Whether to split output tables by input files.
             Defaults to False.
+        strict_species_list (bool, optional): If True, raise when a species in ``slist``
+            is not in the model. If False (default), such species are matched to the
+            model by scientific/common name where possible and any that remain unknown
+            are skipped with a warning. Only affects a user-provided ``slist``.
     Returns:
         None
     Raises:
@@ -198,7 +203,7 @@ def analyze(
             classifier=classifier,
             cc_species_list=cc_species_list,
             version=birdnet,
-            match_species_by_scientific_name=species_from_location,
+            strict_species_list=strict_species_list,
             callback=on_update,
             n_workers=n_workers,
             n_producers=n_producers,

@@ -479,10 +479,11 @@ def test_sensitivity(setup_test_environment):
 
 @patch("birdnet_analyzer.model_utils.run_geomodel")
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_defaults_to_birdnet_3_0_and_matches_geo_by_scientific_name(
+def test_analyze_defaults_to_birdnet_3_0_and_reconciles_geo_list(
     mock_run_inference, mock_run_geomodel, setup_test_environment
 ):
-    """The default analysis uses the 3.0 model and reconciles the geo species list."""
+    """The default analysis uses the 3.0 model and hands the geo species list to
+    run_inference, which reconciles it onto the model's own labels."""
     env = setup_test_environment
 
     mock_run_geomodel.return_value.to_set.return_value = {"Cardinalis cardinalis_x"}
@@ -501,28 +502,28 @@ def test_analyze_defaults_to_birdnet_3_0_and_matches_geo_by_scientific_name(
     mock_run_inference.assert_called_once()
     call_kwargs = mock_run_inference.call_args.kwargs
     assert call_kwargs["version"] == "3.0"
-    assert call_kwargs["match_species_by_scientific_name"] is True
-    # The geo prediction is handed to run_inference to be matched onto the model.
+    # The geo prediction is handed to run_inference to be reconciled onto the model.
     assert call_kwargs["custom_species_list"] == {"Cardinalis cardinalis_x"}
+    assert call_kwargs["strict_species_list"] is False
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_without_location_does_not_match_by_scientific_name(
+def test_analyze_without_location_passes_no_species_list(
     mock_run_inference, setup_test_environment
 ):
-    """Without lat/lon there is no geo species list to reconcile."""
+    """Without lat/lon and without a --slist there is no species list to reconcile."""
     env = setup_test_environment
     mock_run_inference.return_value = object()
 
     analyze(env["input_dir"], env["output_dir"], _return_only=True)
 
     call_kwargs = mock_run_inference.call_args.kwargs
-    assert call_kwargs["match_species_by_scientific_name"] is False
     assert call_kwargs["custom_species_list"] is None
 
 
 def test_match_species_to_model_joins_on_scientific_name():
-    """Geo species are mapped onto a model's labels by scientific name only."""
+    """Requested species map onto a model's labels by scientific name; unknowns are
+    reported as unmatched."""
     from birdnet_analyzer.model_utils import match_species_to_model
 
     model_species = [
@@ -531,15 +532,218 @@ def test_match_species_to_model_joins_on_scientific_name():
         "Astur gentilis_Eurasian Goshawk",
     ]
     # Common names differ between taxonomies and one request is a non-bird the model
-    # does not know; only the shared scientific names should survive, as model labels.
-    requested = {
+    # does not know; the shared scientific names survive as model labels, the rest is
+    # reported unmatched.
+    requested = [
         "Cardinalis cardinalis_Cardenal Norteno",
         "Astur gentilis_Northern Goshawk",
         "Tibicina garricola_A Cicada",
-    }
+    ]
 
-    assert match_species_to_model(requested, model_species) == {
+    matched, unmatched = match_species_to_model(requested, model_species)
+    assert matched == {
         "Cardinalis cardinalis_Northern Cardinal",
         "Astur gentilis_Eurasian Goshawk",
     }
-    assert match_species_to_model(set(), model_species) == set()
+    assert unmatched == ["Tibicina garricola_A Cicada"]
+    assert match_species_to_model([], model_species) == (set(), [])
+
+
+def test_match_species_to_model_falls_back_to_common_name():
+    """A reclassified species (scientific name changed, common name stable) still
+    matches via its common name."""
+    from birdnet_analyzer.model_utils import match_species_to_model
+
+    model_species = ["Astur cooperii_Cooper's Hawk"]  # was Accipiter cooperii
+    matched, unmatched = match_species_to_model(
+        ["Accipiter cooperii_Cooper's Hawk"], model_species
+    )
+    assert matched == {"Astur cooperii_Cooper's Hawk"}
+    assert unmatched == []
+
+
+def test_match_species_to_model_matches_exact_and_bare_names():
+    """Exact label, a bare scientific name, and a bare common name all resolve."""
+    from birdnet_analyzer.model_utils import match_species_to_model
+
+    model_species = ["Turdus migratorius_American Robin"]
+    for requested in (
+        "Turdus migratorius_American Robin",
+        "Turdus migratorius",
+        "American Robin",
+    ):
+        matched, unmatched = match_species_to_model([requested], model_species)
+        assert matched == {"Turdus migratorius_American Robin"}, requested
+        assert unmatched == []
+
+
+def test_match_species_to_model_skips_ambiguous_common_name():
+    """A common name shared by two model labels can't disambiguate, so a request that
+    only matches on that common name is left unmatched rather than guessed."""
+    from birdnet_analyzer.model_utils import match_species_to_model
+
+    model_species = ["Genus aone_Shared Name", "Genus btwo_Shared Name"]
+    matched, unmatched = match_species_to_model(
+        ["Other genus_Shared Name"], model_species
+    )
+    assert matched == set()
+    assert unmatched == ["Other genus_Shared Name"]
+
+
+def test_reconcile_species_list_file_warns_and_skips(tmp_path, caplog):
+    """A user --slist file is reconciled to the model; genuinely unknown species are
+    skipped with a warning that names them."""
+    import logging
+
+    from birdnet_analyzer.model_utils import _reconcile_species_list
+
+    model_species = [
+        "Astur cooperii_Cooper's Hawk",
+        "Turdus migratorius_American Robin",
+    ]
+    slist = tmp_path / "species_list.txt"
+    slist.write_text(
+        "Accipiter cooperii_Cooper's Hawk\n"  # reclassified -> matches by common name
+        "Turdus migratorius_American Robin\n"  # exact
+        "Foo bar_Not A Bird\n",  # unknown -> skipped
+        encoding="utf-8",
+    )
+
+    with caplog.at_level(logging.WARNING):
+        matched = _reconcile_species_list(str(slist), model_species, strict=False)
+
+    assert matched == {
+        "Astur cooperii_Cooper's Hawk",
+        "Turdus migratorius_American Robin",
+    }
+    assert "Foo bar_Not A Bird" in caplog.text
+    assert "1 of 3" in caplog.text
+
+
+def test_reconcile_species_list_strict_raises(tmp_path):
+    """--strict turns an unknown species into an error instead of a warning."""
+    from birdnet_analyzer.model_utils import _reconcile_species_list
+
+    slist = tmp_path / "species_list.txt"
+    slist.write_text(
+        "Turdus migratorius_American Robin\nFoo bar_Not A Bird\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="not available in the model"):
+        _reconcile_species_list(
+            str(slist), ["Turdus migratorius_American Robin"], strict=True
+        )
+
+
+# The BirdNET example species list as it was before the 3.0 taxonomy update - a
+# realistic "legacy" list a user may still have on disk. Five labels were revised in
+# 3.0: four common-name changes (scientific name unchanged) and one genus
+# reclassification (Accipiter -> Astur cooperii, common name unchanged). Kept verbatim
+# so this doubles as a regression fixture for the reconciler against the real model.
+_LEGACY_EXAMPLE_SPECIES_LIST = [
+    "Accipiter cooperii_Cooper's Hawk",
+    "Agelaius phoeniceus_Red-winged Blackbird",
+    "Anas platyrhynchos_Mallard",
+    "Anas rubripes_American Black Duck",
+    "Ardea herodias_Great Blue Heron",
+    "Baeolophus bicolor_Tufted Titmouse",
+    "Branta canadensis_Canada Goose",
+    "Bucephala albeola_Bufflehead",
+    "Bucephala clangula_Common Goldeneye",
+    "Buteo jamaicensis_Red-tailed Hawk",
+    "Cardinalis cardinalis_Northern Cardinal",
+    "Certhia americana_Brown Creeper",
+    "Colaptes auratus_Northern Flicker",
+    "Columba livia_Rock Pigeon",
+    "Corvus brachyrhynchos_American Crow",
+    "Corvus corax_Common Raven",
+    "Cyanocitta cristata_Blue Jay",
+    "Cygnus olor_Mute Swan",
+    "Dryobates pubescens_Downy Woodpecker",
+    "Dryobates villosus_Hairy Woodpecker",
+    "Dryocopus pileatus_Pileated Woodpecker",
+    "Eremophila alpestris_Horned Lark",
+    "Haemorhous mexicanus_House Finch",
+    "Haemorhous purpureus_Purple Finch",
+    "Haliaeetus leucocephalus_Bald Eagle",
+    "Junco hyemalis_Dark-eyed Junco",
+    "Larus argentatus_Herring Gull",
+    "Larus delawarensis_Ring-billed Gull",
+    "Lophodytes cucullatus_Hooded Merganser",
+    "Melanerpes carolinus_Red-bellied Woodpecker",
+    "Meleagris gallopavo_Wild Turkey",
+    "Melospiza melodia_Song Sparrow",
+    "Mergus merganser_Common Merganser",
+    "Mergus serrator_Red-breasted Merganser",
+    "Passer domesticus_House Sparrow",
+    "Poecile atricapillus_Black-capped Chickadee",
+    "Regulus satrapa_Golden-crowned Kinglet",
+    "Sialia sialis_Eastern Bluebird",
+    "Sitta canadensis_Red-breasted Nuthatch",
+    "Sitta carolinensis_White-breasted Nuthatch",
+    "Spinus pinus_Pine Siskin",
+    "Spinus tristis_American Goldfinch",
+    "Spizelloides arborea_American Tree Sparrow",
+    "Sturnus vulgaris_European Starling",
+    "Thryothorus ludovicianus_Carolina Wren",
+    "Turdus migratorius_American Robin",
+    "Zenaida macroura_Mourning Dove",
+    "Zonotrichia albicollis_White-throated Sparrow",
+]
+
+
+def test_reconcile_legacy_example_list_file_against_real_3_0_model(tmp_path):
+    """The pre-3.0 example species list, read from an actual file, reconciles fully
+    onto the real BirdNET 3.0 model - the four common-name revisions map by scientific
+    name and the reclassified hawk maps by common name, so nothing is dropped."""
+    from birdnet_analyzer.model_utils import _reconcile_species_list
+
+    model_species = birdnet.load("acoustic", "3.0", "onnx", lang="en_us").species_list
+
+    slist = tmp_path / "species_list.txt"
+    slist.write_text(
+        "\n".join(_LEGACY_EXAMPLE_SPECIES_LIST) + "\n", encoding="utf-8"
+    )
+
+    # strict=True raises (listing any unmatched) if a legacy label fails to reconcile,
+    # so a clean return proves every entry mapped onto a current model label.
+    matched = _reconcile_species_list(str(slist), model_species, strict=True)
+
+    assert len(matched) == len(_LEGACY_EXAMPLE_SPECIES_LIST)
+    # The five revised labels resolve to their current 3.0 forms.
+    assert {
+        "Astur cooperii_Cooper's Hawk",  # Accipiter -> Astur (common-name fallback)
+        "Columba livia_Rock Dove",  # Rock Pigeon -> Rock Dove
+        "Corvus corax_Northern Raven",  # Common Raven -> Northern Raven
+        "Larus argentatus_European Herring Gull",  # Herring Gull -> European ...
+        "Sturnus vulgaris_Common Starling",  # European Starling -> Common Starling
+    } <= matched
+
+
+def test_acoustic_species_list_returns_current_3_0_labels():
+    """acoustic_species_list reads only the label file (what the GUI uses to preview a
+    custom list) and returns the current 3.0 taxonomy, not the retired 2.4 labels."""
+    from birdnet_analyzer.model_utils import acoustic_species_list
+
+    labels = acoustic_species_list("3.0", "en_us")
+
+    assert len(labels) > 10000
+    assert "Astur cooperii_Cooper's Hawk" in labels  # current 3.0 label
+    assert "Accipiter cooperii_Cooper's Hawk" not in labels  # retired 2.4 label
+
+
+def test_reconcile_species_list_geo_collection_is_silent(caplog):
+    """A geo-derived collection (not a path) is filtered to the model silently - its
+    unmatched species (e.g. non-birds) are expected, not warned about."""
+    import logging
+
+    from birdnet_analyzer.model_utils import _reconcile_species_list
+
+    with caplog.at_level(logging.WARNING):
+        matched = _reconcile_species_list(
+            {"Turdus migratorius_American Robin", "Pekania pennanti_Fisher"},
+            ["Turdus migratorius_American Robin"],
+            strict=False,
+        )
+
+    assert matched == {"Turdus migratorius_American Robin"}
+    assert caplog.text == ""

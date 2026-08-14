@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "chu' Seghmey",
     "species-list-radio-option-predict-list": "Segh Daqmey",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "wIvlu'pu'bogh qachDaq {count} Segh tu'be'lu', vaj lIjlu'.",
     "species-tab-filename-textbox-label": "wav pong, 'species_list.txt' lo'laH",
     "species-tab-finish-info": "Seghmey wav tu'lu'law'",
     "species-tab-info-text": "munge' Hechlu'bogh Ha'DIbaH per yIchenmoH, wa' teywI' juv 'ej batch juv poHDaq qellu'bogh Ha'DIbaHmey DevmeH.\n\nper polmeH Daq yIwIv, ghIq Hechmey 'ej poH (hogh) filter yIHech. frequency threshold naghmoH Ha'DIbaH chID'a' munge'vetlhDaq poHvetlh je muvmeH.\n\nper mu' teywI'Daq yI'el, juv tab Ha'DIbaH wivDaq tugh Da'el'laHbogh.",
