@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Daftar spesies kustom",
     "species-list-radio-option-predict-list": "Spesies berdasarkan lokasi",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} spesies dalam daftar ini tidak ada dalam model yang dipilih dan akan dilewati.",
     "species-tab-filename-textbox-label": "Nama file, jika tidak ditentukan 'daftar_spesies.txt' akan digunakan.",
     "species-tab-finish-info": "Daftar spesies disimpan di",
     "species-tab-info-text": "Buat daftar spesies untuk suatu lokasi tertentu yang dapat Anda gunakan untuk membatasi spesies yang dipertimbangkan selama Analisis Tunggal dan Analisis Batch.\n\nPilih tempat menyimpan daftar, lalu atur koordinat dan filter musiman (minggu). Ambang frekuensi mengatur seberapa mungkin suatu spesies harus ada di lokasi dan waktu tersebut agar disertakan.\n\nEkspor daftar ke berkas teks yang nantinya dapat Anda muat di pemilihan spesies pada tab analisis.",

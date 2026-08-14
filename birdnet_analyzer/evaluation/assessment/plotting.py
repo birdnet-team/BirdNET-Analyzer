@@ -1,21 +1,4 @@
-"""
-Module containing functions to plot performance metrics.
-
-This script provides a variety of functions to visualize performance metrics in
-different formats, including bar charts, line plots, and heatmaps. These visualizations
-help analyze metrics such as overall performance, per-class performance, and performance
-across thresholds.
-
-Functions:
-    - plot_overall_metrics: Plots a bar chart for overall performance metrics.
-    - plot_metrics_per_class: Plots metric values per class with unique lines and
-        colors.
-    - plot_metrics_across_thresholds: Plots metrics across different thresholds.
-    - plot_metrics_across_thresholds_per_class: Plots metrics across thresholds for each
-        class.
-    - plot_confusion_matrices: Visualizes confusion matrices for binary, multiclass, or
-        multilabel tasks.
-"""
+"""Plot performance metrics as bar charts, line plots and confusion-matrix heatmaps."""
 
 from collections.abc import Sequence
 from typing import Literal
@@ -58,7 +41,6 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
     Returns:
         plt.Figure
     """
-    # Validate input types and content
     if not isinstance(metrics_df, pd.DataFrame):
         raise TypeError("metrics_df must be a pandas DataFrame.")
     if "Overall" not in metrics_df.columns:
@@ -68,14 +50,11 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
     if not isinstance(colors, list):
         raise TypeError("colors must be a list.")
     if len(colors) == 0:
-        # Default to matplotlib's color cycle if colors are not provided
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-    # Extract metric names and values
-    metrics = metrics_df.index  # Metric names
-    values = metrics_df["Overall"].to_numpy()  # Metric values
+    metrics = metrics_df.index
+    values = metrics_df["Overall"].to_numpy()
 
-    # Plot bar chart
     fig = plt.figure(MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
@@ -83,7 +62,6 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
 
     plt.bar(metrics, values, color=colors[: len(metrics)])
 
-    # Add titles, labels, and format
     plt.title("Overall Metric Scores", fontsize=16)
     plt.xlabel("Metrics", fontsize=12)
     plt.ylabel("Score", fontsize=12)
@@ -110,7 +88,6 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
     Returns:
         plt.Figure
     """
-    # Validate inputs
     if not isinstance(metrics_df, pd.DataFrame):
         raise TypeError("metrics_df must be a pandas DataFrame.")
     if metrics_df.empty:
@@ -118,20 +95,17 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
     if not isinstance(colors, list):
         raise TypeError("colors must be a list.")
     if len(colors) == 0:
-        # Default to matplotlib's color cycle if colors are not provided
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-    # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
     fig = plt.figure(MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
 
-    # Loop over each metric and plot it
     for i, metric_name in enumerate(metrics_df.index):
-        values = metrics_df.loc[metric_name]  # Metric values for each class
-        classes = metrics_df.columns  # Class labels
+        values = metrics_df.loc[metric_name]
+        classes = metrics_df.columns
         plt.plot(
             classes,
             values,
@@ -143,7 +117,6 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
             color=colors[i % len(colors)],
         )
 
-    # Add titles, labels, legend, and format
     plt.title("Metric Scores per Class", fontsize=16)
     plt.xlabel("Class", fontsize=12)
     plt.ylabel("Score", fontsize=12)
@@ -176,7 +149,6 @@ def plot_metrics_across_thresholds(
     Returns:
         plt.Figure
     """
-    # Validate inputs
     if not isinstance(thresholds, np.ndarray):
         raise TypeError("thresholds must be a numpy ndarray.")
     if thresholds.size == 0:
@@ -188,17 +160,14 @@ def plot_metrics_across_thresholds(
     if not isinstance(colors, list):
         raise TypeError("colors must be a list.")
     if len(colors) == 0:
-        # Default to matplotlib's color cycle if colors are not provided
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-    # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
     fig = plt.figure(MATPLOTLIB_ACROSS_METRICS_THRESHOLDS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
 
-    # Plot each metric against thresholds
     for i, metric_name in enumerate(metrics_to_plot):
         if metric_name not in metric_values_dict:
             raise KeyError(f"Metric '{metric_name}' not found in metric_values_dict.")
@@ -217,7 +186,6 @@ def plot_metrics_across_thresholds(
             color=colors[i % len(colors)],
         )
 
-    # Add titles, labels, legend, and format
     plt.title("Metrics across Different Thresholds", fontsize=16)
     plt.xlabel("Threshold", fontsize=12)
     plt.ylabel("Metric Score", fontsize=12)
@@ -253,7 +221,6 @@ def plot_metrics_across_thresholds_per_class(
     Returns:
         plt.Figure
     """
-    # Validate inputs
     if not isinstance(thresholds, np.ndarray):
         raise TypeError("thresholds must be a numpy ndarray.")
     if thresholds.size == 0:
@@ -267,18 +234,15 @@ def plot_metrics_across_thresholds_per_class(
     if not isinstance(colors, list):
         raise TypeError("colors must be a list.")
     if len(colors) == 0:
-        # Default to matplotlib's color cycle if colors are not provided
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     num_classes = len(class_names)
     if num_classes == 0:
         raise ValueError("class_names list is empty.")
 
-    # Determine grid size for subplots
     n_cols = int(np.ceil(np.sqrt(num_classes)))
     n_rows = int(np.ceil(num_classes / n_cols))
 
-    # Create subplots
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
@@ -289,13 +253,10 @@ def plot_metrics_across_thresholds_per_class(
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
 
-    # Flatten axes for easy indexing
     axes = [axes] if num_classes == 1 else axes.flatten()
 
-    # Line styles for distinction
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
 
-    # Plot each class
     for class_idx, class_name in enumerate(class_names):
         if class_name not in metric_values_dict_per_class:
             raise KeyError(
@@ -304,7 +265,6 @@ def plot_metrics_across_thresholds_per_class(
         ax = axes[class_idx]
         metric_values_dict = metric_values_dict_per_class[class_name]
 
-        # Plot each metric for the current class
         for i, metric_name in enumerate(metrics_to_plot):
             if metric_name not in metric_values_dict:
                 raise KeyError(
@@ -325,7 +285,6 @@ def plot_metrics_across_thresholds_per_class(
                 color=colors[i % len(colors)],
             )
 
-        # Add titles and labels for each subplot
         ax.set_title(f"{class_name}", fontsize=12)
         ax.set_xlabel("Threshold", fontsize=10)
         ax.set_ylabel("Metric Score", fontsize=10)
@@ -357,7 +316,6 @@ def plot_confusion_matrices(
     Returns:
         plt.Figure
     """
-    # Validate inputs
     if not isinstance(conf_mat, np.ndarray):
         raise TypeError("conf_mat must be a numpy ndarray.")
     if conf_mat.size == 0:
@@ -399,11 +357,9 @@ def plot_confusion_matrices(
                 "Length of class_names must match number of labels in conf_mat."
             )
 
-        # Determine grid size for subplots
         n_cols = int(np.ceil(np.sqrt(num_matrices)))
         n_rows = int(np.ceil(num_matrices / n_cols))
 
-        # Create subplots for each confusion matrix
         fig, axes = plt.subplots(
             n_rows,
             n_cols,
@@ -414,7 +370,6 @@ def plot_confusion_matrices(
         fig.set_dpi(300)
         axes = axes.flatten() if hasattr(axes, "flatten") else [axes]
 
-        # Plot each confusion matrix
         for idx, (cf, class_name) in enumerate(zip(conf_mat, class_names, strict=True)):
             disp = ConfusionMatrixDisplay(
                 confusion_matrix=cf, display_labels=["Negative", "Positive"]
@@ -424,7 +379,6 @@ def plot_confusion_matrices(
             axes[idx].set_xlabel("Predicted class")
             axes[idx].set_ylabel("True class")
 
-        # Remove unused subplot axes
         for ax in axes[num_matrices:]:
             fig.delaxes(ax)
 

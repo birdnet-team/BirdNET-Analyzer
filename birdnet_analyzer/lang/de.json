@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Benutzerdefinierte Artenliste",
     "species-list-radio-option-predict-list": "Arten nach Standort",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} Arten in dieser Liste sind nicht im ausgewählten Modell enthalten und werden übersprungen.",
     "species-tab-filename-textbox-label": "Name der Datei, wenn nicht angegeben, wird 'species_list.txt' verwendet.",
     "species-tab-finish-info": "Artenliste gespeichert unter",
     "species-tab-info-text": "Erstellen Sie für einen bestimmten Standort eine Artenliste, mit der Sie die bei der Einzel- und Stapelanalyse berücksichtigten Arten einschränken können.\n\nWählen Sie, wo die Liste gespeichert werden soll, und legen Sie dann die Koordinaten und den saisonalen Filter (Woche) fest. Der Häufigkeitsschwellenwert steuert, wie wahrscheinlich eine Art an diesem Ort und zu dieser Zeit sein muss, um aufgenommen zu werden.\n\nExportieren Sie die Liste in eine Textdatei, die Sie später in der Artenauswahl der Analyse-Tabs laden können.",

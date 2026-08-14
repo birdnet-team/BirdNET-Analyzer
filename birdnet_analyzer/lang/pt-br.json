@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Lista de espécies customizada",
     "species-list-radio-option-predict-list": "Espécies por localidade",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} espécies desta lista não estão no modelo selecionado e serão ignoradas.",
     "species-tab-filename-textbox-label": "Nome do arquivo, se não for especificado 'species_list.txt' será usado.",
     "species-tab-finish-info": "Lista de espécies salva em",
     "species-tab-info-text": "Gere uma lista de espécies para um local específico que você pode usar para restringir as espécies consideradas durante a Análise Individual e a Análise em Lote.\n\nEscolha onde salvar a lista, depois defina as coordenadas e o filtro sazonal (semana). O limiar de frequência controla a probabilidade que uma espécie deve ter naquele local e época para ser incluída.\n\nExporte a lista para um arquivo de texto que você poderá carregar mais tarde na seleção de espécies das abas de análise.",

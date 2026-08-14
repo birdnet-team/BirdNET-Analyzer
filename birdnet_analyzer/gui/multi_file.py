@@ -8,8 +8,7 @@ import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.gui.presets import PresetControls, load_analysis_params
 from birdnet_analyzer.gui.state import TabState
 
-# Set when the user presses pause, so the cancellation error raised by the
-# birdnet session can be told apart from a real failure.
+# Set on pause so the birdnet cancellation error can be told from a real failure.
 _PAUSE_REQUESTED = threading.Event()
 
 
@@ -107,9 +106,8 @@ def run_batch_analysis(
             split_tables=split_tables_checkbox,
         )
     except RuntimeError:
-        # The birdnet session raises when it is cancelled. A deliberate pause
-        # is not an error: the resume journal keeps the progress and the next
-        # run continues where this one stopped.
+        # The birdnet session raises when cancelled. A deliberate pause is not an
+        # error: the resume journal keeps progress so the next run continues it.
         if _PAUSE_REQUESTED.is_set():
             _PAUSE_REQUESTED.clear()
             return gr.update()
@@ -229,9 +227,8 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
             if folder:
-                # Only load durations for the first files shown in the preview.
-                # Fetch one extra to detect whether more files exist without
-                # walking (and probing durations for) the whole directory.
+                # Load durations only for the previewed files, plus one extra to detect
+                # whether more exist without walking the whole directory.
                 files_and_durations = gu.get_audio_files_and_durations(
                     folder, max_files=preview_limit + 1
                 )

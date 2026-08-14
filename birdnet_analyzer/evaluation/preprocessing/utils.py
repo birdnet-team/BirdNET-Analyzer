@@ -1,12 +1,4 @@
-"""
-Utility Functions for Data Processing Tasks
-
-This module provides helper functions to handle common data processing tasks, such as:
-- Extracting recording keys from file paths or selection-table filenames.
-- Reading and concatenating text files from a specified directory.
-
-It is designed to work seamlessly with pandas and file system operations.
-"""
+"""Helpers for extracting recording keys and reading result tables into DataFrames."""
 
 import os
 
@@ -35,9 +27,8 @@ def recording_key(name):
     Raven selection table, a plain annotation file, and the ``Begin File`` column of
     the same recording all collapse to the same key.
 
-    Unlike the previous ``split(".")[0]`` approach, a dot inside the recording name
-    (dates such as ``2023.05.01_dawn``) is preserved, so distinct recordings never
-    collide.
+    A dot inside the recording name (dates such as ``2023.05.01_dawn``) is preserved,
+    so distinct recordings never collide.
 
     Args:
         name: A file path, file name, or recording reference. Non-string values
@@ -106,41 +97,29 @@ def read_and_concatenate_files_in_directory(directory_path: str) -> pd.DataFrame
     Raises:
         ValueError: If the columns in the files are inconsistent.
     """
-    df_list: list[pd.DataFrame] = []  # List to hold individual DataFrames
-    columns_set = None  # To ensure consistency in column names
+    df_list: list[pd.DataFrame] = []
+    columns_set = None
 
-    # Iterate through each file in the directory
     for filename in sorted(os.listdir(directory_path)):
         if filename.endswith(".txt"):
-            filepath = os.path.join(
-                directory_path, filename
-            )  # Construct the full file path
+            filepath = os.path.join(directory_path, filename)
 
             try:
-                # Attempt to read the file as a tab-separated values file with
-                # UTF-8 encoding
                 df = pd.read_csv(filepath, sep="\t", encoding="utf-8")
             except UnicodeDecodeError:
-                # Fallback to 'latin-1' encoding if UTF-8 fails
                 df = pd.read_csv(filepath, sep="\t", encoding="latin-1")
 
-            # Check for column consistency across files
             if columns_set is None:
-                columns_set = set(
-                    df.columns
-                )  # Initialize with the first file's columns
+                columns_set = set(df.columns)
             elif set(df.columns) != columns_set:
                 raise ValueError(
                     f"File {filename} has different columns than the previous files."
                 )
 
-            # Add a column to indicate the source file for traceability
             df["source_file"] = filename
 
-            # Append the DataFrame to the list
             df_list.append(df)
 
-    # Concatenate all DataFrames if any were processed, else return an empty DataFrame
     if df_list:
         return pd.concat(df_list, ignore_index=True)
-    return pd.DataFrame()  # Return an empty DataFrame if no .txt files were found
+    return pd.DataFrame()

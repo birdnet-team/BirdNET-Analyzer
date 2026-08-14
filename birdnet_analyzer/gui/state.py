@@ -18,8 +18,8 @@ import gradio as gr
 
 from birdnet_analyzer import settings
 
-# Every persisted component with the default it was built with, so the settings tab can
-# offer a reset. Populated while the tabs are built, in build order.
+# Every persisted component with its build default, for the settings tab's reset.
+# Populated in build order while the tabs are built.
 _PERSISTED: list[tuple[gr.components.Component, Any]] = []
 
 
@@ -58,8 +58,7 @@ def _validate(
             choice[1] if isinstance(choice, list | tuple) else choice
             for choice in choices
         }
-        # A CheckboxGroup holds a list of choices, every other component a single one.
-        # Which of the two it is shows in the default.
+        # A CheckboxGroup's default is a list, every other component's a single value.
         if isinstance(default, list):
             fits = isinstance(value, list) and all(v in allowed for v in value)
         else:
@@ -170,10 +169,8 @@ class TabState:
             kwargs.get("maximum"),
         )
 
-        # Only user edits are persisted. Values a component receives from another
-        # component's event handler are derived from settings that are persisted
-        # themselves, or from data the user has to select again anyway (the embeddings
-        # tab e.g. overrides the settings of an existing database).
+        # Persist only user edits. Values set by another component's handler derive
+        # from already-persisted settings, or from data the user reselects anyway.
         trigger = (
             component.release if isinstance(component, gr.Slider) else component.input
         )

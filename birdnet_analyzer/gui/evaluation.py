@@ -621,10 +621,9 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         # ----------------------- Results -----------------------
         with gr.Column(visible=False) as results_col:
-            # One row per class, with the aggregate in a separate one-row footer
-            # table that stays visible while the class rows scroll. (The virtualized
-            # gradio Dataframe cannot pin a row, so the footer is its own component;
-            # shared column widths keep the two aligned.)
+            # Aggregate goes in a separate one-row footer table that stays visible while
+            # the class rows scroll: the virtualized gradio Dataframe can't pin one, so
+            # the footer is its own component; shared column widths keep them aligned.
             with gr.Group():
                 metrics_table = gr.Dataframe(
                     show_label=False,
@@ -643,8 +642,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
             notes_markdown = gr.Markdown(visible=False)
 
-            # The plots are generated with the metrics and always shown, one
-            # switchable tab per plot.
+            # One switchable tab per plot; all generated with the metrics.
             with gr.Tabs():
                 with gr.Tab(loc.localize("eval-tab-plot-tab-metrics-label")):
                     metrics_plot = gr.Plot(show_label=False)
@@ -696,9 +694,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             (confusion_plot_dl_btn, confusion_plot, "confusion_matrix"),
             (thresholds_plot_dl_btn, thresholds_plot, "metrics_all_thresholds"),
         ):
-            dl_btn.click(
-                download_plot_guarded, inputs=[plot_comp, gr.State(plot_name)]
-            )
+            dl_btn.click(download_plot_guarded, inputs=[plot_comp, gr.State(plot_name)])
 
         # ------------------------------------------------------------------
         # Building / refreshing the processor and the class/recording choices
@@ -838,9 +834,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 predictions, labels, averaging=averaging_value
             )
             overall_df.loc["Support"] = int(pa.class_support(labels).sum())
-            overall_df.columns = pd.Index(
-                [loc.localize("eval-tab-overall-row-label")]
-            )
+            overall_df.columns = pd.Index([loc.localize("eval-tab-overall-row-label")])
 
             def display(df):
                 # One row per class/aggregate, one column per metric.
@@ -1082,6 +1076,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             inputs=[annotation_dir_state, prediction_dir_state],
             outputs=[mapping_group, class_recording_group],
         )
+
 
 if __name__ == "__main__":
     gu.open_window(build_evaluation_tab)

@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Anpassad artlista",
     "species-list-radio-option-predict-list": "Arter efter plats",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} arter i den här listan finns inte i den valda modellen och kommer att hoppas över.",
     "species-tab-filename-textbox-label": "Namn på filen, om inte angivet används 'species_list.txt'.",
     "species-tab-finish-info": "Artlista sparad i",
     "species-tab-info-text": "Generera en artlista för en viss plats som du kan använda för att begränsa de arter som beaktas vid enskild analys och batchanalys.\n\nVälj var listan ska sparas, ange sedan koordinaterna och säsongsfiltret (vecka). Frekvenströskeln styr hur sannolik en art måste vara på den platsen och tiden för att inkluderas.\n\nExportera listan till en textfil som du senare kan läsa in i artvalet på analysflikarna.",

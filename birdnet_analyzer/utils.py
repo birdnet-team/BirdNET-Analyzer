@@ -181,7 +181,7 @@ def spectrogram_from_audio(
             matplotlib.ticker.FuncFormatter(lambda x, _: f"{x / 1000:g}")
         )
         ax.set_ylabel("Frequency (kHz)")
-        f.tight_layout(pad=.5)
+        f.tight_layout(pad=0.5)
     else:
         ax.set_axis_off()
         f.tight_layout(pad=0)
@@ -242,10 +242,7 @@ def count_audio_files(path: str) -> int:
 def read_lines(
     path: str | Path | None, trim: bool = False, fail_on_blank_lines: bool = False
 ) -> list[str]:
-    """Reads the lines into a list.
-
-    Opens the file and reads its contents into a list.
-    It is expected to have one line for each species or label.
+    """Reads the lines of a file into a list, one line per species or label.
 
     Args:
         path: Absolute path to the species file.

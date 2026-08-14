@@ -6,9 +6,8 @@ module and leaves the configuration to the host application (the package attache
 configures logging).
 
 The shipped applications (the CLI entry points and the GUI) call :func:`setup_logging`,
-which prints messages to the console the way the former ``print()`` calls did and
-collects errors with their stacktraces in the error log file shown in the GUI settings
-tab.
+which prints messages to the console and collects errors with their stacktraces in the
+error log file shown in the GUI settings tab.
 """
 
 import logging
@@ -28,9 +27,8 @@ _installed_handlers: list[logging.Handler] = []
 class _ConsoleFormatter(logging.Formatter):
     """Formats a record as the bare message.
 
-    Keeps the console output identical to the ``print()`` calls it replaced. By
-    default stacktraces only go to the error log file; in verbose mode they are shown
-    on the console as well.
+    By default stacktraces only go to the error log file; in verbose mode they are
+    shown on the console as well.
     """
 
     def __init__(self, show_stacktraces: bool = False):
@@ -56,9 +54,7 @@ class _ErrorLogFormatter(logging.Formatter):
     """
 
     def __init__(self):
-        super().__init__(
-            fmt="[%(asctime)s]\n%(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-        )
+        super().__init__(fmt="[%(asctime)s]\n%(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     def format(self, record: logging.LogRecord) -> str:
         entry = super().format(record)

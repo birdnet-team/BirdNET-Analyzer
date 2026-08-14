@@ -19,16 +19,13 @@ def _newest_version(versions: tuple[str, ...]) -> str:
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 RANDOM_SEED: int = 42
 
-# The acoustic/geo model version used by default. Derived from the versions the
-# installed birdnet library ships, so the analyzer follows the newest model without
-# a code change. The geo model is not offered as a choice: its newest version always
-# replaces the older ones (see birdnet_analyzer.model_utils.run_geomodel).
+# Default model versions, derived from what the installed birdnet ships so they track
+# the newest. Geo is never a choice: its newest version always replaces the older ones.
 DEFAULT_ACOUSTIC_MODEL_VERSION: str = _newest_version(get_args(ACOUSTIC_MODEL_VERSIONS))
 DEFAULT_GEO_MODEL_VERSION: str = _newest_version(get_args(GEO_MODEL_VERSIONS))
 
-# The languages each acoustic model version can label its predictions in. v2.4 and
-# v3.0 support different sets, so the CLI/GUI offer their union and the birdnet
-# library validates the concrete (version, language) pair when a model is loaded.
+# Languages each acoustic version can label predictions in. v2.4 and v3.0 differ, so
+# the CLI/GUI offer the union; birdnet validates the (version, language) pair on load.
 ACOUSTIC_MODEL_LANGUAGES: dict[str, list[str]] = {
     "2.4": list(VALID_MODEL_LANGUAGES_V2_4),
     "3.0": list(VALID_MODEL_LANGUAGES_V3_0),
@@ -37,11 +34,9 @@ ALL_MODEL_LANGUAGES: list[str] = sorted(
     set(VALID_MODEL_LANGUAGES_V2_4) | set(VALID_MODEL_LANGUAGES_V3_0)
 )
 
-# Languages the (always newest) geo model can label its species list in. The v3.0
-# geo and acoustic models share the same language set.
+# Languages the newest geo model labels its species list in (v3.0 language set).
 GEO_MODEL_LANGUAGES: list[str] = list(VALID_MODEL_LANGUAGES_V3_0)
 
-MODEL_VERSION: str = f"V{DEFAULT_ACOUSTIC_MODEL_VERSION}"
 SCORE_FUNCTIONS = Literal["cosine", "euclidean", "dot"]
 CROP_MODES = Literal["center", "first", "segments"]
 CODES_FILE: str = os.path.join(SCRIPT_DIR, "eBird_taxonomy_codes_2024E.json")

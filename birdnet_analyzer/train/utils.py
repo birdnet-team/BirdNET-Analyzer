@@ -25,16 +25,11 @@ from birdnet_analyzer.config import (
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
 
-# Internal batch size the encoding pipeline uses per inference call. On CPU the tflite
-# model resizes its input tensor whenever the batch shape changes, so small batches are
-# fastest: a sweep on BirdNET 2.4 showed ~24 ms/segment for batch sizes 1-4, rising to
-# ~42 ms/segment at 32. The big win over the previous code is not the batch size itself
-# but issuing a single run_arrays() call for many segments (amortising the ~1 s per-call
-# pipeline overhead) instead of one call per segment.
+# On CPU the tflite model resizes its input tensor when the batch shape changes, so
+# small batches encode fastest (~24 ms/segment at 1-4, ~42 ms at 32 on BirdNET 2.4).
 ENCODE_BATCH_SIZE = 4
-# Number of decoded segments to buffer before flushing them through the encoding
-# pipeline in a single batched call. Bounds the peak memory of buffered raw audio
-# (~0.5 MiB per 3 s float32 segment at 48 kHz) while keeping per-call overhead low.
+# Decoded segments buffered before a batched encode flush. Bounds peak buffered-audio
+# memory (~0.5 MiB per 3 s float32 segment at 48 kHz) while amortising call overhead.
 ENCODE_CHUNK_SIZE = 1024
 
 logger = logging.getLogger(__name__)
@@ -280,16 +275,13 @@ def _load_training_data(
     model = load("acoustic", "2.4", "tf")
     model_sr = int(model.get_sample_rate())
 
-    # Number of parallel decode workers for the read/crop phase. librosa/scipy release
-    # the GIL for the heavy numeric work, so threads recover most of the parallelism the
-    # old multiprocessing.Pool provided, without the pickling/spawn overhead.
+    # librosa/scipy release the GIL for the heavy numeric work, so threaded decode
+    # workers parallelise well without multiprocessing's pickling/spawn overhead.
     n_decode_workers = threads if threads and threads > 0 else (os.cpu_count() or 1)
 
-    # NOTE: bandpass and speed are applied once, in open_audio_file (see
-    # _read_and_crop_file). The encoding session therefore uses its no-op defaults
-    # (bandpass_fmin=0, bandpass_fmax=15000, speed=1.0) to avoid applying them a second
-    # time. Segments are pushed through the pipeline in large batched run_arrays() calls
-    # (see load_data) rather than one call per segment.
+    # Bandpass and speed are already applied in open_audio_file (see
+    # _read_and_crop_file), so the encoding session uses no-op defaults (fmin=0,
+    # fmax=15000, speed=1.0) to avoid applying them twice.
     with model.encode_session(
         batch_size=ENCODE_BATCH_SIZE,
         n_workers=None,
@@ -352,11 +344,12 @@ def _load_training_data(
 
                 # Phase A: decode + crop all files in this folder in parallel.
                 # Phase B: encode buffered segments in batched flushes (across folders).
-                with tqdm.tqdm(
-                    total=len(files), desc=f" - loading '{folder}'", unit="f"
-                ) as progress_bar, ThreadPoolExecutor(
-                    max_workers=n_decode_workers
-                ) as executor:
+                with (
+                    tqdm.tqdm(
+                        total=len(files), desc=f" - loading '{folder}'", unit="f"
+                    ) as progress_bar,
+                    ThreadPoolExecutor(max_workers=n_decode_workers) as executor,
+                ):
                     futures = [
                         executor.submit(
                             _read_and_crop_file,
@@ -373,11 +366,9 @@ def _load_training_data(
                         for f in files
                     ]
 
-                    # Consume in submission order (not as_completed) so the resulting
-                    # sample order is deterministic: downstream stratified k-fold splits
-                    # and shuffles use fixed seeds and rely on a stable input order.
-                    # Decoding still runs fully in parallel across the pool; only result
-                    # consumption is ordered, so this costs virtually nothing.
+                    # Consume in submission order (not as_completed) for a deterministic
+                    # sample order: downstream stratified k-fold and shuffles use fixed
+                    # seeds and rely on a stable input order.
                     for fut in futures:
                         sig_splits, labels = fut.result()
                         seg_buffer.extend(sig_splits)
@@ -549,8 +540,7 @@ def train_model(
                 ["repeat"] if is_multi_label else ["repeat", "mean", "linear"]
             )
 
-            # Create stratified k-fold splits for cross-validation
-            # For multi-label, create a pseudo-label based on number of active labels
+            # For multi-label, stratify on the count of active labels per sample.
             # TODO: Is this the best way to do stratification for multi-label data?
             if is_multi_label:
                 stratify_labels = np.sum(y_train_full > 0, axis=1)
@@ -569,7 +559,6 @@ def train_model(
                 tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float], None, None
             ]:
                 if x_test.size > 0:
-                    # If test data is available, use a single split with the test data
                     splits = [
                         (
                             np.arange(len(x_train)),
@@ -595,7 +584,6 @@ def train_model(
                             val_split,
                         )
                 else:
-                    # Repeated stratified k-fold cross-validation
                     skf = RepeatedStratifiedKFold(
                         n_splits=autotune_n_splits,
                         n_repeats=autotune_n_repeats,
@@ -852,8 +840,6 @@ def train_model(
             with open(eval_file_path, "w", newline="") as f:
                 writer = csv.writer(f)
 
-                # Define all the metrics as columns, including both default and
-                # optimized threshold metrics
                 header = [
                     "Class",
                     "Precision (0.5)",
@@ -874,7 +860,6 @@ def train_model(
                 ]
                 writer.writerow(header)
 
-                # Write macro-averaged metrics (overall scores) first
                 writer.writerow(
                     [
                         "OVERALL (Macro-avg)",
@@ -897,7 +882,6 @@ def train_model(
                     ]
                 )
 
-                # Write per-class metrics (one row per species)
                 for class_name, class_metrics in metrics["class_metrics"].items():
                     distribution = metrics["class_distribution"].get(
                         class_name, {"count": 0, "percentage": 0.0}
@@ -942,7 +926,6 @@ def find_optimal_threshold(y_true, y_pred_prob):
     """
     from sklearn.metrics import f1_score
 
-    # Try different thresholds and find the one that gives the best F1 score
     best_threshold = 0.5
     best_f1 = 0.0
 
@@ -992,7 +975,6 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     logger.info("\nModel Evaluation:")
     logger.info("=================")
 
-    # Calculate metrics for each class
     precisions_default = []
     recalls_default = []
     f1s_default = []
@@ -1004,7 +986,6 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     class_metrics = {}
     optimal_thresholds = {}
 
-    # Print the metric calculation method that's being used
     logger.info(
         "\nNote: The AUPRC and AUROC metrics calculated during post-training evaluation"
         " may differ"
@@ -1087,7 +1068,6 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
                 f"Error calculating metrics for class {labels[i]}: {e}", exc_info=e
             )
 
-    # Calculate macro-averaged metrics for both default and optimized thresholds
     metrics["macro_precision_default"] = np.mean(precisions_default)
     metrics["macro_recall_default"] = np.mean(recalls_default)
     metrics["macro_f1_default"] = np.mean(f1s_default)
@@ -1111,7 +1091,6 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     logger.info(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
     logger.info(f"  AUROC:     {metrics['macro_auroc']:.4f}")
 
-    # Calculate class distribution in test set
     class_counts = y_test.sum(axis=0)
     total_samples = len(y_test)
     class_distribution = {}
@@ -1161,12 +1140,10 @@ def _save_to_cache(
     """
     import numpy as np
 
-    # Make directory if needed
     directory = os.path.dirname(path)
     if directory and not os.path.exists(directory):
         os.makedirs(directory)
 
-    # Save cache file with training data, test data, labels and configuration
     np.savez(
         path,
         x_train=x_train,

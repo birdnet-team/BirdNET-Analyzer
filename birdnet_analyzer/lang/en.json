@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Custom species list",
     "species-list-radio-option-predict-list": "Species by location",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} species in this list are not in the selected model and will be skipped.",
     "species-tab-filename-textbox-label": "Name of the file, if not specified 'species_list.txt' will be used.",
     "species-tab-finish-info": "Species list saved at",
     "species-tab-info-text": "Generate a species list for a given location that you can use to restrict the species considered during Single File and Batch Analysis.\n\nChoose where to save the list, then set the coordinates and the seasonal (week) filter. The frequency threshold controls how likely a species has to be at that location and time to be included.\n\nExport the list to a text file that you can later load in the species selection of the analysis tabs.",

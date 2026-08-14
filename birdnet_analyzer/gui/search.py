@@ -345,8 +345,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                                                 ],
                                                 outputs=export_state,
                                             )
-                                # Close the database connection to avoid having wal/shm
-                                # files
+                                # Close the connection to avoid leaving wal/shm files
                                 db.db.close()
 
                         with gr.Row():

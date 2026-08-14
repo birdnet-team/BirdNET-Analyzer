@@ -100,14 +100,12 @@ def process_data(
             prediction and label tensors, and the context (classes, unmatched
             recordings, empty classes).
     """
-    # Load class mapping if provided
     if mapping_path:
         with open(mapping_path) as f:
             class_mapping = json.load(f)
     else:
         class_mapping = None
 
-    # Determine directory and file paths for annotations and predictions
     annotation_dir, annotation_file = (
         (os.path.dirname(annotation_path), os.path.basename(annotation_path))
         if os.path.isfile(annotation_path)
@@ -119,7 +117,6 @@ def process_data(
         else (prediction_path, None)
     )
 
-    # Initialize the DataProcessor to handle and prepare data
     processor = DataProcessor(
         prediction_directory_path=prediction_dir,
         prediction_file_name=prediction_file,
@@ -134,17 +131,14 @@ def process_data(
         score_unannotated_as_empty=score_unannotated_as_empty,
     )
 
-    # Get the available classes and recordings
     available_classes = processor.classes
     available_recordings = processor.samples_df["filename"].unique().tolist()
 
-    # Default to all classes or recordings if none are specified
     if selected_classes is None:
         selected_classes = available_classes
     if selected_recordings is None:
         selected_recordings = available_recordings
 
-    # Retrieve predictions and labels tensors for the selected classes and recordings
     predictions, labels, classes = processor.get_filtered_tensors(
         selected_classes, selected_recordings
     )
@@ -152,7 +146,6 @@ def process_data(
     num_classes = len(classes)
     task = "binary" if num_classes == 1 else "multilabel"
 
-    # Initialize the PerformanceAssessor for computing metrics
     pa = PerformanceAssessor(
         num_classes=num_classes,
         threshold=threshold,
@@ -161,7 +154,6 @@ def process_data(
         metrics_list=metrics_list,
     )
 
-    # Compute performance metrics
     metrics_df = pa.calculate_metrics(
         predictions,
         labels,
@@ -217,7 +209,6 @@ def main():
 
     setup_logging()
 
-    # Set up argument parsing
     parser = argparse.ArgumentParser(
         description="Performance Assessor Core Script", parents=[verbosity_args()]
     )
@@ -297,10 +288,8 @@ def main():
     )
     parser.add_argument("--output_dir", help="Directory to save plots")
 
-    # Parse arguments
     args = parser.parse_args()
 
-    # Process data and compute metrics
     result = process_data(
         annotation_path=args.annotation_path,
         prediction_path=args.prediction_path,
@@ -322,7 +311,6 @@ def main():
     predictions = result.predictions
     labels = result.labels
 
-    # Display the computed metrics
     logger.info(result.metrics_df)
 
     if result.empty_classes:
@@ -332,8 +320,7 @@ def main():
             ", ".join(result.empty_classes),
         )
 
-    # Write the result tables (and later the plots) when an output directory is given.
-    # These mirror the GUI's "results table" and "data table" downloads.
+    # Mirror the GUI's "results table" and "data table" downloads.
     if args.output_dir:
         os.makedirs(args.output_dir, exist_ok=True)
 
@@ -345,7 +332,6 @@ def main():
         result.sample_data.to_csv(data_table_path, index=False)
         logger.info("Saved data table to %s", data_table_path)
 
-    # Generate plots if specified
     if args.plot_metrics:
         pa.plot_metrics(predictions, labels, per_class_metrics=args.class_wise)
         if args.output_dir:

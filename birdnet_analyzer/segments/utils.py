@@ -11,7 +11,6 @@ import numpy as np
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, utils
 
-# Set numpy random seed
 RNG = np.random.default_rng(cfg.RANDOM_SEED)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
@@ -240,19 +239,15 @@ def _find_segments_from_combined(
     """
     segments: list[dict] = []
 
-    # Open and parse result file
     lines = utils.read_lines(rfile)
 
-    # Auto-detect result type
     rtype = _detect_rtype(lines[0])
 
     if rtype == "audacity":
         raise Exception("Audacity files are not supported for combined results.")
 
-    # Get mapping from the header column
     header_mapping = _get_header_mapping(lines[0])
 
-    # Get start and end times based on rtype
     confidence = 0
     start = end = 0.0
     species = ""
@@ -339,16 +334,12 @@ def _find_segments(
     """
     segments: list[dict] = []
 
-    # Open and parse result file
     lines = utils.read_lines(rfile)
 
-    # Auto-detect result type
     rtype = _detect_rtype(lines[0])
 
-    # Get mapping from the header column
     header_mapping = _get_header_mapping(lines[0])
 
-    # Get start and end times based on rtype
     confidence = 0
     start = end = 0.0
     species = ""

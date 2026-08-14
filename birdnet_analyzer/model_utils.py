@@ -36,56 +36,173 @@ logger = logging.getLogger(__name__)
 GLOBAL_PREFETCH_RATIO = 2
 
 
-def _scientific_name(species_label: str) -> str:
-    """Return the scientific-name key of a ``"Scientific name_Common name"`` label."""
-    return species_label.split("_", 1)[0]
-
-
 def match_species_to_model(
     requested_species: Collection[str], model_species: Collection[str]
-) -> set[str]:
-    """Map requested species onto a model's labels by scientific name.
+) -> tuple[set[str], list[str]]:
+    """Reconcile requested species onto a model's own labels.
 
-    The geo model and the acoustic model can use different taxonomies and label
-    languages, so their ``"Scientific name_Common name"`` strings rarely match
-    exactly even when they mean the same bird (the common name differs). The
-    scientific name is stable across both, so it is used as the join key.
-
-    Returns the subset of ``model_species`` whose scientific name also occurs in
-    ``requested_species`` - i.e. the labels the acoustic model actually knows, which
-    is what its custom species list requires (an unknown species raises in the
-    library). This lets the (global) geo model filter any acoustic model version.
+    A requested ``"Scientific name_Common name"`` label often does not match a model
+    label exactly. Two things drift independently between model versions (and across
+    label languages): common names get revised while the scientific name stays put
+    (e.g. ``Columba livia`` "Rock Pigeon" -> "Rock Dove"), and taxa get reclassified so
+    the scientific name changes while the common name is stable (e.g. ``Accipiter``
+    -> ``Astur cooperii`` "Cooper's Hawk"). Each requested entry is therefore matched,
+    in order, by: the exact label, the scientific name (language-independent), then the
+    common name (only when it maps to a single model label). Matched labels are taken
+    verbatim from ``model_species``, so they are always valid for the model.
 
     Args:
-        requested_species: Species names to keep, e.g. a geo model prediction.
-        model_species: The acoustic model's own species labels.
+        requested_species: Species to keep - a user list or a geo-model prediction.
+        model_species: The model's own species labels.
 
     Returns:
-        The matching labels, taken verbatim from ``model_species``.
+        ``(matched, unmatched)``: the set of model labels to use, and the requested
+        entries that matched nothing (order preserved, for reporting to the user).
     """
-    model_by_scientific_name: dict[str, str] = {}
+    labels = set(model_species)
+    by_scientific: dict[str, str] = {}
+    by_common: dict[str, str] = {}
+    ambiguous_common: set[str] = set()
     for label in model_species:
-        # First label wins should a scientific name ever appear twice.
-        model_by_scientific_name.setdefault(_scientific_name(label), label)
+        # First label wins should a name ever map to more than one label.
+        scientific, _, common = label.partition("_")
+        by_scientific.setdefault(scientific, label)
+        if common:
+            key = common.casefold()
+            if key in by_common and by_common[key] != label:
+                # A common name shared by two species can't disambiguate; drop it.
+                ambiguous_common.add(key)
+            else:
+                by_common.setdefault(key, label)
 
-    requested_scientific_names = {_scientific_name(name) for name in requested_species}
+    matched: set[str] = set()
+    unmatched: list[str] = []
+    for requested in requested_species:
+        if requested in labels:
+            matched.add(requested)
+            continue
+        scientific, _, common = requested.partition("_")
+        if scientific in by_scientific:
+            matched.add(by_scientific[scientific])
+            continue
+        # With no underscore the whole entry may be a bare common name.
+        key = (common or scientific).casefold()
+        if key in by_common and key not in ambiguous_common:
+            matched.add(by_common[key])
+            continue
+        unmatched.append(requested)
 
-    return {
-        label
-        for scientific_name, label in model_by_scientific_name.items()
-        if scientific_name in requested_scientific_names
-    }
+    return matched, unmatched
 
 
-# list of sessions so they can be cancelled from another
-# thread. Access is guarded by a lock
-# because sessions are registered from Gradio worker threads while
-# cancel_active_analyses() may be called from the main thread.
+def _reconcile_species_list(
+    species_list, model_species: Collection[str], *, strict: bool
+) -> set[str]:
+    """Reconcile a custom species list against a model's labels.
+
+    ``species_list`` is either a path to a user ``--slist`` file/folder or an
+    in-memory collection (e.g. a geo-model prediction). It is matched onto the model's
+    own labels via :func:`match_species_to_model`.
+
+    For a user file, species the model does not know are reported - skipped with a
+    warning, or raised when ``strict`` - because the user expects every entry to
+    count. A geo-derived collection is broader than the acoustic model on purpose (it
+    can include non-birds), so its unmatched species are filtered out silently.
+    """
+    from pathlib import Path
+
+    from birdnet_analyzer.utils import read_lines
+
+    is_user_file = isinstance(species_list, (str, Path))
+    if is_user_file:
+        path = Path(species_list)
+        if path.is_dir():
+            # A folder is expected to contain a "species_list.txt" (see the CLI help).
+            path = path / "species_list.txt"
+        requested: Collection[str] = [s for s in read_lines(path, trim=True) if s]
+    else:
+        requested = species_list
+
+    matched, unmatched = match_species_to_model(requested, model_species)
+
+    if is_user_file and unmatched:
+        listing = "\n  ".join(sorted(unmatched))
+        if not matched:
+            # An empty custom list means "no filter" to the library - it would then
+            # analyze EVERY species, the opposite of what the user asked for. If
+            # nothing matched, that is always an error, even without --strict.
+            raise ValueError(
+                f"None of the {len(requested)} species in the list are available in "
+                f"the model:\n  {listing}"
+            )
+        if strict:
+            raise ValueError(
+                f"{len(unmatched)} of {len(requested)} species in the list are not "
+                f"available in the model:\n  {listing}"
+            )
+        logger.warning(
+            "%d of %d species in the list are not available in the model and were "
+            "skipped:\n  %s",
+            len(unmatched),
+            len(requested),
+            listing,
+        )
+
+    return matched
+
+
+def acoustic_species_list(version: str, language: str = "en_us") -> list[str]:
+    """The species labels of a BirdNET acoustic model version, in ``language``.
+
+    Loads the model to read its labels: on a fresh install this downloads the model
+    files (hundreds of MB) on first use, exactly as an analysis would - it is only
+    cheap once the model is cached. Callers that must not trigger a download (e.g. a
+    GUI preview) should gate on :func:`acoustic_model_downloaded` first. ``language`` is
+    coerced to one the version supports; the backend matches ``run_inference``.
+    """
+    language = _language_for_version(cast("MODEL_LANGUAGES", language), version)
+    if version == "3.0":
+        model = birdnet.load(
+            "acoustic", "3.0", "onnx", lang=cast("MODEL_LANGUAGES_V3_0", language)
+        )
+    else:
+        model = birdnet.load(
+            "acoustic", "2.4", "tf", lang=cast("MODEL_LANGUAGES_V2_4", language)
+        )
+
+    return list(model.species_list)
+
+
+def acoustic_model_downloaded(version: str) -> bool:
+    """Whether the acoustic model for ``version`` is already fully on disk.
+
+    Lets a caller avoid triggering a large model download for a cheap best-effort
+    check (see :func:`acoustic_species_list`). Uses the birdnet downloader's own file
+    check; any failure (e.g. a library API change) reports False so the caller skips.
+    """
+    try:
+        from birdnet.globals import MODEL_PRECISION_FP32
+
+        if version == "3.0":
+            from birdnet.acoustic.models.v3_0.onnx import (
+                AcousticOnnxDownloaderV3_0 as downloader,
+            )
+        else:
+            from birdnet.acoustic.models.v2_4.tf import (
+                AcousticTFDownloaderV2_4 as downloader,
+            )
+
+        return bool(downloader._check_acoustic_model_available(MODEL_PRECISION_FP32))
+    except Exception:
+        return False
+
+
+# Live sessions, so they can be cancelled from another thread. Lock-guarded: sessions
+# register from Gradio worker threads while cancel_active_analyses() runs on the main.
 _ACTIVE_SESSIONS: set[AcousticSessionBase] = set()
 _ACTIVE_SESSIONS_LOCK = threading.Lock()
-# Latched once shutdown begins. A session that registers after this point
-# cancels itself immediately, so no analysis can slip past
-# cancel_active_analyses() and keep running headless.
+# Latched once shutdown begins: a session registering after this cancels itself, so
+# none can slip past cancel_active_analyses() and keep running headless.
 _SHUTDOWN = threading.Event()
 
 
@@ -93,9 +210,8 @@ def _register_session(session) -> None:
     """Track a live inference session so it can be cancelled on shutdown."""
     with _ACTIVE_SESSIONS_LOCK:
         _ACTIVE_SESSIONS.add(session)
-        # Read the latch under the same lock cancel_active_analyses() holds, so a
-        # session registered concurrently with shutdown is either seen by the
-        # cancel loop or cancelled here - never missed by both.
+        # Read the latch under cancel_active_analyses()'s lock, so a session racing
+        # shutdown is caught by the cancel loop or cancels itself here, never missed.
         shutting_down = _SHUTDOWN.is_set()
 
     if shutting_down:
@@ -212,7 +328,7 @@ def run_inference(
     label_language: MODEL_LANGUAGES = "en_us",
     classifier: str | None = None,
     cc_species_list: str | None = None,
-    match_species_by_scientific_name: bool = False,
+    strict_species_list: bool = False,
     callback: Callable[[AcousticProgressStats], None] | None = None,
     on_file_complete: Callable[[AcousticFilePredictionResult], None] | None = None,
 ) -> AcousticFilePredictionResult:
@@ -226,15 +342,12 @@ def run_inference(
             "acoustic", "2.4", "tf", classifier, cc_species_list
         )
     elif model == "birdnet":
-        # A locale valid for one model version can be unsupported by another, which
-        # the library rejects; coerce it to a supported one so the run never fails on
-        # the label language. The cast is then sound: the value is known to be in the
-        # target version's set.
+        # Coerce the locale to one this version supports (the library rejects an
+        # unsupported pair); the cast into the version's set is then sound.
         lang = _language_for_version(label_language, version)
         if version == "3.0":
-            # 3.0 ships an ONNX backend: numerically equivalent predictions
-            # (confidence differs by ~1e-6), markedly faster CPU inference, and no
-            # TensorFlow import in the workers.
+            # 3.0 uses the ONNX backend: equivalent predictions (~1e-6 diff), faster
+            # CPU inference, and no TensorFlow import in the workers.
             acoustic_model = birdnet.load(
                 "acoustic", "3.0", "onnx", lang=cast("MODEL_LANGUAGES_V3_0", lang)
             )
@@ -251,23 +364,19 @@ def run_inference(
             "use a custom classifier."
         )
 
-    # A species list derived from the geo model can name species the acoustic model
-    # does not know (the geo model is global and uses a different taxonomy), which the
-    # library would reject. Reconcile it against the loaded model by scientific name.
-    if custom_species_list is not None and match_species_by_scientific_name:
-        custom_species_list = match_species_to_model(
-            custom_species_list, acoustic_model.species_list
+    # A custom species list (user --slist or geo prediction) may name labels the model
+    # lacks verbatim (names drift across versions/languages), which the library rejects;
+    # reconcile it against the model's own labels first (see _reconcile_species_list).
+    if custom_species_list is not None:
+        custom_species_list = _reconcile_species_list(
+            custom_species_list,
+            acoustic_model.species_list,
+            strict=strict_species_list,
         )
 
     from birdnet.acoustic.inference.configs import InferenceConfig
 
     input_files = InferenceConfig.validate_input_files(path)
-
-    # Only pass the kwarg when used: birdnet releases without the per-file
-    # completion hook reject it (see supports_on_file_complete()).
-    session_kwargs = (
-        {"on_file_complete": on_file_complete} if on_file_complete is not None else {}
-    )
 
     with acoustic_model.predict_session(
         top_k=top_k,
@@ -286,7 +395,7 @@ def run_inference(
         n_producers=n_producers,
         apply_sigmoid=model != "perch",
         max_n_files=len(input_files),
-        **session_kwargs,
+        on_file_complete=on_file_complete,
     ) as session:
         _register_session(session)
         try:
@@ -295,37 +404,18 @@ def run_inference(
             _unregister_session(session)
 
 
-def supports_on_file_complete() -> bool:
-    """Whether the installed birdnet provides the per-file completion hook.
-
-    Resumable analysis needs ``on_file_complete`` (birdnet-team/birdnet#57);
-    on older releases the feature is silently disabled.
-    """
-    from importlib.util import find_spec
-
-    return find_spec("birdnet.acoustic.inference.core.file_completion") is not None
-
-
 def run_geomodel(
     lat, lon, week=None, language: MODEL_LANGUAGES = "en_us", threshold: float = 0.03
 ) -> birdnet.GeoPredictionResult:
     from birdnet_analyzer.config import DEFAULT_GEO_MODEL_VERSION
 
-    # The newest geo model replaces the older ones outright; it is never a choice.
-    # ``language`` only affects the localized species names, so callers that match on
-    # scientific name (e.g. acoustic species filtering) can leave it at the default.
+    # The newest geo model always replaces the older ones; never a choice. ``language``
+    # only affects localized names, so scientific-name matchers can leave it default.
     #
-    # The ONNX backend is used rather than tf/pb: it imports no TensorFlow at all -
-    # and the geo model runs here in the main process, so this keeps TF out of it
-    # entirely - loads much faster, and returns the same species. (The v3.0 geo tf
-    # backend also only supports TensorFlow 2.18/2.19 while we require >=2.20; ONNX
-    # has no such constraint.)
-    #
-    # This targets the v3.0 geo model specifically: the ONNX backend and the v3.0
-    # language set below only exist for it. Assert the (runtime-computed) newest
-    # version is 3.0 so a future geo version fails loudly here - prompting an update -
-    # instead of silently mismatching; it also lets the type checker resolve the
-    # concrete overload, so the casts are then sound.
+    # ONNX backend, not tf/pb: imports no TensorFlow (kept out of this main-process
+    # call), loads faster, same species. (v3.0 geo tf needs TF 2.18/2.19; we need
+    # >=2.20.) The assert pins this to v3.0 so a future version fails loudly here
+    # instead of silently mismatching, and lets the type checker prove the casts sound.
     assert DEFAULT_GEO_MODEL_VERSION == "3.0", (
         f"run_geomodel targets geo v3.0, but the newest geo model is "
         f"{DEFAULT_GEO_MODEL_VERSION}; update the backend/language handling for it."
@@ -387,9 +477,8 @@ def get_embeddings_array_with_session(
 ) -> np.ndarray:
     result = session.run_arrays(signals)
 
-    # result.embeddings has shape (n_inputs, n_segments, embed_dim).
-    # Each input signal is a single segment, so squeeze the middle dim.
-    # Return shape: (n_inputs, embed_dim)
+    # embeddings is (n_inputs, n_segments, embed_dim); each input is one segment, so
+    # squeeze the middle dim to get (n_inputs, embed_dim).
     return result.embeddings[:, 0, :]
 
 
@@ -419,10 +508,8 @@ def encode_arrays_batched(
 
     result = session.run_arrays(signals)
 
-    # embeddings/embeddings_masked have shape (n_inputs, n_segments, embed_dim).
-    # This helper assumes each input is exactly one model segment. Guard against a
-    # caller passing longer signals (or a mismatched session config), which would
-    # otherwise silently drop the extra segments taken by the [:, 0, :] slice below.
+    # Shapes are (n_inputs, n_segments, embed_dim). This helper assumes one segment per
+    # input; guard so a longer signal isn't silently truncated by the [:, 0, :] slice.
     n_segments = result.embeddings.shape[1]
     if n_segments != 1:
         raise ValueError(
@@ -454,7 +541,6 @@ def get_embeddings_array(
     model = _load_acoustic_for_embeddings(version)
     sr = model.get_sample_rate()
 
-    # encode_array was removed; use encode_session + run_arrays instead.
     # run_arrays expects (ndarray, sample_rate) tuples.
     inputs = [(sig, sr) for sig in signals]
 
@@ -470,7 +556,6 @@ def get_embeddings_array(
     ) as session:
         result = session.run_arrays(inputs)
 
-    # result.embeddings has shape (n_inputs, n_segments, embed_dim).
-    # Each input signal is a single segment, so squeeze the middle dim.
-    # Return shape: (n_inputs, embed_dim)
+    # embeddings is (n_inputs, n_segments, embed_dim); each input is one segment, so
+    # squeeze the middle dim to get (n_inputs, embed_dim).
     return result.embeddings[:, 0, :]

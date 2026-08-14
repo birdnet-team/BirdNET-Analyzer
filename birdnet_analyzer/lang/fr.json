@@ -346,6 +346,7 @@
     "species-list-radio-option-custom-list": "Liste des espèces personnalisées",
     "species-list-radio-option-predict-list": "Espèces par lieu",
     "species-list-radio-option-use-perch": "Perch v2",
+    "species-list-unmatched-warning": "{count} espèces de cette liste ne figurent pas dans le modèle sélectionné et seront ignorées.",
     "species-tab-filename-textbox-label": "Nom du fichier, si non spécifié « species_list.txt » sera utilisé.",
     "species-tab-finish-info": "La liste des espèces est sauvegardé à l’adresse:",
     "species-tab-info-text": "Générez une liste d'espèces pour un emplacement donné, que vous pouvez utiliser pour restreindre les espèces prises en compte lors de l'analyse d'un fichier unique et de l'analyse par lots.\n\nChoisissez où enregistrer la liste, puis définissez les coordonnées et le filtre saisonnier (semaine). Le seuil de fréquence contrôle la probabilité qu'une espèce doit atteindre à cet endroit et à cette période pour être incluse.\n\nExportez la liste dans un fichier texte que vous pourrez charger ultérieurement dans la sélection des espèces des onglets d'analyse.",
