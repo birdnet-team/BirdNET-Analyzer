@@ -35,6 +35,9 @@ dependencies = [
     "librosa>=0.11",
     "tensorflow>=2.20",
     "keras",
+    # ONNX runtime backs 3.0 acoustic + geo inference: no TensorFlow load, faster.
+    # TensorFlow above is still required for training and the 2.4/perch/custom paths.
+    "onnxruntime",
     "numpy",
     "scipy",
     "soundfile",

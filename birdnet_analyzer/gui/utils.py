@@ -16,7 +16,6 @@ import gradio as gr
 import webview
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
 from birdnet_analyzer import settings, utils
@@ -88,6 +87,27 @@ def is_birdnet_model(model_choice: str) -> bool:
 def birdnet_version(model_choice: str) -> str:
     """The acoustic model version for a BirdNET model choice (falls back to 2.4)."""
     return _BIRDNET_MODEL_VERSIONS.get(model_choice, "2.4")
+
+
+def model_languages(model_choice: str) -> list[str]:
+    """The label languages the given model's version supports, sorted.
+
+    The 2.4 and 3.0 models ship overlapping but non-identical language sets, and the
+    birdnet library rejects a locale a version does not have. Offering only the
+    supported ones keeps the locale dropdown from presenting a choice that would fail.
+    """
+    from birdnet.globals import (
+        VALID_MODEL_LANGUAGES_V2_4,
+        VALID_MODEL_LANGUAGES_V3_0,
+    )
+
+    languages = (
+        VALID_MODEL_LANGUAGES_V3_0
+        if birdnet_version(model_choice) == "3.0"
+        else VALID_MODEL_LANGUAGES_V2_4
+    )
+
+    return sorted(languages)
 
 
 def spectrogram_settings() -> dict:
@@ -776,24 +796,25 @@ def bandpass_settings(state: TabState):
     return fmin_number, fmax_number
 
 
-def locale(state: TabState, visible=True):
+def locale(state: TabState, model_choice: str, visible=True):
     """Creates the gradio elements for locale selection
-
-    Reads the translated labels inside the checkpoints directory.
 
     Args:
         state: The persisted settings of the tab the dropdown belongs to.
+        model_choice: The selected model; only its version's languages are offered.
         visible: If True the dropdown is shown on init.
 
     Returns:
         The dropdown element.
     """
-    # The union of every acoustic model version's languages; the birdnet library
-    # validates the concrete (model version, locale) pair when the model is loaded.
+    # Only the selected model version's languages are offered; a locale the version
+    # lacks would be rejected by the library at load time. `state.persist` drops a
+    # persisted value that is not among these choices back to the English default,
+    # and `on_model_selection_change` keeps the choices in sync as the model changes.
     return state.persist(
         "locale_dropdown",
         gr.Dropdown,
-        choices=cfg.ALL_MODEL_LANGUAGES,
+        choices=model_languages(model_choice),
         value=cast("str", MODEL_LANGUAGE_EN_US),
         visible=visible,
         label=loc.localize("analyze-locale-dropdown-label"),
@@ -1055,7 +1076,9 @@ def model_selection(state: TabState, opened=True):
                         gr.update(value=labels, visible=True),
                     )
 
-        locale_settings = locale(state, visible=is_birdnet_model(selected_model))
+        locale_settings = locale(
+            state, selected_model, visible=is_birdnet_model(selected_model)
+        )
 
         species_list_df = gr.List(
             value=[],
@@ -1071,23 +1094,39 @@ def model_selection(state: TabState, opened=True):
         show_progress="hidden",
     )
 
-    def on_model_selection_change(choice: str, cc_state):
+    def on_model_selection_change(choice: str, cc_state, current_locale):
+        if is_birdnet_model(choice):
+            # Re-scope the locale dropdown to this model's languages, keeping the
+            # current locale only if the new version still offers it (else English).
+            languages = model_languages(choice)
+            locale_update = gr.update(
+                visible=True,
+                choices=languages,
+                value=current_locale
+                if current_locale in languages
+                else MODEL_LANGUAGE_EN_US,
+            )
+        else:
+            # Perch / custom classifier don't use the locale; just hide it and leave
+            # its choices and value alone so switching back keeps the user's language.
+            locale_update = gr.update(visible=False)
+
         if choice == _CUSTOM_CLASSIFIER:
             return (
                 gr.update(visible=True),
                 gr.update(visible=cc_state is not None),
-                gr.update(visible=False),
+                locale_update,
             )
 
         return (
             gr.update(visible=False),
             gr.update(visible=False),
-            gr.update(visible=is_birdnet_model(choice)),
+            locale_update,
         )
 
     model_selection_radio.change(
         on_model_selection_change,
-        inputs=[model_selection_radio, selected_classifier_state],
+        inputs=[model_selection_radio, selected_classifier_state, locale_settings],
         outputs=[custom_classifier_selector, species_list_df, locale_settings],
         show_progress="hidden",
     )
