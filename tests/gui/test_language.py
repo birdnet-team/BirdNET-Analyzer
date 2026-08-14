@@ -23,6 +23,46 @@ def _format_fields(text: str) -> set | None:
         return None
 
 
+def test_language_directory_is_populated():
+    """Every other test here globs LANG_DIR - guard against globbing nothing.
+
+    LANG_DIR used to resolve one level too high (``<repo>/lang`` instead of
+    ``<repo>/birdnet_analyzer/lang``), so each check in this module iterated an empty
+    sequence and passed without ever opening a file. That is how a zh_CN.json which
+    could not be parsed at all reached main with every CI lane green.
+    """
+    language_files = sorted(Path(LANG_DIR).glob("*.json"))
+
+    assert language_files, (
+        f"No language files found in {LANG_DIR}. The tests in this module iterate "
+        "that glob, so they would all pass without checking anything."
+    )
+    assert FALLBACK_LANGUAGE_FILE in language_files, (
+        f"{FALLBACK_LANGUAGE_FILE.name} is missing from {LANG_DIR}, but it is the "
+        "source every other translation is compared against."
+    )
+
+
+def test_language_files_are_valid_json():
+    """A file that cannot be parsed has to name itself.
+
+    ``gui/localization.py`` catches only FileNotFoundError when it loads a language
+    file, so a malformed one raises JSONDecodeError and takes the GUI down at startup
+    for anyone who selected that language. Checking it here - rather than letting the
+    decode error surface from whichever other test happens to read the file first -
+    keeps the failure pointing at the file that is actually broken.
+    """
+    invalid = []
+
+    for language_file in sorted(Path(LANG_DIR).glob("*.json")):
+        try:
+            json.loads(language_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            invalid.append(f"{language_file.name}: {e}")
+
+    assert not invalid, "Language files are not valid JSON:\n" + "\n".join(invalid)
+
+
 def test_language_keys():
     language_files = list(Path(LANG_DIR).glob("*.json"))
     key_collection = defaultdict(list)

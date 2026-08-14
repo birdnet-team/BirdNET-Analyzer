@@ -333,7 +333,7 @@
     "species-list-coordinates-week-slider-info": "指定录音所在年份中的周数，采用简化的系统，将每个月分为四周。请选择 1 到 48 之间的数值。",
     "species-list-coordinates-week-slider-label": "周",
     "species-list-coordinates-yearlong-checkbox-label": "全年",
-    "species-list-custom-classifier-no-labelfile-warning": "未找到格式为 &lt;customclassifier&gt;_Labels.txt 的标签文件。"
+    "species-list-custom-classifier-no-labelfile-warning": "未找到格式为 &lt;customclassifier&gt;_Labels.txt 的标签文件。",
     "species-list-custom-classifier-selection-button-label": "选择分类器",
     "species-list-header": "物种",
     "species-list-radio-info": "筛选要包含在输出中的物种。",
