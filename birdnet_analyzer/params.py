@@ -16,9 +16,8 @@ components in :mod:`birdnet_analyzer.gui.presets`.
 from contextlib import suppress
 from typing import Any
 
-# How many parameters a file has to yield to count as a parameters file. High enough
-# to reject the parameters file of the other command, which shares a handful of names
-# (audio speed, bandpass limits, batch size), and any other CSV output.
+# Minimum parameters for a file to count as one. High enough to reject the other
+# command's params file (it shares a few names) and any other CSV output.
 _MIN_RECOGNIZED_PARAMS = 5
 
 

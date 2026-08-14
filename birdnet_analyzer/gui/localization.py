@@ -67,11 +67,7 @@ def localize(key: str) -> str:
 
 
 def set_language(language: str):
-    """
-    Sets the language for the application by updating the GUI settings file.
-    This function ensures that the settings file exists, reads the current settings,
-    updates the "language-id" field with the provided language, and writes the updated
-    settings back to the file.
+    """Sets the language for the application by updating the GUI settings file.
 
     Args:
         language (str): The language identifier to set in the settings file.

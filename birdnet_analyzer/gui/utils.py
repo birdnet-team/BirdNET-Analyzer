@@ -164,21 +164,16 @@ def spectrogram_settings() -> dict:
 
 
 def gui_runtime_error_handler(f):
-    """
-    A decorator function to handle errors during the execution of a callable.
-
-    This function attempts to execute the provided callable `f`. If an exception
-    occurs during execution, it logs the error using `utils.write_error_log` and
-    raises a `gr.Error` exception.
+    """Wrap ``f`` so any exception is logged and re-raised as a ``gr.Error``.
 
     Args:
-        f (callable): The function or callable object to be executed.
+        f: The callable to wrap.
 
     Returns:
-        The result of the callable `f` if no exception occurs.
+        The result of ``f`` when it does not raise.
 
     Raises:
-        gr.Error: If an exception is raised during the execution of `f`.
+        gr.Error: If ``f`` raises.
     """
 
     def wrapper(*args, **kwargs):
@@ -191,16 +186,12 @@ def gui_runtime_error_handler(f):
     return wrapper
 
 
-# Nishant - Following two functions (select_folder and get_files_and_durations) are
-# written for Folder selection
 def select_folder(state_key=None):
-    """
-    Opens a folder selection dialog and returns the selected folder path.
-    On Windows, it uses tkinter's filedialog to open the folder selection dialog.
-    On other platforms, it uses webview's FOLDER_DIALOG to open the folder selection
-    dialog. If a state_key is provided, the initial directory for the dialog is
-    retrieved from the state. If a folder is selected and a state_key is provided, the
-    selected folder path is saved to the state.
+    """Opens a folder selection dialog and returns the selected folder path.
+
+    Uses tkinter on Windows and webview's folder dialog elsewhere. If a state_key is
+    given, the dialog starts in the saved directory and the choice is saved back.
+
     Args:
         state_key (str, optional): The key to retrieve and save the folder path in the
         state. Defaults to None.
@@ -869,8 +860,6 @@ def plot_map_scatter_mapbox(lat, lon, zoom=4):
     fig = px.scatter_map(
         lat=[lat], lon=[lon], zoom=zoom, map_style="open-street-map", size=[10]
     )
-    # Explicitly set color and size
-    # fig.update_traces(marker=dict(size=10, color="red"))
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
     return fig
 
@@ -1117,9 +1106,8 @@ def model_selection(state: TabState, opened=True):
                         gr.update(value=labels, visible=True),
                     )
 
-        # When shown, restrict the locale to the model's languages so an unsupported
-        # one can't be picked; when hidden (Perch/custom), offer the union so a locale
-        # saved under a different model version is not dropped by persist validation.
+        # Shown: restrict locale to the model's languages. Hidden (Perch/custom): offer
+        # the union so a saved locale from another version isn't dropped by persist.
         show_locale = is_birdnet_model(selected_model)
         locale_settings = locale(
             state,
@@ -1310,25 +1298,19 @@ def download_plot(plot, filename=""):
 
 
 def _get_network_shortcuts():
-    """
-    Retrieves a list of network shortcut paths from the user's Network Shortcuts folder.
-    This function accesses the Network Shortcuts folder (Nethood) on a Windows system,
-    iterates through its contents, and attempts to resolve `.lnk` files (shortcuts)
-    to their target paths. If successful, the resolved paths are added to the list of
-    shortcuts.
+    """Resolves the user's Windows network shortcuts to their target paths.
+
     Returns:
         list: A list of resolved network shortcut paths.
+
     Notes:
-        - This function uses the `pythoncom` and `win32com.shell` modules, which are
-        part of the `pywin32` package.
-        - Errors encountered while resolving shortcuts are printed to the console.
+        - Uses the `pythoncom` and `win32com.shell` modules from `pywin32`.
     """
     import pythoncom
     from win32com.shell import shell, shellcon  # type: ignore
 
     try:
-        # https://learn.microsoft.com/de-de/windows/win32/shell/csidl
-        # CSIDL_NETHOOD: Path to folder containing network shortcuts
+        # CSIDL_NETHOOD: folder containing network shortcuts
         network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)  # pyright: ignore[reportArgumentType]
         shortcuts = []
 
@@ -1341,8 +1323,6 @@ def _get_network_shortcuts():
 
                 if os.path.exists(target_lnk):
                     try:
-                        # https://learn.microsoft.com/de-de/windows/win32/shell/links
-                        # CLSID_ShellLink: Class ID for Shell Link object
                         shell_link = pythoncom.CoCreateInstance(  # ty:ignore[unresolved-attribute]
                             shell.CLSID_ShellLink,
                             None,
@@ -1350,17 +1330,12 @@ def _get_network_shortcuts():
                             shell.IID_IShellLink,
                         )
 
-                        # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nn-objidl-ipersistfile
-                        # Query IPersistFile interface used to
                         persist_file = shell_link.QueryInterface(
                             pythoncom.IID_IPersistFile  # ty:ignore[unresolved-attribute]
                         )
 
-                        # https://learn.microsoft.com/de-de/windows/win32/api/objidl/nf-objidl-ipersistfile-load
-                        # Load shell link file
                         persist_file.Load(target_lnk)
 
-                        # https://learn.microsoft.com/de-de/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishelllinka-getpath
                         path_buffer, _ = shell_link.GetPath(shell.SLGP_RAWPATH)
 
                         shortcuts.append(path_buffer)
@@ -1460,7 +1435,6 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
     # shutdown so any such late session cancels itself on registration.
     model_utils.cancel_active_analyses()
 
-    # Some time to stop all processes
     deadline = time.monotonic() + timeout
     while model_utils.active_session_count() and time.monotonic() < deadline:
         time.sleep(0.1)
@@ -1567,6 +1541,5 @@ def open_window(
 
     webview.start(private_mode=False)
 
-    # The window has been closed. Make sure no analysis keeps running in the
-    # background now that there is no UI to control or observe it.
+    # Window closed: stop any analysis still running with no UI to control it.
     shutdown_running_analyses()

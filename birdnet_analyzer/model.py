@@ -38,14 +38,7 @@ class WrappedSavedModel(keras.layers.Layer):
 
 
 def get_empty_class_exception():
-    """Return a reusable exception class for signaling empty classes.
-
-    The previous implementation subclassed
-    :class:`keras_tuner.errors.FatalError` simply because the tuner was
-    responsible for raising the error. After switching to ``optuna`` we no
-    longer have a dependency on ``keras_tuner``; a plain :class:`Exception` is
-    sufficient.
-    """
+    """Return a reusable exception class for signaling empty classes."""
     global EMPTY_CLASS_EXCEPTION_REF  # noqa: PLW0603
 
     if EMPTY_CLASS_EXCEPTION_REF:
@@ -214,9 +207,7 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
         A tuple of (x_train, y_train, x_val, y_val).
 
     """
-    class_combinations, combination_ids = np.unique(
-        y, axis=0, return_inverse=True
-    )
+    class_combinations, combination_ids = np.unique(y, axis=0, return_inverse=True)
     train_indices, val_indices = [], []
 
     for combination_id, class_combination in enumerate(class_combinations):
@@ -372,9 +363,7 @@ def upsampling(
                 x_temp.append(np.mean(x_sources, axis=1))
             else:
                 alpha = rng.uniform(0, 1, size=(missing_samples, 1))
-                x_temp.append(
-                    alpha * x_sources[:, 0] + (1 - alpha) * x_sources[:, 1]
-                )
+                x_temp.append(alpha * x_sources[:, 0] + (1 - alpha) * x_sources[:, 1])
 
             y_temp.append(y[sampled_indices[:, 0]])
 
@@ -730,7 +719,7 @@ def save_raven_model(
 
     tf.saved_model.save(combined_model, model_path, signatures=signatures)
 
-    #resave to fix for raven import compatibility.
+    # resave to fix for raven import compatibility.
     loaded = tf.saved_model.load(model_path)
     all_sigs = list(loaded.signatures.keys())
     SKIP_SIGS = {"__saved_model_init_op"}
@@ -813,12 +802,15 @@ def save_detached_classifier(
 
     detached_classifier_path = model_path + "_detached"
 
-    detached_model_inputs = keras.Input(shape=(1024,), dtype=tf.float32,
-                                    name="detached_input")
+    detached_model_inputs = keras.Input(
+        shape=(1024,), dtype=tf.float32, name="detached_input"
+    )
     detached_model_outputs = classifier(detached_model_inputs)
-    detached_model = keras.Model(inputs=detached_model_inputs,
-                                    outputs=detached_model_outputs,
-                                    name="detached_classifier")
+    detached_model = keras.Model(
+        inputs=detached_model_inputs,
+        outputs=detached_model_outputs,
+        name="detached_classifier",
+    )
 
     detached_model.export(detached_classifier_path)
 
@@ -831,6 +823,7 @@ def save_detached_classifier(
     if labels is not None:
         with open(detached_classifier_path + "_Labels.txt", "w", encoding="utf-8") as f:
             f.writelines(label + "\n" for label in labels)
+
 
 def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     """
@@ -861,6 +854,7 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
 
     return tf.reduce_sum(focal_loss, axis=-1)
 
+
 def custom_loss(y_true, y_pred, epsilon=1e-7):
     positive_loss = -tf.reduce_sum(
         y_true * tf.math.log(tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)), axis=-1
@@ -886,9 +880,6 @@ def flat_sigmoid(x, sensitivity=-1, bias=1.0):
 
     Thus, higher bias values will shift the sigmoid function to the right on the x-axis,
     making it more "sensitive".
-
-    Note: Not sure why we are clipping, must be for numerical stability somewhere else
-    in the code.
 
     Args:
         x (array-like): Input data.

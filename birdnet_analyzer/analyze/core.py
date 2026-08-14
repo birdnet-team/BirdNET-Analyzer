@@ -115,11 +115,7 @@ def analyze(
     """
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
-    from birdnet_analyzer.model_utils import (
-        run_geomodel,
-        run_inference,
-        supports_on_file_complete,
-    )
+    from birdnet_analyzer.model_utils import run_geomodel, run_inference
     from birdnet_analyzer.utils import save_params_file
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
@@ -160,20 +156,17 @@ def analyze(
                 "together."
             )
 
-        # The geo model is global and uses its own taxonomy; run_inference reconciles
-        # its species with the selected acoustic model by scientific name, so the geo
-        # label language is irrelevant here and left at its default.
+        # The geo model uses its own taxonomy; run_inference reconciles it to the
+        # acoustic model by scientific name, so the geo label language is irrelevant.
         slist = run_geomodel(lat, lon, week=week, threshold=sf_thresh).to_set()
 
-    # For directory analyses, keep a crash-safe journal of per-file results in
-    # the output directory so an interrupted run can be resumed: files that
-    # already have a stored result are skipped, everything else is analyzed and
-    # persisted as it completes.
+    # For directory analyses, journal per-file results so an interrupted run can
+    # resume: already-stored files are skipped, the rest analyzed and persisted.
     journal = None
     input_files: list[Path] = []
     inference_input = audio_input
 
-    if not _return_only and os.path.isdir(audio_input) and supports_on_file_complete():
+    if not _return_only and os.path.isdir(audio_input):
         from birdnet.acoustic.inference.configs import InferenceConfig
 
         input_files = InferenceConfig.validate_input_files(audio_input)
@@ -217,8 +210,7 @@ def analyze(
         meta = RunMetadata.from_result(predictions)
         df = predictions.to_dataframe()
     else:
-        # Everything was already completed by an interrupted run; outputs are
-        # built entirely from the journal.
+        # Everything was already completed earlier; build outputs from the journal.
         meta = journal.metadata() if journal else None
         df = None
 

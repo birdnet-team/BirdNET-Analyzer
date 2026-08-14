@@ -248,10 +248,8 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
             if file_path:
                 try:
-                    # Load the entire audio file
                     data, sr = audio.open_audio_file(file_path)
 
-                    # Generate spectrogram if requested
                     spectrogram = (
                         gr.update(
                             visible=True,

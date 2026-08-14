@@ -1,10 +1,7 @@
-"""
-PerformanceAssessor Module
+"""Evaluate classification model performance and plot the results.
 
-This module defines the `PerformanceAssessor` class to evaluate classification model
-performance.
-It includes methods to compute metrics like precision, recall, F1 score, AUROC, and
-accuracy, as well as utilities for generating related plots.
+The ``PerformanceAssessor`` computes precision, recall, F1, AUROC and accuracy for
+binary and multilabel tasks.
 """
 
 from typing import ClassVar, Literal
@@ -51,15 +48,12 @@ class PerformanceAssessor:
         Raises:
             ValueError: If any of the inputs are invalid.
         """
-        # Validate the number of classes
         if not isinstance(num_classes, int) or num_classes <= 0:
             raise ValueError("num_classes must be a positive integer.")
 
-        # Validate the threshold value
         if not isinstance(threshold, float) or not 0 < threshold < 1:
             raise ValueError("threshold must be a float between 0 and 1 (exclusive).")
 
-        # Validate class names
         if classes is not None:
             if not isinstance(classes, tuple):
                 raise ValueError("classes must be a tuple of strings.")
@@ -71,11 +65,9 @@ class PerformanceAssessor:
             if not all(isinstance(class_name, str) for class_name in classes):
                 raise ValueError("All elements in classes must be strings.")
 
-        # Validate the task type
         if task not in {"binary", "multilabel"}:
             raise ValueError("task must be 'binary' or 'multilabel'.")
 
-        # Validate the metrics list
         valid_metrics = ["accuracy", "recall", "precision", "f1", "ap", "auroc"]
         if not metrics_list:
             raise ValueError("metrics_list cannot be empty.")
@@ -84,14 +76,12 @@ class PerformanceAssessor:
                 f"Invalid metrics in {metrics_list}. Valid options are {valid_metrics}."
             )
 
-        # Assign instance variables
         self.num_classes = num_classes
         self.threshold = threshold
         self.classes = classes
         self.task: Literal["binary", "multilabel"] = task
         self.metrics_list = metrics_list
 
-        # Set default colors for plotting
         self.colors = ["#3A50B1", "#61A83E", "#D74C4C", "#A13FA1", "#D9A544", "#F3A6E0"]
 
     # Display labels for each supported metric id, in a stable order.
@@ -325,10 +315,8 @@ class PerformanceAssessor:
         Returns:
             None
         """
-        # Calculate metrics using the provided predictions and labels
         metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics)
 
-        # Choose the plotting method based on whether per-class metrics are required
         return (
             plotting.plot_metrics_per_class(metrics_df, self.colors)
             if per_class_metrics
@@ -361,7 +349,6 @@ class PerformanceAssessor:
         # even if a metric computation or the plotting call raises.
         original_threshold = self.threshold
 
-        # Define a range of thresholds for analysis
         thresholds = np.arange(0.05, 1.0, 0.05)
 
         # Exclude metrics that are not threshold-dependent
@@ -371,13 +358,11 @@ class PerformanceAssessor:
             if per_class_metrics:
                 class_names = self._class_names()
 
-                # Initialize a dictionary to store metric values per class
                 metric_values_dict_per_class = {
                     class_name: {metric: [] for metric in metrics_to_plot}
                     for class_name in class_names
                 }
 
-                # Compute metrics for each threshold
                 for thresh in thresholds:
                     self.threshold = thresh
                     metrics_df = self.calculate_metrics(
@@ -391,7 +376,6 @@ class PerformanceAssessor:
                                 metric_name
                             ].append(value)
 
-                # Convert lists to NumPy arrays
                 metric_values_dict_per_class = {
                     class_name: {
                         metric: np.array(values)
@@ -402,7 +386,6 @@ class PerformanceAssessor:
                     )
                 }
 
-                # Plot metrics across thresholds per class
                 fig = plotting.plot_metrics_across_thresholds_per_class(
                     thresholds,
                     metric_values_dict_per_class,
@@ -411,12 +394,10 @@ class PerformanceAssessor:
                     self.colors,
                 )
             else:
-                # Initialize a dictionary to store overall metric values
                 metric_values_dict = {
                     metric_name: [] for metric_name in metrics_to_plot
                 }
 
-                # Compute metrics for each threshold
                 for thresh in thresholds:
                     self.threshold = thresh
                     metrics_df = self.calculate_metrics(
@@ -427,13 +408,11 @@ class PerformanceAssessor:
                         value = metrics_df.loc[metric_label, "Overall"]
                         metric_values_dict[metric_name].append(value)
 
-                # Convert lists to NumPy arrays
                 metric_values_dict = {
                     metric_name: np.array(values)
                     for metric_name, values in metric_values_dict.items()
                 }
 
-                # Plot metrics across thresholds
                 fig = plotting.plot_metrics_across_thresholds(
                     thresholds,
                     metric_values_dict,
@@ -441,7 +420,6 @@ class PerformanceAssessor:
                     self.colors,
                 )
         finally:
-            # Always restore the original threshold
             self.threshold = original_threshold
 
         return fig
@@ -468,7 +446,6 @@ class PerformanceAssessor:
         Returns:
             None
         """
-        # Validate that predictions and labels are NumPy arrays and match in shape
         if not isinstance(predictions, np.ndarray):
             raise TypeError("predictions must be a NumPy array.")
         if not isinstance(labels, np.ndarray):
@@ -484,22 +461,18 @@ class PerformanceAssessor:
             )
 
         if self.task == "binary":
-            # Binarize predictions using the threshold
             y_pred = (predictions >= self.threshold).astype(int).flatten()
             y_true = labels.astype(int).flatten()
 
-            # Compute and normalize the confusion matrix
             conf_mat = confusion_matrix(y_true, y_pred, normalize="true")
             conf_mat = np.round(conf_mat, 2)
 
             return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)  # ty:ignore[invalid-argument-type]
 
         if self.task == "multilabel":
-            # Binarize predictions for multilabel classification
             y_pred = (predictions >= self.threshold).astype(int)
             y_true = labels.astype(int)
 
-            # Compute confusion matrices for each class
             conf_mats = []
             class_names = self.classes or [
                 f"Class {i}" for i in range(self.num_classes)

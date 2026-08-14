@@ -100,7 +100,6 @@ def embeddings(
     )
     deployment_id = _ensure_deployment(db)
 
-    # Iterate over files and segments in the encoding result.
     seg_dur = result.segment_duration_s
     seg_overlap = result.overlap_duration_s
     step = seg_dur - seg_overlap

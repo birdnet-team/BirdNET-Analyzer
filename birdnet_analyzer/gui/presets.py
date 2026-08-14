@@ -26,8 +26,7 @@ from birdnet_analyzer import params, settings, utils
 if TYPE_CHECKING:
     from birdnet_analyzer.gui.state import TabState
 
-# The file entries of a preset. They belong to components that are deliberately not
-# persisted between sessions, so they live in the preset only.
+# Preset-only file entries; their components are deliberately not persisted.
 SPECIES_FILE_KEY = "species_list_file"
 CLASSIFIER_FILE_KEY = "custom_classifier_file"
 
