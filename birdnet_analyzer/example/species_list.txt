@@ -1,8 +1,8 @@
-Accipiter cooperii_Cooper's Hawk
 Agelaius phoeniceus_Red-winged Blackbird
 Anas platyrhynchos_Mallard
 Anas rubripes_American Black Duck
 Ardea herodias_Great Blue Heron
+Astur cooperii_Cooper's Hawk
 Baeolophus bicolor_Tufted Titmouse
 Branta canadensis_Canada Goose
 Bucephala albeola_Bufflehead
@@ -11,9 +11,9 @@ Buteo jamaicensis_Red-tailed Hawk
 Cardinalis cardinalis_Northern Cardinal
 Certhia americana_Brown Creeper
 Colaptes auratus_Northern Flicker
-Columba livia_Rock Pigeon
+Columba livia_Rock Dove
 Corvus brachyrhynchos_American Crow
-Corvus corax_Common Raven
+Corvus corax_Northern Raven
 Cyanocitta cristata_Blue Jay
 Cygnus olor_Mute Swan
 Dryobates pubescens_Downy Woodpecker
@@ -24,7 +24,7 @@ Haemorhous mexicanus_House Finch
 Haemorhous purpureus_Purple Finch
 Haliaeetus leucocephalus_Bald Eagle
 Junco hyemalis_Dark-eyed Junco
-Larus argentatus_Herring Gull
+Larus argentatus_European Herring Gull
 Larus delawarensis_Ring-billed Gull
 Lophodytes cucullatus_Hooded Merganser
 Melanerpes carolinus_Red-bellied Woodpecker
@@ -41,7 +41,7 @@ Sitta carolinensis_White-breasted Nuthatch
 Spinus pinus_Pine Siskin
 Spinus tristis_American Goldfinch
 Spizelloides arborea_American Tree Sparrow
-Sturnus vulgaris_European Starling
+Sturnus vulgaris_Common Starling
 Thryothorus ludovicianus_Carolina Wren
 Turdus migratorius_American Robin
 Zenaida macroura_Mourning Dove
