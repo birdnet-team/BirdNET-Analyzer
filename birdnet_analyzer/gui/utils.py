@@ -16,6 +16,7 @@ import gradio as gr
 import webview
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
 
+import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
 from birdnet_analyzer import settings, utils
@@ -796,25 +797,25 @@ def bandpass_settings(state: TabState):
     return fmin_number, fmax_number
 
 
-def locale(state: TabState, model_choice: str, visible=True):
+def locale(state: TabState, languages: list[str], visible=True):
     """Creates the gradio elements for locale selection
 
     Args:
         state: The persisted settings of the tab the dropdown belongs to.
-        model_choice: The selected model; only its version's languages are offered.
+        languages: The locales offered as choices - the set the model that will run
+            supports, so a locale it would reject can't be picked. `state.persist`
+            drops a persisted value that is not among them back to the English default,
+            so pass the union when the dropdown is hidden (see ``model_selection``) to
+            avoid discarding a still-valid saved locale.
         visible: If True the dropdown is shown on init.
 
     Returns:
         The dropdown element.
     """
-    # Only the selected model version's languages are offered; a locale the version
-    # lacks would be rejected by the library at load time. `state.persist` drops a
-    # persisted value that is not among these choices back to the English default,
-    # and `on_model_selection_change` keeps the choices in sync as the model changes.
     return state.persist(
         "locale_dropdown",
         gr.Dropdown,
-        choices=model_languages(model_choice),
+        choices=languages,
         value=cast("str", MODEL_LANGUAGE_EN_US),
         visible=visible,
         label=loc.localize("analyze-locale-dropdown-label"),
@@ -1076,8 +1077,14 @@ def model_selection(state: TabState, opened=True):
                         gr.update(value=labels, visible=True),
                     )
 
+        # When shown, restrict the locale to the model's languages so an unsupported
+        # one can't be picked; when hidden (Perch/custom), offer the union so a locale
+        # saved under a different model version is not dropped by persist validation.
+        show_locale = is_birdnet_model(selected_model)
         locale_settings = locale(
-            state, selected_model, visible=is_birdnet_model(selected_model)
+            state,
+            model_languages(selected_model) if show_locale else cfg.ALL_MODEL_LANGUAGES,
+            visible=show_locale,
         )
 
         species_list_df = gr.List(

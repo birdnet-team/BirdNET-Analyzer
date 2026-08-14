@@ -30,7 +30,8 @@ jobs:
     env:
       IS_GITHUB_RUNNER: "true"
       # Fixed, cacheable location for birdnet's model/label downloads. The acoustic
-      # (~120 MB), geo (~35 MB) and perch-v2 (~380 MB) models all land here, and
+      # (3.0 ONNX ~520 MB, 2.4 TF ~120 MB), geo (~15 MB) and perch-v2 (~380 MB)
+      # models all land here, and
       # birdnet reads this env var at import time and skips the download when the
       # files already exist - so a cache hit avoids re-fetching them from tuc.cloud
       # on every job. Placed under the workspace because the `runner` context isn't
@@ -75,7 +76,9 @@ jobs:
       # breaks that cycle and lets the cache actually populate. Mirrors the models
       # baked into the Docker image.
       - name: Pre-download birdnet models
-        run: python -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '2.4', 'tf', lang='en_us')"
+        # Match what the suite loads: acoustic 3.0 ONNX + geo 3.0 ONNX (the default
+        # analyze/geomodel path) and acoustic 2.4 TF (embeddings/custom-classifier).
+        run: python -c "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
       - name: Run tests
         run: |
           python -m pytest

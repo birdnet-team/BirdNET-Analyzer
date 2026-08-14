@@ -35,13 +35,17 @@ RUN python3 -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.tom
 # on first use, and under the documented `docker run --rm` usage every run is a
 # first run: the download dominated the runtime of a short analysis and made the
 # image unusable without network access. These are the same birdnet.load() calls
-# the runtime makes (see run_inference/run_geomodel in birdnet_analyzer/model_utils.py),
-# so the cache they populate under /root/.local/share/birdnet is exactly what
-# the container - also root - looks for later. The geo model is only needed for
-# --lat/--lon species filtering but is cheap relative to the image. "2.4"/en_us
-# track the defaults in birdnet_analyzer/config.py and model_utils.py; if those
-# move, the image simply falls back to downloading at runtime.
-RUN python3 -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '2.4', 'tf', lang='en_us')"
+# the default runtime path makes (see run_inference/run_geomodel in
+# birdnet_analyzer/model_utils.py), so the cache they populate under
+# /root/.local/share/birdnet is exactly what the container - also root - looks for
+# later. The geo model is only needed for --lat/--lon species filtering but is cheap
+# (~15 MB); the acoustic 3.0 ONNX model is large (~520 MB, fp32 - the only acoustic
+# ONNX precision), which the switch off TensorFlow trades for. 2.4/perch/custom and
+# training still use the (installed) TensorFlow backend but are not baked - they fall
+# back to downloading on first use. "3.0"/"onnx"/en_us track the defaults in
+# birdnet_analyzer/config.py and model_utils.py; if those move, the image simply
+# falls back to downloading at runtime.
+RUN python3 -c "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
 
 # Import all scripts
 COPY . ./
