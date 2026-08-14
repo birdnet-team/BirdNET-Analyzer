@@ -12,7 +12,9 @@ on:
       ]
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, edited]
+    # See the note in ci.yml: `edited` would re-run this on title/description
+    # edits, with no commit behind them.
+    types: [opened, synchronize, reopened]
     paths:
       [
         birdnet_analyzer/**,

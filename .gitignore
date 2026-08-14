@@ -1,6 +1,51 @@
-# AI
+# AI agents
+# Shared instructions are tracked (AGENTS.md, CLAUDE.md). What is ignored below is
+# per-developer state: chat history, indexes, caches, and personal overrides. If a
+# tool's config turns out to be worth sharing, un-ignore that path deliberately.
+AGENTS.local.md
+CLAUDE.local.md
+
+# Claude Code
 .claude
-CLAUDE.md
+
+# OpenAI Codex
+.codex/
+
+# Gemini CLI
+.gemini/
+
+# Cursor
+.cursor/
+.cursorignore
+.cursorindexingignore
+
+# Windsurf
+.windsurf/
+.windsurfrules
+
+# Cline / Roo Code
+.roo/
+.clinerules/
+
+# Serena / SpecStory
+.serena/
+.specstory/
+
+# Continue
+.continue/
+
+# Aider
+.aider*
+
+# JetBrains Junie
+.junie/
+
+# Amazon Q / Kiro
+.amazonq/
+.kiro/
+
+# opencode
+.opencode/
 
 # UV
 uv.lock

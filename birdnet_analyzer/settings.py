@@ -40,7 +40,7 @@ MAX_ERROR_LOG_SIZE = 1024 * 1024
 LOG_FILE = str(APPDIR / "logs.txt")
 MAX_LOG_SIZE = 5 * 1024 * 1024
 GUI_SETTINGS_PATH = str(APPDIR / "gui-settings.json")
-LANG_DIR = str(Path(SCRIPT_DIR).parent / "lang")
+LANG_DIR = str(Path(SCRIPT_DIR) / "lang")
 STATE_SETTINGS_PATH = str(APPDIR / "state.json")
 TAB_SETTINGS_KEY = "tab-settings"
 

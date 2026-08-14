@@ -1,11 +1,12 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "birdnet_analyzer"
-version = "2.4.0"
-license = { text = "MIT" }
+dynamic = ["version"]
+license = "MIT"
+license-files = ["LICENSE"]
 description = "BirdNET analyzer for scientific audio data processing and bird classification."
 authors = [{ name = "Stefan Kahl" }]
 maintainers = [{ name = "Josef Haupt" }, { name = "Max Mauermann" }]
@@ -29,13 +30,18 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "librosa>=0.11",
-    "resampy",
     "tensorflow>=2.20",
-    "pyarrow>=22.0.0;platform_system=='Darwin'", # https://github.com/apache/arrow/issues/40088
+    "keras",
+    "numpy",
+    "scipy",
+    "soundfile",
+    "scikit-learn",
+    # parquet result tables; macOS needs >=22 for https://github.com/apache/arrow/issues/40088
+    "pyarrow;platform_system!='Darwin'",
+    "pyarrow>=22.0.0;platform_system=='Darwin'",
     "tqdm",
     "pandas",
     "matplotlib",
@@ -53,27 +59,30 @@ gui = [
     "gradio==6.20.0",
     "pywebview>=6.1,<7.0",
     "plotly[express]",
+    "pillow",
+    "psutil",
     "pywin32;platform_system=='Windows'",
     "qtpy;platform_system=='Linux'",
     "PyGObject;platform_system=='Linux'",
 ]
-embeddings = ["perch-hoplite>=1.0.1,<2.0.0"]
+embeddings = ["perch-hoplite>=1.0.1,<2.0.0", "ml-collections"]
+all = ["birdnet-analyzer[gui]"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-argparse"]
-tests = ["pytest", "pytest-timeout", "pytest-order"]
+tests = ["pytest", "pytest-timeout"]
 gui-tests = ["birdnet-analyzer[tests]", "gradio==6.20.0"]
 dev = ["birdnet_analyzer[tests]", "birdnet_analyzer[docs]", "ruff==0.15.10"]
 
 [project.scripts]
 birdnet-analyze = "birdnet_analyzer.analyze.cli:main"
 birdnet-embeddings = "birdnet_analyzer.embeddings.cli:main"
-birdnet-evaluate = "birdnet_analyzer.evaluation.__init__:main"
+birdnet-evaluate = "birdnet_analyzer.evaluation:main"
 birdnet-search = "birdnet_analyzer.search.cli:main"
 birdnet-train = "birdnet_analyzer.train.cli:main"
 birdnet-segments = "birdnet_analyzer.segments.cli:main"
 birdnet-species = "birdnet_analyzer.species.cli:main"
 
 [project.gui-scripts]
-birdnet-gui = "birdnet_analyzer.gui.__init__:main"
+birdnet-gui = "birdnet_analyzer.gui:main"
 
 [project.urls]
 Homepage = "https://birdnet.cornell.edu/birdnet"
@@ -97,8 +106,12 @@ packages = [
     "birdnet_analyzer.evaluation.assessment",
 ]
 
+[tool.setuptools.dynamic]
+version = { attr = "birdnet_analyzer.__version__" }
+
 [tool.setuptools.package-data]
 birdnet_analyzer = [
+    "py.typed",
     "eBird_taxonomy_codes_2024E.json",
     "lang/*",
     "gui/assets/**/*",
