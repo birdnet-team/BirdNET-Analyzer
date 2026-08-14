@@ -25,10 +25,25 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build
+          pip install build twine
 
       - name: Build package
         run: python -m build
+
+      - name: Check distribution metadata
+        run: python -m twine check --strict dist/*
+
+      - name: Verify the built version matches the release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          BUILT=$(ls dist/*.tar.gz | sed -E 's|.*/birdnet_analyzer-(.*)\.tar\.gz|\1|')
+          echo "release tag: $RELEASE_TAG / built version: $BUILT"
+          if [ "${RELEASE_TAG#v}" != "$BUILT" ]; then
+            echo "::error::Release tag '$RELEASE_TAG' does not match the built version '$BUILT'." \
+                 "Update __version__ in birdnet_analyzer/__init__.py before tagging."
+            exit 1
+          fi
 
       - name: Publish to PyPI (Trusted)
         uses: pypa/gh-action-pypi-publish@release/v1

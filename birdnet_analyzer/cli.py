@@ -13,7 +13,6 @@ from birdnet.globals import (
 from birdnet_analyzer.config import AUTOTUNE_METRICS, TRAINED_MODEL_OUTPUT_FORMATS
 from birdnet_analyzer.logs import setup_logging
 
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ASCII_LOGO = r"""                        
                           .                                     
                        .-=-                                     
@@ -532,8 +531,6 @@ def analyzer_parser():
     I/O operations, bandpass filtering, species selection, sigmoid function parameters,
     overlap settings, audio speed adjustments, threading, minimum confidence levels,
     locale settings, and batch size.
-    If the environment variable "IS_GITHUB_RUNNER" is set to "true", a simplified parser
-    description is used. Otherwise, a detailed ASCII logo and usage instructions are included.
     The parser also defines a custom action `UniqueSetAction` to ensure that the `--rtype`
     argument values are stored as a set of unique, lowercase strings.
     Arguments:
@@ -716,57 +713,6 @@ def search_parser():
     return parser
 
 
-def client_parser():
-    """
-    Creates and returns an argument parser for the client that queries an analyzer API endpoint server.
-    The parser includes the following arguments:
-    - --host: Host name or IP address of the API endpoint server (default: "localhost").
-    - -p, --port: Port of the API endpoint server (default: 8080).
-    - --pmode: Score pooling mode, with possible values 'avg' or 'max' (default: "avg").
-    - --num_results: Number of results per request (default: 5).
-    - --save: Flag to define if files should be stored on the server.
-    The parser also includes arguments from the following parent parsers:
-    - io_args()
-    - species_args()
-    - sigmoid_args()
-    - overlap_args()
-    Returns:
-        argparse.ArgumentParser: Configured argument parser for the client.
-    """
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[
-            io_args(),
-            species_args(),
-            sigmoid_args(),
-            overlap_args(),
-            verbosity_args(),
-        ],
-    )
-
-    parser.add_argument(
-        "--host",
-        default="localhost",
-        help="Host name or IP address of API endpoint server.",
-    )
-    parser.add_argument(
-        "-p", "--port", type=int, default=8080, help="Port of API endpoint server."
-    )
-    parser.add_argument(
-        "--pmode", default="avg", help="Score pooling mode. Values in ['avg', 'max']."
-    )
-    parser.add_argument(
-        "--num_results", type=int, default=5, help="Number of results per request."
-    )
-    parser.add_argument(
-        "--save",
-        action="store_true",
-        help="Define if files should be stored on server.",
-    )
-
-    return parser
-
-
 def segments_parser():
     """
     Creates an argument parser for extracting segments from audio files based on BirdNET detections.
@@ -835,38 +781,6 @@ def segments_parser():
     return parser
 
 
-def server_parser():
-    """
-    Creates and configures an argument parser for the API endpoint server.
-    The parser includes arguments for specifying the host, port, and storage path for uploaded files.
-    It also inherits arguments from `threads_args` and `locale_args`.
-    Returns:
-        argparse.ArgumentParser: Configured argument parser with server-specific options.
-    """
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[threads_args(), locale_args(), verbosity_args()],
-    )
-
-    parser.add_argument(
-        "--host",
-        default="0.0.0.0",
-        help="Host name or IP address of API endpoint server.",
-    )
-    parser.add_argument(
-        "-p", "--port", type=int, default=8080, help="Port of API endpoint server."
-    )
-    parser.add_argument(
-        "--spath",
-        default="uploads/"
-        if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true"
-        else os.path.join(SCRIPT_DIR, "uploads"),
-        help="Path to folder where uploaded files should be stored.",
-    )
-
-    return parser
-
-
 def species_parser():
     """
     Creates an argument parser for retrieving a list of species for a given location using BirdNET.
@@ -914,11 +828,9 @@ def train_parser():
             verbosity_args(),
         ],
     )
-    c = (
-        "checkpoints/custom/Custom_Classifier"
-        if os.environ.get("IS_GITHUB_RUNNER", "false").lower() == "true"
-        else os.path.join(SCRIPT_DIR, "checkpoints/custom/Custom_Classifier")
-    )
+    # Relative to the working directory: writing into the installed package
+    # directory fails on read-only installs and loses the classifier on upgrade.
+    c = os.path.join("checkpoints", "custom", "Custom_Classifier")
 
     parser.add_argument(
         "audio_input",

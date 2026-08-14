@@ -346,7 +346,7 @@ def build_settings():
             with gr.Row():
                 options = [
                     lang.rsplit(".", 1)[0]
-                    for lang in os.listdir(loc.LANGUAGE_DIR)
+                    for lang in os.listdir(settings.LANG_DIR)
                     if lang.endswith(".json")
                 ]
                 languages_dropdown = gr.Dropdown(
