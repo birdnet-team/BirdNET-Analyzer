@@ -6,6 +6,7 @@ Can be used to train a custom classifier with new training data.
 from __future__ import annotations
 
 import csv
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
@@ -20,6 +21,7 @@ from birdnet_analyzer.config import (
     ALLOWED_FILETYPES,
     AUTOTUNE_METRICS,
     NON_EVENT_CLASSES,
+    TRAIN_PARAMS_SUFFIX,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
 
@@ -34,6 +36,8 @@ ENCODE_BATCH_SIZE = 4
 # pipeline in a single batched call. Bounds the peak memory of buffered raw audio
 # (~0.5 MiB per 3 s float32 segment at 48 kHz) while keeping per-call overhead low.
 ENCODE_CHUNK_SIZE = 1024
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -134,8 +138,7 @@ def _read_and_crop_file(
             speed=audio_speed,
         )
     except Exception as e:
-        print(f"\t Error when loading file {f}", flush=True)
-        print(f"\t {e}", flush=True)
+        logger.error(f"\t Error when loading file {f}\n\t {e}", exc_info=e)
         return [], []
 
     if crop_mode == "center":
@@ -153,6 +156,32 @@ def _read_and_crop_file(
     labels = [label_vector] * len(sig_splits)
 
     return sig_splits, labels
+
+
+def _check_input_folders(audio_input: str, train_folders: list[str]):
+    """Reject training folders without supported audio files before model setup."""
+    empty_folders = []
+
+    for folder in train_folders:
+        folder_path = os.path.join(audio_input, folder)
+        has_audio_file = any(
+            entry.is_file()
+            and not entry.name.startswith(".")
+            and entry.name.rsplit(".", 1)[-1].lower() in ALLOWED_FILETYPES
+            for entry in os.scandir(folder_path)
+        )
+
+        if not has_audio_file:
+            empty_folders.append(folder)
+
+    if empty_folders:
+        folder_list = ", ".join(sorted(empty_folders))
+        raise ValueError(
+            "The following training data folders do not contain any supported audio "
+            f"files: {folder_list}",
+            "validation-no-audio-files-in-training-folders",
+            folder_list,
+        )
 
 
 def _load_training_data(
@@ -241,9 +270,11 @@ def _load_training_data(
 
     if is_multi_label and upsampling_ratio > 0 and upsampling_mode != "repeat":
         raise Exception(
-            "Only repeat-upsampling ist available for multi-label",
+            "Only repeat-upsampling is available for multi-label",
             "validation-only-repeat-upsampling-for-multi-label",
         )
+
+    _check_input_folders(audio_input, train_folders)
 
     x_train, y_train, x_test, y_test = [], [], [], []
     model = load("acoustic", "2.4", "tf")
@@ -406,7 +437,7 @@ def _load_training_data(
                 is_multi_label=is_multi_label,
             )
         except Exception as e:
-            print(f"\t...error saving cache: {e}", flush=True)
+            logger.warning(f"\t...error saving cache: {e}")
 
     return x_train, y_train, x_test, y_test, valid_labels, is_binary, is_multi_label
 
@@ -485,13 +516,12 @@ def train_model(
         save_cache_to=save_cache_to,
         progress_callback=on_data_load_end,
     )
-    print(
+    logger.info(
         f"...Done. Loaded {x_train_full.shape[0]} training samples "
-        f"and {y_train_full.shape[1]} labels.",
-        flush=True,
+        f"and {y_train_full.shape[1]} labels."
     )
     if len(x_val_full) > 0:
-        print(f"...Loaded {x_val_full.shape[0]} test samples.", flush=True)
+        logger.info(f"...Loaded {x_val_full.shape[0]} test samples.")
 
     if autotune:
         import gc
@@ -753,54 +783,51 @@ def train_model(
     try:
         # Remove activation from last layer before saving
         classifier.pop()
-        params = (
-            [
-                "Hidden units",
-                "Dropout",
-                "Batchsize",
-                "Learning rate",
-                "Weight decay",
-                "Crop mode",
-                "Crop overlap",
-                "Audio speed",
-                "Upsampling mode",
-                "Upsampling ratio",
-                "use mixup",
-                "use label smoothing",
-                "use focal loss",
-                "focal loss alpha",
-                "focal loss gamma",
-                "BirdNET Model version",
-            ],
-            [
-                hidden_units,
-                dropout,
-                batch_size,
-                learning_rate,
-                weight_decay,
-                crop_mode,
-                overlap,
-                audio_speed,
-                upsampling_mode,
-                upsampling_ratio,
-                mixup,
-                label_smoothing,
-                use_focal_loss,
-                focal_loss_alpha,
-                focal_loss_gamma,
-                "2.4",
-            ],
+        formats = [model_formats] if isinstance(model_formats, str) else model_formats
+        classifier_path = output.removesuffix(".tflite")
+
+        # The settings the classifier was trained with, saved next to it both as a
+        # record and so the GUI can load them again. When autotune ran, the values
+        # are the tuned ones.
+        utils.save_params_file(
+            classifier_path + TRAIN_PARAMS_SUFFIX,
+            {
+                "Classifier name": os.path.basename(classifier_path),
+                "Model formats": ", ".join(formats),
+                "Model save mode": model_save_mode,
+                "Bandpass filter minimum": fmin,
+                "Bandpass filter maximum": fmax,
+                "Audio speed": audio_speed,
+                "Crop mode": crop_mode,
+                "Crop overlap": overlap,
+                "Autotune": autotune,
+                "Autotune trials": autotune_trials,
+                "Autotune folds": autotune_n_splits,
+                "Autotune repeats": autotune_n_repeats,
+                "Epochs": epochs,
+                "Batch size": batch_size,
+                "Learning rate": learning_rate,
+                "Hidden units": hidden_units,
+                "Dropout": dropout,
+                "Weight decay": weight_decay,
+                "Use label smoothing": label_smoothing,
+                "Use mixup": mixup,
+                "Use focal loss": use_focal_loss,
+                "Focal loss gamma": focal_loss_gamma,
+                "Focal loss alpha": focal_loss_alpha,
+                "Upsampling mode": upsampling_mode,
+                "Upsampling ratio": upsampling_ratio,
+                "BirdNET model version": "2.4",
+            },
         )
 
-        if "tflite" in model_formats:
+        if "tflite" in formats:
             model.save_linear_classifier(
-                classifier, output, labels, mode=model_save_mode, params=params
+                classifier, output, labels, mode=model_save_mode
             )
-        if "raven" in model_formats:
-            model.save_raven_model(
-                classifier, output, labels, mode=model_save_mode, params=params
-            )
-        if "detached" in model_formats:
+        if "raven" in formats:
+            model.save_raven_model(classifier, output, labels, mode=model_save_mode)
+        if "detached" in formats:
             model.save_detached_classifier(
                 classifier,
                 output,
@@ -962,8 +989,8 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
 
     metrics = {}
 
-    print("\nModel Evaluation:")
-    print("=================")
+    logger.info("\nModel Evaluation:")
+    logger.info("=================")
 
     # Calculate metrics for each class
     precisions_default = []
@@ -978,13 +1005,15 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     optimal_thresholds = {}
 
     # Print the metric calculation method that's being used
-    print(
+    logger.info(
         "\nNote: The AUPRC and AUROC metrics calculated during post-training evaluation"
         " may differ"
     )
-    print("from training history values due to different calculation methods:")
-    print("  - Training history uses Keras metrics calculated over batches")
-    print("  - Evaluation uses scikit-learn metrics calculated over the entire dataset")
+    logger.info("from training history values due to different calculation methods:")
+    logger.info("  - Training history uses Keras metrics calculated over batches")
+    logger.info(
+        "  - Evaluation uses scikit-learn metrics calculated over the entire dataset"
+    )
 
     for i in range(y_test.shape[1]):
         try:
@@ -1036,25 +1065,27 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
                 "threshold": class_threshold,
             }
 
-            print(f"\nClass: {labels[i]}")
-            print("  Default threshold (0.5):")
-            print(f"    Precision: {class_precision_default:.4f}")
-            print(f"    Recall:    {class_recall_default:.4f}")
-            print(f"    F1 Score:  {class_f1_default:.4f}")
-            print(f"  Optimized threshold ({class_threshold:.2f}):")
-            print(f"    Precision: {class_precision_opt:.4f}")
-            print(f"    Recall:    {class_recall_opt:.4f}")
-            print(f"    F1 Score:  {class_f1_opt:.4f}")
-            print(f"  AUPRC:     {class_auprc:.4f}")
-            print(f"  AUROC:     {class_auroc:.4f}")
-            print("  Confusion matrix (optimized threshold):")
-            print(f"    True Positives:  {tp}")
-            print(f"    False Positives: {fp}")
-            print(f"    True Negatives:  {tn}")
-            print(f"    False Negatives: {fn}")
+            logger.info(f"\nClass: {labels[i]}")
+            logger.info("  Default threshold (0.5):")
+            logger.info(f"    Precision: {class_precision_default:.4f}")
+            logger.info(f"    Recall:    {class_recall_default:.4f}")
+            logger.info(f"    F1 Score:  {class_f1_default:.4f}")
+            logger.info(f"  Optimized threshold ({class_threshold:.2f}):")
+            logger.info(f"    Precision: {class_precision_opt:.4f}")
+            logger.info(f"    Recall:    {class_recall_opt:.4f}")
+            logger.info(f"    F1 Score:  {class_f1_opt:.4f}")
+            logger.info(f"  AUPRC:     {class_auprc:.4f}")
+            logger.info(f"  AUROC:     {class_auroc:.4f}")
+            logger.info("  Confusion matrix (optimized threshold):")
+            logger.info(f"    True Positives:  {tp}")
+            logger.info(f"    False Positives: {fp}")
+            logger.info(f"    True Negatives:  {tn}")
+            logger.info(f"    False Negatives: {fn}")
 
         except Exception as e:
-            print(f"Error calculating metrics for class {labels[i]}: {e}")
+            logger.error(
+                f"Error calculating metrics for class {labels[i]}: {e}", exc_info=e
+            )
 
     # Calculate macro-averaged metrics for both default and optimized thresholds
     metrics["macro_precision_default"] = np.mean(precisions_default)
@@ -1068,28 +1099,28 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
     metrics["class_metrics"] = class_metrics
     metrics["optimal_thresholds"] = optimal_thresholds
 
-    print("\nMacro-averaged metrics:")
-    print("  Default threshold (0.5):")
-    print(f"    Precision: {metrics['macro_precision_default']:.4f}")
-    print(f"    Recall:    {metrics['macro_recall_default']:.4f}")
-    print(f"    F1 Score:  {metrics['macro_f1_default']:.4f}")
-    print("  Optimized thresholds:")
-    print(f"    Precision: {metrics['macro_precision_opt']:.4f}")
-    print(f"    Recall:    {metrics['macro_recall_opt']:.4f}")
-    print(f"    F1 Score:  {metrics['macro_f1_opt']:.4f}")
-    print(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
-    print(f"  AUROC:     {metrics['macro_auroc']:.4f}")
+    logger.info("\nMacro-averaged metrics:")
+    logger.info("  Default threshold (0.5):")
+    logger.info(f"    Precision: {metrics['macro_precision_default']:.4f}")
+    logger.info(f"    Recall:    {metrics['macro_recall_default']:.4f}")
+    logger.info(f"    F1 Score:  {metrics['macro_f1_default']:.4f}")
+    logger.info("  Optimized thresholds:")
+    logger.info(f"    Precision: {metrics['macro_precision_opt']:.4f}")
+    logger.info(f"    Recall:    {metrics['macro_recall_opt']:.4f}")
+    logger.info(f"    F1 Score:  {metrics['macro_f1_opt']:.4f}")
+    logger.info(f"  AUPRC:     {metrics['macro_auprc']:.4f}")
+    logger.info(f"  AUROC:     {metrics['macro_auroc']:.4f}")
 
     # Calculate class distribution in test set
     class_counts = y_test.sum(axis=0)
     total_samples = len(y_test)
     class_distribution = {}
 
-    print("\nClass distribution in test set:")
+    logger.info("\nClass distribution in test set:")
     for i, count in enumerate(class_counts):
         percentage = count / total_samples * 100
         class_distribution[labels[i]] = {"count": int(count), "percentage": percentage}
-        print(f"  {labels[i]}: {int(count)} samples ({percentage:.2f}%)")
+        logger.info(f"  {labels[i]}: {int(count)} samples ({percentage:.2f}%)")
 
     metrics["class_distribution"] = class_distribution
 

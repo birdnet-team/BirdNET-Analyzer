@@ -300,6 +300,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                                             fmin=settings["BANDPASS_FMIN"],
                                             fmax=settings["BANDPASS_FMAX"],
                                             fig_size=(6, 3),
+                                            **gu.spectrogram_settings(),
                                         )
                                         plot_audio_state = gr.State(
                                             [
@@ -468,7 +469,9 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 sig = [audio.split_signal(sig, rate, 3.0, crop_overlap, 1.0)[0]][0]
 
             sig = np.array(sig, dtype="float32")
-            spec = utils.spectrogram_from_audio(sig, rate, fig_size=(10, 4))
+            spec = utils.spectrogram_from_audio(
+                sig, rate, fig_size=(10, 4), **gu.spectrogram_settings()
+            )
 
             return spec, [], {}
 

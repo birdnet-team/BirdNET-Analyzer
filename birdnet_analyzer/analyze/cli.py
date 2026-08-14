@@ -9,11 +9,12 @@ def main():
     import os
     from multiprocessing import freeze_support
 
-    from birdnet_analyzer import cli
+    from birdnet_analyzer import cli, params
 
     freeze_support()
 
     parser = cli.analyzer_parser()
+    cli.apply_params_file_defaults(parser, params.load_analysis_params)
     args = parser.parse_args()
 
     with contextlib.suppress(Exception):
@@ -40,5 +41,6 @@ def main():
 
     analyze_args = vars(args)
     analyze_args.pop("use_perch")  # handled via model param
+    analyze_args.pop("load_params")  # already applied as defaults
 
     analyze(**analyze_args)

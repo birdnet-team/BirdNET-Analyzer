@@ -1,6 +1,7 @@
 # ruff: noqa: PLW0603
 import base64
 import io
+import logging
 import multiprocessing
 import os
 import platform
@@ -23,6 +24,7 @@ from birdnet_analyzer.gui.state import TabState
 warnings.filterwarnings("ignore")
 loc.load_local_state()
 
+logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 _CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
 _PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
@@ -56,6 +58,70 @@ _SPECIES_KEYS = Literal[
     "map_plot",
 ]
 TAB_BUILDER_RESULT = tuple[gr.Component, gr.Component, gr.Component] | None
+
+_SETTINGS_TAB_ID = "settings"
+_SPECTROGRAM_COLORMAPS = ["viridis", "magma", "plasma", "inferno", "Greys", "jet"]
+_SPECTROGRAM_FFT_SIZES = [256, 512, 1024, 2048, 4096]
+_SPECTROGRAM_FREQ_SCALES = ["linear", "log"]
+_SPECTROGRAM_DEFAULTS = {
+    "spectrogram_colormap_dropdown": "viridis",
+    "spectrogram_fft_size_dropdown": 1024,
+    "spectrogram_overlap_slider": 50,
+    "spectrogram_dynamic_range_slider": 80,
+    "spectrogram_freq_scale_radio": "linear",
+}
+
+
+def spectrogram_settings() -> dict:
+    """Reads the spectrogram settings the user chose in the settings tab.
+
+    The values are read from disk at call time, so a change in the settings tab shows
+    in the next spectrogram that is drawn, without a restart.
+
+    Returns:
+        The keyword arguments for `utils.spectrogram_from_file` and
+        `utils.spectrogram_from_audio`.
+    """
+    state = TabState(_SETTINGS_TAB_ID)
+    defaults = _SPECTROGRAM_DEFAULTS
+    n_fft = cast(
+        "int",
+        state.get(
+            "spectrogram_fft_size_dropdown",
+            defaults["spectrogram_fft_size_dropdown"],
+            choices=_SPECTROGRAM_FFT_SIZES,
+        ),
+    )
+    overlap = cast(
+        "float",
+        state.get(
+            "spectrogram_overlap_slider",
+            defaults["spectrogram_overlap_slider"],
+            minimum=0,
+            maximum=90,
+        ),
+    )
+
+    return {
+        "n_fft": n_fft,
+        "hop_length": max(1, round(n_fft * (1 - overlap / 100))),
+        "colormap": state.get(
+            "spectrogram_colormap_dropdown",
+            defaults["spectrogram_colormap_dropdown"],
+            choices=_SPECTROGRAM_COLORMAPS,
+        ),
+        "top_db": state.get(
+            "spectrogram_dynamic_range_slider",
+            defaults["spectrogram_dynamic_range_slider"],
+            minimum=30,
+            maximum=120,
+        ),
+        "freq_scale": state.get(
+            "spectrogram_freq_scale_radio",
+            defaults["spectrogram_freq_scale_radio"],
+            choices=_SPECTROGRAM_FREQ_SCALES,
+        ),
+    }
 
 
 def gui_runtime_error_handler(f):
@@ -310,6 +376,95 @@ def build_settings():
                     scale=10,
                 )
 
+            state = TabState(_SETTINGS_TAB_ID)
+
+            with gr.Accordion(
+                loc.localize("settings-tab-spectrogram-accordion-label"), open=False
+            ):
+                gr.Markdown(loc.localize("settings-tab-spectrogram-info"))
+
+                with gr.Row():
+                    state.persist(
+                        "spectrogram_colormap_dropdown",
+                        gr.Dropdown,
+                        choices=[
+                            ("Viridis", "viridis"),
+                            ("Magma", "magma"),
+                            ("Plasma", "plasma"),
+                            ("Inferno", "inferno"),
+                            (
+                                loc.localize(
+                                    "settings-tab-spectrogram-colormap-grayscale-option"
+                                ),
+                                "Greys",
+                            ),
+                            ("Jet", "jet"),
+                        ],
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_colormap_dropdown"],
+                        label=loc.localize("settings-tab-spectrogram-colormap-label"),
+                        info=loc.localize("settings-tab-spectrogram-colormap-info"),
+                        interactive=True,
+                    )
+                    state.persist(
+                        "spectrogram_freq_scale_radio",
+                        gr.Radio,
+                        choices=[
+                            (
+                                loc.localize(
+                                    "settings-tab-spectrogram-freq-scale-linear-option"
+                                ),
+                                "linear",
+                            ),
+                            (
+                                loc.localize(
+                                    "settings-tab-spectrogram-freq-scale-log-option"
+                                ),
+                                "log",
+                            ),
+                        ],
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_freq_scale_radio"],
+                        label=loc.localize("settings-tab-spectrogram-freq-scale-label"),
+                        info=loc.localize("settings-tab-spectrogram-freq-scale-info"),
+                        interactive=True,
+                    )
+
+                with gr.Row():
+                    state.persist(
+                        "spectrogram_fft_size_dropdown",
+                        gr.Dropdown,
+                        choices=_SPECTROGRAM_FFT_SIZES,
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_fft_size_dropdown"],
+                        label=loc.localize("settings-tab-spectrogram-fft-size-label"),
+                        info=loc.localize("settings-tab-spectrogram-fft-size-info"),
+                        interactive=True,
+                    )
+                    state.persist(
+                        "spectrogram_overlap_slider",
+                        gr.Slider,
+                        minimum=0,
+                        maximum=90,
+                        step=5,
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_overlap_slider"],
+                        label=loc.localize("settings-tab-spectrogram-overlap-label"),
+                        info=loc.localize("settings-tab-spectrogram-overlap-info"),
+                        interactive=True,
+                    )
+                    state.persist(
+                        "spectrogram_dynamic_range_slider",
+                        gr.Slider,
+                        minimum=30,
+                        maximum=120,
+                        step=5,
+                        value=_SPECTROGRAM_DEFAULTS["spectrogram_dynamic_range_slider"],
+                        label=loc.localize(
+                            "settings-tab-spectrogram-dynamic-range-label"
+                        ),
+                        info=loc.localize(
+                            "settings-tab-spectrogram-dynamic-range-info"
+                        ),
+                        interactive=True,
+                    )
+
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()
 
@@ -400,23 +555,31 @@ def sample_species_model_settings(state: TabState, opened=True):
     species_settings = species_lists(state, opened=opened, is_perch=is_perch)
     model_settings = model_selection(state, opened=opened)
 
-    def on_species_list_change(value):
+    def on_species_list_change(value, species_choice):
         is_perch = value == _USE_PERCH
+        choices = (
+            [_CUSTOM_SPECIES, _ALL_SPECIES]
+            if is_perch
+            else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
+        )
 
         return (
             gr.update(interactive=not is_perch),
             gr.update(maximum=4.9 if is_perch else 2.9),
+            # Keep the current species selection (e.g. the one a preset was just
+            # applied with) as long as the new model offers it.
             gr.update(
-                choices=[_CUSTOM_SPECIES, _ALL_SPECIES]
-                if is_perch
-                else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES],
-                value=_ALL_SPECIES,
+                choices=choices,
+                value=species_choice if species_choice in choices else _ALL_SPECIES,
             ),
         )
 
     model_settings["model_selection_radio"].change(
         on_species_list_change,
-        inputs=model_settings["model_selection_radio"],
+        inputs=[
+            model_settings["model_selection_radio"],
+            species_settings["species_list_radio"],
+        ],
         outputs=[
             sample_settings["sensitivity_slider"],
             sample_settings["overlap_slider"],
@@ -831,13 +994,9 @@ def model_selection(state: TabState, opened=True):
                     if not file:
                         return None, None, None
 
-                    base_name = os.path.splitext(file)[0]
-                    labels = base_name + "_Labels.txt"
+                    labels = utils.read_classifier_labels(file)
 
-                    if not os.path.isfile(labels):
-                        labels = file.replace("Model_FP32.tflite", "Labels.txt")
-
-                    if not os.path.isfile(labels):
+                    if labels is None:
                         gr.Warning(
                             loc.localize(
                                 "species-list-custom-classifier-no-labelfile-warning"
@@ -853,10 +1012,7 @@ def model_selection(state: TabState, opened=True):
                     return (
                         file,
                         gr.update(value=file, visible=True),
-                        gr.update(
-                            value=utils.read_lines(labels, fail_on_blank_lines=True),
-                            visible=True,
-                        ),
+                        gr.update(value=labels, visible=True),
                     )
 
         locale_settings = locale(state, visible=selected_model == _USE_BIRDNET_2_4)
@@ -899,6 +1055,8 @@ def model_selection(state: TabState, opened=True):
     return {
         "model_selection_radio": model_selection_radio,
         "selected_classifier_state": selected_classifier_state,
+        "classifier_file_input": classifier_file_input,
+        "classifier_labels_df": species_list_df,
         "locale_dropdown": locale_settings,
     }
 
@@ -1081,8 +1239,8 @@ def _get_network_shortcuts():
 
                         shortcuts.append(path_buffer)
                     except Exception as e:
-                        print(f"Error reading {target_lnk}: {e}")
-                        raise e
+                        logger.exception(f"Error reading {target_lnk}: {e}")
+                        raise
 
         return shortcuts
     except Exception as e:

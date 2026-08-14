@@ -2,7 +2,7 @@ import importlib
 import sys
 from pathlib import Path
 
-from birdnet_analyzer import settings
+from birdnet_analyzer import logs, settings
 
 
 def test_gui_runtime_files_use_user_appdir_when_not_frozen(monkeypatch, tmp_path):
@@ -23,10 +23,15 @@ def test_gui_runtime_files_use_user_appdir_when_not_frozen(monkeypatch, tmp_path
     )
     assert Path(reloaded_settings.ERROR_LOG_FILE) == expected_appdir / "error_log.txt"
 
-    reloaded_settings.ensure_settings_file()
-    reloaded_settings.set_state("train-data-dir", "/tmp/train")
-    reloaded_settings.write_error_log(RuntimeError("gui path test"))
+    logs.setup_logging()
 
-    assert (expected_appdir / "gui-settings.json").exists()
-    assert (expected_appdir / "state.json").exists()
-    assert (expected_appdir / "error_log.txt").exists()
+    try:
+        reloaded_settings.ensure_settings_file()
+        reloaded_settings.set_state("train-data-dir", "/tmp/train")
+        reloaded_settings.write_error_log(RuntimeError("gui path test"))
+
+        assert (expected_appdir / "gui-settings.json").exists()
+        assert (expected_appdir / "state.json").exists()
+        assert (expected_appdir / "error_log.txt").exists()
+    finally:
+        logs._remove_installed_handlers()

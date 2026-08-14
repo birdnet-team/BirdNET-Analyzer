@@ -1,5 +1,6 @@
 # ruff: noqa: E501
 import argparse
+import logging
 import os
 from typing import cast, get_args
 
@@ -10,6 +11,7 @@ from birdnet.globals import (
 )
 
 from birdnet_analyzer.config import AUTOTUNE_METRICS, TRAINED_MODEL_OUTPUT_FORMATS
+from birdnet_analyzer.logs import setup_logging
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 ASCII_LOGO = r"""                        
@@ -39,6 +41,60 @@ ASCII_LOGO = r"""
                                                ***+==           
                                               ****+             
 """  # noqa: W291
+
+
+def apply_params_file_defaults(parser, loader, argv=None):
+    """Makes the values of a ``--load_params`` file the defaults of a parser.
+
+    Reads the file before the actual parsing, so arguments given on the command line
+    override the values from the file, which in turn override the built-in defaults.
+    Values the parser has no argument for are ignored.
+
+    Args:
+        parser: The fully built argument parser.
+        loader: Reads the parameters file into keyword arguments, e.g.
+            :func:`birdnet_analyzer.params.load_analysis_params`.
+        argv: The command line to read the file path from. Defaults to ``sys.argv``.
+    """
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--load_params")
+    known, _ = pre_parser.parse_known_args(argv)
+
+    if not known.load_params:
+        return
+
+    try:
+        values = loader(known.load_params)
+    except ValueError as e:
+        parser.error(str(e))
+
+    dests = {action.dest for action in parser._actions}
+    parser.set_defaults(**{key: value for key, value in values.items() if key in dests})
+
+
+def load_params_args(run: str, files_hint: str):
+    """
+    Creates an argument parser for reading the settings of a previous run.
+
+    Args:
+        run: What the parameters file belongs to, e.g. "analysis".
+        files_hint: The file names to point the user to.
+
+    Returns:
+        argparse.ArgumentParser: The argument parser with the `--load_params`
+        argument.
+    """
+    p = argparse.ArgumentParser(add_help=False)
+
+    p.add_argument(
+        "--load_params",
+        metavar="PARAMS_FILE",
+        help=f"Read default settings from the parameters file of a previous {run} "
+        f"({files_hint}). Arguments given on the command line take precedence. "
+        "Parameters files of earlier BirdNET-Analyzer versions are understood too.",
+    )
+
+    return p
 
 
 def store_model_action(model_name: str):
@@ -88,6 +144,52 @@ def birdnet_arg():
         choices=get_args(ACOUSTIC_MODEL_VERSIONS),
         action=set_model_action("birdnet"),
         help="Use the BirdNET model. Specify the version to use.",
+    )
+
+    return p
+
+
+class _VerbosityAction(argparse.Action):
+    """Reconfigures the console log level as soon as the flag is parsed.
+
+    Stores nothing in the namespace, so the flag never reaches the keyword arguments
+    the entry points pass into the feature functions.
+    """
+
+    def __init__(self, option_strings, dest, level=logging.INFO, **kwargs):
+        super().__init__(
+            option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs
+        )
+        self._level = level
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setup_logging(self._level)
+
+
+def verbosity_args():
+    """
+    Creates an argument parser for the console verbosity.
+
+    -q is not available as a short form of --quiet, because search uses it for the
+    query file.
+
+    Returns:
+        argparse.ArgumentParser: The argument parser with the verbosity arguments.
+    """
+    p = argparse.ArgumentParser(add_help=False)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument(
+        "-v",
+        "--verbose",
+        action=_VerbosityAction,
+        level=logging.DEBUG,
+        help="Also show debug messages and stacktraces on the console.",
+    )
+    g.add_argument(
+        "--quiet",
+        action=_VerbosityAction,
+        level=logging.WARNING,
+        help="Only show warnings and errors on the console.",
     )
 
     return p
@@ -456,6 +558,8 @@ def analyzer_parser():
         locale_args(),
         bs_args(),
         computing_resources_args(),
+        load_params_args("analysis", "birdnet.analyze-params.csv"),
+        verbosity_args(),
     ]
 
     parser = argparse.ArgumentParser(
@@ -509,7 +613,8 @@ def analyzer_parser():
     )
     parser.add_argument(
         "--split_tables",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Saves separate result tables for each input audio file in the output.",
     )
     parser.set_defaults(model="birdnet")
@@ -540,6 +645,7 @@ def embeddings_parser():
         overlap_args(),
         bs_args(default=8),
         computing_resources_args(),
+        verbosity_args(),
     ]
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -577,7 +683,7 @@ def search_parser():
     - db_args(): Handles database arguments.
     """
 
-    parents = [overlap_args(), db_args()]
+    parents = [overlap_args(), db_args(), verbosity_args()]
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents
     )
@@ -629,7 +735,13 @@ def client_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[io_args(), species_args(), sigmoid_args(), overlap_args()],
+        parents=[
+            io_args(),
+            species_args(),
+            sigmoid_args(),
+            overlap_args(),
+            verbosity_args(),
+        ],
     )
 
     parser.add_argument(
@@ -668,7 +780,12 @@ def segments_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[audio_speed_args(), threads_args(), min_conf_args()],
+        parents=[
+            audio_speed_args(),
+            threads_args(),
+            min_conf_args(),
+            verbosity_args(),
+        ],
     )
 
     parser.add_argument(
@@ -728,7 +845,7 @@ def server_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[threads_args(), locale_args()],
+        parents=[threads_args(), locale_args(), verbosity_args()],
     )
 
     parser.add_argument(
@@ -761,7 +878,7 @@ def species_parser():
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        parents=[species_list_args(), locale_args()],
+        parents=[species_list_args(), locale_args(), verbosity_args()],
     )
 
     parser.add_argument(
@@ -793,6 +910,8 @@ def train_parser():
             overlap_args(
                 help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."
             ),
+            load_params_args("training run", "*.birdnet.train-params.csv"),
+            verbosity_args(),
         ],
     )
     c = (
@@ -840,7 +959,8 @@ def train_parser():
     parser.add_argument(
         "--focal-loss",
         dest="use_focal_loss",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Use focal loss for training (helps with imbalanced classes and hard examples).",
     )
     parser.add_argument(
@@ -869,11 +989,15 @@ def train_parser():
     )
     parser.add_argument(
         "--label_smoothing",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Whether to use label smoothing for training.",
     )
     parser.add_argument(
-        "--mixup", action="store_true", help="Whether to use mixup for training."
+        "--mixup",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Whether to use mixup for training.",
     )
     parser.add_argument(
         "--upsampling_ratio",
@@ -905,7 +1029,8 @@ def train_parser():
     )
     parser.add_argument(
         "--autotune",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Whether to use automatic hyperparameter tuning (this will execute multiple training runs to search for optimal hyperparameters).",
     )
     parser.add_argument(

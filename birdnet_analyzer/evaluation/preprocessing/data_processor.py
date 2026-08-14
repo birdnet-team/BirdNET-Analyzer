@@ -61,6 +61,7 @@ class DataProcessor:
         columns_predictions: dict[str, str] | None = None,
         columns_annotations: dict[str, str] | None = None,
         recording_duration: float | None = None,
+        score_unannotated_as_empty: bool = False,
     ) -> None:
         """
         Initializes the DataProcessor by loading prediction and annotation data.
@@ -86,6 +87,13 @@ class DataProcessor:
                 mappings for annotation files.
             recording_duration (Optional[float], optional): User-specified recording
                 duration in seconds. Defaults to None.
+            score_unannotated_as_empty (bool, optional): How to treat recordings that
+                have predictions but no matching annotation file. When ``False``
+                (default) those recordings are dropped, because without a ground truth
+                their predictions cannot be scored. When ``True`` they are kept and
+                treated as if fully annotated with no events, so every prediction on
+                them counts as a false positive (only correct when the annotations are
+                exhaustive). Defaults to False.
 
         Raises:
             ValueError: If any parameter is invalid (e.g., negative sample duration).
@@ -108,6 +116,7 @@ class DataProcessor:
         )
 
         self.recording_duration: float | None = recording_duration
+        self.score_unannotated_as_empty: bool = score_unannotated_as_empty
 
         # Paths and filenames
         self.prediction_directory_path: str = prediction_directory_path
@@ -119,8 +128,8 @@ class DataProcessor:
         self.predictions_df: pd.DataFrame = pd.DataFrame()
         self.annotations_df: pd.DataFrame = pd.DataFrame()
 
-        # To track prediction files without matching annotation files
-        self.umatched_prediction_files: set[str] = set()
+        # Recordings that have predictions but no matching annotation file.
+        self.unmatched_prediction_files: set[str] = set()
 
         # Placeholder for unique classes across predictions and annotations
         self.classes: tuple[str, ...] = ()
@@ -215,7 +224,7 @@ class DataProcessor:
             ValueError: If file reading fails or data preparation encounters issues.
         """
 
-        self.umatched_prediction_files = set()  # Reset unmatched prediction files
+        self.unmatched_prediction_files = set()  # Reset unmatched prediction files
 
         if self.prediction_file_name is None or self.annotation_file_name is None:
             # Case: No specific files provided; load all files in directories.
@@ -247,19 +256,6 @@ class DataProcessor:
                 self.predictions_df[class_col_pred] = self.predictions_df[
                     class_col_pred
                 ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
-
-            prediction_filenames = self.predictions_df["recording_filename"].unique()
-            annotation_filenames = self.annotations_df["recording_filename"].unique()
-            self.umatched_prediction_files = set(prediction_filenames) - set(
-                annotation_filenames
-            )
-            if self.umatched_prediction_files:
-                warnings.warn(
-                    f"Prediction files without matching annotation files: "
-                    f"{', '.join(self.umatched_prediction_files)}. "
-                    "These recordings will not be processed.",
-                    stacklevel=2,
-                )
         else:
             # Case: Specific files are provided for predictions and annotations.
             # Ensure filenames correspond to the same recording (heuristic check).
@@ -302,6 +298,47 @@ class DataProcessor:
                 self.predictions_df[class_col_pred] = self.predictions_df[
                     class_col_pred
                 ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
+
+        # Reconcile the two recording sets. A recording that only has predictions has no
+        # ground truth, so its predictions cannot be scored. By default those recordings
+        # are dropped; only when the caller opts in (exhaustive annotations) are they
+        # kept and their predictions counted as false positives. This only applies when
+        # matching whole directories -- an explicitly named single file pair is always a
+        # deliberate 1:1 comparison.
+        directory_mode = (
+            self.prediction_file_name is None or self.annotation_file_name is None
+        )
+        if directory_mode and "recording_filename" in self.predictions_df.columns:
+            prediction_recordings = set(
+                self.predictions_df["recording_filename"].unique()
+            )
+            annotation_recordings = set(
+                self.annotations_df["recording_filename"].unique()
+            )
+            self.unmatched_prediction_files = (
+                prediction_recordings - annotation_recordings
+            )
+
+            if self.unmatched_prediction_files:
+                names = ", ".join(sorted(map(str, self.unmatched_prediction_files)))
+                if self.score_unannotated_as_empty:
+                    warnings.warn(
+                        f"Prediction files without matching annotation file: {names}. "
+                        "Their annotations are assumed empty, so every prediction on "
+                        "them counts as a false positive.",
+                        stacklevel=2,
+                    )
+                else:
+                    warnings.warn(
+                        f"Prediction files without matching annotation file: {names}. "
+                        "These recordings are dropped and not scored.",
+                        stacklevel=2,
+                    )
+                    self.predictions_df = self.predictions_df[
+                        self.predictions_df["recording_filename"].isin(
+                            annotation_recordings
+                        )
+                    ]
 
         # Consolidate all unique classes from predictions and annotations
         class_col_pred = self.get_column_name("Class", prediction=True)
@@ -551,6 +588,13 @@ class DataProcessor:
         overlapping samples based on the specified `min_overlap`. It then updates the
         confidence scores for those samples, retaining the maximum confidence value if
         multiple predictions overlap.
+
+        Note:
+            `min_overlap` is applied as a margin on both sides of the sample window, not
+            as a guaranteed intersection length: a prediction shorter than `min_overlap`
+            that falls entirely inside a window still marks it. This keeps short events
+            from being dropped, but means the effective overlap requirement is looser
+            than `min_overlap` seconds for events shorter than the sample duration.
 
         Args:
             pred_df (pd.DataFrame): DataFrame containing prediction information.

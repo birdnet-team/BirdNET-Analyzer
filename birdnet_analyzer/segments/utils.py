@@ -3,6 +3,7 @@
 Can be used to save the segments of the audio files for each detection.
 """
 
+import logging
 import os
 
 import numpy as np
@@ -13,6 +14,7 @@ from birdnet_analyzer import audio, utils
 # Set numpy random seed
 RNG = np.random.default_rng(cfg.RANDOM_SEED)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+logger = logging.getLogger(__name__)
 
 
 def _detect_rtype(line: str):
@@ -107,7 +109,7 @@ def parse_folders(
 
     flist = [f for f in data.values() if f["result"]]
 
-    print(f"Found {len(flist)} audio files with valid result file.")
+    logger.info(f"Found {len(flist)} audio files with valid result file.")
 
     return flist
 
@@ -213,7 +215,7 @@ def parse_files(
             segments[seg["audio"]].append(seg)
             seg_cnt += 1
 
-    print(f"Found {seg_cnt} segments in {len(segments)} audio files.")
+    logger.info(f"Found {seg_cnt} segments in {len(segments)} audio files.")
 
     return [tuple(e) for e in segments.items()]
 
@@ -431,8 +433,7 @@ def extract_segments(
     try:
         sig, rate = audio.open_audio_file(file_path, sample_rate, speed=audio_speed)
     except Exception as ex:
-        print(f"Error: Cannot open audio file {file_path}", flush=True)
-        utils.write_error_log(ex)
+        logger.error(f"Error: Cannot open audio file {file_path}", exc_info=ex)
 
         return file_path, False
 
@@ -460,8 +461,9 @@ def extract_segments(
                 audio.save_signal(seg_sig, seg_path, rate)
 
         except Exception as ex:
-            print(f"Error: Cannot extract segments from {file_path}.", flush=True)
-            utils.write_error_log(ex)
+            logger.error(
+                f"Error: Cannot extract segments from {file_path}.", exc_info=ex
+            )
 
             return file_path, False
 

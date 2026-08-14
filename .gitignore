@@ -1,5 +1,6 @@
 # AI
 .claude
+CLAUDE.md
 
 # UV
 uv.lock
@@ -12,6 +13,9 @@ uv.lock
 
 # Ruff
 .ruff_cache
+
+# CI model cache location (BIRDNET_APP_DATA in .github/workflows/ci.yml)
+.birdnet-app-data
 
 # Models
 checkpoints
@@ -43,6 +47,7 @@ checkpoints/custom/
 
 # Logs
 error_log.txt
+error_log.txt.1
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -181,6 +186,8 @@ autotune/
 gui-settings.json
 state.json
 BirdNET_analysis_params.csv
+birdnet.analyze-params.csv
+*.birdnet.train-params.csv
 
 # Build files
 entitlements.plist

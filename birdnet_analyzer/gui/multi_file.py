@@ -5,6 +5,7 @@ from birdnet.globals import MODEL_LANGUAGE_EN_US
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.gui.presets import PresetControls, load_analysis_params
 from birdnet_analyzer.gui.state import TabState
 
 # Set when the user presses pause, so the cancellation error raised by the
@@ -17,6 +18,7 @@ def _output_type_map():
         loc.localize("multi-tab-output-type-raven-label"): "table",
         loc.localize("multi-tab-output-type-audacity-label"): "audacity",
         loc.localize("multi-tab-output-type-csv-label"): "csv",
+        loc.localize("multi-tab-output-type-parquet-label"): "parquet",
         loc.localize("multi-tab-output-type-kaleidoscope-label"): "kaleidoscope",
     }
 
@@ -187,6 +189,14 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             title=loc.localize("multi-tab-info-title"),
         )
 
+        preset_controls = PresetControls(
+            "multi",
+            params_loader=load_analysis_params,
+            params_button_label=loc.localize(
+                "presets-load-analyze-params-button-label"
+            ),
+        )
+
         with gr.Group(), gr.Row(equal_height=True):
             select_directory_btn = gr.Button(
                 loc.localize("multi-tab-input-selection-button-label"),
@@ -306,7 +316,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 gr.CheckboxGroup,
                 choices=list(_additional_columns_map().items()),
                 value=[],
-                visible="csv" in output_type_radio.value,
+                visible=bool({"csv", "parquet"} & set(output_type_radio.value)),
                 label=loc.localize("multi-tab-additional-columns-checkbox-label"),
                 info=loc.localize("multi-tab-additional-columns-checkbox-info"),
             )
@@ -366,7 +376,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         ]
 
         def show_additional_columns(values):
-            return gr.update(visible="csv" in values)
+            return gr.update(visible=bool({"csv", "parquet"} & set(values)))
 
         resume_status_inputs = [input_directory_state, output_directory_predict_state]
         resume_status_outputs = [resume_status_md, start_batch_analysis_btn]
@@ -412,6 +422,13 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             show_additional_columns,
             inputs=output_type_radio,
             outputs=additional_columns_,
+        )
+        preset_controls.wire(
+            state,
+            species_file_input=species_settings["species_file_input"],
+            classifier_state=model_settings["selected_classifier_state"],
+            classifier_file_input=model_settings["classifier_file_input"],
+            classifier_labels_df=model_settings["classifier_labels_df"],
         )
 
     return (

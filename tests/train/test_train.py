@@ -39,8 +39,7 @@ def test_train_cli(mock_train_model, setup_test_environment):
 
     # Remove CLI-only args not accepted by train()
     kwargs = vars(args)
-    kwargs.pop("cache_mode", None)
-    kwargs.pop("cache_file", None)
+    kwargs.pop("load_params")
 
     train(**kwargs)
 
@@ -120,7 +119,11 @@ def test_train_cli_accepts_full_parser_surface(
         ]
     )
 
-    train(**vars(args))
+    # Remove CLI-only args not accepted by train()
+    kwargs = vars(args)
+    kwargs.pop("load_params")
+
+    train(**kwargs)
 
     mock_train_model.assert_called_once()
     call_kwargs = mock_train_model.call_args[1]

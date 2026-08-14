@@ -5,13 +5,17 @@ import os
 from pathlib import Path
 
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
+from birdnet_analyzer.logs import setup_logging
 from birdnet_analyzer.settings import write_error_log
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def runtime_error_handler(f):
-    """Decorator to catch runtime errors and write them to the error log.
+    """Decorator preparing the runtime of the CLI entry points.
+
+    Configures logging, so messages reach the console and the error log file, and
+    catches runtime errors to write them to the error log.
 
     Args:
         f: The function to be decorated.
@@ -21,6 +25,8 @@ def runtime_error_handler(f):
     """
 
     def wrapper(*args, **kwargs):
+        setup_logging()
+
         try:
             return f(*args, **kwargs)
         except Exception as ex:
@@ -54,6 +60,11 @@ def spectrogram_from_file(
     sig_fmin=0,
     sig_fmax=15000,
     show_freq_axis=False,
+    n_fft=1024,
+    hop_length=None,
+    colormap=None,
+    top_db=80,
+    freq_scale="linear",
 ):
     """
     Generate a spectrogram from an audio file.
@@ -61,6 +72,12 @@ def spectrogram_from_file(
     Parameters:
     path (str): The path to the audio file.
     show_freq_axis (bool): Whether to display the frequency scale (y-axis).
+    n_fft (int): The FFT window size in samples.
+    hop_length (int | None): The hop between adjacent FFT windows in samples.
+        None uses half the window size.
+    colormap (str): The matplotlib colormap to draw with. None lets librosa choose.
+    top_db (float): The dynamic range in dB, measured down from the peak.
+    freq_scale (str): The scale of the frequency axis, "linear" or "log".
 
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
@@ -79,11 +96,31 @@ def spectrogram_from_file(
     )
 
     return spectrogram_from_audio(
-        s, sr, fig_num=fig_num, fig_size=fig_size, show_freq_axis=show_freq_axis
+        s,
+        sr,
+        fig_num=fig_num,
+        fig_size=fig_size,
+        show_freq_axis=show_freq_axis,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        colormap=colormap,
+        top_db=top_db,
+        freq_scale=freq_scale,
     )
 
 
-def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=False):
+def spectrogram_from_audio(
+    s,
+    sr,
+    fig_num=None,
+    fig_size=None,
+    show_freq_axis=False,
+    n_fft=1024,
+    hop_length=None,
+    colormap=None,
+    top_db=80,
+    freq_scale="linear",
+):
     """
     Generate a spectrogram from an audio signal.
 
@@ -91,6 +128,12 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=Fa
     s: The signal
     sr: The sample rate
     show_freq_axis (bool): Whether to display the frequency scale (y-axis).
+    n_fft (int): The FFT window size in samples.
+    hop_length (int | None): The hop between adjacent FFT windows in samples.
+        None uses half the window size.
+    colormap (str): The matplotlib colormap to draw with. None lets librosa choose.
+    top_db (float): The dynamic range in dB, measured down from the peak.
+    freq_scale (str): The scale of the frequency axis, "linear" or "log".
 
     Returns:
     matplotlib.figure.Figure: The generated spectrogram figure.
@@ -103,6 +146,9 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=Fa
     import numpy as np
 
     matplotlib.use("agg")
+
+    if hop_length is None:
+        hop_length = n_fft // 2
 
     if isinstance(fig_size, tuple):
         f = plt.figure(fig_num, figsize=fig_size)
@@ -117,16 +163,17 @@ def spectrogram_from_audio(s, sr, fig_num=None, fig_size=None, show_freq_axis=Fa
 
     ax = f.add_subplot(111)
 
-    D = librosa.stft(s, n_fft=1024, hop_length=512)
-    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
+    D = librosa.stft(s, n_fft=n_fft, hop_length=hop_length)
+    S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max, top_db=top_db)
 
     spec = librosa.display.specshow(
         S_db,
         ax=ax,
         sr=sr,
-        n_fft=1024,
-        hop_length=512,
-        y_axis="linear" if show_freq_axis else None,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        y_axis=freq_scale,
+        cmap=colormap,
     )
 
     if show_freq_axis:
@@ -224,6 +271,37 @@ def read_lines(
     return cleaned_lines
 
 
+# The shipped BirdNET models drop this suffix to name their label file, e.g.
+# BirdNET_GLOBAL_6K_V2.4_Model_FP32.tflite -> BirdNET_GLOBAL_6K_V2.4_Labels.txt, while
+# a trained classifier keeps its full name, e.g. Custom.tflite -> Custom_Labels.txt.
+_BIRDNET_SUFFIX = "Model_FP32.tflite"
+
+
+def read_classifier_labels(classifier_file: str) -> list[str] | None:
+    """Reads the labels belonging to a custom classifier.
+
+    Looks for the label file next to the classifier, following the naming used when a
+    custom classifier is trained, and falls back to the naming of the shipped BirdNET
+    models.
+
+    Args:
+        classifier_file: Absolute path to the classifier file.
+
+    Returns:
+        The labels, or None if no label file was found.
+    """
+    base_name = os.path.splitext(classifier_file)[0]
+    labels_file = base_name + "_Labels.txt"
+
+    if not os.path.isfile(labels_file) and classifier_file.endswith(_BIRDNET_SUFFIX):
+        labels_file = classifier_file.removesuffix(_BIRDNET_SUFFIX) + "Labels.txt"
+
+    if not os.path.isfile(labels_file):
+        return None
+
+    return read_lines(labels_file, fail_on_blank_lines=True)
+
+
 def list_subdirectories(path: str):
     """Lists all directories inside a path.
 
@@ -257,19 +335,21 @@ def img2base64(path):
         return base64.b64encode(img_file.read()).decode("utf-8")
 
 
-def save_params_to_file(file_path, headers, values):
-    """Saves the params used to train the custom classifier.
+def save_params_file(file_path, params: dict):
+    """Saves the parameters of an analysis or training run as a two-column CSV.
 
-    The hyperparams will be saved to disk in a file named 'model_params.csv'.
+    One parameter per row, so the file reads as a table in a spreadsheet or text
+    editor. Written with a BOM so spreadsheet applications pick up the encoding.
 
     Args:
         file_path: The path to the file.
-        headers: The headers of the csv file.
-        values: The values of the csv file.
+        params: The parameters to save, by their human-readable names.
     """
     import csv
 
-    with open(file_path, "w", newline="") as paramsfile:
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    with open(file_path, "w", newline="", encoding="utf-8-sig") as paramsfile:
         paramswriter = csv.writer(paramsfile)
-        paramswriter.writerow(headers)
-        paramswriter.writerow(values)
+        paramswriter.writerow(("Parameter", "Value"))
+        paramswriter.writerows(params.items())

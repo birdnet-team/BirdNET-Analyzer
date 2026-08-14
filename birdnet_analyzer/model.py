@@ -14,7 +14,6 @@ import numpy as np
 import tensorflow as tf
 from birdnet.acoustic.models.v2_4.pb import AcousticPBDownloaderV2_4
 
-from birdnet_analyzer import utils
 from birdnet_analyzer.config import RANDOM_SEED
 from birdnet_analyzer.train import custom_models
 
@@ -152,11 +151,10 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
         A tuple of (x_train, y_train, x_val, y_val).
     """
     num_classes = y.shape[1]
-    x_train, y_train, x_val, y_val = [], [], [], []
+    train_indices, val_indices = [], []
 
     for i in range(num_classes):
         positive_indices = np.where(y[:, i] == 1)[0]
-        negative_indices = np.where(y[:, i] == -1)[0]
 
         num_samples = len(positive_indices)
         num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
@@ -164,18 +162,18 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
 
         rng.shuffle(positive_indices)
 
-        train_indices = positive_indices[:num_samples_train]
-        val_indices = positive_indices[
+        class_train_indices = positive_indices[:num_samples_train]
+        class_val_indices = positive_indices[
             num_samples_train : num_samples_train + num_samples_val
         ]
 
-        x_train.append(x[train_indices])
-        y_train.append(y[train_indices])
-        x_val.append(x[val_indices])
-        y_val.append(y[val_indices])
+        train_indices.append(class_train_indices)
+        val_indices.append(class_val_indices)
 
-        x_train.append(x[negative_indices])
-        y_train.append(y[negative_indices])
+    # Add every row with a negative label to the training set exactly once; a
+    # per-class scan would duplicate rows that are negative for several classes.
+    negative_indices = np.unique(np.where(y == -1)[0])
+    train_indices.append(negative_indices)
 
     non_event_indices = np.where(np.sum(y[:, :], axis=1) == 0)[0]
     num_samples = len(non_event_indices)
@@ -184,36 +182,21 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
 
     rng.shuffle(non_event_indices)
 
-    train_indices = non_event_indices[:num_samples_train]
-    val_indices = non_event_indices[
+    non_event_train_indices = non_event_indices[:num_samples_train]
+    non_event_val_indices = non_event_indices[
         num_samples_train : num_samples_train + num_samples_val
     ]
 
-    x_train.append(x[train_indices])
-    y_train.append(y[train_indices])
-    x_val.append(x[val_indices])
-    y_val.append(y[val_indices])
+    train_indices.append(non_event_train_indices)
+    val_indices.append(non_event_val_indices)
 
-    x_train = np.concatenate(x_train)
-    y_train = np.concatenate(y_train)
-    x_val = np.concatenate(x_val)
-    y_val = np.concatenate(y_val)
+    train_indices = np.concatenate(train_indices)
+    val_indices = np.concatenate(val_indices)
 
-    indices = np.arange(len(x_train))
+    rng.shuffle(train_indices)
+    rng.shuffle(val_indices)
 
-    rng.shuffle(indices)
-
-    x_train = x_train[indices]
-    y_train = y_train[indices]
-
-    indices = np.arange(len(x_val))
-
-    rng.shuffle(indices)
-
-    x_val = x_val[indices]
-    y_val = y_val[indices]
-
-    return x_train, y_train, x_val, y_val
+    return x[train_indices], y[train_indices], x[val_indices], y[val_indices]
 
 
 def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
@@ -231,15 +214,16 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
         A tuple of (x_train, y_train, x_val, y_val).
 
     """
-    class_combinations = np.unique(y, axis=0)
-    x_train, y_train, x_val, y_val = [], [], [], []
+    class_combinations, combination_ids = np.unique(
+        y, axis=0, return_inverse=True
+    )
+    train_indices, val_indices = [], []
 
-    for class_combination in class_combinations:
-        indices = np.where((y == class_combination).all(axis=1))[0]
+    for combination_id, class_combination in enumerate(class_combinations):
+        indices = np.flatnonzero(combination_ids == combination_id)
 
         if -1 in class_combination:
-            x_train.append(x[indices])
-            y_train.append(y[indices])
+            train_indices.append(indices)
         else:
             num_samples = len(indices)
             num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
@@ -247,32 +231,20 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
 
             rng.shuffle(indices)
 
-            train_indices = indices[:num_samples_train]
-            val_indices = indices[
+            combination_train_indices = indices[:num_samples_train]
+            combination_val_indices = indices[
                 num_samples_train : num_samples_train + num_samples_val
             ]
 
-            x_train.append(x[train_indices])
-            y_train.append(y[train_indices])
-            x_val.append(x[val_indices])
-            y_val.append(y[val_indices])
+            train_indices.append(combination_train_indices)
+            val_indices.append(combination_val_indices)
 
-    x_train = np.concatenate(x_train)
-    y_train = np.concatenate(y_train)
-    x_val = np.concatenate(x_val)
-    y_val = np.concatenate(y_val)
+    train_indices = np.concatenate(train_indices)
+    val_indices = np.concatenate(val_indices)
+    rng.shuffle(train_indices)
+    rng.shuffle(val_indices)
 
-    indices = np.arange(len(x_train))
-    rng.shuffle(indices)
-    x_train = x_train[indices]
-    y_train = y_train[indices]
-
-    indices = np.arange(len(x_val))
-    rng.shuffle(indices)
-    x_val = x_val[indices]
-    y_val = y_val[indices]
-
-    return x_train, y_train, x_val, y_val
+    return x[train_indices], y[train_indices], x[val_indices], y[val_indices]
 
 
 def upsample_core(
@@ -304,33 +276,33 @@ def upsample_core(
     x_temp = []
 
     if is_binary:
-        minority_label = 1 if y.sum(axis=0) < len(y) - y.sum(axis=0) else 0
+        positive_count = y.sum(axis=0)
+        minority_label = 1 if positive_count < len(y) - positive_count else 0
+        source_indices = np.flatnonzero(y == minority_label)
+        missing_samples = min_samples - len(source_indices)
 
-        while np.where(y == minority_label)[0].shape[0] + len(y_temp) < min_samples:
-            random_index = rng.choice(np.where(y == minority_label)[0], size=size)
-            x_app, y_app = apply(x, y, random_index)
+        for _ in range(max(0, missing_samples)):
+            random_index = rng.choice(source_indices, size=size)
+            x_app, y_app = apply(x, y, random_index, source_indices)
 
             y_temp.append(y_app)
             x_temp.append(x_app)
     else:
         for i in range(y.shape[1]):
-            class_x_temp = []
-            class_y_temp = []
+            source_indices = np.flatnonzero(y[:, i] == 1)
+            missing_samples = min_samples - len(source_indices)
 
-            while y[:, i].sum() + len(class_y_temp) < min_samples:
-                try:
-                    random_index = rng.choice(np.where(y[:, i] == 1)[0], size=size)
-                except ValueError as e:
-                    raise get_empty_class_exception()(index=i) from e
+            if missing_samples <= 0:
+                continue
 
-                # Apply
-                x_app, y_app = apply(x, y, random_index)
-                class_y_temp.append(y_app)
-                class_x_temp.append(x_app)
+            if not len(source_indices):
+                raise get_empty_class_exception()(index=i)
 
-            if len(class_y_temp) > 0:
-                x_temp.extend(class_x_temp)
-                y_temp.extend(class_y_temp)
+            for _ in range(missing_samples):
+                random_index = rng.choice(source_indices, size=size)
+                x_app, y_app = apply(x, y, random_index, source_indices)
+                y_temp.append(y_app)
+                x_temp.append(x_app)
 
     return x_temp, y_temp
 
@@ -362,48 +334,65 @@ def upsampling(
     min_samples = (
         int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio)
         if is_binary
-        else int(np.max(y.sum(axis=0)) * ratio)
+        else int(np.max((y == 1).sum(axis=0)) * ratio)
     )
     x_temp = []
     y_temp = []
 
-    if mode == "repeat":
+    if mode in {"repeat", "mean", "linear"}:
+        if is_binary:
+            positive_count = y.sum(axis=0)
+            minority_label = 1 if positive_count < len(y) - positive_count else 0
+            source_groups = [(None, np.flatnonzero(y == minority_label))]
+        else:
+            source_groups = [
+                (class_index, np.flatnonzero(y[:, class_index] == 1))
+                for class_index in range(y.shape[1])
+            ]
 
-        def applyRepeat(x, y, random_index):
-            return x[random_index[0]], y[random_index[0]]
+        sample_size = 1 if mode == "repeat" else 2
+        for class_index, source_indices in source_groups:
+            missing_samples = min_samples - len(source_indices)
+            if missing_samples <= 0:
+                continue
 
-        x_temp, y_temp = upsample_core(
-            x, y, min_samples, rng, applyRepeat, is_binary, size=1
-        )
+            if not len(source_indices):
+                if class_index is None:
+                    raise ValueError("The minority class is empty.")
+                raise get_empty_class_exception()(index=class_index)
 
-    elif mode == "mean":
-
-        def applyMean(x, y, random_indices):
-            mean = np.mean(x[random_indices], axis=0)
-
-            return mean, y[random_indices[0]]
-
-        x_temp, y_temp = upsample_core(x, y, min_samples, rng, applyMean, is_binary)
-    elif mode == "linear":
-
-        def applyLinearCombination(x, y, random_indices):
-            alpha = rng.uniform(0, 1)
-            new_sample = (
-                alpha * x[random_indices[0]] + (1 - alpha) * x[random_indices[1]]
+            sampled_indices = rng.choice(
+                source_indices, size=(missing_samples, sample_size)
             )
+            x_sources = x[sampled_indices]
 
-            return new_sample, y[random_indices[0]]
+            if mode == "repeat":
+                x_temp.append(x_sources[:, 0])
+            elif mode == "mean":
+                x_temp.append(np.mean(x_sources, axis=1))
+            else:
+                alpha = rng.uniform(0, 1, size=(missing_samples, 1))
+                x_temp.append(
+                    alpha * x_sources[:, 0] + (1 - alpha) * x_sources[:, 1]
+                )
 
-        x_temp, y_temp = upsample_core(
-            x, y, min_samples, rng, applyLinearCombination, is_binary
-        )
+            y_temp.append(y[sampled_indices[:, 0]])
 
     elif mode == "smote":
 
-        def applySmote(x, y, random_index, k=5):
-            distances = np.sqrt(np.sum((x - x[random_index[0]]) ** 2, axis=1))
-            indices = np.argsort(distances)[1 : k + 1]
-            random_neighbor = rng.choice(indices)
+        def applySmote(x, y, random_index, source_indices, k=5):
+            source_index = random_index[0]
+            neighbor_indices = source_indices[source_indices != source_index]
+            if not len(neighbor_indices):
+                return x[source_index], y[source_index]
+
+            differences = x[neighbor_indices] - x[source_index]
+            distances = np.einsum("ij,ij->i", differences, differences)
+            nearest_count = min(k, len(neighbor_indices))
+            nearest_indices = neighbor_indices[
+                np.argpartition(distances, nearest_count - 1)[:nearest_count]
+            ]
+            random_neighbor = rng.choice(nearest_indices)
             diff = x[random_neighbor] - x[random_index[0]]
             weight = rng.uniform(0, 1)
             new_sample = x[random_index[0]] + weight * diff
@@ -415,16 +404,8 @@ def upsampling(
         )
 
     if len(x_temp) > 0:
-        x = np.vstack((x, np.array(x_temp)))
-        y = np.vstack((y, np.array(y_temp)))
-
-    indices = np.arange(len(x))
-    rng.shuffle(indices)
-    x = x[indices]
-    y = y[indices]
-
-    del x_temp
-    del y_temp
+        x = np.vstack((x, *x_temp))
+        y = np.vstack((y, *y_temp))
 
     return x, y
 
@@ -541,10 +522,6 @@ def train_linear_classifier(
                 self.on_epoch_end_fn(epoch, logs)
 
     rng = np.random.default_rng(RANDOM_SEED)
-    idx = np.arange(x_train.shape[0])
-    rng.shuffle(idx)
-    x_train = x_train[idx]
-    y_train = y_train[idx]
 
     if val_split > 0:
         if not is_multi_label:
@@ -555,6 +532,11 @@ def train_linear_classifier(
             x_train, y_train, x_val, y_val = random_multilabel_split(
                 x_train, y_train, rng, val_split
             )
+    else:
+        idx = np.arange(x_train.shape[0])
+        rng.shuffle(idx)
+        x_train = x_train[idx]
+        y_train = y_train[idx]
 
     if upsampling_ratio > 0:
         x_train, y_train = upsampling(
@@ -635,6 +617,7 @@ def train_linear_classifier(
         batch_size=batch_size,
         validation_data=(x_val, y_val),
         callbacks=callbacks,
+        shuffle=True,
     )
 
     os.environ["CUDA_VISIBLE_DEVICES"] = setting_cache
@@ -647,7 +630,6 @@ def save_linear_classifier(
     model_path: str,
     labels: list[str],
     mode: Literal["replace", "append"] = "replace",
-    params: tuple[list[str], list] | None = None,
 ):
     """Saves the classifier as a tflite model, as well as the used labels in a .txt.
 
@@ -693,9 +675,6 @@ def save_linear_classifier(
     with open(model_path.replace(".tflite", "_Labels.txt"), "w", encoding="utf-8") as f:
         f.writelines(label + "\n" for label in labels)
 
-    if params:
-        utils.save_params_to_file(model_path.replace(".tflite", "_Params.csv"), *params)
-
 
 def save_raven_model(
     classifier,
@@ -705,7 +684,6 @@ def save_raven_model(
     sig_fmin=0,
     sig_fmax=15000,
     model_version="2.4",
-    params: tuple[list[str], list] | None = None,
 ):
     """
     Save a TensorFlow model with a custom classifier and associated metadata for use
@@ -814,11 +792,6 @@ def save_raven_model(
         }
 
         json.dump(modelconfig, modelconfigfile, indent=2)
-
-        model_params = os.path.join(model_path, "model_params.csv")
-
-        if params:
-            utils.save_params_to_file(model_params, *params)
 
 
 def save_detached_classifier(

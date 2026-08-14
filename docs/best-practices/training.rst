@@ -146,7 +146,7 @@ After the training process is finished your output folder should like this:
   classifier-output/
   ├── CustomClassifier.tflite
   ├── CustomClassifier_Labels.txt
-  ├── CustomClassifier_Params.csv
+  ├── CustomClassifier.birdnet.train-params.csv
   └── ...
 
 To use this classifier select the "Custom classifier" option in the species selection section of the BirdNET-Analyzer GUI and select the .tflite file.
