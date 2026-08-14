@@ -127,6 +127,14 @@ def _reconcile_species_list(
 
     if is_user_file and unmatched:
         listing = "\n  ".join(sorted(unmatched))
+        if not matched:
+            # An empty custom list means "no filter" to the library - it would then
+            # analyze EVERY species, the opposite of what the user asked for. If
+            # nothing matched, that is always an error, even without --strict.
+            raise ValueError(
+                f"None of the {len(requested)} species in the list are available in "
+                f"the model:\n  {listing}"
+            )
         if strict:
             raise ValueError(
                 f"{len(unmatched)} of {len(requested)} species in the list are not "
@@ -146,11 +154,11 @@ def _reconcile_species_list(
 def acoustic_species_list(version: str, language: str = "en_us") -> list[str]:
     """The species labels of a BirdNET acoustic model version, in ``language``.
 
-    Only the (small, ~800 KB) label file is read - not the model weights - so this is
-    cheap enough to call from the GUI (e.g. to preview which entries of a custom
-    species list the model knows) without loading the model. ``language`` is coerced to
-    one the version supports; the backend matches what ``run_inference`` loads so the
-    labels are already cached after an analysis.
+    Loads the model to read its labels: on a fresh install this downloads the model
+    files (hundreds of MB) on first use, exactly as an analysis would - it is only
+    cheap once the model is cached. Callers that must not trigger a download (e.g. a
+    GUI preview) should gate on :func:`acoustic_model_downloaded` first. ``language`` is
+    coerced to one the version supports; the backend matches ``run_inference``.
     """
     language = _language_for_version(cast("MODEL_LANGUAGES", language), version)
     if version == "3.0":
@@ -163,6 +171,30 @@ def acoustic_species_list(version: str, language: str = "en_us") -> list[str]:
         )
 
     return list(model.species_list)
+
+
+def acoustic_model_downloaded(version: str) -> bool:
+    """Whether the acoustic model for ``version`` is already fully on disk.
+
+    Lets a caller avoid triggering a large model download for a cheap best-effort
+    check (see :func:`acoustic_species_list`). Uses the birdnet downloader's own file
+    check; any failure (e.g. a library API change) reports False so the caller skips.
+    """
+    try:
+        from birdnet.globals import MODEL_PRECISION_FP32
+
+        if version == "3.0":
+            from birdnet.acoustic.models.v3_0.onnx import (
+                AcousticOnnxDownloaderV3_0 as downloader,
+            )
+        else:
+            from birdnet.acoustic.models.v2_4.tf import (
+                AcousticTFDownloaderV2_4 as downloader,
+            )
+
+        return bool(downloader._check_acoustic_model_available(MODEL_PRECISION_FP32))
+    except Exception:
+        return False
 
 
 # Live sessions, so they can be cancelled from another thread. Lock-guarded: sessions

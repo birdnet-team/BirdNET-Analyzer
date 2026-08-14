@@ -13,8 +13,9 @@ Layout of the journal directory:
   snapshot, total file count and the run metadata needed to write outputs
   when no new inference happens (all files were already completed).
 - ``results/<key>.parquet``: one file per completed input file, holding that
-  file's detection dataframe. ``<key>`` is a hash of the normalized absolute
-  input path. Files the library reported as unprocessable are stored with a
+  file's detection dataframe. ``<key>`` is a hash of the input path plus its size
+  and mtime, so a file edited in place gets a new key and is re-analyzed. Files the
+  library reported as unprocessable are stored with a
   ``.invalid.parquet`` suffix instead. Partials are written to a temp name and
   moved into place with :func:`os.replace`, so their presence is an atomic
   "this file is done" marker — no separate completed-list is needed.
@@ -99,8 +100,20 @@ def compute_fingerprint(params: dict) -> str:
 
 
 def _file_key(path) -> str:
+    """Content-sensitive key for a file's stored result.
+
+    The file's size and mtime are folded in, so editing or regenerating a file in
+    place (same path) yields a new key: its stale partial is ignored and the file is
+    re-analyzed instead of reusing old detections. A file that cannot be stat'd falls
+    back to the path alone.
+    """
     normalized = os.path.normcase(os.path.normpath(str(path)))
-    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:24]
+    try:
+        stat = os.stat(path)
+        identity = f"{normalized}\0{stat.st_size}\0{stat.st_mtime_ns}"
+    except OSError:
+        identity = normalized
+    return hashlib.sha1(identity.encode("utf-8")).hexdigest()[:24]
 
 
 class ResumeJournal:

@@ -644,20 +644,24 @@ def sample_species_model_settings(state: TabState, opened=True):
         """Heads-up when a chosen custom list has species the selected model lacks.
 
         The analysis reconciles a list to the model by scientific/common name and skips
-        the rest (see model_utils.run_inference); this surfaces that at selection time
-        so the user isn't surprised. Best-effort: only BirdNET models expose a
-        comparable species list here, and any failure (e.g. offline, labels not yet
-        downloaded) leaves file selection untouched.
+        the rest (see model_utils.run_inference); this surfaces that at selection time.
+        Best-effort: shown only for a BirdNET model whose files are already downloaded
+        (reading its labels otherwise pulls the model, hundreds of MB), and any failure
+        leaves file selection untouched.
         """
         if not file or not is_birdnet_model(model_choice):
             return
 
-        try:
-            from birdnet_analyzer import model_utils
+        from birdnet_analyzer import model_utils
 
-            model_species = model_utils.acoustic_species_list(
-                birdnet_version(model_choice), locale
-            )
+        version = birdnet_version(model_choice)
+        # Skip until the model is cached: reading its labels otherwise downloads it, and
+        # an analysis will pull it (and reconcile the list) anyway.
+        if not model_utils.acoustic_model_downloaded(version):
+            return
+
+        try:
+            model_species = model_utils.acoustic_species_list(version, locale)
             requested = [s for s in utils.read_lines(file, trim=True) if s]
             _, unmatched = model_utils.match_species_to_model(requested, model_species)
         except Exception:

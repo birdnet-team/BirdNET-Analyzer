@@ -37,7 +37,6 @@ ALL_MODEL_LANGUAGES: list[str] = sorted(
 # Languages the newest geo model labels its species list in (v3.0 language set).
 GEO_MODEL_LANGUAGES: list[str] = list(VALID_MODEL_LANGUAGES_V3_0)
 
-MODEL_VERSION: str = f"V{DEFAULT_ACOUSTIC_MODEL_VERSION}"
 SCORE_FUNCTIONS = Literal["cosine", "euclidean", "dot"]
 CROP_MODES = Literal["center", "first", "segments"]
 CODES_FILE: str = os.path.join(SCRIPT_DIR, "eBird_taxonomy_codes_2024E.json")

@@ -634,6 +634,20 @@ def test_reconcile_species_list_strict_raises(tmp_path):
         )
 
 
+def test_reconcile_species_list_all_unmatched_raises_even_without_strict(tmp_path):
+    """A user list where nothing reconciles must error, not return an empty set: the
+    library reads an empty custom list as 'no filter' and would analyze every species,
+    the opposite of the user's intent - so this is an error even in the default mode."""
+    from birdnet_analyzer.model_utils import _reconcile_species_list
+
+    slist = tmp_path / "species_list.txt"
+    slist.write_text("Foo bar_Not A Bird\nBaz qux_Also Not\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="None of the 2 species"):
+        _reconcile_species_list(
+            str(slist), ["Turdus migratorius_American Robin"], strict=False
+        )
+
+
 # The BirdNET example species list as it was before the 3.0 taxonomy update - a
 # realistic "legacy" list a user may still have on disk. Five labels were revised in
 # 3.0: four common-name changes (scientific name unchanged) and one genus

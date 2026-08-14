@@ -144,6 +144,21 @@ def test_journal_persistence_and_inspect(env):
     assert ResumeJournal.inspect(env["output_dir"]) is None
 
 
+def test_changed_file_is_not_treated_as_completed(env):
+    """A file edited in place after its result was stored is no longer counted as
+    done, so a resume re-analyzes it instead of reusing stale detections."""
+    files = env["files"]
+    journal = ResumeJournal.open(env["output_dir"], {"p": 1}, n_files_total=4)
+
+    journal.on_file_complete(FakeResult([files[0]], detection_rows(files[0])))
+    assert journal.completed_subset(files) == {files[0]}
+
+    # Rewrite the file with different content, as an in-place regeneration would.
+    sf.write(files[0], np.zeros(9600, dtype=np.float32), 48000)
+
+    assert journal.completed_subset(files) == set()
+
+
 def test_combined_dataframe_orders_by_input(env):
     files = env["files"]
     journal = ResumeJournal.open(env["output_dir"], {"p": 1}, n_files_total=4)

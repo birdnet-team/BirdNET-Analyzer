@@ -28,7 +28,6 @@ jobs:
     # few for a cold-cache pre-download, so 30 caps a hang's cost with wide margin.
     timeout-minutes: 30
     env:
-      IS_GITHUB_RUNNER: "true"
       # Fixed, cacheable location for birdnet's model/label downloads. The acoustic
       # (3.0 ONNX ~520 MB, 2.4 TF ~120 MB), geo (~15 MB) and perch-v2 (~380 MB)
       # models all land here, and

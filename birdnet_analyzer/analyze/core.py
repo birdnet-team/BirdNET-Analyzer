@@ -157,7 +157,8 @@ def analyze(
             )
 
         # The geo model uses its own taxonomy; run_inference reconciles it to the
-        # acoustic model by scientific name, so the geo label language is irrelevant.
+        # acoustic model by scientific name (language-independent), so the geo label
+        # language is left at the default.
         slist = run_geomodel(lat, lon, week=week, threshold=sf_thresh).to_set()
 
     # For directory analyses, journal per-file results so an interrupted run can
