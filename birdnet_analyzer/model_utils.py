@@ -90,6 +90,27 @@ def cancel_active_analyses() -> int:
     return len(sessions)
 
 
+def pause_active_analyses() -> int:
+    """Cancel every in-flight analysis without latching shutdown.
+
+    Unlike :func:`cancel_active_analyses`, new analyses may still be started
+    afterwards. Used by the GUI to pause a run: the resume journal keeps the
+    per-file progress, so re-running the same analysis continues where it
+    stopped.
+
+    Returns:
+        The number of sessions that were asked to cancel.
+    """
+    with _ACTIVE_SESSIONS_LOCK:
+        sessions = list(_ACTIVE_SESSIONS)
+
+    for session in sessions:
+        with suppress(Exception):
+            session.cancel()
+
+    return len(sessions)
+
+
 def run_inference(
     path,
     model="birdnet",
@@ -110,6 +131,7 @@ def run_inference(
     classifier: str | None = None,
     cc_species_list: str | None = None,
     callback: Callable[[AcousticProgressStats], None] | None = None,
+    on_file_complete: Callable[[AcousticFilePredictionResult], None] | None = None,
 ) -> AcousticFilePredictionResult:
     if classifier:
         if not cc_species_list:
@@ -132,6 +154,12 @@ def run_inference(
 
     input_files = InferenceConfig.validate_input_files(path)
 
+    # Only pass the kwarg when used: birdnet releases without the per-file
+    # completion hook reject it (see supports_on_file_complete()).
+    session_kwargs = (
+        {"on_file_complete": on_file_complete} if on_file_complete is not None else {}
+    )
+
     with acoustic_model.predict_session(
         top_k=top_k,
         batch_size=batch_size,
@@ -149,12 +177,24 @@ def run_inference(
         n_producers=n_producers,
         apply_sigmoid=model != "perch",
         max_n_files=len(input_files),
+        **session_kwargs,
     ) as session:
         _register_session(session)
         try:
             return session.run(input_files)  # ty:ignore[invalid-return-type]
         finally:
             _unregister_session(session)
+
+
+def supports_on_file_complete() -> bool:
+    """Whether the installed birdnet provides the per-file completion hook.
+
+    Resumable analysis needs ``on_file_complete`` (birdnet-team/birdnet#57);
+    on older releases the feature is silently disabled.
+    """
+    from importlib.util import find_spec
+
+    return find_spec("birdnet.acoustic.inference.core.file_completion") is not None
 
 
 def run_geomodel(
