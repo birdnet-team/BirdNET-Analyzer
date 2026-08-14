@@ -280,6 +280,14 @@ def test_the_analysis_params_of_a_previous_run_are_read_back(
     }
 
 
+def test_a_birdnet_3_0_analysis_restores_the_3_0_model_choice(appdir, tmp_path):
+    values = presets.load_analysis_params(
+        params_file(tmp_path, **{"BirdNET version": "3.0"})
+    )
+
+    assert values["model_selection_radio"] == "BirdNET 3.0"
+
+
 def test_a_top_n_analysis_does_not_restore_the_confidence_placeholder(appdir, tmp_path):
     # With top N in use the analysis runs without a confidence threshold and stores 0.
     values = presets.load_analysis_params(
