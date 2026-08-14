@@ -4,7 +4,7 @@ import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import settings
+from birdnet_analyzer import config, settings
 from birdnet_analyzer.gui.state import TabState
 
 
@@ -93,7 +93,9 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
             map_plot,
         ) = gu.species_list_coordinates(state, show_map=True)
 
-        locale = gu.locale(state)
+        # The species list comes from the geo model (always v3.0), so offer its
+        # languages; an unsupported locale is coerced to English at load time anyway.
+        locale = gu.locale(state, config.GEO_MODEL_LANGUAGES)
 
         start_btn = gr.Button(
             loc.localize("species-tab-start-button-label"), variant="primary"

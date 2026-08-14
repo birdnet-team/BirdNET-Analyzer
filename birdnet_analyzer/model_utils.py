@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
 import threading
 from contextlib import suppress
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import birdnet
 
@@ -23,7 +24,14 @@ if TYPE_CHECKING:
         AcousticEncodingSession,
         AcousticSessionBase,
     )
-    from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGES
+    from birdnet.globals import (
+        ACOUSTIC_MODEL_VERSIONS,
+        MODEL_LANGUAGES,
+        MODEL_LANGUAGES_V2_4,
+        MODEL_LANGUAGES_V3_0,
+    )
+
+logger = logging.getLogger(__name__)
 
 GLOBAL_PREFETCH_RATIO = 2
 
@@ -153,6 +161,38 @@ def pause_active_analyses() -> int:
     return len(sessions)
 
 
+def _language_for_version(language: MODEL_LANGUAGES, version: str) -> MODEL_LANGUAGES:
+    """Return ``language`` if the model ``version`` supports it, else ``en_us``.
+
+    The 2.4 and 3.0 models support overlapping but non-identical language sets (e.g.
+    3.0 has no Italian, 2.4 no Croatian), and the birdnet library raises on an
+    unsupported ``(version, locale)`` pair. A locale that was valid for the model the
+    user last used - or that they typed on the CLI - would otherwise crash the whole
+    analysis. Coercing to English keeps the run going; only the label language, not
+    the detections, is affected. The caller should have already surfaced a warning to
+    the user where possible (the GUI limits the locale choices to the model).
+    """
+    from birdnet.globals import (
+        MODEL_LANGUAGE_EN_US,
+        VALID_MODEL_LANGUAGES_V2_4,
+        VALID_MODEL_LANGUAGES_V3_0,
+    )
+
+    supported = (
+        VALID_MODEL_LANGUAGES_V3_0 if version == "3.0" else VALID_MODEL_LANGUAGES_V2_4
+    )
+    if language in supported:
+        return language
+
+    logger.warning(
+        "Locale '%s' is not available for BirdNET %s; using '%s' for labels instead.",
+        language,
+        version,
+        MODEL_LANGUAGE_EN_US,
+    )
+    return MODEL_LANGUAGE_EN_US
+
+
 def run_inference(
     path,
     model="birdnet",
@@ -186,7 +226,23 @@ def run_inference(
             "acoustic", "2.4", "tf", classifier, cc_species_list
         )
     elif model == "birdnet":
-        acoustic_model = birdnet.load("acoustic", version, "tf", lang=label_language)
+        # A locale valid for one model version can be unsupported by another, which
+        # the library rejects; coerce it to a supported one so the run never fails on
+        # the label language. The cast is then sound: the value is known to be in the
+        # target version's set.
+        lang = _language_for_version(label_language, version)
+        if version == "3.0":
+            # 3.0 ships an ONNX backend: numerically equivalent predictions
+            # (confidence differs by ~1e-6), markedly faster CPU inference, and no
+            # TensorFlow import in the workers.
+            acoustic_model = birdnet.load(
+                "acoustic", "3.0", "onnx", lang=cast("MODEL_LANGUAGES_V3_0", lang)
+            )
+        else:
+            # 2.4 has no ONNX build, so it stays on the TensorFlow backend.
+            acoustic_model = birdnet.load(
+                "acoustic", version, "tf", lang=cast("MODEL_LANGUAGES_V2_4", lang)
+            )
     elif model == "perch":
         acoustic_model = birdnet.load_perch_v2("CPU")
     else:
@@ -259,11 +315,42 @@ def run_geomodel(
     # ``language`` only affects the localized species names, so callers that match on
     # scientific name (e.g. acoustic species filtering) can leave it at the default.
     #
-    # The pb (SavedModel) backend is used rather than tf: the v3.0 geo TFLite backend
-    # only supports TensorFlow 2.18/2.19, while we require >=2.20 - pb has no such
-    # version constraint and works across both geo model versions.
-    model = birdnet.load("geo", DEFAULT_GEO_MODEL_VERSION, "pb", lang=language)
+    # The ONNX backend is used rather than tf/pb: it imports no TensorFlow at all -
+    # and the geo model runs here in the main process, so this keeps TF out of it
+    # entirely - loads much faster, and returns the same species. (The v3.0 geo tf
+    # backend also only supports TensorFlow 2.18/2.19 while we require >=2.20; ONNX
+    # has no such constraint.)
+    #
+    # This targets the v3.0 geo model specifically: the ONNX backend and the v3.0
+    # language set below only exist for it. Assert the (runtime-computed) newest
+    # version is 3.0 so a future geo version fails loudly here - prompting an update -
+    # instead of silently mismatching; it also lets the type checker resolve the
+    # concrete overload, so the casts are then sound.
+    assert DEFAULT_GEO_MODEL_VERSION == "3.0", (
+        f"run_geomodel targets geo v3.0, but the newest geo model is "
+        f"{DEFAULT_GEO_MODEL_VERSION}; update the backend/language handling for it."
+    )
+    language = _language_for_version(language, DEFAULT_GEO_MODEL_VERSION)
+    model = birdnet.load(
+        "geo",
+        DEFAULT_GEO_MODEL_VERSION,
+        "onnx",
+        lang=cast("MODEL_LANGUAGES_V3_0", language),
+    )
     return model.predict(lat, lon, week=week, min_confidence=threshold)
+
+
+def _load_acoustic_for_embeddings(version: ACOUSTIC_MODEL_VERSIONS):
+    """Load the acoustic model for embedding, avoiding TensorFlow where possible.
+
+    3.0 has an ONNX backend (no TensorFlow, faster) and its embeddings are equivalent
+    to the TensorFlow backend's; 2.4 only has TensorFlow. Embedding takes no label
+    language, so unlike :func:`run_inference` this loader has nothing to coerce.
+    """
+    if version == "3.0":
+        return birdnet.load("acoustic", "3.0", "onnx")
+
+    return birdnet.load("acoustic", version, "tf")
 
 
 def get_embeddings(
@@ -279,7 +366,7 @@ def get_embeddings(
     speed=1.0,
     callback: Callable[[AcousticProgressStats], None] | None = None,
 ) -> AcousticFileEncodingResult:
-    model = birdnet.load("acoustic", version, "tf")
+    model = _load_acoustic_for_embeddings(version)
     return model.encode(
         path,
         batch_size=batch_size,
@@ -364,7 +451,7 @@ def get_embeddings_array(
     speed=1.0,
     callback: Callable[[AcousticProgressStats], None] | None = None,
 ) -> np.ndarray:
-    model = birdnet.load("acoustic", version, "tf")
+    model = _load_acoustic_for_embeddings(version)
     sr = model.get_sample_rate()
 
     # encode_array was removed; use encode_session + run_arrays instead.

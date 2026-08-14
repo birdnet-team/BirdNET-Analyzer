@@ -34,3 +34,31 @@ def test_pause_cancels_sessions_without_latching_shutdown():
 def test_pause_with_no_active_sessions_is_a_noop():
     assert model_utils.pause_active_analyses() == 0
     assert not model_utils._SHUTDOWN.is_set()
+
+
+def test_language_for_version_keeps_supported_and_falls_back_otherwise():
+    # The 2.4 and 3.0 models support overlapping but non-identical language sets, and
+    # the library raises on an unsupported (version, locale) pair. _language_for_version
+    # coerces such a locale to en_us so an analysis never crashes on the label language.
+    from birdnet.globals import (
+        MODEL_LANGUAGE_EN_US,
+        VALID_MODEL_LANGUAGES_V2_4,
+        VALID_MODEL_LANGUAGES_V3_0,
+    )
+
+    # en_us is the coercion target, so it must be valid for every version.
+    assert MODEL_LANGUAGE_EN_US in VALID_MODEL_LANGUAGES_V2_4
+    assert MODEL_LANGUAGE_EN_US in VALID_MODEL_LANGUAGES_V3_0
+
+    only_v24 = sorted(set(VALID_MODEL_LANGUAGES_V2_4) - set(VALID_MODEL_LANGUAGES_V3_0))
+    only_v30 = sorted(set(VALID_MODEL_LANGUAGES_V3_0) - set(VALID_MODEL_LANGUAGES_V2_4))
+    # The whole point of the coercion is that the sets are not nested; if the library
+    # ever makes one a superset of the other this test should be revisited.
+    assert only_v24
+    assert only_v30
+
+    # A 2.4-only locale is kept for 2.4 but coerced to en_us for 3.0, and vice versa.
+    assert model_utils._language_for_version(only_v24[0], "2.4") == only_v24[0]
+    assert model_utils._language_for_version(only_v24[0], "3.0") == MODEL_LANGUAGE_EN_US
+    assert model_utils._language_for_version(only_v30[0], "3.0") == only_v30[0]
+    assert model_utils._language_for_version(only_v30[0], "2.4") == MODEL_LANGUAGE_EN_US
