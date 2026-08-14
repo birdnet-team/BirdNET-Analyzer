@@ -28,6 +28,31 @@ from sklearn.metrics import (
 )
 
 
+def _check_inputs(
+    predictions: np.ndarray,
+    labels: np.ndarray,
+    threshold: float | None = None,
+) -> None:
+    """Validate the shared preconditions of every metric function.
+
+    Args:
+        predictions (np.ndarray): Model predictions as probabilities.
+        labels (np.ndarray): True labels.
+        threshold (Optional[float]): If given, must lie in [0, 1]. Pass None for
+            threshold-independent metrics (AP, AUROC).
+
+    Raises:
+        ValueError: If the arrays are empty, mismatched in shape, or the threshold is
+            out of range.
+    """
+    if predictions.size == 0 or labels.size == 0:
+        raise ValueError("Predictions and labels must not be empty.")
+    if predictions.shape != labels.shape:
+        raise ValueError("Predictions and labels must have the same shape.")
+    if threshold is not None and not 0 <= threshold <= 1:
+        raise ValueError(f"Invalid threshold: {threshold}. Must be between 0 and 1.")
+
+
 def calculate_accuracy(
     predictions: np.ndarray,
     labels: np.ndarray,
@@ -57,13 +82,7 @@ def calculate_accuracy(
         ValueError: If inputs are invalid or unsupported task/averaging method is
             specified.
     """
-    # Input validation for predictions, labels, and threshold
-    if predictions.size == 0 or labels.size == 0:
-        raise ValueError("Predictions and labels must not be empty.")
-    if not 0 <= threshold <= 1:
-        raise ValueError(f"Invalid threshold: {threshold}. Must be between 0 and 1.")
-    if predictions.shape != labels.shape:
-        raise ValueError("Predictions and labels must have the same shape.")
+    _check_inputs(predictions, labels, threshold)
 
     # Handle binary and multilabel tasks separately
     if task == "binary":
@@ -148,13 +167,7 @@ def calculate_recall(
     Raises:
         ValueError: If inputs are invalid or unsupported task type is specified.
     """
-    # Validate inputs for size, threshold, and shape
-    if predictions.size == 0 or labels.size == 0:
-        raise ValueError("Predictions and labels must not be empty.")
-    if not 0 <= threshold <= 1:
-        raise ValueError(f"Invalid threshold: {threshold}. Must be between 0 and 1.")
-    if predictions.shape != labels.shape:
-        raise ValueError("Predictions and labels must have the same shape.")
+    _check_inputs(predictions, labels, threshold)
 
     # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
@@ -207,13 +220,7 @@ def calculate_precision(
     Raises:
         ValueError: If inputs are invalid or unsupported task type is specified.
     """
-    # Validate inputs for size, threshold, and shape
-    if predictions.size == 0 or labels.size == 0:
-        raise ValueError("Predictions and labels must not be empty.")
-    if not 0 <= threshold <= 1:
-        raise ValueError(f"Invalid threshold: {threshold}. Must be between 0 and 1.")
-    if predictions.shape != labels.shape:
-        raise ValueError("Predictions and labels must have the same shape.")
+    _check_inputs(predictions, labels, threshold)
 
     # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
@@ -266,13 +273,7 @@ def calculate_f1_score(
     Raises:
         ValueError: If inputs are invalid or unsupported task type is specified.
     """
-    # Validate inputs for size, threshold, and shape
-    if predictions.size == 0 or labels.size == 0:
-        raise ValueError("Predictions and labels must not be empty.")
-    if not 0 <= threshold <= 1:
-        raise ValueError(f"Invalid threshold: {threshold}. Must be between 0 and 1.")
-    if predictions.shape != labels.shape:
-        raise ValueError("Predictions and labels must have the same shape.")
+    _check_inputs(predictions, labels, threshold)
 
     # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
@@ -323,11 +324,7 @@ def calculate_average_precision(
     Raises:
         ValueError: If inputs are invalid or unsupported task type is specified.
     """
-    # Validate inputs for size and shape
-    if predictions.size == 0 or labels.size == 0:
-        raise ValueError("Predictions and labels must not be empty.")
-    if predictions.shape != labels.shape:
-        raise ValueError("Predictions and labels must have the same shape.")
+    _check_inputs(predictions, labels)
 
     # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
@@ -371,11 +368,7 @@ def calculate_auroc(
     Raises:
         ValueError: If inputs are invalid or unsupported task type is specified.
     """
-    # Validate inputs for size and shape
-    if predictions.size == 0 or labels.size == 0:
-        raise ValueError("Predictions and labels must not be empty.")
-    if predictions.shape != labels.shape:
-        raise ValueError("Predictions and labels must have the same shape.")
+    _check_inputs(predictions, labels)
 
     # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method

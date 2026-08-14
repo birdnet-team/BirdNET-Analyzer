@@ -157,11 +157,11 @@ def test_extract_recording_filename_from_filename_multiple_dots():
     Test extract_recording_filename_from_filename with filenames containing multiple
     dots.
 
-    Ensures that the function extracts the base filename correctly when multiple dots
-    are present.
+    Only the final extension is stripped, so dots inside the recording name (e.g.
+    dates) are preserved. This mirrors extract_recording_filename so both agree.
     """
     input_series = pd.Series(["file.name.ext", "another.file.name.ext"])
-    expected_output = pd.Series(["file", "another"])
+    expected_output = pd.Series(["file.name", "another.file.name"])
     output_series = extract_recording_filename_from_filename(input_series)
     pd.testing.assert_series_equal(output_series, expected_output)
 
@@ -221,11 +221,11 @@ def test_extract_recording_filename_from_filename_starting_dot():
     """
     Test extract_recording_filename_from_filename with filenames starting with a dot.
 
-    Ensures that the function correctly handles hidden files or filenames that start
-    with a dot.
+    A leading dot marks a hidden file rather than an extension, so the name is kept
+    (only a trailing extension is removed), consistent with os.path.splitext.
     """
     input_series = pd.Series([".hiddenfile", ".anotherhiddenfile.txt"])
-    expected_output = pd.Series(["", ""])
+    expected_output = pd.Series([".hiddenfile", ".anotherhiddenfile"])
     output_series = extract_recording_filename_from_filename(input_series)
     pd.testing.assert_series_equal(output_series, expected_output)
 
@@ -246,10 +246,11 @@ def test_extract_recording_filename_from_filename_only_dots():
     """
     Test extract_recording_filename_from_filename with filenames that contain only dots.
 
-    Ensures that the function handles filenames made entirely of dots.
+    Ensures that the function handles filenames made entirely of dots. os.path.splitext
+    treats these as extensionless, so they are returned unchanged.
     """
     input_series = pd.Series(["...", ".."])
-    expected_output = pd.Series(["", ""])
+    expected_output = pd.Series(["...", ".."])
     output_series = extract_recording_filename_from_filename(input_series)
     pd.testing.assert_series_equal(output_series, expected_output)
 

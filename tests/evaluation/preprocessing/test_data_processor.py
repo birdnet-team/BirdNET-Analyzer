@@ -360,12 +360,13 @@ class TestDataProcessorLoadData:
                 "source_file": ["file1.txt", "file2.txt"],
             }
         )
+        # Same recordings as the predictions so nothing is dropped as unmatched.
         mock_annotations_df = pd.DataFrame(
             {
                 "Class": ["A", "C"],
                 "Start Time": [0.5, 1.5],
                 "End Time": [1.5, 2.5],
-                "source_file": ["file3.txt", "file4.txt"],
+                "source_file": ["file1.txt", "file2.txt"],
             }
         )
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
@@ -2115,8 +2116,11 @@ class TestCreateTensors:
 
     def teardown_method(self):
         """Stop patching."""
-        self.patcher_pred.stop()
+        # Stop in reverse (LIFO) order. Both patchers target the same function, so
+        # stopping the first one first would leave the module attribute pointing at
+        # the first patcher's mock instead of the real function.
         self.patcher_annot.stop()
+        self.patcher_pred.stop()
 
     def test_empty_samples_df(self):
         """Test when samples_df is empty."""
@@ -2286,8 +2290,11 @@ class TestGetColumnName:
 
     def teardown_method(self):
         """Stop patching."""
-        self.patcher_pred.stop()
+        # Stop in reverse (LIFO) order. Both patchers target the same function, so
+        # stopping the first one first would leave the module attribute pointing at
+        # the first patcher's mock instead of the real function.
         self.patcher_annot.stop()
+        self.patcher_pred.stop()
 
     def test_default_mapping_prediction(self):
         """Test default mapping for predictions."""
@@ -2384,8 +2391,11 @@ class TestGetSampleData:
 
     def teardown_method(self):
         """Stop patching."""
-        self.patcher_pred.stop()
+        # Stop in reverse (LIFO) order. Both patchers target the same function, so
+        # stopping the first one first would leave the module attribute pointing at
+        # the first patcher's mock instead of the real function.
         self.patcher_annot.stop()
+        self.patcher_pred.stop()
 
     def test_empty_samples_df(self):
         """Test when samples_df is empty."""

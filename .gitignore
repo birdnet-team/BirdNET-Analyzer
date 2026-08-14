@@ -14,6 +14,9 @@ uv.lock
 # Ruff
 .ruff_cache
 
+# CI model cache location (BIRDNET_APP_DATA in .github/workflows/ci.yml)
+.birdnet-app-data
+
 # Models
 checkpoints
 

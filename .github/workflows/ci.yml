@@ -13,17 +13,31 @@ on:
 
 concurrency:
   group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
-  cancel-in-progress: true
+  # Cancel superseded PR runs when new commits are pushed, but let pushes to main
+  # run to completion so a merge's CI is never cancelled by the next merge.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   running-tests:
     runs-on: ${{ matrix.os }}
+    # Backstop for a wedged run (e.g. a hung model download or a native deadlock
+    # that pytest-timeout can't interrupt). Healthy jobs finish in ~2-6 min, plus a
+    # few for a cold-cache pre-download, so 30 caps a hang's cost with wide margin.
+    timeout-minutes: 30
     env:
       IS_GITHUB_RUNNER: "true"
+      # Fixed, cacheable location for birdnet's model/label downloads. The acoustic
+      # (~120 MB), geo (~35 MB) and perch-v2 (~380 MB) models all land here, and
+      # birdnet reads this env var at import time and skips the download when the
+      # files already exist - so a cache hit avoids re-fetching them from tuc.cloud
+      # on every job. Placed under the workspace because the `runner` context isn't
+      # available in job-level env but `github.workspace` is; checkout runs before
+      # the cache is restored, so it never wipes the restored models.
+      BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -32,11 +46,33 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      # Cache the downloaded models across runs. Keyed on the birdnet dependency
+      # (via pyproject.toml) and the OS only - the model files are identical across
+      # Python versions, so all matrix jobs on an OS share one cache. birdnet
+      # re-downloads only missing/updated models, so restoring an older cache is safe.
+      - name: Cache birdnet models
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BIRDNET_APP_DATA }}
+          key: birdnet-models-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            birdnet-models-${{ runner.os }}-
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install .[embeddings,train,tests,gui-tests]
+        run: uv pip install --system .[embeddings,train,tests,gui-tests]
+      # Pre-download the models outside pytest's per-test 120s timeout. On a cold
+      # cache the acoustic-model download from tuc.cloud can exceed 120s on slower
+      # (Windows/macOS) runners and trip the timeout mid-download - which also means
+      # the model cache never captures a complete model, so the next run is cold
+      # again and the flake is permanent. Fetching them here (no per-test timeout)
+      # breaks that cycle and lets the cache actually populate. Mirrors the models
+      # baked into the Docker image.
+      - name: Pre-download birdnet models
+        run: python -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '2.4', 'tf', lang='en_us')"
       - name: Run tests
         run: |
           python -m pytest
