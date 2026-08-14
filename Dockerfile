@@ -5,8 +5,10 @@ FROM python:3.13-slim
 # parallel downloads and a faster resolver. Pin the version for reproducibility.
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /bin/uv
 
-# Install required packages while keeping the image small
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg  && rm -rf /var/lib/apt/lists/*
+# Install required packages while keeping the image small.
+# git is only needed to resolve the temporary birdnet direct reference in
+# pyproject.toml; drop it again once birdnet is installed from PyPI.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

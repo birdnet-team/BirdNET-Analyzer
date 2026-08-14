@@ -39,7 +39,10 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=0.2.16,<1",
+    # TEMPORARY, until birdnet 1.0.0 is published: the analyzer is written against
+    # the 1.0 API, which is not on PyPI yet, so it comes straight off the release
+    # branch.
+    "birdnet @ git+https://github.com/birdnet-team/birdnet.git@a667a9812679ab70bacaf4f1319d5cdb91053f02",
 ]
 
 [project.optional-dependencies]
