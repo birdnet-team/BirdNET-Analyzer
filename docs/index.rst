@@ -8,6 +8,7 @@ Welcome to the BirdNET-Analyzer documentation! This guide provides detailed info
    :caption: Contents:
 
    installation
+   breaking-changes
    usage
    models
    best-practices
