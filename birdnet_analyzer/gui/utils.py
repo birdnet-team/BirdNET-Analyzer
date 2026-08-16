@@ -199,6 +199,58 @@ def gui_runtime_error_handler(f):
     return wrapper
 
 
+def _format_bytes(n: int) -> str:
+    return f"{n / 1e6:.0f} MB" if n < 1e9 else f"{n / 1e9:.1f} GB"
+
+
+def download_progress(progress: gr.Progress | None = None):
+    """Shows the birdnet library's model downloads while the ``with`` block runs.
+
+    Models are fetched on first use inside ``birdnet.load``; the library's own tqdm
+    bar goes to stderr, which the frozen GUI diverts to the log file. This routes the
+    updates to ``progress`` when a bar is available and to toasts otherwise, so a
+    first-run download of several hundred MB never looks like a hang.
+    """
+    import birdnet
+
+    def on_update(update: birdnet.DownloadProgress) -> None:
+        # The library's descriptions read "Downloading acoustic model v3.0 (...)";
+        # keep the localized verb and only the object.
+        name = update.description.removeprefix("Downloading ")
+        if update.attempt > 1:
+            name = f"{name} ({update.attempt}/{update.max_attempts})"
+
+        label = f"{loc.localize('progress-downloading-model')}: {name}"
+
+        # An exception escaping this callback aborts the download in the library
+        # (that is its cancel path), so UI hiccups must not leak out of here.
+        try:
+            if update.status == "started" and progress is None:
+                gr.Info(label)
+            elif update.status == "progress" and progress is not None:
+                if update.bytes_total:
+                    done = _format_bytes(update.bytes_done)
+                    total = _format_bytes(update.bytes_total)
+                    progress(
+                        min(update.bytes_done / update.bytes_total, 1.0),
+                        desc=f"{label} ({done} / {total})",
+                    )
+                else:
+                    # Unknown size: keep the bar visible (None would hide it).
+                    progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
+            elif update.status == "retrying":
+                gr.Warning(
+                    f"{loc.localize('progress-download-retrying')}: {name} - "
+                    f"{update.error}"
+                )
+            # "failed" is terminal: the library raises right after it, and that
+            # error reaches the user through the operation's own error handling.
+        except Exception:
+            logging.getLogger(__name__).exception("Download progress UI update failed")
+
+    return birdnet.download_progress_callback(on_update)
+
+
 def select_folder(state_key=None):
     """Opens a folder selection dialog and returns the selected folder path.
 

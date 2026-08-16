@@ -225,6 +225,8 @@
     "progress-analyzing": "Analysoidaan",
     "progress-autotune": "Autoviritys käynnissä",
     "progress-build-classifier": "Ladataan dataa & rakennetaan luokittelijaa",
+    "progress-download-retrying": "Mallin lataus keskeytyi, yritetään uudelleen",
+    "progress-downloading-model": "Ladataan mallia",
     "progress-extracting-segments": "Segmenttejä puretaan",
     "progress-loading-data": "Ladataan dataa kohteelle",
     "progress-saving": "Tallennetaan kohteeseen",

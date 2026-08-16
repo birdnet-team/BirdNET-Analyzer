@@ -225,6 +225,8 @@
     "progress-analyzing": "Analyserar",
     "progress-autotune": "Autojustering pågår",
     "progress-build-classifier": "Laddar data och bygger klassificerare",
+    "progress-download-retrying": "Nedladdningen av modellen avbröts, försöker igen",
+    "progress-downloading-model": "Laddar ner modell",
     "progress-extracting-segments": "Extraherar segment",
     "progress-loading-data": "Laddar data för",
     "progress-saving": "Sparar i",

@@ -225,6 +225,8 @@
     "progress-analyzing": "Menganalisis",
     "progress-autotune": "Autotune dalam progres",
     "progress-build-classifier": "Memuat data & membangun klasifikator",
+    "progress-download-retrying": "Pengunduhan model terputus, mencoba lagi",
+    "progress-downloading-model": "Mengunduh model",
     "progress-extracting-segments": "Mengekstrak segmen",
     "progress-loading-data": "Memuat data untuk",
     "progress-saving": "Menyimpan di",
