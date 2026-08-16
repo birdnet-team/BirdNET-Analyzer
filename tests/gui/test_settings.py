@@ -35,3 +35,31 @@ def test_gui_runtime_files_use_user_appdir_when_not_frozen(monkeypatch, tmp_path
         assert (expected_appdir / "error_log.txt").exists()
     finally:
         logs._remove_installed_handlers()
+
+
+def test_frozen_output_diverted_only_for_windowed_builds(monkeypatch):
+    # Frozen builds divert stdout/stderr into logs.txt only when nobody can read them.
+    # The console CLI executable (real stream, whether terminal, pipe or file) must
+    # keep printing; the windowed GUI must be diverted. On Windows a windowed
+    # PyInstaller build has sys.stdout None; on macOS the only frozen artifact is the
+    # windowed .app.
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(settings, "FROZEN", False)
+    assert not settings._divert_output_to_log()
+
+    monkeypatch.setattr(settings, "FROZEN", True)
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    monkeypatch.setattr(sys, "stdout", MagicMock())
+    monkeypatch.setattr(sys, "stderr", MagicMock())
+    assert not settings._divert_output_to_log(), "console exe must keep printing"
+
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    assert settings._divert_output_to_log(), "windowed exe must be diverted"
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(sys, "stdout", MagicMock())
+    monkeypatch.setattr(sys, "stderr", MagicMock())
+    assert settings._divert_output_to_log(), "the mac .app is always windowed"
