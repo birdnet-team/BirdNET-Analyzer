@@ -1023,8 +1023,9 @@ def species_list_coordinates(state: TabState, show_map=False):
                 info=loc.localize("species-list-coordinates-lon-number-info"),
             )
 
+        # No initial figure: open_window's demo.load repopulates every map plot on
+        # page load, so building one here only slows startup.
         map_plot = gr.Plot(
-            plot_map_scatter_mapbox(lat_number.value, lon_number.value),
             show_label=False,
             scale=2,
             visible=show_map,
