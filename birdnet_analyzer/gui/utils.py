@@ -90,6 +90,19 @@ def birdnet_version(model_choice: str) -> str:
     return _BIRDNET_MODEL_VERSIONS.get(model_choice, "2.4")
 
 
+def model_supports_sensitivity(model_choice: str) -> bool:
+    """Whether the sensitivity slider applies to the selected model choice."""
+    from birdnet_analyzer.model_utils import supports_sensitivity
+
+    if model_choice == _CUSTOM_CLASSIFIER:
+        return True
+
+    if model_choice == _USE_PERCH:
+        return False
+
+    return supports_sensitivity("birdnet", birdnet_version(model_choice))
+
+
 def model_languages(model_choice: str) -> list[str]:
     """The label languages the given model's version supports, sorted.
 
@@ -598,12 +611,17 @@ def default_model():
 def sample_species_model_settings(state: TabState, opened=True):
     # The model decides which sample and species settings are available, so it has to
     # be known before those are built, even though it is shown below them.
-    is_perch = (
-        state.get("model_selection_radio", default_model(), choices=model_choices())
-        == _USE_PERCH
+    model_choice = state.get(
+        "model_selection_radio", default_model(), choices=model_choices()
     )
+    is_perch = model_choice == _USE_PERCH
 
-    sample_settings = sample_sliders(state, opened=opened, is_perch=is_perch)
+    sample_settings = sample_sliders(
+        state,
+        opened=opened,
+        is_perch=is_perch,
+        sensitivity_enabled=model_supports_sensitivity(model_choice),
+    )
     species_settings = species_lists(state, opened=opened, is_perch=is_perch)
     model_settings = model_selection(state, opened=opened)
 
@@ -615,8 +633,16 @@ def sample_species_model_settings(state: TabState, opened=True):
             else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
         )
 
+        # A disabled slider shows 1.0 so it never displays a value the analysis will
+        # not use (e.g. one carried over from a 2.4 preset).
+        sensitivity_update = (
+            gr.update(interactive=True)
+            if model_supports_sensitivity(value)
+            else gr.update(interactive=False, value=1.0)
+        )
+
         return (
-            gr.update(interactive=not is_perch),
+            sensitivity_update,
             gr.update(maximum=4.9 if is_perch else 2.9),
             # Keep the current species selection (e.g. the one a preset was just
             # applied with) as long as the new model offers it.
@@ -688,7 +714,7 @@ def sample_species_model_settings(state: TabState, opened=True):
 
 
 def sample_sliders(
-    state: TabState, opened=True, is_perch=False
+    state: TabState, opened=True, is_perch=False, sensitivity_enabled=True
 ) -> dict[_SAMPLE_KEYS, gr.components.Component]:
     """Creates the gradio accordion for sample settings.
 
@@ -696,6 +722,7 @@ def sample_sliders(
         state: The persisted settings of the tab the accordion belongs to.
         opened: If True the accordion is open on init.
         is_perch: If True the settings are limited to what the Perch model supports.
+        sensitivity_enabled: Whether the selected model supports a sensitivity.
     Returns:
         A dict with the created elements.
     """
@@ -753,10 +780,14 @@ def sample_sliders(
                     maximum=1.5,
                     value=1.0,
                     step=0.01,
-                    interactive=not is_perch,
+                    interactive=sensitivity_enabled,
                     label=loc.localize("inference-settings-sensitivity-slider-label"),
                     info=loc.localize("inference-settings-sensitivity-slider-info"),
                 )
+                # Show what the analysis will use: a value persisted from a 2.4 run
+                # would otherwise sit visibly on the disabled slider.
+                if not sensitivity_enabled:
+                    sensitivity_slider.value = 1.0
                 overlap_slider = state.persist(
                     "overlap_slider",
                     gr.Slider,

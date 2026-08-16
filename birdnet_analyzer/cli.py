@@ -290,7 +290,7 @@ def sigmoid_args():
         "--sensitivity",
         type=lambda a: min(1.5, max(0.5, float(a))),
         default=1.0,
-        help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid functionon the x-axis. Use complementary to the cut-off threshold.",
+        help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid function on the x-axis. Use complementary to the cut-off threshold. Only applies to BirdNET 2.4 and custom classifiers; ignored for BirdNET 3.0 (which applies the sigmoid inside the model) and Perch.",
     )
 
     return p

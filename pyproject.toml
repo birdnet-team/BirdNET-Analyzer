@@ -49,7 +49,10 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet==1.0.0",
+    # Direct URL: unreleased birdnet main (3.0 sigmoid fix, pb backend fix, download
+    # progress hook). PyPI rejects direct-URL requirements, so this must become a
+    # version pin before publishing.
+    "birdnet @ https://github.com/birdnet-team/birdnet/archive/75394998.tar.gz",
 ]
 
 [project.optional-dependencies]
