@@ -122,8 +122,7 @@ def analyze(
     )
     from birdnet_analyzer.utils import save_params_file
 
-    # Settle the sensitivity here so the params file, result columns and the resume
-    # fingerprint all record the value the analysis actually used.
+    # Settled before the params file, result columns and resume fingerprint see it.
     sensitivity = effective_sensitivity(sensitivity, model, birdnet, classifier)
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""

@@ -710,9 +710,7 @@ def sample_species_model_settings(state: TabState, opened=True):
             else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
         )
 
-        # A disabled slider shows 1.0 so it never displays a value the analysis will
-        # not use; re-enabling brings back the value the user last set (persisted
-        # on release, so read live rather than from the state snapshot).
+        # Slider release persists the value; read it live, the state snapshot is stale.
         if model_supports_sensitivity(value):
             persisted = settings.get_tab_settings(state.tab).get("sensitivity_slider")
             restored = (
@@ -867,8 +865,6 @@ def sample_sliders(
                     label=loc.localize("inference-settings-sensitivity-slider-label"),
                     info=loc.localize("inference-settings-sensitivity-slider-info"),
                 )
-                # Show what the analysis will use: a value persisted from a 2.4 run
-                # would otherwise sit visibly on the disabled slider.
                 if not sensitivity_enabled:
                     sensitivity_slider.value = 1.0
                 overlap_slider = state.persist(
