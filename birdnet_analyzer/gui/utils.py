@@ -221,8 +221,11 @@ def _show_download_update(update, progress: "gr.Progress | None") -> None:
 
     if update.status == "started" and progress is None:
         gr.Info(label)
-    elif update.status == "progress" and progress is not None:
-        if update.bytes_total:
+    elif update.status in ("progress", "finished") and progress is not None:
+        # "progress" is throttled, so only "finished" reliably shows the bar full.
+        if update.status == "finished":
+            progress(1.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
+        elif update.bytes_total:
             done = _format_bytes(update.bytes_done)
             total = _format_bytes(update.bytes_total)
             progress(

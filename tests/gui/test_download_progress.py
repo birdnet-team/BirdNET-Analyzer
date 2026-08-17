@@ -50,6 +50,7 @@ def test_download_progress_routes_library_updates_to_gradio(monkeypatch):
     assert "Downloading Downloading" not in calls[0][1]
     assert calls[1][0] == 0.0
     assert "5 MB" in calls[1][1]
+    assert calls[2][0] == 1.0, "finished shows the bar full"
     assert not infos, "no toasts while a progress bar is available"
 
     with gu.download_progress(None):
