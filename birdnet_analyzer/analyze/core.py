@@ -69,8 +69,9 @@ def analyze(
         week (int, optional): Week of the year for seasonal filtering. Defaults to -1.
         slist (str | None, optional): Path to a species list file for filtering.
             Defaults to None.
-        sensitivity (float, optional): Sensitivity of the detection algorithm.
-            Defaults to 1.0.
+        sensitivity (float, optional): Sensitivity of the detection algorithm; only
+            applies to BirdNET 2.4 and custom classifiers, ignored (with a warning)
+            for BirdNET 3.0 and Perch. Defaults to 1.0.
         overlap (float, optional): Overlap between analysis windows in seconds.
             Defaults to 0.
         fmin (int, optional): Minimum frequency for analysis in Hz. Defaults to 0.
