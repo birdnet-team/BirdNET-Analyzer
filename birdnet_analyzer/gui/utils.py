@@ -6,9 +6,10 @@ import multiprocessing
 import os
 import platform
 import sys
+import threading
 import warnings
 from collections.abc import Callable
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from html import escape
 from typing import Literal, cast, get_args
 
@@ -203,7 +204,55 @@ def _format_bytes(n: int) -> str:
     return f"{n / 1e6:.0f} MB" if n < 1e9 else f"{n / 1e9:.1f} GB"
 
 
-def download_progress(progress: gr.Progress | None = None):
+# Download sinks by the thread that runs birdnet.load; the library's callback fires
+# synchronously on that thread. One dispatcher is registered with the library while
+# any sink is active, so overlapping GUI events neither misroute nor clobber each
+# other's registration (the library's own scoped registration is a plain set/restore).
+_DOWNLOAD_SINKS: dict[int, "gr.Progress | None"] = {}
+_DOWNLOAD_SINKS_LOCK = threading.Lock()
+
+
+def _show_download_update(update, progress: "gr.Progress | None") -> None:
+    name = update.description.removeprefix("Downloading ")
+    if update.attempt > 1:
+        name = f"{name} ({update.attempt}/{update.max_attempts})"
+
+    label = f"{loc.localize('progress-downloading-model')}: {name}"
+
+    if update.status == "started" and progress is None:
+        gr.Info(label)
+    elif update.status == "progress" and progress is not None:
+        if update.bytes_total:
+            done = _format_bytes(update.bytes_done)
+            total = _format_bytes(update.bytes_total)
+            progress(
+                min(update.bytes_done / update.bytes_total, 1.0),
+                desc=f"{label} ({done} / {total})",
+            )
+        else:
+            progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
+    elif update.status == "retrying":
+        gr.Warning(
+            f"{loc.localize('progress-download-retrying')}: {name} - {update.error}"
+        )
+    # "failed": the library raises right after; the operation reports it.
+
+
+def _dispatch_download_update(update) -> None:
+    with _DOWNLOAD_SINKS_LOCK:
+        if threading.get_ident() not in _DOWNLOAD_SINKS:
+            return
+        progress = _DOWNLOAD_SINKS[threading.get_ident()]
+
+    # An exception escaping the callback aborts the download in the library.
+    try:
+        _show_download_update(update, progress)
+    except Exception:
+        logging.getLogger(__name__).exception("Download progress UI update failed")
+
+
+@contextmanager
+def download_progress(progress: "gr.Progress | None" = None):
     """Shows the birdnet library's model downloads while the ``with`` block runs.
 
     Models are fetched on first use inside ``birdnet.load``; the library's own tqdm
@@ -213,37 +262,18 @@ def download_progress(progress: gr.Progress | None = None):
     """
     import birdnet
 
-    def on_update(update: birdnet.DownloadProgress) -> None:
-        name = update.description.removeprefix("Downloading ")
-        if update.attempt > 1:
-            name = f"{name} ({update.attempt}/{update.max_attempts})"
-
-        label = f"{loc.localize('progress-downloading-model')}: {name}"
-
-        # An exception escaping the callback aborts the download in the library.
-        try:
-            if update.status == "started" and progress is None:
-                gr.Info(label)
-            elif update.status == "progress" and progress is not None:
-                if update.bytes_total:
-                    done = _format_bytes(update.bytes_done)
-                    total = _format_bytes(update.bytes_total)
-                    progress(
-                        min(update.bytes_done / update.bytes_total, 1.0),
-                        desc=f"{label} ({done} / {total})",
-                    )
-                else:
-                    progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
-            elif update.status == "retrying":
-                gr.Warning(
-                    f"{loc.localize('progress-download-retrying')}: {name} - "
-                    f"{update.error}"
-                )
-            # "failed": the library raises right after; the operation reports it.
-        except Exception:
-            logging.getLogger(__name__).exception("Download progress UI update failed")
-
-    return birdnet.download_progress_callback(on_update)
+    thread = threading.get_ident()
+    with _DOWNLOAD_SINKS_LOCK:
+        if not _DOWNLOAD_SINKS:
+            birdnet.set_download_progress_callback(_dispatch_download_update)
+        _DOWNLOAD_SINKS[thread] = progress
+    try:
+        yield
+    finally:
+        with _DOWNLOAD_SINKS_LOCK:
+            _DOWNLOAD_SINKS.pop(thread, None)
+            if not _DOWNLOAD_SINKS:
+                birdnet.set_download_progress_callback(None)
 
 
 def select_folder(state_key=None):

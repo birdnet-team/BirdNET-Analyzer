@@ -96,3 +96,51 @@ def test_download_progress_survives_ui_failures(monkeypatch):
     assert len(warnings) == 1
     assert "connection reset" in warnings[0]
     assert "(2/3)" in warnings[0]
+
+
+def test_overlapping_gui_events_keep_their_own_sink_and_unregister_cleanly():
+    import threading
+
+    import birdnet
+
+    from birdnet_analyzer.gui import utils as gu
+
+    def update(desc):
+        return birdnet.DownloadProgress(
+            description=desc,
+            url="u",
+            bytes_done=1,
+            bytes_total=2,
+            attempt=1,
+            max_attempts=1,
+            status="progress",
+        )
+
+    seen_a, seen_b = [], []
+    a_entered, b_entered, a_left = (threading.Event() for _ in range(3))
+
+    def event_a():
+        with gu.download_progress(lambda v, desc=None, **k: seen_a.append(desc)):
+            a_entered.set()
+            b_entered.wait(5)
+            birdnet.get_download_progress_callback()(update("Downloading alpha-model"))
+        a_left.set()
+
+    def event_b():
+        a_entered.wait(5)
+        with gu.download_progress(lambda v, desc=None, **k: seen_b.append(desc)):
+            b_entered.set()
+            a_left.wait(5)
+            birdnet.get_download_progress_callback()(update("Downloading beta-model"))
+
+    ta, tb = threading.Thread(target=event_a), threading.Thread(target=event_b)
+    ta.start()
+    tb.start()
+    ta.join(10)
+    tb.join(10)
+
+    assert any("alpha-model" in d for d in seen_a)
+    assert not any("beta-model" in d for d in seen_a)
+    assert any("beta-model" in d for d in seen_b)
+    assert not any("alpha-model" in d for d in seen_b)
+    assert birdnet.get_download_progress_callback() is None
