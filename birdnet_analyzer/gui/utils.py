@@ -670,6 +670,24 @@ def sample_species_model_settings(state: TabState, opened=True):
         show_progress="hidden",
     )
 
+    def keep_disabled_slider_at_default(sensitivity, model_choice):
+        # A preset or params file can set the slider while the model stays 3.0/Perch,
+        # which fires no model change to reset it.
+        if model_supports_sensitivity(model_choice) or sensitivity == 1.0:
+            return gr.update()
+
+        return gr.update(value=1.0)
+
+    sample_settings["sensitivity_slider"].change(
+        keep_disabled_slider_at_default,
+        inputs=[
+            sample_settings["sensitivity_slider"],
+            model_settings["model_selection_radio"],
+        ],
+        outputs=sample_settings["sensitivity_slider"],
+        show_progress="hidden",
+    )
+
     def warn_unmatched_species(file, model_choice, locale):
         """Heads-up when a chosen custom list has species the selected model lacks.
 
