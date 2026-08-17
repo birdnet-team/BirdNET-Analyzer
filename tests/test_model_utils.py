@@ -65,10 +65,6 @@ def test_language_for_version_keeps_supported_and_falls_back_otherwise():
 
 
 def test_supports_sensitivity_only_for_2_4_based_models():
-    # Sensitivity scales the sigmoid the analyzer applies to logits: BirdNET 2.4 and
-    # custom classifiers (2.4 base). BirdNET 3.0 applies its sigmoid inside the model
-    # (the library raises for a sensitivity other than 1.0); Perch is run on raw logits
-    # without a sigmoid. Unknown future versions are treated like 3.0.
     assert model_utils.supports_sensitivity("birdnet", "2.4")
     assert not model_utils.supports_sensitivity("birdnet", "3.1")
     assert model_utils.supports_sensitivity("birdnet", "3.0", classifier="cc.tflite")
@@ -77,9 +73,6 @@ def test_supports_sensitivity_only_for_2_4_based_models():
 
 
 def test_run_inference_drops_sensitivity_for_3_0(monkeypatch, tmp_path):
-    # A non-default sensitivity is coerced to 1.0 before it reaches the library, which
-    # would otherwise reject it for 3.0 and crash the analysis (GUI state can carry the
-    # slider value over from a 2.4 run).
     from contextlib import contextmanager
     from unittest.mock import MagicMock
 

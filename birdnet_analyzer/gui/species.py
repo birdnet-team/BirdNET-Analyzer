@@ -16,14 +16,15 @@ def run_species_list(
 
     gu.validate(out_path, loc.localize("validation-no-directory-selected"))
 
-    species(
-        output=os.path.join(out_path, filename or "species_list.txt"),
-        lat=lat,
-        lon=lon,
-        week=None if use_yearlong else week,
-        sf_thresh=sf_thresh,
-        locale=locale,
-    )
+    with gu.download_progress():
+        species(
+            output=os.path.join(out_path, filename or "species_list.txt"),
+            lat=lat,
+            lon=lon,
+            week=None if use_yearlong else week,
+            sf_thresh=sf_thresh,
+            locale=locale,
+        )
 
     gr.Info(f"{loc.localize('species-tab-finish-info')} {out_path}")
 

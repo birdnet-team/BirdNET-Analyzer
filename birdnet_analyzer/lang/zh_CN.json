@@ -225,6 +225,8 @@
     "progress-analyzing": "分析中",
     "progress-autotune": "自动调优进行中",
     "progress-build-classifier": "正在加载数据并构建分类器",
+    "progress-download-retrying": "模型下载中断，正在重试",
+    "progress-downloading-model": "正在下载模型",
     "progress-extracting-segments": "正在提取片段",
     "progress-loading-data": "正在为以下内容加载数据",
     "progress-saving": "正在保存至",

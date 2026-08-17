@@ -225,6 +225,8 @@
     "progress-analyzing": "Analyzing",
     "progress-autotune": "Autotune in progress",
     "progress-build-classifier": "Loading data & building classifier",
+    "progress-download-retrying": "Model download interrupted, retrying",
+    "progress-downloading-model": "Downloading model",
     "progress-extracting-segments": "Extracting segments",
     "progress-loading-data": "Loading data for",
     "progress-saving": "Saving at",

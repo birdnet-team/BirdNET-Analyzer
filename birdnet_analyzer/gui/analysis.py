@@ -130,35 +130,36 @@ def run_analysis(
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-starting')} ...")
 
-    return analyze(
-        audio_input=input_dir or input_path,  # type: ignore
-        # TODO: workaround while lib is not ignoring confidence with top_n
-        min_conf=confidence if not use_top_n else 0,
-        sensitivity=sensitivity,
-        locale=locale,
-        overlap=overlap,
-        audio_speed=audio_speed,
-        fmin=fmin,
-        fmax=fmax,
-        batch_size=batch_size,
-        rtype=output_types,
-        sf_thresh=sf_thresh,
-        lat=lat,
-        lon=lon,
-        week=week,
-        slist=slist,
-        top_n=top_n if use_top_n else None,
-        output=output_path,
-        merge_consecutive=merge_consecutive,
-        additional_columns=additional_columns,
-        model="perch" if use_perch else "birdnet",
-        birdnet=birdnet_version,
-        classifier=custom_classifier,
-        cc_species_list=None,  # always default search path in GUI currently
-        on_update=on_update,
-        save_params=save_params,
-        n_producers=n_producers,
-        n_workers=n_workers,
-        split_tables=split_tables,
-        _return_only=bool(input_path),  # only for single file tab
-    )
+    with gu.download_progress(progress if callable(progress) else None):
+        return analyze(
+            audio_input=input_dir or input_path,  # type: ignore
+            # TODO: workaround while lib is not ignoring confidence with top_n
+            min_conf=confidence if not use_top_n else 0,
+            sensitivity=sensitivity,
+            locale=locale,
+            overlap=overlap,
+            audio_speed=audio_speed,
+            fmin=fmin,
+            fmax=fmax,
+            batch_size=batch_size,
+            rtype=output_types,
+            sf_thresh=sf_thresh,
+            lat=lat,
+            lon=lon,
+            week=week,
+            slist=slist,
+            top_n=top_n if use_top_n else None,
+            output=output_path,
+            merge_consecutive=merge_consecutive,
+            additional_columns=additional_columns,
+            model="perch" if use_perch else "birdnet",
+            birdnet=birdnet_version,
+            classifier=custom_classifier,
+            cc_species_list=None,  # always default search path in GUI currently
+            on_update=on_update,
+            save_params=save_params,
+            n_producers=n_producers,
+            n_workers=n_workers,
+            split_tables=split_tables,
+            _return_only=bool(input_path),  # only for single file tab
+        )

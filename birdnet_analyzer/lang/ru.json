@@ -225,6 +225,8 @@
     "progress-analyzing": "Анализ",
     "progress-autotune": "Выполняется автонастройка",
     "progress-build-classifier": "Загрузка данных и создание классификатора",
+    "progress-download-retrying": "Загрузка модели прервана, повторная попытка",
+    "progress-downloading-model": "Загрузка модели",
     "progress-extracting-segments": "Извлечение сегментов",
     "progress-loading-data": "Загрузка данных для",
     "progress-saving": "Сохранение в",

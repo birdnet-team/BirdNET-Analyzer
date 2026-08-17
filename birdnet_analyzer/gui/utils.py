@@ -6,9 +6,10 @@ import multiprocessing
 import os
 import platform
 import sys
+import threading
 import warnings
 from collections.abc import Callable
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from html import escape
 from typing import Literal, cast, get_args
 
@@ -197,6 +198,85 @@ def gui_runtime_error_handler(f):
             raise gr.Error(message=str(e), duration=None) from e
 
     return wrapper
+
+
+def _format_bytes(n: int) -> str:
+    return f"{n / 1e6:.0f} MB" if n < 1e9 else f"{n / 1e9:.1f} GB"
+
+
+# Download sinks by the thread that runs birdnet.load; the library's callback fires
+# synchronously on that thread. One dispatcher is registered with the library while
+# any sink is active, so overlapping GUI events neither misroute nor clobber each
+# other's registration (the library's own scoped registration is a plain set/restore).
+_DOWNLOAD_SINKS: dict[int, "gr.Progress | None"] = {}
+_DOWNLOAD_SINKS_LOCK = threading.Lock()
+
+
+def _show_download_update(update, progress: "gr.Progress | None") -> None:
+    name = update.description.removeprefix("Downloading ")
+    if update.attempt > 1:
+        name = f"{name} ({update.attempt}/{update.max_attempts})"
+
+    label = f"{loc.localize('progress-downloading-model')}: {name}"
+
+    if update.status == "started" and progress is None:
+        gr.Info(label)
+    elif update.status in ("progress", "finished") and progress is not None:
+        # "progress" is throttled, so only "finished" reliably shows the bar full.
+        if update.status == "finished":
+            progress(1.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
+        elif update.bytes_total:
+            done = _format_bytes(update.bytes_done)
+            total = _format_bytes(update.bytes_total)
+            progress(
+                min(update.bytes_done / update.bytes_total, 1.0),
+                desc=f"{label} ({done} / {total})",
+            )
+        else:
+            progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
+    elif update.status == "retrying":
+        gr.Warning(
+            f"{loc.localize('progress-download-retrying')}: {name} - {update.error}"
+        )
+    # "failed": the library raises right after; the operation reports it.
+
+
+def _dispatch_download_update(update) -> None:
+    with _DOWNLOAD_SINKS_LOCK:
+        if threading.get_ident() not in _DOWNLOAD_SINKS:
+            return
+        progress = _DOWNLOAD_SINKS[threading.get_ident()]
+
+    # An exception escaping the callback aborts the download in the library.
+    try:
+        _show_download_update(update, progress)
+    except Exception:
+        logging.getLogger(__name__).exception("Download progress UI update failed")
+
+
+@contextmanager
+def download_progress(progress: "gr.Progress | None" = None):
+    """Shows the birdnet library's model downloads while the ``with`` block runs.
+
+    Models are fetched on first use inside ``birdnet.load``; the library's own tqdm
+    bar goes to stderr, which the frozen GUI diverts to the log file. This routes the
+    updates to ``progress`` when a bar is available and to toasts otherwise, so a
+    first-run download of several hundred MB never looks like a hang.
+    """
+    import birdnet
+
+    thread = threading.get_ident()
+    with _DOWNLOAD_SINKS_LOCK:
+        if not _DOWNLOAD_SINKS:
+            birdnet.set_download_progress_callback(_dispatch_download_update)
+        _DOWNLOAD_SINKS[thread] = progress
+    try:
+        yield
+    finally:
+        with _DOWNLOAD_SINKS_LOCK:
+            _DOWNLOAD_SINKS.pop(thread, None)
+            if not _DOWNLOAD_SINKS:
+                birdnet.set_download_progress_callback(None)
 
 
 def select_folder(state_key=None):
@@ -633,9 +713,7 @@ def sample_species_model_settings(state: TabState, opened=True):
             else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
         )
 
-        # A disabled slider shows 1.0 so it never displays a value the analysis will
-        # not use; re-enabling brings back the value the user last set (persisted
-        # on release, so read live rather than from the state snapshot).
+        # Slider release persists the value; read it live, the state snapshot is stale.
         if model_supports_sensitivity(value):
             persisted = settings.get_tab_settings(state.tab).get("sensitivity_slider")
             restored = (
@@ -669,6 +747,24 @@ def sample_species_model_settings(state: TabState, opened=True):
             sample_settings["overlap_slider"],
             species_settings["species_list_radio"],
         ],
+        show_progress="hidden",
+    )
+
+    def keep_disabled_slider_at_default(sensitivity, model_choice):
+        # A preset or params file can set the slider while the model stays 3.0/Perch,
+        # which fires no model change to reset it.
+        if model_supports_sensitivity(model_choice) or sensitivity == 1.0:
+            return gr.update()
+
+        return gr.update(value=1.0)
+
+    sample_settings["sensitivity_slider"].change(
+        keep_disabled_slider_at_default,
+        inputs=[
+            sample_settings["sensitivity_slider"],
+            model_settings["model_selection_radio"],
+        ],
+        outputs=sample_settings["sensitivity_slider"],
         show_progress="hidden",
     )
 
@@ -790,8 +886,6 @@ def sample_sliders(
                     label=loc.localize("inference-settings-sensitivity-slider-label"),
                     info=loc.localize("inference-settings-sensitivity-slider-info"),
                 )
-                # Show what the analysis will use: a value persisted from a 2.4 run
-                # would otherwise sit visibly on the disabled slider.
                 if not sensitivity_enabled:
                     sensitivity_slider.value = 1.0
                 overlap_slider = state.persist(
