@@ -11,10 +11,9 @@ import warnings
 from collections.abc import Callable
 from contextlib import contextmanager, suppress
 from html import escape
-from typing import Literal, cast, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import gradio as gr
-import webview
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
 
 import birdnet_analyzer.config as cfg
@@ -22,6 +21,9 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
 from birdnet_analyzer import settings, utils
 from birdnet_analyzer.gui.state import TabState
+
+if TYPE_CHECKING:
+    import webview
 
 warnings.filterwarnings("ignore")
 loc.load_local_state()
@@ -41,7 +43,7 @@ _BIRDNET_MODEL_VERSIONS: dict[str, str] = {
     _USE_BIRDNET_3_0: "3.0",
 }
 
-_WINDOW: webview.Window | None = None
+_WINDOW: "webview.Window | None" = None
 _URL = ""
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
 _SAMPLE_KEYS = Literal[
@@ -291,6 +293,8 @@ def select_folder(state_key=None):
     Returns:
         str: The path of the selected folder, or None if no folder was selected.
     """
+    import webview
+
     if sys.platform == "win32":
         from tkinter import Tk, filedialog
 
@@ -1101,6 +1105,8 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    import webview
+
     assert _WINDOW is not None
 
     initial_selection = settings.get_state(state_key, "") if state_key else ""
@@ -1131,6 +1137,8 @@ def select_file(filetypes=(), state_key=None):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    import webview
+
     assert _WINDOW is not None
 
     initial_selection = settings.get_state(state_key, "") if state_key else ""
@@ -1405,6 +1413,7 @@ def species_lists(
 
 
 def download_plot(plot, filename=""):
+    import webview
     from PIL import Image
 
     res: str = _WINDOW.create_file_dialog(  # type: ignore
@@ -1595,6 +1604,8 @@ def open_window(
         builder (list[Callable] | Callable): A callable or a list of callables that
         build the GUI components.
     """
+    import webview
+
     global _URL
     multiprocessing.freeze_support()
 

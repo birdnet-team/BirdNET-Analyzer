@@ -33,14 +33,6 @@ FORBIDDEN_AFTER_BUILD = [m for m in FORBIDDEN_ON_IMPORT if m != "matplotlib"]
 PROBE = f"""
 import json
 import sys
-from unittest.mock import MagicMock
-
-# The gui-tests environment has no pywebview.
-stub = MagicMock()
-stub.settings = {{}}
-sys.modules["webview"] = stub
-sys.modules["webview.platforms"] = MagicMock()
-sys.modules["webview.platforms.winforms"] = MagicMock()
 
 import birdnet_analyzer.gui.multi_file as mfa
 import birdnet_analyzer.gui.segments as gseg

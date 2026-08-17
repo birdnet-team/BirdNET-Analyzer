@@ -97,9 +97,15 @@ that directory is the way to test a first-run experience.
 
 ## Conventions that are easy to get wrong
 
-- **The GUI test environment has no pywebview.** CI's `gui-tests` extra installs
-  gradio but not pywebview, so any GUI module reachable from a test must not
-  `import webview` at module import time.
+- **The GUI test environment has no pywebview and no plotly.** CI's `gui-tests` extra
+  installs gradio but neither pywebview nor plotly (both are `gui`-only), so no GUI
+  module may import `webview` or `plotly` at module import time — `gui/utils.py`
+  imports `webview` inside the dialog functions and `open_window` only, and its
+  `_WINDOW` annotation is a string under `TYPE_CHECKING`. Keep it that way; the
+  tests import `gui.utils` unstubbed on purpose. A test that builds species-list
+  controls must stub `gu.plot_map_scatter_mapbox` (it draws a plotly map). A local
+  venv with the `gui` extra hides both problems, so before pushing GUI tests run them
+  once with `webview`/`plotly` made unimportable.
 - **Localization is all-or-nothing.** `lang/*.json` holds one file per language
   (currently 10), located via `settings.LANG_DIR`. A new UI string has to be added to
   *every* language file with a real translation — not the English text copied over.
