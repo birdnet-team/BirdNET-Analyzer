@@ -7,14 +7,10 @@ import pytest
 
 gr = pytest.importorskip("gradio")
 
-# gui.utils imports pywebview at module level, which the gui-tests extra lacks.
 sys.modules.setdefault("webview", MagicMock(settings={}))
 
 
 def test_download_progress_routes_library_updates_to_gradio(monkeypatch):
-    # First-run model downloads happen inside birdnet.load; the frozen GUI diverts the
-    # library's tqdm bar into the log file, so the updates must reach the gradio
-    # progress bar (or toasts when there is none) through birdnet's callback hook.
     import birdnet
     import gradio as gr
 
@@ -56,7 +52,6 @@ def test_download_progress_routes_library_updates_to_gradio(monkeypatch):
     assert "5 MB" in calls[1][1]
     assert not infos, "no toasts while a progress bar is available"
 
-    # Without a bar, the start of a download is announced as a toast instead.
     with gu.download_progress(None):
         report(status="started", bytes_done=0, bytes_total=1000)
         report(status="progress", bytes_done=250, bytes_total=1000)
@@ -64,14 +59,10 @@ def test_download_progress_routes_library_updates_to_gradio(monkeypatch):
     assert len(infos) == 1
     assert "acoustic model v3.0" in infos[0]
 
-    # The hook is scoped: outside the block the library's default (no callback) is back.
     assert registered() is None
 
 
 def test_download_progress_survives_ui_failures(monkeypatch):
-    # In the library an exception escaping the callback aborts the download, so a
-    # failing UI call (e.g. no request context for the toast) must be swallowed, and
-    # a retry announcement must reach the user as a warning.
     import birdnet
     import gradio as gr
 

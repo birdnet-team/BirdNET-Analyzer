@@ -214,16 +214,13 @@ def download_progress(progress: gr.Progress | None = None):
     import birdnet
 
     def on_update(update: birdnet.DownloadProgress) -> None:
-        # The library's descriptions read "Downloading acoustic model v3.0 (...)";
-        # keep the localized verb and only the object.
         name = update.description.removeprefix("Downloading ")
         if update.attempt > 1:
             name = f"{name} ({update.attempt}/{update.max_attempts})"
 
         label = f"{loc.localize('progress-downloading-model')}: {name}"
 
-        # An exception escaping this callback aborts the download in the library
-        # (that is its cancel path), so UI hiccups must not leak out of here.
+        # An exception escaping the callback aborts the download in the library.
         try:
             if update.status == "started" and progress is None:
                 gr.Info(label)
@@ -236,15 +233,13 @@ def download_progress(progress: gr.Progress | None = None):
                         desc=f"{label} ({done} / {total})",
                     )
                 else:
-                    # Unknown size: keep the bar visible (None would hide it).
                     progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
             elif update.status == "retrying":
                 gr.Warning(
                     f"{loc.localize('progress-download-retrying')}: {name} - "
                     f"{update.error}"
                 )
-            # "failed" is terminal: the library raises right after it, and that
-            # error reaches the user through the operation's own error handling.
+            # "failed": the library raises right after; the operation reports it.
         except Exception:
             logging.getLogger(__name__).exception("Download progress UI update failed")
 
