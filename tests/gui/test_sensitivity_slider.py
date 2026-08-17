@@ -20,6 +20,13 @@ from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def no_map_figure(monkeypatch):
+    # The species-list block draws a plotly map while building; plotly is a gui-only
+    # extra and the map is irrelevant here.
+    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
+
+
 @pytest.fixture
 def appdir(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "APPDIR", tmp_path)
