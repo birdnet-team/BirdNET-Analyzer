@@ -76,3 +76,23 @@ def test_slider_built_disabled_at_1_0_when_3_0_is_persisted(appdir):
     slider, _ = build()
     assert not slider.interactive
     assert slider.value == 1.0
+
+
+def test_programmatic_value_on_disabled_slider_snaps_back_to_1_0(appdir):
+    settings.set_tab_setting("multi", "model_selection_radio", gu._USE_BIRDNET_3_0)
+
+    with gr.Blocks() as demo:
+        sample, _, _ = gu.sample_species_model_settings(gs.TabState("multi"))
+    slider = sample["sensitivity_slider"]
+    on_slider_change = next(
+        event.fn
+        for event in demo.fns.values()
+        if event.targets
+        and event.targets[0] == (slider._id, "change")
+        and slider in event.outputs
+    )
+
+    assert on_slider_change(1.3, gu._USE_BIRDNET_3_0) == gr.update(value=1.0)
+    assert on_slider_change(1.0, gu._USE_BIRDNET_3_0) == gr.update()
+    assert on_slider_change(1.3, gu._USE_BIRDNET_2_4) == gr.update()
+    assert on_slider_change(1.3, gu._USE_PERCH) == gr.update(value=1.0)
