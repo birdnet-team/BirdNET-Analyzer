@@ -126,7 +126,25 @@ class _RotatingLogFile(io.TextIOBase):
         return self._file.encoding
 
 
-if FROZEN:
+def _divert_output_to_log() -> bool:
+    """Whether a frozen build should send stdout/stderr to logs.txt.
+
+    Only the windowed GUI build has nowhere readable to print; the console CLI
+    executable must keep printing to its terminal or pipe. Decided by build shape:
+    a windowed PyInstaller build on Windows has ``sys.stdout is None``, and on macOS
+    the only frozen artifact is the windowed .app. Don't probe the descriptors
+    instead: on Windows a console handle is indistinguishable from NUL by fstat.
+    """
+    if not FROZEN:
+        return False
+
+    if sys.platform == "darwin":
+        return True
+
+    return sys.stdout is None or sys.stderr is None
+
+
+if _divert_output_to_log():
     # divert stdout & stderr to logs.txt file since we have no console when deployed
     _ensure_appdir_exists()
     sys.stderr = sys.stdout = _RotatingLogFile(Path(LOG_FILE), MAX_LOG_SIZE)
