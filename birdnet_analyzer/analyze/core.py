@@ -115,8 +115,16 @@ def analyze(
     """
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
-    from birdnet_analyzer.model_utils import run_geomodel, run_inference
+    from birdnet_analyzer.model_utils import (
+        effective_sensitivity,
+        run_geomodel,
+        run_inference,
+    )
     from birdnet_analyzer.utils import save_params_file
+
+    # Settle the sensitivity here so the params file, result columns and the resume
+    # fingerprint all record the value the analysis actually used.
+    sensitivity = effective_sensitivity(sensitivity, model, birdnet, classifier)
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
     rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype

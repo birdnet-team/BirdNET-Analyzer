@@ -309,6 +309,41 @@ def _language_for_version(language: MODEL_LANGUAGES, version: str) -> MODEL_LANG
     return MODEL_LANGUAGE_EN_US
 
 
+def supports_sensitivity(
+    model: str, version: str = "3.0", classifier: str | None = None
+) -> bool:
+    """Whether the selected model takes a scaled (sensitivity) sigmoid.
+
+    BirdNET 2.4 and custom classifiers (which run on the 2.4 base) do. BirdNET 3.0
+    applies the sigmoid inside the model graph, and the birdnet library rejects a
+    sensitivity other than 1.0 for it. Perch outputs raw logits and is run without a
+    sigmoid here (its scores are not probabilities), so sensitivity does not apply.
+    Newer BirdNET versions are assumed to behave like 3.0 until known otherwise.
+    """
+    if classifier:
+        return True
+
+    return model == "birdnet" and version == "2.4"
+
+
+def effective_sensitivity(
+    sensitivity: float, model: str, version: str = "3.0", classifier: str | None = None
+) -> float:
+    """The sensitivity the analysis will use; warns if the requested one is dropped."""
+    if supports_sensitivity(model, version, classifier):
+        return sensitivity
+
+    if sensitivity != 1.0:
+        logger.warning(
+            "Sensitivity %s ignored: it only applies to BirdNET 2.4 and custom "
+            "classifiers, not to %s.",
+            sensitivity,
+            "Perch" if model == "perch" else f"BirdNET {version}",
+        )
+
+    return 1.0
+
+
 def run_inference(
     path,
     model="birdnet",
@@ -377,6 +412,10 @@ def run_inference(
     from birdnet.acoustic.inference.configs import InferenceConfig
 
     input_files = InferenceConfig.validate_input_files(path)
+
+    sigmoid_sensitivity = effective_sensitivity(
+        sigmoid_sensitivity, model, version, classifier
+    )
 
     with acoustic_model.predict_session(
         top_k=top_k,

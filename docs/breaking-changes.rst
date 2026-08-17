@@ -108,6 +108,22 @@ you need one of its dropped languages. In the GUI the locale dropdown offers onl
 selected model's languages.
 
 
+Sensitivity has no effect on BirdNET 3.0
+----------------------------------------
+
+**What changed.** The 3.0 model applies its sigmoid inside the model graph and
+outputs probabilities directly, so the sigmoid cannot be rescaled. ``--sensitivity``
+therefore only applies to BirdNET 2.4 and custom classifiers (which run on the 2.4
+base); Perch never used it.
+
+**Consequence.** With the default 3.0 model a ``--sensitivity`` other than ``1.0`` is
+ignored, with a warning. In the GUI the sensitivity slider is disabled while 3.0 or
+Perch is selected.
+
+**What to do.** Use ``--min_conf`` to tune 3.0 detections. If you rely on
+sensitivity, select the 2.4 model (``--birdnet 2.4``).
+
+
 Custom classifiers and training stay on the 2.4 base
 ----------------------------------------------------
 
