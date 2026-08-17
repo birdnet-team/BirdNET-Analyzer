@@ -634,12 +634,18 @@ def sample_species_model_settings(state: TabState, opened=True):
         )
 
         # A disabled slider shows 1.0 so it never displays a value the analysis will
-        # not use (e.g. one carried over from a 2.4 preset).
-        sensitivity_update = (
-            gr.update(interactive=True)
-            if model_supports_sensitivity(value)
-            else gr.update(interactive=False, value=1.0)
-        )
+        # not use; re-enabling brings back the value the user last set (persisted
+        # on release, so read live rather than from the state snapshot).
+        if model_supports_sensitivity(value):
+            persisted = settings.get_tab_settings(state.tab).get("sensitivity_slider")
+            restored = (
+                min(1.5, max(0.5, float(persisted)))
+                if isinstance(persisted, (int, float))
+                else 1.0
+            )
+            sensitivity_update = gr.update(interactive=True, value=restored)
+        else:
+            sensitivity_update = gr.update(interactive=False, value=1.0)
 
         return (
             sensitivity_update,
