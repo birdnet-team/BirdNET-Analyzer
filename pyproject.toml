@@ -37,7 +37,6 @@ dependencies = [
     "keras",
     # ONNX runtime backs 3.0 acoustic + geo inference: no TensorFlow load, faster.
     # TensorFlow above is still required for training and the 2.4/perch/custom paths.
-    # >=1.16 is birdnet's own floor for its [onnx] extra.
     "onnxruntime>=1.16.0",
     "numpy",
     "scipy",
@@ -49,10 +48,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    # Direct URL: unreleased birdnet main (3.0 sigmoid fix, pb backend fix, download
-    # progress hook). PyPI rejects direct-URL requirements, so this must become a
-    # version pin before publishing.
-    "birdnet @ https://github.com/birdnet-team/birdnet/archive/75394998.tar.gz",
+    "birdnet==1.1.0",
 ]
 
 [project.optional-dependencies]
