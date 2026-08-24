@@ -44,6 +44,116 @@ LANG_DIR = str(Path(SCRIPT_DIR) / "lang")
 STATE_SETTINGS_PATH = str(APPDIR / "state.json")
 TAB_SETTINGS_KEY = "tab-settings"
 
+MODEL_DIR_SETTING_KEY = "model-directory"
+MODEL_DIR_ENV_VAR = "BIRDNET_APP_DATA"
+MODEL_DIR_MIN_FREE_BYTES = 2 * 1024**3
+
+# Set when the configured model directory was unusable at startup (e.g. an
+# unplugged data drive) and the default is used for this session instead; the
+# GUI surfaces it as a warning once it is up.
+MODEL_DIR_STARTUP_WARNING: str | None = None
+
+
+def default_model_directory() -> Path:
+    """The model directory the frozen app uses when nothing is configured.
+
+    Models are a re-downloadable multi-GB cache, so on Windows they go to Local
+    AppData - unlike the small settings/state/log files in ``APPDIR`` (Roaming),
+    which a domain roaming profile may sync on every logon/logoff.
+    """
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData/Local")
+        return base / APP_NAME / "models"
+
+    return APPDIR / "models"
+
+
+def _stored_model_directory() -> str | None:
+    """The model directory from gui-settings.json, without creating anything."""
+    try:
+        with open(GUI_SETTINGS_PATH, encoding="utf-8") as f:
+            value = json.load(f).get(MODEL_DIR_SETTING_KEY)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def _usable_directory(path: str | Path) -> bool:
+    try:
+        Path(path).expanduser().mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+
+    return Path(path).expanduser().is_dir()
+
+
+def _test_write(directory: Path) -> None:
+    probe = directory / ".birdnet-write-test"
+    probe.write_bytes(b"")
+    probe.unlink()
+
+
+def probe_model_directory(path: str | Path) -> str:
+    """Classifies a directory the user picked for model storage.
+
+    Returns:
+        ``"ok"``, ``"ok-low-space"`` (usable, but under
+        ``MODEL_DIR_MIN_FREE_BYTES`` free - a first model download may not fit),
+        ``"readonly"`` (existing models are usable but nothing can be
+        downloaded - a valid pre-seeded field setup), or ``"invalid"``.
+    """
+    directory = Path(path).expanduser()
+
+    if not _usable_directory(directory):
+        return "invalid"
+
+    try:
+        _test_write(directory)
+    except OSError:
+        has_content = any(directory.iterdir())
+        return "readonly" if has_content else "invalid"
+
+    import shutil
+
+    if shutil.disk_usage(directory).free < MODEL_DIR_MIN_FREE_BYTES:
+        return "ok-low-space"
+
+    return "ok"
+
+
+def apply_model_directory() -> None:
+    """Points the birdnet library's model directory at the right place.
+
+    Must run before ``birdnet`` is imported anywhere in the process: the library
+    reads ``BIRDNET_APP_DATA`` once, at import time. Precedence: an already-set
+    environment variable (automation - fails fast rather than falling back), the
+    GUI's persisted setting (any run mode - falls back to the default with a
+    warning when unusable), then the frozen app's default. From source or Docker
+    with nothing configured, the library's own default stands, so pip installs,
+    CI caches and the baked Docker image keep their existing model stores.
+    """
+    global MODEL_DIR_STARTUP_WARNING  # noqa: PLW0603
+
+    env = os.environ.get(MODEL_DIR_ENV_VAR)
+    if env:
+        if not _usable_directory(env):
+            raise SystemExit(
+                f"{MODEL_DIR_ENV_VAR} points at '{env}', which does not exist "
+                "and cannot be created."
+            )
+        return
+
+    stored = _stored_model_directory()
+    if stored:
+        if _usable_directory(stored):
+            os.environ[MODEL_DIR_ENV_VAR] = str(Path(stored).expanduser())
+            return
+        MODEL_DIR_STARTUP_WARNING = stored
+
+    if FROZEN:
+        os.environ[MODEL_DIR_ENV_VAR] = str(default_model_directory())
+
 
 def _backup_path(log_path: Path) -> Path:
     """Returns the path a log file is rotated into once it gets too large."""
