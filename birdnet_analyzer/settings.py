@@ -53,6 +53,10 @@ MODEL_DIR_MIN_FREE_BYTES = 2 * 1024**3
 # GUI surfaces it as a warning once it is up.
 MODEL_DIR_STARTUP_WARNING: str | None = None
 
+# Whether the model directory came from the environment variable (as opposed to
+# the GUI setting or a default); the settings tab locks its controls then.
+MODEL_DIR_FROM_ENV = False
+
 
 def default_model_directory() -> Path:
     """The model directory the frozen app uses when nothing is configured.
@@ -111,15 +115,47 @@ def probe_model_directory(path: str | Path) -> str:
     try:
         _test_write(directory)
     except OSError:
-        has_content = any(directory.iterdir())
+        # A traverse-only ACL can deny listing as well as writing.
+        try:
+            has_content = any(directory.iterdir())
+        except OSError:
+            return "invalid"
         return "readonly" if has_content else "invalid"
 
     import shutil
 
-    if shutil.disk_usage(directory).free < MODEL_DIR_MIN_FREE_BYTES:
+    try:
+        free = shutil.disk_usage(directory).free
+    except OSError:
+        return "ok"
+
+    if free < MODEL_DIR_MIN_FREE_BYTES:
         return "ok-low-space"
 
     return "ok"
+
+
+def _report_fatal_startup_error(message: str) -> None:
+    """Shows a fatal pre-GUI error where the user can actually see it.
+
+    The windowed build diverts stderr into the log file, so the message a
+    SystemExit prints there never reaches the screen. Best effort, and English
+    only: localization is not loaded this early.
+    """
+    if not OUTPUT_DIVERTED:
+        return
+
+    with suppress(Exception):
+        if sys.platform == "win32":
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(0, message, "BirdNET-Analyzer", 0x10)
+        elif sys.platform == "darwin":
+            import subprocess
+
+            safe = message.replace('"', "'")
+            script = f'display alert "BirdNET-Analyzer" message "{safe}"'
+            subprocess.run(["osascript", "-e", script], check=False, timeout=30)
 
 
 def apply_model_directory() -> None:
@@ -133,15 +169,20 @@ def apply_model_directory() -> None:
     with nothing configured, the library's own default stands, so pip installs,
     CI caches and the baked Docker image keep their existing model stores.
     """
-    global MODEL_DIR_STARTUP_WARNING  # noqa: PLW0603
+    global MODEL_DIR_STARTUP_WARNING, MODEL_DIR_FROM_ENV  # noqa: PLW0603
 
     env = os.environ.get(MODEL_DIR_ENV_VAR)
     if env:
         if not _usable_directory(env):
-            raise SystemExit(
+            message = (
                 f"{MODEL_DIR_ENV_VAR} points at '{env}', which does not exist "
-                "and cannot be created."
+                "and cannot be created. If the directory is on an external "
+                "drive or network share, connect it and start again; otherwise "
+                "correct or remove the environment variable."
             )
+            _report_fatal_startup_error(message)
+            raise SystemExit(message)
+        MODEL_DIR_FROM_ENV = True
         return
 
     stored = _stored_model_directory()
@@ -254,7 +295,9 @@ def _divert_output_to_log() -> bool:
     return sys.stdout is None or sys.stderr is None
 
 
-if _divert_output_to_log():
+OUTPUT_DIVERTED = _divert_output_to_log()
+
+if OUTPUT_DIVERTED:
     # divert stdout & stderr to logs.txt file since we have no console when deployed
     _ensure_appdir_exists()
     sys.stderr = sys.stdout = _RotatingLogFile(Path(LOG_FILE), MAX_LOG_SIZE)

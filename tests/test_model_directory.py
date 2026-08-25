@@ -160,3 +160,68 @@ def test_resolver_runs_at_package_import(clean):
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == str(target)
+
+
+def test_env_provenance_flag(clean, monkeypatch):
+    monkeypatch.setattr(settings, "MODEL_DIR_FROM_ENV", False)
+    monkeypatch.setenv(settings.MODEL_DIR_ENV_VAR, str(clean / "from-env"))
+
+    settings.apply_model_directory()
+    assert settings.MODEL_DIR_FROM_ENV
+
+    monkeypatch.setattr(settings, "MODEL_DIR_FROM_ENV", False)
+    monkeypatch.delenv(settings.MODEL_DIR_ENV_VAR)
+    store(clean, str(clean / "from-setting"))
+
+    settings.apply_model_directory()
+    assert not settings.MODEL_DIR_FROM_ENV
+
+
+def test_a_broken_env_var_is_reported_visibly_before_exiting(clean, monkeypatch):
+    blocker = clean / "a-file"
+    blocker.write_text("")
+    monkeypatch.setenv(settings.MODEL_DIR_ENV_VAR, str(blocker / "sub"))
+
+    reported = []
+    monkeypatch.setattr(settings, "_report_fatal_startup_error", reported.append)
+
+    with pytest.raises(SystemExit):
+        settings.apply_model_directory()
+
+    assert len(reported) == 1
+    assert "external drive" in reported[0]
+
+
+def test_probe_returns_invalid_when_listing_is_denied(clean, monkeypatch):
+    import pathlib
+
+    def deny_write(_directory):
+        raise PermissionError("no write")
+
+    def deny_list(_self):
+        raise PermissionError("no list")
+
+    monkeypatch.setattr(settings, "_test_write", deny_write)
+    monkeypatch.setattr(pathlib.Path, "iterdir", deny_list)
+
+    locked = clean / "traverse-only"
+    locked.mkdir()
+    assert settings.probe_model_directory(locked) == "invalid"
+
+
+def test_probe_verdicts_follow_free_space(clean, monkeypatch):
+    import shutil
+    import types
+
+    monkeypatch.setattr(shutil, "disk_usage", lambda _p: types.SimpleNamespace(free=0))
+    assert settings.probe_model_directory(clean / "tight") == "ok-low-space"
+
+    roomy = types.SimpleNamespace(free=10**12)
+    monkeypatch.setattr(shutil, "disk_usage", lambda _p: roomy)
+    assert settings.probe_model_directory(clean / "roomy") == "ok"
+
+    def broken(_p):
+        raise OSError("no statvfs on this share")
+
+    monkeypatch.setattr(shutil, "disk_usage", broken)
+    assert settings.probe_model_directory(clean / "odd-share") == "ok"

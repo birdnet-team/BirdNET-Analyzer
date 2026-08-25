@@ -517,6 +517,8 @@ def build_settings():
                     scale=10,
                 )
 
+            env_controlled = settings.MODEL_DIR_FROM_ENV
+
             with gr.Row(equal_height=True):
                 model_dir_tb = gr.Textbox(
                     value=_effective_model_directory,
@@ -526,15 +528,22 @@ def build_settings():
                     elem_classes="path-textbox",
                     scale=3,
                     label=loc.localize("settings-tab-model-dir-label"),
-                    info=loc.localize("settings-tab-model-dir-info"),
+                    info=loc.localize(
+                        "settings-tab-model-dir-env-info"
+                        if env_controlled
+                        else "settings-tab-model-dir-info"
+                    ),
                 )
                 model_dir_select_btn = gr.Button(
-                    loc.localize("settings-tab-model-dir-select-button")
+                    loc.localize("settings-tab-model-dir-select-button"),
+                    interactive=not env_controlled,
                 )
                 model_dir_reset_btn = gr.Button(
-                    loc.localize("settings-tab-model-dir-reset-button")
+                    loc.localize("settings-tab-model-dir-reset-button"),
+                    interactive=not env_controlled,
                 )
 
+            @gui_runtime_error_handler
             def on_model_dir_select():
                 dir_name = select_folder(state_key="model-directory")
 
@@ -555,6 +564,7 @@ def build_settings():
 
                 return dir_name
 
+            @gui_runtime_error_handler
             def on_model_dir_reset():
                 settings.set_setting(settings.MODEL_DIR_SETTING_KEY, "")
                 gr.Info(loc.localize("settings-tab-model-dir-restart-info"))

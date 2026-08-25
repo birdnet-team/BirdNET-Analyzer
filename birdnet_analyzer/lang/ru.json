@@ -293,6 +293,7 @@
     "settings-tab-error-log-textbox-placeholder": "Нет содержания",
     "settings-tab-language-dropdown-info": "Изменения вступят в силу только после перезапуска приложения.",
     "settings-tab-language-dropdown-label": "Язык интерфейса GUI",
+    "settings-tab-model-dir-env-info": "Задано переменной окружения BIRDNET_APP_DATA и не может быть изменено здесь.",
     "settings-tab-model-dir-info": "Где загружаются и хранятся файлы моделей. Изменения вступят в силу только после перезапуска приложения.",
     "settings-tab-model-dir-label": "Каталог моделей",
     "settings-tab-model-dir-reset-button": "Использовать по умолчанию",

@@ -293,6 +293,7 @@
     "settings-tab-error-log-textbox-placeholder": "yInIDHa'",
     "settings-tab-language-dropdown-info": "chutmey chu' yIchoH 'ach chut qaStaHvIS yItagh.",
     "settings-tab-language-dropdown-label": "Hol lo'",
+    "settings-tab-model-dir-env-info": "BIRDNET_APP_DATA gho'De' 'olta'; naDev choHlaHbe'.",
     "settings-tab-model-dir-info": "model teHmey Download 'ej pol Daq. taghqa'DI' 'aplIkay'SIyon neH choHmey chu'lu'.",
     "settings-tab-model-dir-label": "model lulIgh",
     "settings-tab-model-dir-reset-button": "motlh lo'",

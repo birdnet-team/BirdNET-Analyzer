@@ -293,6 +293,7 @@
     "settings-tab-error-log-textbox-placeholder": "Ei sisältöä",
     "settings-tab-language-dropdown-info": "Muutokset tulevat voimaan vasta sovelluksen uudelleenkäynnistyksen jälkeen.",
     "settings-tab-language-dropdown-label": "Käyttöliittymän kieli",
+    "settings-tab-model-dir-env-info": "Asetettu BIRDNET_APP_DATA-ympäristömuuttujalla, eikä sitä voi muuttaa täällä.",
     "settings-tab-model-dir-info": "Minne mallitiedostot ladataan ja tallennetaan. Muutokset tulevat voimaan vasta sovelluksen uudelleenkäynnistyksen jälkeen.",
     "settings-tab-model-dir-label": "Mallihakemisto",
     "settings-tab-model-dir-reset-button": "Käytä oletusta",

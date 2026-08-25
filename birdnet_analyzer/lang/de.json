@@ -293,6 +293,7 @@
     "settings-tab-error-log-textbox-placeholder": "Kein Inhalt",
     "settings-tab-language-dropdown-info": "Wird erst nach Neustart der Anwendung aktiv.",
     "settings-tab-language-dropdown-label": "GUI Sprache",
+    "settings-tab-model-dir-env-info": "Durch die Umgebungsvariable BIRDNET_APP_DATA festgelegt und kann hier nicht geändert werden.",
     "settings-tab-model-dir-info": "Wo Modelldateien heruntergeladen und gespeichert werden. Änderungen werden erst nach einem Neustart der Anwendung wirksam.",
     "settings-tab-model-dir-label": "Modellverzeichnis",
     "settings-tab-model-dir-reset-button": "Standard verwenden",
