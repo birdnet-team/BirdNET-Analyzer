@@ -1775,7 +1775,7 @@ def open_window(
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False, debug=True)
+    webview.start(private_mode=False)
 
     # Window closed: stop any analysis still running with no UI to control it.
     shutdown_running_analyses()

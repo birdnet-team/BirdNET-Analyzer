@@ -237,7 +237,7 @@
     "progress-search": "找尋檔案中",
     "progress-starting": "正在開始",
     "progress-training": "模型訓練中",
-    "progress-unit-files": "個檔案",
+    "progress-unit-segments": "個片段",
     "review-tab-autoplay-checkbox-label": "自動播放",
     "review-tab-download-regression-button-label": "下載迴歸圖",
     "review-tab-download-spectrogram-button-label": "下載頻譜圖",

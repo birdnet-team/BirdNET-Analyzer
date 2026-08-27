@@ -237,7 +237,7 @@
     "progress-search": "Searching files",
     "progress-starting": "Starting",
     "progress-training": "Training model",
-    "progress-unit-files": "files",
+    "progress-unit-segments": "segments",
     "review-tab-autoplay-checkbox-label": "Autoplay",
     "review-tab-download-regression-button-label": "Download regression",
     "review-tab-download-spectrogram-button-label": "Download spectrogram",
