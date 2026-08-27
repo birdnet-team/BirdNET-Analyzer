@@ -214,6 +214,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         directory_input = gr.Matrix(
             interactive=False,
+            visible=False,
             headers=[
                 loc.localize("multi-tab-samples-dataframe-column-subpath-header"),
                 loc.localize("multi-tab-samples-dataframe-column-duration-header"),
@@ -238,22 +239,38 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                     return [
                         folder,
                         folder,
-                        [
-                            *files_and_durations[:preview_limit],
-                            (
-                                f"{total - preview_limit} "
-                                f"{loc.localize('multi-tab-more-files-label')}",
-                                "...",
-                            ),
-                        ],
+                        gr.update(
+                            value=[
+                                *files_and_durations[:preview_limit],
+                                (
+                                    f"{total - preview_limit} "
+                                    f"{loc.localize('multi-tab-more-files-label')}",
+                                    "...",
+                                ),
+                            ],
+                            visible=True,
+                        ),
                     ]
                 if not files_and_durations:
                     return [
                         folder,
                         folder,
-                        [[loc.localize("multi-tab-samples-dataframe-no-files-found")]],
+                        gr.update(
+                            value=[
+                                [
+                                    loc.localize(
+                                        "multi-tab-samples-dataframe-no-files-found"
+                                    )
+                                ]
+                            ],
+                            visible=True,
+                        ),
                     ]
-                return [folder, folder, files_and_durations]
+                return [
+                    folder,
+                    folder,
+                    gr.update(value=files_and_durations, visible=True),
+                ]
 
             return [
                 gr.update(),
@@ -341,7 +358,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 scale=1,
             )
 
-        result_grid = gr.List(headers=[""], buttons=[])
+        result_grid = gr.List(headers=[""], buttons=[], visible=False)
         inputs = [
             output_directory_predict_state,
             sample_settings["use_top_n_checkbox"],
@@ -391,6 +408,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             return (
                 gr.update(interactive=False),
                 gr.update(visible=True, interactive=True),
+                gr.update(visible=True),
             )
 
         def restore_run_ui():
@@ -398,7 +416,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         start_batch_analysis_btn.click(
             prepare_run_ui,
-            outputs=[start_batch_analysis_btn, pause_batch_analysis_btn],
+            outputs=[start_batch_analysis_btn, pause_batch_analysis_btn, result_grid],
             show_progress="hidden",
         ).then(run_batch_analysis, inputs=inputs, outputs=result_grid).then(
             restore_run_ui,

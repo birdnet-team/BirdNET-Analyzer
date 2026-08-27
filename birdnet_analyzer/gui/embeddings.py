@@ -105,7 +105,7 @@ def run_embeddings(
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_directory}")
 
     return (
-        gr.Plot(),
+        gr.update(),
         gr.Slider(interactive=False),
         gr.Number(interactive=False),
         gr.Number(interactive=False),
@@ -334,12 +334,16 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
             show_progress="hidden",
         )
 
-        progress_plot = gr.Plot(show_label=False)
         start_btn = gr.Button(
             loc.localize("embeddings-tab-start-button-label"), variant="primary"
         )
+        progress_plot = gr.Plot(show_label=False, visible=False)
 
         start_btn.click(
+            lambda: gr.update(visible=True),
+            outputs=progress_plot,
+            show_progress="hidden",
+        ).then(
             run_embeddings_with_tqdm_tracking,
             inputs=[
                 input_directory_state,
@@ -356,6 +360,10 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             outputs=[progress_plot, audio_speed_slider, fmin_number, fmax_number],
             show_progress_on=progress_plot,
+        ).then(
+            lambda: gr.update(visible=False),
+            outputs=progress_plot,
+            show_progress="hidden",
         )
 
 

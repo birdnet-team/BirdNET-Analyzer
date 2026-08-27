@@ -234,6 +234,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             elem_id="single-file-output",
             interactive=False,
             buttons=[],
+            visible=False,
         )
 
         def select_and_load_audio_file(generate_spectrogram=False):
@@ -282,7 +283,6 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                         loc.localize("single-tab-generate-spectrogram-error")
                     ) from e
 
-            # No file selected
             return (
                 gr.update(),
                 gr.update(),
@@ -434,6 +434,10 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             get_selected_audio, inputs=audio_path_state, outputs=segment_audio
         )
         single_file_analyze.click(
+            lambda: gr.update(visible=True),
+            outputs=output_dataframe,
+            show_progress="hidden",
+        ).then(
             run_single_file_analysis,
             inputs=inputs,
             outputs=[output_dataframe, action_row, last_prediction_state],

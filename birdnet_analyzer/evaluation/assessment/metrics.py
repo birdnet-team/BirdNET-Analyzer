@@ -149,7 +149,6 @@ def calculate_recall(
     """
     _check_inputs(predictions, labels, threshold)
 
-    # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
 
     if task == "binary":
@@ -199,7 +198,6 @@ def calculate_precision(
     """
     _check_inputs(predictions, labels, threshold)
 
-    # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
 
     if task == "binary":
@@ -249,7 +247,6 @@ def calculate_f1_score(
     """
     _check_inputs(predictions, labels, threshold)
 
-    # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
 
     if task == "binary":
@@ -297,7 +294,6 @@ def calculate_average_precision(
     """
     _check_inputs(predictions, labels)
 
-    # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
 
     if task in ("binary", "multilabel"):
@@ -338,7 +334,6 @@ def calculate_auroc(
     """
     _check_inputs(predictions, labels)
 
-    # Adjust averaging method for scikit-learn if none is specified
     averaging = None if averaging_method == "none" else averaging_method
 
     try:
@@ -356,7 +351,6 @@ def calculate_auroc(
             raise ValueError(f"Unsupported task type: {task}")
 
     except ValueError as e:
-        # Handle edge cases where AUROC cannot be computed
         if "Only one class present in y_true" in str(
             e
         ) or "Number of classes in y_true" in str(e):

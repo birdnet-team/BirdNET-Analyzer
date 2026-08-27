@@ -309,7 +309,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 loc.localize("training-tab-classes-dataframe-column-classes-header")
             ],
             interactive=False,
-            visible=not uses_cache_file,
+            visible=False,
             max_height=_GRID_MAX_HEIGHT,
             buttons=[],
         )
@@ -319,7 +319,11 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 result = select_subdirectories(state_key=state_key)
 
                 if result[0]:
-                    return result[0], result[0], result[1]
+                    return (
+                        result[0],
+                        result[0],
+                        gr.update(value=result[1], visible=True),
+                    )
 
                 return gr.update(), gr.update(), gr.update()
 
@@ -354,7 +358,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 loc.localize("training-tab-classes-dataframe-column-classes-header")
             ],
             interactive=False,
-            visible=not uses_cache_file,
+            visible=False,
             max_height=_GRID_MAX_HEIGHT,
             buttons=[],
         )
@@ -533,14 +537,14 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     show_progress="hidden",
                 )
 
-            def on_cache_mode_change(value):
+            def on_cache_mode_change(value, data_dir, test_data_dir):
                 return (
                     gr.update(visible=value == "save"),
                     gr.update(visible=value == "load"),
                     gr.update(interactive=value != "load"),
-                    gr.update(visible=value != "load"),
+                    gr.update(visible=value != "load" and bool(data_dir)),
                     gr.update(interactive=value != "load"),
-                    gr.update(visible=value != "load"),
+                    gr.update(visible=value != "load" and bool(test_data_dir)),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
@@ -646,7 +650,6 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 )
 
             def on_crop_select(new_crop_mode):
-                # Make overlap slider visible for both "segments" and "smart" crop modes
                 return gr.update(
                     visible=new_crop_mode in ["segments", "smart"],
                     interactive=new_crop_mode in ["segments", "smart"],
@@ -656,7 +659,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
 
             cache_mode.change(
                 on_cache_mode_change,
-                inputs=cache_mode,
+                inputs=[cache_mode, input_directory_state, test_data_dir_state],
                 outputs=[
                     new_cache_file_row,
                     load_cache_file_row,
@@ -928,7 +931,12 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             info=loc.localize("training-tab-model-save-mode-radio-info"),
         )
 
-        train_history_plot = gr.Plot(show_label=False)
+        start_training_button = gr.Button(
+            loc.localize("training-tab-start-training-button-label"),
+            variant="primary",
+        )
+
+        train_history_plot = gr.Plot(show_label=False, visible=False)
         metrics_table = gr.Dataframe(
             headers=[
                 loc.localize("training-tab-metrics-class-header"),
@@ -941,10 +949,6 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             ],
             visible=False,
             label=loc.localize("training-tab-metrics-table-label"),
-        )
-        start_training_button = gr.Button(
-            loc.localize("training-tab-start-training-button-label"),
-            variant="primary",
         )
 
         def train_and_show_metrics(*args):
@@ -965,7 +969,6 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     ]
                 )
 
-                # Add class-specific metrics
                 for class_name, class_metrics in metrics["class_metrics"].items():
                     distribution = metrics["class_distribution"].get(
                         class_name, {"count": 0, "percentage": 0.0}
@@ -988,6 +991,10 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             return history, gr.Dataframe(visible=False)
 
         start_training_button.click(
+            lambda: gr.update(visible=True),
+            outputs=train_history_plot,
+            show_progress="hidden",
+        ).then(
             train_and_show_metrics,
             inputs=[
                 input_directory_state,

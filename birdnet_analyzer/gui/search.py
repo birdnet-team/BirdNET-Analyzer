@@ -188,7 +188,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                         rtl=True,
                     )
 
-                query_spectrogram = gr.Plot(show_label=False)
+                query_spectrogram = gr.Plot(show_label=False, visible=False)
 
                 with gr.Group(), gr.Row(equal_height=True):
                     select_query_btn = gr.Button(
@@ -472,7 +472,6 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 speed=audio_speed,
             )
 
-            # Crop query audio
             if crop_mode == "center":
                 sig = [audio.crop_center(sig, rate, 3.0)][0]
             elif crop_mode == "first":
@@ -483,9 +482,9 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 sig, rate, fig_size=(10, 4), **gu.spectrogram_settings()
             )
 
-            return spec, [], {}
+            return gr.update(value=spec, visible=True), [], {}
 
-        return None, [], {}
+        return gr.update(value=None, visible=False), [], {}
 
     crop_mode.change(
         update_query_spectrogram,

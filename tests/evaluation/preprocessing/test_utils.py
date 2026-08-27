@@ -402,16 +402,13 @@ def test_read_and_concatenate_files_different_encodings(tmp_path):
     df_utf8 = pd.DataFrame({"A": ["こんにちは", "世界"]})
     df_ascii = pd.DataFrame({"A": ["hello", "world"]})
 
-    # Write files with utf-8 encoding
     df_utf8.to_csv(tmp_path / "utf8_file.txt", sep="\t", index=False, encoding="utf-8")
     df_ascii.to_csv(
         tmp_path / "ascii_file.txt", sep="\t", index=False, encoding="utf-8"
     )
 
-    # Call the function to read and concatenate
     result_df = read_and_concatenate_files_in_directory(str(tmp_path))
 
-    # Create the expected DataFrame and sort both for comparison
     expected_df = pd.concat(
         [
             df_utf8.assign(source_file="utf8_file.txt"),
@@ -420,7 +417,6 @@ def test_read_and_concatenate_files_different_encodings(tmp_path):
         ignore_index=True,
     )
 
-    # Sort both DataFrames by column A for comparison
     result_df_sorted = result_df.sort_values(by="A").reset_index(drop=True)
     expected_df_sorted = expected_df.sort_values(by="A").reset_index(drop=True)
 

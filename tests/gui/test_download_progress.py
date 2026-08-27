@@ -427,3 +427,29 @@ def test_train_tab_shows_the_download_on_its_progress_bar(monkeypatch):
     )
 
     _assert_download_reached_the_bar(_flatten(records), infos)
+
+
+def test_species_tab_shows_the_download_on_its_progress_bar(monkeypatch):
+    """The geo model is a download of its own on a fresh install."""
+    from birdnet_analyzer.gui import species as gui_species
+
+    records, infos = _capture_progress(monkeypatch)
+
+    monkeypatch.setattr(
+        _module("birdnet_analyzer.species.core"),
+        "species",
+        lambda **kwargs: _emit_download(),
+    )
+
+    gui_species.run_species_list(
+        out_path="species-lists",
+        filename="species_list.txt",
+        lat=42.5,
+        lon=-76.45,
+        week=-1,
+        use_yearlong=True,
+        sf_thresh=0.03,
+        locale="en_us",
+    )
+
+    _assert_download_reached_the_bar(_flatten(records), infos)

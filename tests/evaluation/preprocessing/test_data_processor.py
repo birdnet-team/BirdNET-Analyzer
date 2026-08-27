@@ -11,7 +11,6 @@ class TestDataProcessorInit:
     @patch("pandas.read_csv")
     def test_init_with_all_parameters(self, mock_read_csv):
         """Test initializing DataProcessor with all parameters."""
-        # Mock the dataframes returned by pd.read_csv
         mock_predictions_df = pd.DataFrame(
             {
                 "start_time": [],
@@ -28,7 +27,6 @@ class TestDataProcessorInit:
                 "source_file": [],
             }
         )
-        # Set side effect for the mock
         mock_read_csv.side_effect = [mock_predictions_df, mock_annotations_df]
 
         DataProcessor(
@@ -51,14 +49,12 @@ class TestDataProcessorInit:
             },
             recording_duration=30,
         )
-        # Your assertions here
 
     @patch(
         "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
     )
     def test_init_with_minimal_parameters(self, mock_read_concat):
         """Test initializing DataProcessor with minimal parameters."""
-        # Mock the dataframes returned by the read function
         mock_predictions_df = pd.DataFrame(
             {
                 "Start Time": [],
@@ -75,7 +71,6 @@ class TestDataProcessorInit:
                 "source_file": [],
             }
         )
-        # Set side effect for the mock
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
 
         dp = DataProcessor(prediction_directory_path="", annotation_directory_path="")
@@ -143,7 +138,6 @@ class TestDataProcessorInit:
     )
     def test_init_with_nonexistent_paths(self, mock_read_concat):
         """Test initializing with paths that do not exist."""
-        # Mock the dataframes to be empty but with required columns
         mock_predictions_df = pd.DataFrame(
             {
                 "Class": [],
@@ -168,7 +162,6 @@ class TestDataProcessorInit:
             prediction_directory_path="nonexistent_path",
             annotation_directory_path="nonexistent_path",
         )
-        # Ensure that predictions_df and annotations_df are set correctly
         pd.testing.assert_frame_equal(dp.predictions_df, mock_predictions_df)
         pd.testing.assert_frame_equal(dp.annotations_df, mock_annotations_df)
 
@@ -177,7 +170,6 @@ class TestDataProcessorInit:
     )
     def test_init_with_none_columns(self, mock_read_concat):
         """Test initializing with None columns mappings."""
-        # Mock the dataframes returned by the read function
         mock_predictions_df = pd.DataFrame(
             {
                 "Start Time": [],
@@ -194,7 +186,6 @@ class TestDataProcessorInit:
                 "source_file": [],
             }
         )
-        # Set side effect for the mock
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
 
         dp = DataProcessor(
@@ -211,7 +202,6 @@ class TestDataProcessorInit:
     )
     def test_init_with_empty_class_mapping(self, mock_read_concat):
         """Test initializing with empty class_mapping."""
-        # Mock the dataframes returned by the read function
         mock_predictions_df = pd.DataFrame(
             {
                 "Start Time": [],
@@ -228,7 +218,6 @@ class TestDataProcessorInit:
                 "source_file": [],
             }
         )
-        # Set side effect for the mock
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
 
         dp = DataProcessor(
@@ -253,7 +242,6 @@ class TestDataProcessorInit:
     )
     def test_init_with_large_sample_duration(self, mock_read_concat):
         """Test initializing with large sample_duration."""
-        # Mock the dataframes returned by the read function
         mock_predictions_df = pd.DataFrame(
             {
                 "Start Time": [],
@@ -270,7 +258,6 @@ class TestDataProcessorInit:
                 "source_file": [],
             }
         )
-        # Set side effect for the mock
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
 
         dp = DataProcessor(
@@ -285,7 +272,6 @@ class TestDataProcessorInit:
     )
     def test_init_with_non_default_columns(self, mock_read_concat):
         """Test initializing with custom columns mappings."""
-        # Mock the dataframes returned by the read function
         mock_predictions_df = pd.DataFrame(
             {
                 "start": [],
@@ -302,7 +288,6 @@ class TestDataProcessorInit:
                 "source_file": [],
             }
         )
-        # Set side effect for the mock
         mock_read_concat.side_effect = [mock_predictions_df, mock_annotations_df]
 
         dp = DataProcessor(
@@ -330,9 +315,6 @@ class TestDataProcessorInit:
             "Class": "class_annot",
         }
 
-        # Check if default columns are used for missing mappings
-        # Since all required columns are provided, this isn't necessary,
-        # but if you want to check optional columns:
         optional_col = "Confidence"
         assert dp.get_column_name(
             optional_col, prediction=True
@@ -351,7 +333,6 @@ class TestDataProcessorLoadData:
         """
         Test load_data when prediction_file_name and annotation_file_name are None.
         """
-        # Mocking the DataFrames returned by the utility function
         mock_predictions_df = pd.DataFrame(
             {
                 "Class": ["A", "B"],
@@ -389,14 +370,12 @@ class TestDataProcessorLoadData:
             recording_duration=10,
         )
 
-        # Ensure that predictions_df and annotations_df are set correctly
         pd.testing.assert_frame_equal(dp.predictions_df, mock_predictions_df)
         pd.testing.assert_frame_equal(dp.annotations_df, mock_annotations_df)
 
     @patch("pandas.read_csv")
     def test_load_data_with_specific_filenames(self, mock_read_csv):
         """Test load_data when specific filenames are provided."""
-        # Mocking the DataFrames returned by pd.read_csv
         mock_predictions_df = pd.DataFrame(
             {
                 "Class": ["A", "B"],
@@ -431,7 +410,6 @@ class TestDataProcessorLoadData:
             recording_duration=10,
         )
 
-        # Ensure that predictions_df and annotations_df are set correctly
         pd.testing.assert_frame_equal(
             dp.predictions_df, mock_predictions_df.assign(source_file="predictions.txt")
         )
@@ -644,7 +622,6 @@ class TestDataProcessorLoadData:
             },
             recording_duration=10,
         )
-        # Should proceed without errors
 
     @patch(
         "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
@@ -1094,12 +1071,10 @@ class TestDataProcessorValidateColumns:
 class TestDataProcessorPrepareDataFrame:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock empty DataFrames for predictions and annotations
         self.mock_read_concat.return_value = pd.DataFrame(
             {
                 "Class": [],
@@ -1224,12 +1199,10 @@ class TestDataProcessorPrepareDataFrame:
 class TestDataProcessorProcessData:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock empty DataFrames for predictions and annotations
         self.mock_read_concat.return_value = pd.DataFrame(
             {
                 "Class": [],
@@ -1367,12 +1340,10 @@ class TestDataProcessorProcessData:
 class TestDataProcessorProcessRecording:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock empty DataFrames for predictions and annotations
         self.mock_read_concat.return_value = pd.DataFrame(
             {
                 "Class": [],
@@ -1458,7 +1429,6 @@ class TestDataProcessorProcessRecording:
         pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [-5], "End Time": [-1]})
         annot_df = pd.DataFrame()
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
-        # Should handle gracefully without exceptions
         assert not samples_df.empty
 
     def test_negative_recording_duration(self):
@@ -1479,7 +1449,6 @@ class TestDataProcessorProcessRecording:
         )
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         assert len(samples_df) == 5  # 15 / 3 = 5 samples
-        # Check if overlaps are correctly calculated
 
     def test_classes_not_in_self_classes(self):
         """Test with classes not in self.classes."""
@@ -1510,12 +1479,10 @@ class TestDataProcessorProcessRecording:
 class TestDetermineFileDuration:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock the function to return DataFrames with expected columns
         self.mock_read_concat.return_value = pd.DataFrame(
             columns=[
                 "Class",
@@ -1632,12 +1599,10 @@ class TestDetermineFileDuration:
 class TestInitializeSamples:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock the function to return DataFrames with expected columns
         self.mock_read_concat.return_value = pd.DataFrame(
             columns=[
                 "Class",
@@ -1736,12 +1701,10 @@ class TestInitializeSamples:
 class TestUpdateSamplesWithPredictions:
     def setup_method(self):
         """Set up a DataProcessor instance and samples DataFrame for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock the function to return DataFrames with expected columns
         self.mock_read_concat.return_value = pd.DataFrame(
             columns=[
                 "Class",
@@ -1760,7 +1723,6 @@ class TestUpdateSamplesWithPredictions:
         self.dp.sample_duration = 5
         self.dp.min_overlap = 0.5
 
-        # Initialize samples_df
         self.samples_df = pd.DataFrame(
             {
                 "filename": ["rec1"] * 3,
@@ -1942,12 +1904,10 @@ class TestUpdateSamplesWithPredictions:
 class TestUpdateSamplesWithAnnotations:
     def setup_method(self):
         """Set up a DataProcessor instance and samples DataFrame for testing."""
-        # Start patching
         self.patcher = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
         )
         self.mock_read_concat = self.patcher.start()
-        # Mock the function to return DataFrames with expected columns
         self.mock_read_concat.return_value = pd.DataFrame(
             columns=[
                 "Class",
@@ -1966,7 +1926,6 @@ class TestUpdateSamplesWithAnnotations:
         self.dp.sample_duration = 5
         self.dp.min_overlap = 0.5
 
-        # Initialize samples_df
         self.samples_df = pd.DataFrame(
             {
                 "filename": ["rec1"] * 3,
@@ -2077,7 +2036,6 @@ class TestUpdateSamplesWithAnnotations:
 class TestCreateTensors:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
@@ -2253,7 +2211,6 @@ class TestCreateTensors:
 class TestGetColumnName:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
@@ -2352,7 +2309,6 @@ class TestGetColumnName:
 class TestGetSampleData:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             return_value=pd.DataFrame(
@@ -2489,7 +2445,6 @@ class TestGetSampleData:
 class TestGetFilteredTensors:
     def setup_method(self):
         """Set up a DataProcessor instance for testing."""
-        # Mock the file reading functions to prevent actual file I/O
         self.patcher_pred = patch(
             "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory",
             side_effect=[
@@ -2523,7 +2478,6 @@ class TestGetFilteredTensors:
             prediction_directory_path="dummy_path",
             annotation_directory_path="dummy_path",
         )
-        # Create a samples_df for testing
         self.dp.samples_df = pd.DataFrame(
             {
                 "filename": ["rec1", "rec2", "rec1", "rec2"],
@@ -2534,7 +2488,6 @@ class TestGetFilteredTensors:
             }
         )
         self.dp.classes = ("A", "B")
-        # Create tensors for the DataProcessor
         self.dp.create_tensors()
 
         self.rng = np.random.default_rng(123)
