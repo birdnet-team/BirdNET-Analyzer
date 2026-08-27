@@ -27,19 +27,20 @@ def run_embeddings_with_tqdm_tracking(
     file_output,
     progress=gr.Progress(track_tqdm=True),
 ):
-    return run_embeddings(
-        input_path,
-        db_directory,
-        overlap,
-        producers_number,
-        workers_number,
-        batch_size,
-        audio_speed,
-        fmin,
-        fmax,
-        file_output if enable_file_output else None,
-        progress,
-    )
+    with gu.download_progress(progress):
+        return run_embeddings(
+            input_path,
+            db_directory,
+            overlap,
+            producers_number,
+            workers_number,
+            batch_size,
+            audio_speed,
+            fmin,
+            fmax,
+            file_output if enable_file_output else None,
+            progress,
+        )
 
 
 @gu.gui_runtime_error_handler

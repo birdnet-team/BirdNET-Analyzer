@@ -189,45 +189,46 @@ def start_training(
             )
 
     try:
-        history, metrics = train_model(
-            audio_input=cache_file if cache_mode == "load" else data_dir,
-            output=cc_output_path,
-            test_data=test_data_dir,
-            crop_mode=crop_mode,
-            epochs=int(epochs),
-            batch_size=int(batch_size),
-            learning_rate=learning_rate,
-            hidden_units=hidden_units,
-            label_smoothing=label_smoothing,
-            mixup=use_mixup,
-            upsampling_ratio=min(max(0, upsampling_ratio), 1),
-            upsampling_mode=upsampling_mode,
-            model_formats=model_formats,
-            use_focal_loss=focal_loss,
-            focal_loss_gamma=max(0.0, float(focal_loss_gamma)),
-            focal_loss_alpha=max(0.0, min(1.0, float(focal_loss_alpha))),
-            fmin=max(0, min(15000, int(fmin))),
-            fmax=max(0, min(15000, int(fmax))),
-            model_save_mode=model_save_mode,
-            save_cache_to=os.path.join(cache_file, cache_file_name)
-            if cache_mode == "save"
-            else None,
-            dropout=max(0.0, min(1.0, float(dropout))),
-            overlap=max(0.0, min(2.9, float(crop_overlap))),
-            threads=int(threads)
-            if threads and int(threads) > 0
-            else max(1, multiprocessing.cpu_count()),
-            on_epoch_end=epoch_progression,
-            on_trial_result=trial_progression,
-            on_data_load_end=data_load_progression,
-            audio_speed=max(0.1, 1.0 / (audio_speed * -1))
-            if audio_speed < 0
-            else max(1.0, float(audio_speed)),
-            autotune=autotune,
-            autotune_trials=int(autotune_trials),
-            autotune_n_splits=int(autotune_folds),
-            autotune_n_repeats=int(autotune_repeats),
-        )
+        with gu.download_progress(progress):
+            history, metrics = train_model(
+                audio_input=cache_file if cache_mode == "load" else data_dir,
+                output=cc_output_path,
+                test_data=test_data_dir,
+                crop_mode=crop_mode,
+                epochs=int(epochs),
+                batch_size=int(batch_size),
+                learning_rate=learning_rate,
+                hidden_units=hidden_units,
+                label_smoothing=label_smoothing,
+                mixup=use_mixup,
+                upsampling_ratio=min(max(0, upsampling_ratio), 1),
+                upsampling_mode=upsampling_mode,
+                model_formats=model_formats,
+                use_focal_loss=focal_loss,
+                focal_loss_gamma=max(0.0, float(focal_loss_gamma)),
+                focal_loss_alpha=max(0.0, min(1.0, float(focal_loss_alpha))),
+                fmin=max(0, min(15000, int(fmin))),
+                fmax=max(0, min(15000, int(fmax))),
+                model_save_mode=model_save_mode,
+                save_cache_to=os.path.join(cache_file, cache_file_name)
+                if cache_mode == "save"
+                else None,
+                dropout=max(0.0, min(1.0, float(dropout))),
+                overlap=max(0.0, min(2.9, float(crop_overlap))),
+                threads=int(threads)
+                if threads and int(threads) > 0
+                else max(1, multiprocessing.cpu_count()),
+                on_epoch_end=epoch_progression,
+                on_trial_result=trial_progression,
+                on_data_load_end=data_load_progression,
+                audio_speed=max(0.1, 1.0 / (audio_speed * -1))
+                if audio_speed < 0
+                else max(1.0, float(audio_speed)),
+                autotune=autotune,
+                autotune_trials=int(autotune_trials),
+                autotune_n_splits=int(autotune_folds),
+                autotune_n_repeats=int(autotune_repeats),
+            )
     except Exception as e:
         if e.args and len(e.args) > 1:
             message = loc.localize(e.args[1])

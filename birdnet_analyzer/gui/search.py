@@ -66,7 +66,14 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
 
 @gu.gui_runtime_error_handler
 def run_search(
-    db_path, audio_root, query_path, max_samples, score_fn, crop_mode, crop_overlap
+    db_path,
+    audio_root,
+    query_path,
+    max_samples,
+    score_fn,
+    crop_mode,
+    crop_overlap,
+    progress=gr.Progress(),
 ):
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
     from birdnet_analyzer.search.utils import get_search_results
@@ -85,17 +92,18 @@ def run_search(
     settings["AUDIO_ROOT"] = audio_root
     db.insert_metadata(SETTINGS_KEY, settings)
 
-    results = get_search_results(
-        query_path,
-        db,
-        max_samples,
-        settings["AUDIO_SPEED"],
-        settings["BANDPASS_FMIN"],
-        settings["BANDPASS_FMAX"],
-        score_fn,
-        crop_mode,
-        crop_overlap,
-    )
+    with gu.download_progress(progress):
+        results = get_search_results(
+            query_path,
+            db,
+            max_samples,
+            settings["AUDIO_SPEED"],
+            settings["BANDPASS_FMIN"],
+            settings["BANDPASS_FMAX"],
+            score_fn,
+            crop_mode,
+            crop_overlap,
+        )
     db.db.close()  # Close the database connection to avoid having wal/shm files
 
     chunks = [results[i : i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]

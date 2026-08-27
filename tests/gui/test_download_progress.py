@@ -142,21 +142,16 @@ def test_overlapping_gui_events_keep_their_own_sink_and_unregister_cleanly():
     assert birdnet.get_download_progress_callback() is None
 
 
-def _run_single_file_tab(monkeypatch, report):
-    """Runs the single-file tab's handler over an ``analyze`` that calls ``report``.
+MODEL_NAME = "acoustic model v3.0"
 
-    Returns the updates that reached the progress bar and the toasts that were
-    raised instead. Gradio resolves the bar from a contextvar rather than from the
-    argument, so a stand-in callback is the only way to observe it outside a live
-    event.
+
+def _capture_progress(monkeypatch):
+    """Captures what a handler's ``gr.Progress`` reports, and any toast it raises.
+
+    Gradio resolves the bar from a contextvar rather than from the argument, so a
+    stand-in callback is the only way to observe it outside a live event.
     """
-    import importlib
-
     import gradio as gr
-    import pandas as pd
-
-    from birdnet_analyzer.gui import single_file
-    from birdnet_analyzer.gui import utils as gu
 
     records: list = []
     infos: list = []
@@ -164,6 +159,89 @@ def _run_single_file_tab(monkeypatch, report):
     monkeypatch.setattr(
         gr.Progress, "_progress_callback", staticmethod(lambda: records.append)
     )
+
+    return records, infos
+
+
+def _emit_download():
+    """Reports a model download the way the birdnet library does mid-load.
+
+    Stays silent when nothing registered a sink, so a tab that never wraps its model
+    call fails on the missing progress update rather than on a TypeError here.
+    """
+    import birdnet
+
+    callback = birdnet.get_download_progress_callback()
+
+    if callback is None:
+        return
+
+    # "started" is the update that falls back to a toast when there is no bar.
+    for status, done in (("started", 0), ("progress", 250), ("finished", 1000)):
+        callback(
+            birdnet.DownloadProgress(
+                description=f"Downloading {MODEL_NAME}",
+                url="https://example.invalid/model",
+                bytes_done=done,
+                bytes_total=1000,
+                attempt=1,
+                max_attempts=3,
+                status=status,
+            )
+        )
+
+
+def _flatten(records):
+    return [tracked for update in records for tracked in update]
+
+
+def _assert_download_reached_the_bar(updates, infos):
+    # The label is localized; the model name in it is not.
+    assert any(MODEL_NAME in (update.desc or "") for update in updates), (
+        "the model download never reached the progress bar"
+    )
+    assert not [msg for msg in infos if MODEL_NAME in msg], (
+        "the download fell back to a toast although a bar was available"
+    )
+
+
+def _module(name):
+    """Imports a submodule by name.
+
+    ``birdnet_analyzer`` re-exports ``analyze``/``embeddings``/``search``/``train``
+    as functions, shadowing the submodules of the same name, so attribute access -
+    and monkeypatch's dotted string form, which uses it - reaches the function.
+    """
+    import importlib
+
+    return importlib.import_module(name)
+
+
+class _FakeDatabase:
+    """The metadata and close surface the embeddings and search handlers touch."""
+
+    class _Connection:
+        def close(self):
+            pass
+
+    def __init__(self):
+        self.db = self._Connection()
+
+    def get_metadata(self, key):
+        return {"AUDIO_SPEED": 1.0, "BANDPASS_FMIN": 0, "BANDPASS_FMAX": 15000}
+
+    def insert_metadata(self, key, value):
+        pass
+
+
+def _run_single_file_tab(monkeypatch, report):
+    """Runs the single-file tab's handler over an ``analyze`` that calls ``report``."""
+    import pandas as pd
+
+    from birdnet_analyzer.gui import single_file
+    from birdnet_analyzer.gui import utils as gu
+
+    records, infos = _capture_progress(monkeypatch)
 
     class FakePredictions:
         def to_dataframe(self):
@@ -175,9 +253,7 @@ def _run_single_file_tab(monkeypatch, report):
         report(**kwargs)
         return FakePredictions()
 
-    # birdnet_analyzer re-exports analyze, shadowing the submodule of the same name.
-    analyze_module = importlib.import_module("birdnet_analyzer.analyze")
-    monkeypatch.setattr(analyze_module, "analyze", fake_analyze)
+    monkeypatch.setattr(_module("birdnet_analyzer.analyze"), "analyze", fake_analyze)
 
     single_file.run_single_file_analysis(
         input_path="recording.wav",
@@ -202,37 +278,16 @@ def _run_single_file_tab(monkeypatch, report):
         locale="en_us",
     )
 
-    return [tracked for update in records for tracked in update], infos
+    return _flatten(records), infos
 
 
 def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
-    """The single-file tab hands run_analysis a tracker, so no toast fallback.
+    """A first-use download is several hundred MB; a toast alone looks like a hang."""
+    updates, infos = _run_single_file_tab(
+        monkeypatch, lambda **kwargs: _emit_download()
+    )
 
-    A first-use download is several hundred MB; without the bar the tab looks like
-    it hangs for minutes on nothing but a toast.
-    """
-    import birdnet
-
-    def report_download(**kwargs):
-        # "started" is the update that falls back to a toast when there is no bar.
-        for status, done in (("started", 0), ("progress", 250), ("finished", 1000)):
-            birdnet.get_download_progress_callback()(
-                birdnet.DownloadProgress(
-                    description="Downloading acoustic model v3.0",
-                    url="https://example.invalid/model",
-                    bytes_done=done,
-                    bytes_total=1000,
-                    attempt=1,
-                    max_attempts=3,
-                    status=status,
-                )
-            )
-
-    updates, infos = _run_single_file_tab(monkeypatch, report_download)
-
-    # The label is localized; the model name in it is not.
-    assert any("acoustic model v3.0" in (update.desc or "") for update in updates)
-    assert not infos, "no toasts while a progress bar is available"
+    _assert_download_reached_the_bar(updates, infos)
 
 
 def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch):
@@ -259,3 +314,116 @@ def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch
     unit = analyzing[0].unit
     assert unit == loc.localize("progress-unit-segments")
     assert unit != "progress-unit-segments", "the unit label is an untranslated key"
+
+
+def test_embeddings_tab_shows_the_download_on_its_progress_bar(monkeypatch):
+    """Building a database is the first thing a fresh install does, model and all."""
+    from birdnet_analyzer.gui import embeddings as gui_embeddings
+
+    records, infos = _capture_progress(monkeypatch)
+
+    monkeypatch.setattr(
+        gui_embeddings, "get_embeddings_database", lambda directory: _FakeDatabase()
+    )
+    monkeypatch.setattr(
+        _module("birdnet_analyzer.embeddings.core"),
+        "embeddings",
+        lambda *args, **kwargs: _emit_download(),
+    )
+
+    gui_embeddings.run_embeddings_with_tqdm_tracking(
+        input_path="recordings",
+        db_directory="database",
+        overlap=0.0,
+        batch_size=1,
+        producers_number=1,
+        workers_number=1,
+        audio_speed=1.0,
+        fmin=0,
+        fmax=15000,
+        enable_file_output=False,
+        file_output="",
+    )
+
+    _assert_download_reached_the_bar(_flatten(records), infos)
+
+
+def test_search_tab_shows_the_download_on_its_progress_bar(monkeypatch):
+    """Searching embeds the query sample, which loads the model on first use."""
+    from birdnet_analyzer.gui import search as gui_search
+
+    records, infos = _capture_progress(monkeypatch)
+
+    def fake_get_search_results(*args, **kwargs):
+        _emit_download()
+        return []
+
+    monkeypatch.setattr(gui_search, "get_search_database", lambda path: _FakeDatabase())
+    monkeypatch.setattr(
+        _module("birdnet_analyzer.search.utils"),
+        "get_search_results",
+        fake_get_search_results,
+    )
+
+    gui_search.run_search(
+        "database", "recordings", "query.wav", 10, "cosine", "center", 0.0
+    )
+
+    _assert_download_reached_the_bar(_flatten(records), infos)
+
+
+def test_train_tab_shows_the_download_on_its_progress_bar(monkeypatch):
+    """Training embeds the training data first, which loads the model on first use."""
+    from types import SimpleNamespace
+
+    from birdnet_analyzer.gui import train as gui_train
+
+    records, infos = _capture_progress(monkeypatch)
+
+    def fake_train_model(**kwargs):
+        _emit_download()
+        history = SimpleNamespace(
+            epoch=[0], history={"val_AUPRC": [0.5], "val_AUROC": [0.6]}
+        )
+
+        return history, {}
+
+    monkeypatch.setattr(
+        _module("birdnet_analyzer.train.utils"), "train_model", fake_train_model
+    )
+
+    gui_train.start_training(
+        data_dir="training-data",
+        test_data_dir=None,
+        crop_mode="center",
+        crop_overlap=0.0,
+        fmin=0,
+        fmax=15000,
+        output_dir="classifiers",
+        classifier_name="classifier",
+        model_save_mode="replace",
+        cache_mode="none",
+        cache_file="",
+        cache_file_name="",
+        autotune=False,
+        autotune_trials=1,
+        autotune_folds=1,
+        autotune_repeats=1,
+        epochs=1,
+        batch_size=1,
+        learning_rate=0.001,
+        focal_loss=False,
+        focal_loss_gamma=2.0,
+        focal_loss_alpha=0.25,
+        hidden_units=0,
+        dropout=0.0,
+        label_smoothing=False,
+        use_mixup=False,
+        upsampling_ratio=0.0,
+        upsampling_mode="repeat",
+        model_formats=["tflite"],
+        audio_speed=1.0,
+        threads=1,
+    )
+
+    _assert_download_reached_the_bar(_flatten(records), infos)
