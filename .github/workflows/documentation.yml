@@ -1,5 +1,13 @@
 name: documentation
 
+# The published site (gh-pages) is versioned: every release lives under
+# /vX.Y.Z/, the latest release is mirrored at /stable/ (the default landing
+# spot), and pushes to main deploy to /dev/. Site-wide files (root redirect,
+# 404 handler, version switcher) come from docs/_site/ on main.
+#
+# Publishing an old release retroactively: run this workflow manually with the
+# tag name; tick "set_stable" only if that tag is the newest release.
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -11,15 +19,81 @@ on:
       - main
     paths:
       [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and publish (e.g. v2.4.0)"
+        required: true
+        type: string
+      set_stable:
+        description: "Also publish this version as stable"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+
+# Deploys push to gh-pages, so they must not run concurrently. PR builds only
+# check that the docs build and can run freely (superseded runs are cancelled).
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.ref) || 'docs-deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
+      - name: Determine build source and target directory
+        id: target
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_STABLE: ${{ inputs.set_stable }}
+        run: |
+          TAG_RE='^v[0-9]+(\.[0-9]+)*(-[A-Za-z0-9.]+)?$'
+          case "$EVENT" in
+            release)
+              if ! echo "$RELEASE_TAG" | grep -Eq "$TAG_RE"; then
+                echo "::error::release tag '$RELEASE_TAG' does not look like vX.Y.Z, not deploying docs"
+                exit 1
+              fi
+              echo "ref=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+              echo "dest=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+              # Prereleases get their /vX.Y.Z-rc/ dir but must not become stable.
+              if [ "$RELEASE_PRERELEASE" = "true" ]; then
+                echo "stable=false" >> "$GITHUB_OUTPUT"
+              else
+                echo "stable=true" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            workflow_dispatch)
+              if ! echo "$INPUT_TAG" | grep -Eq "$TAG_RE"; then
+                echo "::error::tag must look like vX.Y.Z, got '$INPUT_TAG'"
+                exit 1
+              fi
+              echo "ref=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+              echo "dest=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+              echo "stable=$INPUT_STABLE" >> "$GITHUB_OUTPUT"
+              ;;
+            push)
+              echo "ref=" >> "$GITHUB_OUTPUT"
+              echo "dest=dev" >> "$GITHUB_OUTPUT"
+              echo "stable=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)  # pull_request: build as a check, no deploy
+              echo "ref=" >> "$GITHUB_OUTPUT"
+              echo "dest=" >> "$GITHUB_OUTPUT"
+              echo "stable=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.target.outputs.ref }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -31,13 +105,82 @@ jobs:
       - name: Install dependencies
         run: uv pip install --system .[docs]
       - name: Sphinx build
+        env:
+          DEST: ${{ steps.target.outputs.dest }}
         run: |
-          sphinx-build -E docs _build
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          EXTRA=""
+          if [ -n "$DEST" ] && [ "$DEST" != "dev" ]; then
+            # Old tags hardcode a version and don't load the switcher, so both
+            # are forced from here; on current conf.py the -D flags are no-ops.
+            EXTRA="-D version=${DEST#v} -D release=${DEST#v}"
+            EXTRA="$EXTRA -D html_js_files=https://birdnet-team.github.io/BirdNET-Analyzer/switcher.js"
+          elif [ "$DEST" = "dev" ]; then
+            EXTRA="-D version=dev -D release=dev"
+          fi
+          # Doctrees in a temp dir so they don't end up in the deployed site.
+          sphinx-build -E -d "$RUNNER_TEMP/doctrees" $EXTRA docs _build
+      - name: Check out site chrome from main
+        if: ${{ steps.target.outputs.dest != '' }}
+        uses: actions/checkout@v6
         with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _build/
-          force_orphan: true
+          ref: main
+          path: chrome
+      - name: Check out gh-pages
+        if: ${{ steps.target.outputs.dest != '' }}
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: site
+      - name: Deploy to GitHub Pages
+        if: ${{ steps.target.outputs.dest != '' }}
+        env:
+          DEST: ${{ steps.target.outputs.dest }}
+          STABLE: ${{ steps.target.outputs.stable }}
+        run: |
+          # Everything at the site root except the version dirs is chrome and
+          # is regenerated below. This also clears the pre-versioning layout,
+          # where the docs pages themselves lived at the root.
+          find site -mindepth 1 -maxdepth 1 \
+            ! -name .git ! -name 'v[0-9]*' ! -name stable ! -name dev \
+            -exec rm -rf {} +
+          rm -rf "site/$DEST"
+          cp -a _build "site/$DEST"
+          if [ "$STABLE" = "true" ]; then
+            rm -rf site/stable
+            cp -a _build site/stable
+          fi
+          cp -a chrome/docs/_site/. site/
+          touch site/.nojekyll
+          python - <<'EOF'
+          import json
+          import re
+          from pathlib import Path
+
+          site = Path("site")
+
+          def sort_key(name):
+              # v3.0.0 sorts above v3.0.0-rc, which sorts above v2.4.0.
+              core, _, suffix = name[1:].partition("-")
+              return [int(x) for x in core.split(".")], suffix == "", suffix
+
+          versions = sorted(
+              (d.name for d in site.iterdir()
+               if d.is_dir()
+               and re.fullmatch(r"v\d+(\.\d+)*(-[A-Za-z0-9.]+)?", d.name)),
+              key=sort_key,
+              reverse=True,
+          )
+          entries = []
+          if (site / "stable").is_dir():
+              entries.append({"name": "stable", "path": "stable"})
+          if (site / "dev").is_dir():
+              entries.append({"name": "dev (unreleased)", "path": "dev"})
+          entries += [{"name": v, "path": v} for v in versions]
+          (site / "versions.json").write_text(json.dumps(entries, indent=2) + "\n")
+          EOF
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898270+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Deploy docs: $DEST"
+          git push

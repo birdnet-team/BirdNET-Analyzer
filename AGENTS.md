@@ -55,10 +55,17 @@ worth knowing before running the suite:
 ## CI
 
 Six workflows in `.github/workflows/`: `lint.yml` and `ci.yml` (the test matrix) run
-on every PR to `main`, `documentation.yml` on docs changes, `docker-build.yml` on
-Dockerfile/`pyproject.toml` changes and on release, and `publish.yml` /
-`test-publish.yml` on release. All of them use `paths:` filters, so a PR touching only
-docs will not run the test matrix.
+on every PR to `main`, `documentation.yml` on docs changes and on release,
+`docker-build.yml` on Dockerfile/`pyproject.toml` changes and on release, and
+`publish.yml` / `test-publish.yml` on release. All of them use `paths:` filters, so a
+PR touching only docs will not run the test matrix.
+
+The published docs are **versioned**: `documentation.yml` deploys each release to
+`/vX.Y.Z/` on `gh-pages` (mirrored at `/stable/`, the default landing spot), pushes
+to `main` deploy to `/dev/`, and old releases can be backfilled via the workflow's
+manual trigger. The site-root redirect, 404 handler and version switcher live in
+`docs/_site/`, which is deployed to the `gh-pages` root and excluded from the Sphinx
+build.
 
 Run `ruff check` and `python -m pytest` before handing work back.
 

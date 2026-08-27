@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>BirdNET-Analyzer documentation</title>
+</head>
+<body>
+    <p id="message">Page not found.</p>
+    <p><a href="/BirdNET-Analyzer/stable/">Go to the latest stable documentation</a></p>
+    <script>
+        // Pre-versioning the docs lived at the site root, so old deep links like
+        // /BirdNET-Analyzer/usage/cli.html land here. Send them to the same page
+        // under stable/. Links already inside a version dir stay here: that page
+        // just doesn't exist in that version, and redirecting again would loop.
+        (function () {
+            "use strict";
+            var base = "/BirdNET-Analyzer/";
+            if (location.pathname.indexOf(base) !== 0) return;
+            var rest = location.pathname.slice(base.length);
+            if (/^(stable|dev|v[0-9][^/]*)($|\/)/.test(rest)) {
+                document.getElementById("message").textContent =
+                    "This page does not exist in the documentation version you selected.";
+                return;
+            }
+            location.replace(base + "stable/" + rest + location.search + location.hash);
+        })();
+    </script>
+</body>
+</html>
