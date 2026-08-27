@@ -145,3 +145,77 @@ def test_overlapping_gui_events_keep_their_own_sink_and_unregister_cleanly():
     assert any("beta-model" in d for d in seen_b)
     assert not any("alpha-model" in d for d in seen_b)
     assert birdnet.get_download_progress_callback() is None
+
+
+def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
+    """The single-file tab hands run_analysis a tracker, so no toast fallback.
+
+    A first-use download is several hundred MB; without the bar the tab looks like
+    it hangs for minutes on nothing but a toast.
+    """
+    import birdnet
+    import gradio as gr
+    import pandas as pd
+
+    import birdnet_analyzer.analyze  # noqa: F401
+    from birdnet_analyzer.gui import single_file
+    from birdnet_analyzer.gui import utils as gu
+
+    records: list = []
+    infos: list = []
+    monkeypatch.setattr(gr, "Info", lambda msg, **kw: infos.append(msg))
+    monkeypatch.setattr(
+        gr.Progress, "_progress_callback", staticmethod(lambda: records.append)
+    )
+
+    class FakePredictions:
+        def to_dataframe(self):
+            return pd.DataFrame(
+                columns=["species_name", "start_time", "end_time", "confidence"]
+            )
+
+    def fake_analyze(**kwargs):
+        birdnet.get_download_progress_callback()(
+            birdnet.DownloadProgress(
+                description="Downloading acoustic model v3.0",
+                url="https://example.invalid/model",
+                bytes_done=250,
+                bytes_total=1000,
+                attempt=1,
+                max_attempts=3,
+                status="progress",
+            )
+        )
+        return FakePredictions()
+
+    # birdnet_analyzer re-exports analyze, shadowing the submodule of the same name.
+    analyze_module = sys.modules["birdnet_analyzer.analyze"]
+    monkeypatch.setattr(analyze_module, "analyze", fake_analyze)
+
+    single_file.run_single_file_analysis(
+        input_path="recording.wav",
+        use_top_n=False,
+        top_n=1,
+        confidence=0.25,
+        sensitivity=1.0,
+        overlap=0.0,
+        merge_consecutive=1,
+        audio_speed=1.0,
+        fmin=0,
+        fmax=15000,
+        species_list_choice=gu._ALL_SPECIES,
+        species_list_file=None,
+        lat=-1,
+        lon=-1,
+        week=-1,
+        use_yearlong=True,
+        sf_thresh=0.03,
+        selected_model="BirdNET 2.4",
+        custom_classifier_file=None,
+        locale="en_us",
+    )
+
+    # The label is localized; the model name in it is not.
+    descriptions = [tracked.desc or "" for update in records for tracked in update]
+    assert any("acoustic model v3.0" in desc for desc in descriptions)
+    assert not infos, "no toasts while a progress bar is available"

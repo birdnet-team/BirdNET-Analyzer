@@ -237,7 +237,7 @@
     "progress-search": "Haetaan tiedostoja",
     "progress-starting": "Aloitetaan",
     "progress-training": "Koulutetaan mallia",
-    "progress-unit-files": "tiedostoa",
+    "progress-unit-segments": "segmenttiä",
     "review-tab-autoplay-checkbox-label": "Automaattinen toisto",
     "review-tab-download-regression-button-label": "Lataa regressio",
     "review-tab-download-spectrogram-button-label": "Lataa spektrogrammi",

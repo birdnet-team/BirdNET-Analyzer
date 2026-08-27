@@ -44,6 +44,7 @@ def run_single_file_analysis(
     selected_model,
     custom_classifier_file,
     locale,
+    progress=gr.Progress(),
 ):
     from datetime import timedelta
 
@@ -80,7 +81,7 @@ def run_single_file_analysis(
         save_params=False,
         n_producers=1,
         n_workers=1,
-        progress=None,
+        progress=progress,
     )
 
     def convert_to_time_str(seconds: float) -> str:

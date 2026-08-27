@@ -237,7 +237,7 @@
     "progress-search": "Söker filer",
     "progress-starting": "Startar",
     "progress-training": "Tränar modell",
-    "progress-unit-files": "filer",
+    "progress-unit-segments": "segment",
     "review-tab-autoplay-checkbox-label": "Automatisk uppspelning",
     "review-tab-download-regression-button-label": "Ladda ner regression",
     "review-tab-download-spectrogram-button-label": "Ladda ner spektrogram",
