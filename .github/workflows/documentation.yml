@@ -1,12 +1,5 @@
 name: documentation
 
-# The published site (gh-pages) is versioned: every release lives under
-# /vX.Y.Z/, the latest release is mirrored at /stable/ (the default landing
-# spot), and pushes to main deploy to /dev/. Site-wide files (root redirect,
-# 404 handler, version switcher) come from docs/_site/ on main.
-#
-# Publishing an old release retroactively: run this workflow manually with the
-# tag name; tick "set_stable" only if that tag is the newest release.
 
 on:
   pull_request:
@@ -36,17 +29,14 @@ on:
 permissions:
   contents: write
 
-# Release deploys are queued separately from dev deploys: GitHub keeps only one
-# pending run per group, so a busy main branch must not be able to evict a
-# queued release and leave that release without docs. The two groups can
-# therefore overlap, which the deploy step handles by re-applying onto the
-# latest gh-pages if its push is rejected. PR builds never deploy and can run
-# freely (superseded runs are cancelled).
+# One group per deploy target: a shared group lets a newer run evict a queued
+# deploy. Overlap is safe, the deploy step retries onto a newer gh-pages tip.
 concurrency:
   group: >-
     ${{ github.event_name == 'pull_request'
-        && format('docs-pr-{0}', github.ref)
-        || (github.event_name == 'push' && 'docs-deploy-dev' || 'docs-deploy-release') }}
+    && format('docs-pr-{0}', github.ref)
+    || github.event_name == 'push' && 'docs-deploy-dev'
+    || format('docs-deploy-{0}', github.event.release.tag_name || inputs.tag) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -149,13 +139,10 @@ jobs:
           # Guard: $DEST is interpolated into rm -rf below.
           [ -n "$DEST" ] || { echo "::error::empty deploy target"; exit 1; }
 
-          # Everything this deploy writes, as a function: if the push is
-          # rejected because a concurrent deploy landed first, the whole thing
-          # is re-applied on top of that deploy rather than overwriting it.
+          # Re-runnable: a rejected push re-applies this onto the newer tip.
           apply() {
-            # Everything at the site root except the version dirs is chrome and
-            # is regenerated below. This also clears the pre-versioning layout,
-            # where the docs pages themselves lived at the root.
+            # The root holds only chrome (regenerated below) and version dirs;
+            # this also clears the old unversioned layout.
             find site -mindepth 1 -maxdepth 1 \
               ! -name .git ! -name 'v[0-9]*' ! -name stable ! -name dev \
               -exec rm -rf {} +
@@ -192,9 +179,8 @@ jobs:
           marker = site / "stable" / ".version"
           stable = marker.read_text().strip() if marker.is_file() else None
 
-          # dev on top, then releases newest-first. The release that /stable/
-          # points at is shown as "vX.Y.Z (stable)" in place of its own entry,
-          # so no version is listed twice.
+          # dev first, then releases newest-first; the stable release is listed
+          # once, as "vX.Y.Z (stable)".
           entries = []
           if (site / "dev").is_dir():
               entries.append({"name": "dev (unreleased)", "path": "dev"})

@@ -7,6 +7,9 @@
 <body>
     <p id="message">Page not found.</p>
     <p><a id="home" href="/BirdNET-Analyzer/stable/">Go to the latest documentation</a></p>
+    <!-- Escape hatch that works without JavaScript and before the first
+         release is deployed, when /stable/ does not exist yet. -->
+    <p><a href="/BirdNET-Analyzer/dev/">Development documentation</a></p>
     <script>
         // Pre-versioning the docs lived at the site root, so old deep links like
         // /BirdNET-Analyzer/usage/cli.html land here and are sent to the same

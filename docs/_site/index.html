@@ -8,6 +8,10 @@
 </head>
 <body>
     <p>Redirecting to the <a href="stable/">latest stable documentation</a>&hellip;</p>
+    <!-- Without JavaScript the noscript refresh above targets stable/, which
+         does not exist until the first release is deployed; this link always
+         does. -->
+    <p><a href="dev/">Development documentation</a></p>
     <script>
         // Normally /stable/. Before the first release is published to the
         // versioned site there is no stable/ yet, so fall back to the newest

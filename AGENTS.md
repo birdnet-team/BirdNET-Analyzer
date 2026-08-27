@@ -75,9 +75,10 @@ Two things worth knowing before touching this:
   directory and then to `/dev/`, so the site still works, but it is serving
   unreleased docs. Backfill the current release (manual trigger, `set_stable`
   ticked) right after the versioning workflow first lands on `main`.
-- **Backfilling only reaches `v2.1.1`–`v2.4.0`.** Older tags either lack the `docs`
-  extra (`v2.0.0`, so no Sphinx gets installed) or don't match the `vX.Y.Z` tag
-  pattern the workflow requires (`1.4.0`).
+- **Backfilling only reaches `v2.1.0`–`v2.4.0`.** `v2.0.0` and `v2.0.0-rc` have a
+  `docs/conf.py` but no `docs` extra, so no Sphinx gets installed; every `v1.x` tag
+  predates `pyproject.toml` entirely. (The bare `1.4.0` tag is also rejected by the
+  workflow's `vX.Y.Z` pattern.)
 
 Run `ruff check` and `python -m pytest` before handing work back.
 
