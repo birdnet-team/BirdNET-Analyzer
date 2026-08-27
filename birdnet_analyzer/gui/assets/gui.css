@@ -99,3 +99,7 @@ footer {
 .eval-overall-footer .virtual-row {
     font-weight: var(--weight-semibold);
 }
+
+.success {
+    background-color: #00b81f;
+}

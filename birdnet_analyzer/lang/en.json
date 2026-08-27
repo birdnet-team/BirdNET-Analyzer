@@ -294,7 +294,7 @@
     "settings-tab-language-dropdown-info": "Changes will only take effect after restarting the application.",
     "settings-tab-language-dropdown-label": "GUI Language",
     "settings-tab-model-dir-env-info": "Set by the BIRDNET_APP_DATA environment variable and cannot be changed here.",
-    "settings-tab-model-dir-info": "Where model files are downloaded and stored. Changes will only take effect after restarting the application.",
+    "settings-tab-model-dir-info": "Where model files are downloaded and stored. Changes will only take effect after restarting the application. Models that were already downloaded have to be moved or removed by hand.",
     "settings-tab-model-dir-label": "Model directory",
     "settings-tab-model-dir-reset-button": "Use default",
     "settings-tab-model-dir-restart-info": "Model directory saved. Takes effect after restarting the application.",

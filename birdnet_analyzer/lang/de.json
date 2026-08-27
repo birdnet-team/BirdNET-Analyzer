@@ -294,7 +294,7 @@
     "settings-tab-language-dropdown-info": "Wird erst nach Neustart der Anwendung aktiv.",
     "settings-tab-language-dropdown-label": "GUI Sprache",
     "settings-tab-model-dir-env-info": "Durch die Umgebungsvariable BIRDNET_APP_DATA festgelegt und kann hier nicht geändert werden.",
-    "settings-tab-model-dir-info": "Wo Modelldateien heruntergeladen und gespeichert werden. Änderungen werden erst nach einem Neustart der Anwendung wirksam.",
+    "settings-tab-model-dir-info": "Wo Modelldateien heruntergeladen und gespeichert werden. Änderungen werden erst nach einem Neustart der Anwendung wirksam. Bereits heruntergeladene Modelle müssen von Hand verschoben oder gelöscht werden.",
     "settings-tab-model-dir-label": "Modellverzeichnis",
     "settings-tab-model-dir-reset-button": "Standard verwenden",
     "settings-tab-model-dir-restart-info": "Modellverzeichnis gespeichert. Wird nach einem Neustart der Anwendung wirksam.",

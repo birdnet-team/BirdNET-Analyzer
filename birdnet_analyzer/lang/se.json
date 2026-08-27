@@ -294,7 +294,7 @@
     "settings-tab-language-dropdown-info": "Ändringar kommer endast att träda i kraft efter omstart av applikationen.",
     "settings-tab-language-dropdown-label": "GUI Språk",
     "settings-tab-model-dir-env-info": "Inställd via miljövariabeln BIRDNET_APP_DATA och kan inte ändras här.",
-    "settings-tab-model-dir-info": "Var modellfiler laddas ner och lagras. Ändringar träder i kraft först efter omstart av programmet.",
+    "settings-tab-model-dir-info": "Var modellfiler laddas ner och lagras. Ändringar träder i kraft först efter omstart av programmet. Redan nedladdade modeller måste flyttas eller tas bort för hand.",
     "settings-tab-model-dir-label": "Modellkatalog",
     "settings-tab-model-dir-reset-button": "Använd standard",
     "settings-tab-model-dir-restart-info": "Modellkatalogen har sparats. Träder i kraft efter omstart av programmet.",

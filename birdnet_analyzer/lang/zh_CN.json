@@ -294,7 +294,7 @@
     "settings-tab-language-dropdown-info": "更改将在重新启动应用程序后生效。",
     "settings-tab-language-dropdown-label": "界面语言",
     "settings-tab-model-dir-env-info": "由 BIRDNET_APP_DATA 环境变量设置，无法在此处更改。",
-    "settings-tab-model-dir-info": "模型文件的下载和存储位置。更改仅在重新启动应用程序后生效。",
+    "settings-tab-model-dir-info": "模型文件的下载和存储位置。更改仅在重新启动应用程序后生效。 已下载的模型需要手动移动或删除。",
     "settings-tab-model-dir-label": "模型目录",
     "settings-tab-model-dir-reset-button": "使用默认值",
     "settings-tab-model-dir-restart-info": "模型目录已保存。重新启动应用程序后生效。",

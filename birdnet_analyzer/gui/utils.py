@@ -517,32 +517,6 @@ def build_settings():
                     scale=10,
                 )
 
-            env_controlled = settings.MODEL_DIR_FROM_ENV
-
-            with gr.Row(equal_height=True):
-                model_dir_tb = gr.Textbox(
-                    value=_effective_model_directory,
-                    interactive=False,
-                    max_lines=1,
-                    rtl=True,
-                    elem_classes="path-textbox",
-                    scale=3,
-                    label=loc.localize("settings-tab-model-dir-label"),
-                    info=loc.localize(
-                        "settings-tab-model-dir-env-info"
-                        if env_controlled
-                        else "settings-tab-model-dir-info"
-                    ),
-                )
-                model_dir_select_btn = gr.Button(
-                    loc.localize("settings-tab-model-dir-select-button"),
-                    interactive=not env_controlled,
-                )
-                model_dir_reset_btn = gr.Button(
-                    loc.localize("settings-tab-model-dir-reset-button"),
-                    interactive=not env_controlled,
-                )
-
             @gui_runtime_error_handler
             def on_model_dir_select():
                 dir_name = select_folder(state_key="model-directory")
@@ -570,13 +544,6 @@ def build_settings():
                 gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
 
                 return _default_model_directory()
-
-            model_dir_select_btn.click(
-                on_model_dir_select, outputs=model_dir_tb, show_progress="hidden"
-            )
-            model_dir_reset_btn.click(
-                on_model_dir_reset, outputs=model_dir_tb, show_progress="hidden"
-            )
 
             state = TabState(_SETTINGS_TAB_ID)
 
@@ -666,6 +633,38 @@ def build_settings():
                         ),
                         interactive=True,
                     )
+
+            env_controlled = settings.MODEL_DIR_FROM_ENV
+
+            with gr.Row(equal_height=True):
+                model_dir_tb = gr.Textbox(
+                    value=_effective_model_directory,
+                    interactive=False,
+                    max_lines=1,
+                    elem_classes="path-textbox",
+                    scale=3,
+                    label=loc.localize("settings-tab-model-dir-label"),
+                    info=loc.localize(
+                        "settings-tab-model-dir-env-info"
+                        if env_controlled
+                        else "settings-tab-model-dir-info"
+                    ),
+                )
+                model_dir_select_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-select-button"),
+                    interactive=not env_controlled,
+                )
+                model_dir_reset_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-reset-button"),
+                    interactive=not env_controlled,
+                )
+
+            model_dir_select_btn.click(
+                on_model_dir_select, outputs=model_dir_tb, show_progress="hidden"
+            )
+            model_dir_reset_btn.click(
+                on_model_dir_reset, outputs=model_dir_tb, show_progress="hidden"
+            )
 
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()
@@ -1764,7 +1763,7 @@ def open_window(
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False)
+    webview.start(private_mode=False, debug=True)
 
     # Window closed: stop any analysis still running with no UI to control it.
     shutdown_running_analyses()
