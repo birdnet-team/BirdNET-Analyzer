@@ -155,6 +155,8 @@ def _run_single_file_tab(monkeypatch, report):
     argument, so a stand-in callback is the only way to observe it outside a live
     event.
     """
+    import importlib
+
     import gradio as gr
     import pandas as pd
 
@@ -179,7 +181,7 @@ def _run_single_file_tab(monkeypatch, report):
         return FakePredictions()
 
     # birdnet_analyzer re-exports analyze, shadowing the submodule of the same name.
-    analyze_module = sys.modules["birdnet_analyzer.analyze"]
+    analyze_module = importlib.import_module("birdnet_analyzer.analyze")
     monkeypatch.setattr(analyze_module, "analyze", fake_analyze)
 
     single_file.run_single_file_analysis(
