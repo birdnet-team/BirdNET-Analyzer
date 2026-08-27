@@ -148,6 +148,9 @@ jobs:
           if [ "$STABLE" = "true" ]; then
             rm -rf site/stable
             cp -a _build site/stable
+            # Records which release /stable/ currently holds, so later deploys
+            # (which regenerate versions.json from disk) can still label it.
+            echo "$DEST" > site/stable/.version
           fi
           cp -a chrome/docs/_site/. site/
           touch site/.nojekyll
@@ -170,12 +173,26 @@ jobs:
               key=sort_key,
               reverse=True,
           )
+          marker = site / "stable" / ".version"
+          stable = marker.read_text().strip() if marker.is_file() else None
+
+          # dev on top, then releases newest-first. The release that /stable/
+          # points at is shown as "vX.Y.Z (stable)" in place of its own entry,
+          # so no version is listed twice.
           entries = []
-          if (site / "stable").is_dir():
-              entries.append({"name": "stable", "path": "stable"})
           if (site / "dev").is_dir():
               entries.append({"name": "dev (unreleased)", "path": "dev"})
-          entries += [{"name": v, "path": v} for v in versions]
+          if stable and stable not in versions and (site / "stable").is_dir():
+              entries.append({"name": f"{stable} (stable)", "path": "stable"})
+          for v in versions:
+              if v == stable:
+                  entries.append(
+                      {"name": f"{v} (stable)", "path": "stable", "aliases": [v]}
+                  )
+              else:
+                  entries.append({"name": v, "path": v})
+          if not stable and (site / "stable").is_dir():
+              entries.insert(len(entries) and 1, {"name": "stable", "path": "stable"})
           (site / "versions.json").write_text(json.dumps(entries, indent=2) + "\n")
           EOF
           cd site
