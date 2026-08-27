@@ -2,8 +2,6 @@ name: Tests
 
 on:
   pull_request:
-    # `edited` fires on title/description edits too, re-running the whole
-    # 3-OS x 3-Python matrix with no new commit behind it.
     types: [opened, synchronize, reopened]
     branches: [main]
     paths:
@@ -29,6 +27,10 @@ jobs:
       # restored cache avoids re-fetching them from tuc.cloud. Under the workspace
       # because job-level env can use `github.workspace` but not `runner`.
       BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
+      # acoustic 3.0 + geo 3.0 ONNX are the default analyze path; acoustic 2.4 TF
+      # is what embeddings and custom classifiers load. Hashed into the cache key
+      # below, so editing this list invalidates the entry rather than freezing it.
+      PREDOWNLOAD: "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -47,21 +49,29 @@ jobs:
           # Must be explicit: the default ("auto") caches on hosted runners.
           # Restoring ~0.7 GB costs about what re-downloading the wheels does.
           enable-cache: false
-      - name: Resolve birdnet pin
-        id: bn
+      - name: Resolve model cache key
+        id: models
         shell: bash
         run: |
-          pin=$(python -c "import tomllib; print(next(d for d in tomllib.load(open('pyproject.toml','rb'))['project']['dependencies'] if d.startswith('birdnet')))")
-          echo "pin=${pin//[^A-Za-z0-9._-]/_}" >> "$GITHUB_OUTPUT"
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import hashlib, os, re, tomllib
+
+          deps = tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]
+          pin = next(d for d in deps if re.match(r"birdnet\s*[=<>!~;\[]", d))
+          models = hashlib.sha256(os.environ["PREDOWNLOAD"].encode()).hexdigest()[:12]
+          print("key=" + re.sub(r"[^A-Za-z0-9._-]", "_", pin) + "-" + models)
+          EOF
+      # Must stay after checkout: the path is gitignored, and checkout's default
+      # `clean` (`git clean -ffdx`) would delete the restored models.
       - name: Cache birdnet models
         uses: actions/cache@v6
         with:
           path: ${{ env.BIRDNET_APP_DATA }}
-          # The birdnet pin alone decides the model set, and the files are
-          # identical across Python versions, so every matrix job on an OS shares
-          # one entry. birdnet re-fetches only what is missing, so a prefix hit
-          # on an older entry is safe.
-          key: birdnet-models-${{ runner.os }}-${{ steps.bn.outputs.pin }}
+          # An exact hit skips the save, so the key has to cover everything that
+          # decides the contents - the birdnet pin and the model list. The files
+          # are identical across Python versions, so all matrix jobs on an OS
+          # share one entry, and birdnet re-fetches only what a prefix hit missed.
+          key: birdnet-models-${{ runner.os }}-${{ steps.models.outputs.key }}
           restore-keys: |
             birdnet-models-${{ runner.os }}-
       - name: Install dependencies
@@ -69,9 +79,8 @@ jobs:
       # Outside pytest: a cold download can exceed the per-test 120s timeout, and
       # being killed mid-download would cache a truncated model.
       - name: Pre-download birdnet models
-        # acoustic 3.0 + geo 3.0 ONNX are the default analyze path; acoustic 2.4
-        # TF is what embeddings and custom classifiers load.
-        run: python -c "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
+        shell: bash
+        run: python -c "$PREDOWNLOAD"
       - name: Run tests
         run: |
           python -m pytest
