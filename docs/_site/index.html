@@ -2,11 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="refresh" content="0; url=stable/">
     <link rel="canonical" href="stable/">
     <title>BirdNET-Analyzer documentation</title>
+    <noscript><meta http-equiv="refresh" content="0; url=stable/"></noscript>
 </head>
 <body>
     <p>Redirecting to the <a href="stable/">latest stable documentation</a>&hellip;</p>
+    <script>
+        // Normally /stable/. Before the first release is published to the
+        // versioned site there is no stable/ yet, so fall back to the newest
+        // version directory and finally to dev rather than redirecting into
+        // a 404.
+        (function () {
+            "use strict";
+            var base = location.pathname.replace(/[^/]*$/, "");
+            function go(target) {
+                location.replace(base + target + "/");
+            }
+            fetch(base + "versions.json")
+                .then(function (r) {
+                    return r.ok ? r.json() : null;
+                })
+                .then(function (versions) {
+                    if (!versions || !versions.length) return go("stable");
+                    var paths = versions.map(function (e) {
+                        return e.path;
+                    });
+                    if (paths.indexOf("stable") !== -1) return go("stable");
+                    for (var i = 0; i < paths.length; i++) {
+                        if (paths[i].charAt(0) === "v") return go(paths[i]);
+                    }
+                    go(paths[0]);
+                })
+                .catch(function () {
+                    go("stable");
+                });
+        })();
+    </script>
 </body>
 </html>

@@ -39,13 +39,31 @@
   function build(versions) {
     var select = document.createElement("select");
     select.setAttribute("aria-label", "Documentation version");
+    var matched = false;
     versions.forEach(function (v) {
       var opt = document.createElement("option");
       opt.value = v.path;
       opt.textContent = v.name;
       opt.selected = matches(v);
+      if (opt.selected) matched = true;
+      // Options inherit the select's colour but the popup background is the
+      // browser's, so set both here or the text can end up unreadable.
+      opt.style.backgroundColor = "#2c3e50";
+      opt.style.color = "#fcfcfc";
       select.appendChild(opt);
     });
+    if (!matched) {
+      // versions.json is cached (max-age 600), so a freshly published version
+      // can be missing from it. Show what is actually being viewed rather than
+      // letting the browser display the first entry as if it were selected.
+      var here = document.createElement("option");
+      here.textContent = current;
+      here.disabled = true;
+      here.selected = true;
+      here.style.backgroundColor = "#2c3e50";
+      here.style.color = "#fcfcfc";
+      select.insertBefore(here, select.firstChild);
+    }
     select.addEventListener("change", function () {
       // Keep the page path; 404.html catches pages a version doesn't have.
       location.href = base + select.value + "/" + rest;
@@ -74,7 +92,7 @@
     slot.style.opacity = "1";
     select.style.cssText =
       "max-width:100%;padding:2px 4px;border-radius:3px;" +
-      "background:rgba(0,0,0,.2);color:#fcfcfc;font-size:90%;" +
+      "background-color:#2c3e50;color:#fcfcfc;font-size:90%;" +
       "border:1px solid rgba(255,255,255,.3);cursor:pointer";
     slot.appendChild(select);
     return true;
@@ -90,10 +108,20 @@
     var label = document.createElement("label");
     label.textContent = "Version: ";
     select.style.cssText =
-      "background:#1a1a1a;color:#fcfcfc;border:none;font-size:13px";
+      "background-color:#1a1a1a;color:#fcfcfc;border:none;font-size:13px";
     label.appendChild(select);
     box.appendChild(label);
     document.body.appendChild(box);
+  }
+
+  // This script runs from <head>, so the sidebar it mounts into may not exist
+  // yet when a cached versions.json resolves immediately.
+  function whenReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn);
+    } else {
+      fn();
+    }
   }
 
   fetch(base + "versions.json")
@@ -102,8 +130,10 @@
     })
     .then(function (versions) {
       if (!versions || versions.length < 2) return;
-      var select = build(versions);
-      if (!mount(select)) mountFallback(select);
+      whenReady(function () {
+        var select = build(versions);
+        if (!mount(select)) mountFallback(select);
+      });
     })
     .catch(function () {
       /* no versions.json (e.g. local build): no switcher */

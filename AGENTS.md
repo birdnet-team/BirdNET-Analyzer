@@ -63,9 +63,21 @@ PR touching only docs will not run the test matrix.
 The published docs are **versioned**: `documentation.yml` deploys each release to
 `/vX.Y.Z/` on `gh-pages` (mirrored at `/stable/`, the default landing spot), pushes
 to `main` deploy to `/dev/`, and old releases can be backfilled via the workflow's
-manual trigger. The site-root redirect, 404 handler and version switcher live in
-`docs/_site/`, which is deployed to the `gh-pages` root and excluded from the Sphinx
-build.
+manual trigger (`tag`, plus `set_stable` when that tag is the newest release).
+Prereleases get their own directory but never become `/stable/`. The site-root
+redirect, 404 handler and version switcher live in `docs/_site/`, which is deployed
+to the `gh-pages` root and excluded from the Sphinx build.
+
+Two things worth knowing before touching this:
+
+- **`/stable/` only exists once a release has been deployed to the versioned site.**
+  Until then the root redirect and the 404 handler fall back to the newest version
+  directory and then to `/dev/`, so the site still works, but it is serving
+  unreleased docs. Backfill the current release (manual trigger, `set_stable`
+  ticked) right after the versioning workflow first lands on `main`.
+- **Backfilling only reaches `v2.1.1`–`v2.4.0`.** Older tags either lack the `docs`
+  extra (`v2.0.0`, so no Sphinx gets installed) or don't match the `vX.Y.Z` tag
+  pattern the workflow requires (`1.4.0`).
 
 Run `ruff check` and `python -m pytest` before handing work back.
 

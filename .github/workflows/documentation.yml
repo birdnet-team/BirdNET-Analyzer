@@ -36,10 +36,17 @@ on:
 permissions:
   contents: write
 
-# Deploys push to gh-pages, so they must not run concurrently. PR builds only
-# check that the docs build and can run freely (superseded runs are cancelled).
+# Release deploys are queued separately from dev deploys: GitHub keeps only one
+# pending run per group, so a busy main branch must not be able to evict a
+# queued release and leave that release without docs. The two groups can
+# therefore overlap, which the deploy step handles by re-applying onto the
+# latest gh-pages if its push is rejected. PR builds never deploy and can run
+# freely (superseded runs are cancelled).
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.ref) || 'docs-deploy' }}
+  group: >-
+    ${{ github.event_name == 'pull_request'
+        && format('docs-pr-{0}', github.ref)
+        || (github.event_name == 'push' && 'docs-deploy-dev' || 'docs-deploy-release') }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -55,10 +62,12 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_STABLE: ${{ inputs.set_stable }}
         run: |
+          # [[ =~ ]] anchors on the whole string, so a value containing a
+          # newline cannot pass and inject extra lines into $GITHUB_OUTPUT.
           TAG_RE='^v[0-9]+(\.[0-9]+)*(-[A-Za-z0-9.]+)?$'
           case "$EVENT" in
             release)
-              if ! echo "$RELEASE_TAG" | grep -Eq "$TAG_RE"; then
+              if ! [[ "$RELEASE_TAG" =~ $TAG_RE ]]; then
                 echo "::error::release tag '$RELEASE_TAG' does not look like vX.Y.Z, not deploying docs"
                 exit 1
               fi
@@ -72,7 +81,7 @@ jobs:
               fi
               ;;
             workflow_dispatch)
-              if ! echo "$INPUT_TAG" | grep -Eq "$TAG_RE"; then
+              if ! [[ "$INPUT_TAG" =~ $TAG_RE ]]; then
                 echo "::error::tag must look like vX.Y.Z, got '$INPUT_TAG'"
                 exit 1
               fi
@@ -137,24 +146,31 @@ jobs:
           DEST: ${{ steps.target.outputs.dest }}
           STABLE: ${{ steps.target.outputs.stable }}
         run: |
-          # Everything at the site root except the version dirs is chrome and
-          # is regenerated below. This also clears the pre-versioning layout,
-          # where the docs pages themselves lived at the root.
-          find site -mindepth 1 -maxdepth 1 \
-            ! -name .git ! -name 'v[0-9]*' ! -name stable ! -name dev \
-            -exec rm -rf {} +
-          rm -rf "site/$DEST"
-          cp -a _build "site/$DEST"
-          if [ "$STABLE" = "true" ]; then
-            rm -rf site/stable
-            cp -a _build site/stable
-            # Records which release /stable/ currently holds, so later deploys
-            # (which regenerate versions.json from disk) can still label it.
-            echo "$DEST" > site/stable/.version
-          fi
-          cp -a chrome/docs/_site/. site/
-          touch site/.nojekyll
-          python - <<'EOF'
+          # Guard: $DEST is interpolated into rm -rf below.
+          [ -n "$DEST" ] || { echo "::error::empty deploy target"; exit 1; }
+
+          # Everything this deploy writes, as a function: if the push is
+          # rejected because a concurrent deploy landed first, the whole thing
+          # is re-applied on top of that deploy rather than overwriting it.
+          apply() {
+            # Everything at the site root except the version dirs is chrome and
+            # is regenerated below. This also clears the pre-versioning layout,
+            # where the docs pages themselves lived at the root.
+            find site -mindepth 1 -maxdepth 1 \
+              ! -name .git ! -name 'v[0-9]*' ! -name stable ! -name dev \
+              -exec rm -rf {} +
+            rm -rf "site/$DEST"
+            cp -a _build "site/$DEST"
+            if [ "$STABLE" = "true" ]; then
+              rm -rf site/stable
+              cp -a _build site/stable
+              # Records which release /stable/ currently holds, so later deploys
+              # (which regenerate versions.json from disk) can still label it.
+              echo "$DEST" > site/stable/.version
+            fi
+            cp -a chrome/docs/_site/. site/
+            touch site/.nojekyll
+            python - <<'EOF'
           import json
           import re
           from pathlib import Path
@@ -182,8 +198,6 @@ jobs:
           entries = []
           if (site / "dev").is_dir():
               entries.append({"name": "dev (unreleased)", "path": "dev"})
-          if stable and stable not in versions and (site / "stable").is_dir():
-              entries.append({"name": f"{stable} (stable)", "path": "stable"})
           for v in versions:
               if v == stable:
                   entries.append(
@@ -191,13 +205,39 @@ jobs:
                   )
               else:
                   entries.append({"name": v, "path": v})
-          if not stable and (site / "stable").is_dir():
-              entries.insert(len(entries) and 1, {"name": "stable", "path": "stable"})
+
+          # /stable/ exists but no version dir claims it (only reachable by
+          # hand-editing gh-pages): list it plainly instead of hiding it.
+          if (site / "stable").is_dir() and not any(
+              e["path"] == "stable" for e in entries
+          ):
+              entries.insert(
+                  1 if entries and entries[0]["path"] == "dev" else 0,
+                  {"name": f"{stable} (stable)" if stable else "stable",
+                   "path": "stable"},
+              )
           (site / "versions.json").write_text(json.dumps(entries, indent=2) + "\n")
           EOF
-          cd site
-          git config user.name "github-actions[bot]"
-          git config user.email "41898270+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet || git commit -m "Deploy docs: $DEST"
-          git push
+          }
+
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898270+github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            apply
+            git -C site add -A
+            if git -C site diff --cached --quiet; then
+              echo "Nothing to deploy for $DEST"
+              exit 0
+            fi
+            git -C site commit -q -m "Deploy docs: $DEST"
+            if git -C site push; then
+              exit 0
+            fi
+            # A concurrent deploy landed first: rebuild on top of it and retry.
+            echo "Push rejected, re-applying onto the latest gh-pages (attempt $attempt)"
+            git -C site fetch -q origin gh-pages
+            git -C site reset -q --hard FETCH_HEAD
+          done
+          echo "::error::could not push docs for $DEST after 3 attempts"
+          exit 1
