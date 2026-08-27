@@ -204,6 +204,24 @@ def _format_bytes(n: int) -> str:
     return f"{n / 1e6:.0f} MB" if n < 1e9 else f"{n / 1e9:.1f} GB"
 
 
+def _effective_model_directory() -> str:
+    """The model directory this session actually uses (the library's resolved one)."""
+    from birdnet.utils.local_data import APP_DIR
+
+    return str(APP_DIR)
+
+
+def _default_model_directory() -> str:
+    """The model directory the next start uses once the setting is cleared."""
+    if settings.FROZEN:
+        return str(settings.default_model_directory())
+
+    from birdnet.globals import PKG_NAME
+    from birdnet.utils.local_data import get_app_data_path
+
+    return str(get_app_data_path() / PKG_NAME)
+
+
 # Download sinks by the thread that runs birdnet.load; the library's callback fires
 # synchronously on that thread. One dispatcher is registered with the library while
 # any sink is active, so overlapping GUI events neither misroute nor clobber each
@@ -499,6 +517,34 @@ def build_settings():
                     scale=10,
                 )
 
+            @gui_runtime_error_handler
+            def on_model_dir_select():
+                dir_name = select_folder(state_key="model-directory")
+
+                if not dir_name:
+                    return gr.update()
+
+                verdict = settings.probe_model_directory(dir_name)
+
+                if verdict == "invalid":
+                    raise gr.Error(loc.localize("model-dir-invalid-error"))
+                if verdict == "readonly":
+                    gr.Warning(loc.localize("model-dir-readonly-warning"))
+                elif verdict == "ok-low-space":
+                    gr.Warning(loc.localize("model-dir-low-space-warning"))
+
+                settings.set_setting(settings.MODEL_DIR_SETTING_KEY, dir_name)
+                gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
+
+                return dir_name
+
+            @gui_runtime_error_handler
+            def on_model_dir_reset():
+                settings.set_setting(settings.MODEL_DIR_SETTING_KEY, "")
+                gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
+
+                return _default_model_directory()
+
             state = TabState(_SETTINGS_TAB_ID)
 
             with gr.Accordion(
@@ -587,6 +633,38 @@ def build_settings():
                         ),
                         interactive=True,
                     )
+
+            env_controlled = settings.MODEL_DIR_FROM_ENV
+
+            with gr.Row(equal_height=True):
+                model_dir_tb = gr.Textbox(
+                    value=_effective_model_directory,
+                    interactive=False,
+                    max_lines=1,
+                    elem_classes="path-textbox",
+                    scale=3,
+                    label=loc.localize("settings-tab-model-dir-label"),
+                    info=loc.localize(
+                        "settings-tab-model-dir-env-info"
+                        if env_controlled
+                        else "settings-tab-model-dir-info"
+                    ),
+                )
+                model_dir_select_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-select-button"),
+                    interactive=not env_controlled,
+                )
+                model_dir_reset_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-reset-button"),
+                    interactive=not env_controlled,
+                )
+
+            model_dir_select_btn.click(
+                on_model_dir_select, outputs=model_dir_tb, show_progress="hidden"
+            )
+            model_dir_reset_btn.click(
+                on_model_dir_reset, outputs=model_dir_tb, show_progress="hidden"
+            )
 
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()
@@ -1631,6 +1709,17 @@ def open_window(
                 ]
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
+
+        if settings.MODEL_DIR_STARTUP_WARNING:
+
+            def warn_model_dir_fallback():
+                gr.Warning(
+                    loc.localize("model-dir-fallback-warning").format(
+                        path=settings.MODEL_DIR_STARTUP_WARNING
+                    )
+                )
+
+            demo.load(warn_model_dir_fallback)
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
@@ -1674,7 +1763,7 @@ def open_window(
             ctypes.sizeof(wintypes.BOOL),
         )
 
-    webview.start(private_mode=False)
+    webview.start(private_mode=False, debug=True)
 
     # Window closed: stop any analysis still running with no UI to control it.
     shutdown_running_analyses()
