@@ -97,9 +97,15 @@ that directory is the way to test a first-run experience.
 
 ## Conventions that are easy to get wrong
 
-- **The GUI test environment has no pywebview.** CI's `gui-tests` extra installs
-  gradio but not pywebview, so any GUI module reachable from a test must not
-  `import webview` at module import time.
+- **The GUI test environment has no pywebview and no plotly.** CI's `gui-tests` extra
+  installs gradio but neither pywebview nor plotly (both are `gui`-only), so no GUI
+  module may import `webview` or `plotly` at module import time — `gui/utils.py`
+  imports `webview` inside the dialog functions and `open_window` only, and its
+  `_WINDOW` annotation is a string under `TYPE_CHECKING`. Keep it that way; the
+  tests import `gui.utils` unstubbed on purpose. A test that builds species-list
+  controls must stub `gu.plot_map_scatter_mapbox` (it draws a plotly map). A local
+  venv with the `gui` extra hides both problems, so before pushing GUI tests run them
+  once with `webview`/`plotly` made unimportable.
 - **Localization is all-or-nothing.** `lang/*.json` holds one file per language
   (currently 10), located via `settings.LANG_DIR`. A new UI string has to be added to
   *every* language file with a real translation — not the English text copied over.
@@ -107,6 +113,24 @@ that directory is the way to test a first-run experience.
   (`ensure_ascii=False, indent=4, sort_keys=True`). `tests/gui/test_language.py`
   enforces that formatting, key parity across languages, and that each translation
   keeps the `str.format` fields of its `en.json` source.
+- **A GUI setting has three ways to get its value, not one.** Every persisted control
+  (`TabState.persist`) is set (1) at build time from `state.json`, (2) by the user, and
+  (3) programmatically by presets and loaded `*-params.csv` files
+  (`TabState.updates_for`, which sets `value` only). So when one control's state
+  depends on another (the sensitivity slider is disabled for BirdNET 3.0/Perch, the
+  locale dropdown offers only the model's languages, …), cover all three: pass the
+  dependency into the builder for the initial state, handle it in a `.change` handler
+  (which gradio fires for programmatic updates too — `.input` does not), and make the
+  handler also *reset* the dependent value if the loaded one is no longer valid, since
+  the batch update landed before the handler ran. Doing only (2) is the classic gap.
+- **Code comments: only when the code cannot say it.** Default to none. A comment
+  earns its place only for a constraint, a non-obvious *why*, or a measured value
+  that justifies a bound — something a reader could not recover from the code and
+  its names. If the code already explains itself, delete the comment rather than
+  keep it. No history ("once was", "used to fail", "previously") and no narration
+  of what the next line does or how the code was arrived at — that belongs in
+  commit messages and the changelog. The same bar applies to test comments: the
+  test name and its assertions are the explanation.
 - **Don't widen the ruff config to make a fix pass.** The `select`/`ignore` lists in
   `pyproject.toml` are deliberate.
 - **Packaging is an allow-list, not a deny-list.** What ships is decided by the

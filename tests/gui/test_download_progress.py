@@ -1,13 +1,8 @@
 """The GUI shows the birdnet library's model downloads."""
 
-import sys
-from unittest.mock import MagicMock
-
 import pytest
 
 gr = pytest.importorskip("gradio")
-
-sys.modules.setdefault("webview", MagicMock(settings={}))
 
 
 def test_download_progress_routes_library_updates_to_gradio(monkeypatch):

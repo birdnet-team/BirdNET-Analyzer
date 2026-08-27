@@ -5,14 +5,9 @@ Perch disables the slider and shows 1.0 (what the analysis will use); switching 
 restores the value the user last set.
 """
 
-import sys
-from unittest.mock import MagicMock
-
 import pytest
 
 gr = pytest.importorskip("gradio")
-
-sys.modules.setdefault("webview", MagicMock(settings={}))
 
 from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
