@@ -147,17 +147,17 @@ def test_overlapping_gui_events_keep_their_own_sink_and_unregister_cleanly():
     assert birdnet.get_download_progress_callback() is None
 
 
-def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
-    """The single-file tab hands run_analysis a tracker, so no toast fallback.
+def _run_single_file_tab(monkeypatch, report):
+    """Runs the single-file tab's handler over an ``analyze`` that calls ``report``.
 
-    A first-use download is several hundred MB; without the bar the tab looks like
-    it hangs for minutes on nothing but a toast.
+    Returns the updates that reached the progress bar and the toasts that were
+    raised instead. Gradio resolves the bar from a contextvar rather than from the
+    argument, so a stand-in callback is the only way to observe it outside a live
+    event.
     """
-    import birdnet
     import gradio as gr
     import pandas as pd
 
-    import birdnet_analyzer.analyze  # noqa: F401
     from birdnet_analyzer.gui import single_file
     from birdnet_analyzer.gui import utils as gu
 
@@ -175,17 +175,7 @@ def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
             )
 
     def fake_analyze(**kwargs):
-        birdnet.get_download_progress_callback()(
-            birdnet.DownloadProgress(
-                description="Downloading acoustic model v3.0",
-                url="https://example.invalid/model",
-                bytes_done=250,
-                bytes_total=1000,
-                attempt=1,
-                max_attempts=3,
-                status="progress",
-            )
-        )
+        report(**kwargs)
         return FakePredictions()
 
     # birdnet_analyzer re-exports analyze, shadowing the submodule of the same name.
@@ -215,7 +205,60 @@ def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
         locale="en_us",
     )
 
+    return [tracked for update in records for tracked in update], infos
+
+
+def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
+    """The single-file tab hands run_analysis a tracker, so no toast fallback.
+
+    A first-use download is several hundred MB; without the bar the tab looks like
+    it hangs for minutes on nothing but a toast.
+    """
+    import birdnet
+
+    def report_download(**kwargs):
+        # "started" is the update that falls back to a toast when there is no bar.
+        for status, done in (("started", 0), ("progress", 250), ("finished", 1000)):
+            birdnet.get_download_progress_callback()(
+                birdnet.DownloadProgress(
+                    description="Downloading acoustic model v3.0",
+                    url="https://example.invalid/model",
+                    bytes_done=done,
+                    bytes_total=1000,
+                    attempt=1,
+                    max_attempts=3,
+                    status=status,
+                )
+            )
+
+    updates, infos = _run_single_file_tab(monkeypatch, report_download)
+
     # The label is localized; the model name in it is not.
-    descriptions = [tracked.desc or "" for update in records for tracked in update]
-    assert any("acoustic model v3.0" in desc for desc in descriptions)
+    assert any("acoustic model v3.0" in (update.desc or "") for update in updates)
     assert not infos, "no toasts while a progress bar is available"
+
+
+def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch):
+    """The same tracker carries the analysis itself, not just the download.
+
+    A long recording is minutes of work after the download has finished.
+    """
+    from types import SimpleNamespace
+
+    import birdnet_analyzer.gui.localization as loc
+
+    def report_analysis(**kwargs):
+        kwargs["on_update"](
+            SimpleNamespace(processed_segments=3, total_segments=10, progress_pct=30.0)
+        )
+
+    updates, _ = _run_single_file_tab(monkeypatch, report_analysis)
+
+    analyzing = [update for update in updates if update.index == 3]
+    assert analyzing, "the per-segment callback never reached the bar"
+    assert analyzing[0].length == 10
+
+    # An absent key localizes to itself, which the GUI would then show as the unit.
+    unit = analyzing[0].unit
+    assert unit == loc.localize("progress-unit-segments")
+    assert unit != "progress-unit-segments", "the unit label is an untranslated key"
