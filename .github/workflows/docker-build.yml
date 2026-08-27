@@ -32,42 +32,41 @@ jobs:
   test:
     name: Build and test image
     runs-on: ubuntu-latest
+    # The emulated arm64 leg dominates; observed worst case ~18 min for the job.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
           tags: birdnet:test
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max' || '' }}
 
-      # linux/arm64 has no tensorflow-cpu wheel, so the arm64 leg breaks
-      # differently from amd64. The publish job builds it, but only on release —
-      # validate it here (build only, no load/smoke test under emulation) so a
-      # broken arm64 build fails the PR instead of the release.
+      # linux/arm64 has no tensorflow-cpu wheel, so it breaks differently from
+      # amd64. Build-only (no load or smoke test under emulation) so a broken
+      # arm64 fails the PR rather than the release.
       - name: Validate arm64 build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/arm64
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max' || '' }}
 
       - name: Smoke test image
         run: |
-          # Run inference end-to-end: mount the example audio read-only and
-          # write results to a separate directory so nothing is polluted.
           mkdir -p out
           docker run --rm \
             -v "$PWD/birdnet_analyzer/example:/audio:ro" \
@@ -76,14 +75,12 @@ jobs:
 
           output_file="out/BirdNET_SelectionTable.txt"
 
-          # The container must produce a non-empty Raven selection table.
           if [ ! -s "$output_file" ]; then
             echo "::error::Expected output '$output_file' was not created or is empty"
             ls -la out
             exit 1
           fi
 
-          # It must contain a header plus at least one detection row.
           line_count=$(wc -l < "$output_file")
           if [ "$line_count" -lt 2 ]; then
             echo "::error::Output table has no detection rows ($line_count lines)"
@@ -91,8 +88,7 @@ jobs:
             exit 1
           fi
 
-          # Sanity-check the header exposes the expected Raven columns
-          # (structure only — exact model scores are covered by the pytest suite).
+          # Structure only - exact model scores are covered by the pytest suite.
           header=$(head -n 1 "$output_file")
           for col in "Selection" "Begin Time (s)" "Confidence" "Begin Path"; do
             case "$header" in
@@ -108,6 +104,7 @@ jobs:
     needs: test
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     permissions:
       contents: read
@@ -115,16 +112,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -132,7 +129,7 @@ jobs:
 
       - name: Extract image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           # A release tagged v2.4.0 produces the tags 2.4.0, 2.4 and latest
@@ -141,7 +138,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
