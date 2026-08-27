@@ -212,7 +212,6 @@ class DataProcessor:
         self.unmatched_prediction_files = set()
 
         if self.prediction_file_name is None or self.annotation_file_name is None:
-            # Case: No specific files provided; load all files in directories.
             self.predictions_df = read_and_concatenate_files_in_directory(
                 self.prediction_directory_path
             )
@@ -240,7 +239,6 @@ class DataProcessor:
                     class_col_pred
                 ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
         else:
-            # Case: Specific files are provided for predictions and annotations.
             # Ensure filenames correspond to the same recording (heuristic check).
             if not self.prediction_file_name.startswith(
                 os.path.splitext(self.annotation_file_name)[0]

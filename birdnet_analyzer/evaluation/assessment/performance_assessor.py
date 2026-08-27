@@ -226,13 +226,11 @@ class PerformanceAssessor:
             ValueError: If predictions and labels have mismatched dimensions or invalid
                 shapes.
         """
-        # Validate that predictions and labels are NumPy arrays
         if not isinstance(predictions, np.ndarray):
             raise TypeError("predictions must be a NumPy array.")
         if not isinstance(labels, np.ndarray):
             raise TypeError("labels must be a NumPy array.")
 
-        # Ensure predictions and labels have the same shape
         if predictions.shape != labels.shape:
             raise ValueError("predictions and labels must have the same shape.")
         if predictions.ndim != 2:

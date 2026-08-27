@@ -10,13 +10,21 @@ from birdnet_analyzer.gui.state import TabState
 
 @gu.gui_runtime_error_handler
 def run_species_list(
-    out_path, filename, lat, lon, week, use_yearlong, sf_thresh, locale
+    out_path,
+    filename,
+    lat,
+    lon,
+    week,
+    use_yearlong,
+    sf_thresh,
+    locale,
+    progress=gr.Progress(),
 ):
     from birdnet_analyzer.species.core import species
 
     gu.validate(out_path, loc.localize("validation-no-directory-selected"))
 
-    with gu.download_progress():
+    with gu.download_progress(progress):
         species(
             output=os.path.join(out_path, filename or "species_list.txt"),
             lat=lat,
@@ -27,6 +35,8 @@ def run_species_list(
         )
 
     gr.Info(f"{loc.localize('species-tab-finish-info')} {out_path}")
+
+    return gr.update()
 
 
 def build_species_tab() -> gu.TAB_BUILDER_RESULT:
@@ -101,7 +111,14 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
         start_btn = gr.Button(
             loc.localize("species-tab-start-button-label"), variant="primary"
         )
+        progress_placeholder = gr.Plot(
+            show_label=False, visible=False, elem_id="species-progress-placeholder"
+        )
         start_btn.click(
+            lambda: gr.update(visible=True),
+            outputs=progress_placeholder,
+            show_progress="hidden",
+        ).then(
             run_species_list,
             inputs=[
                 output_directory_state,
@@ -113,6 +130,11 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
                 sf_thresh_number,
                 locale,
             ],
+            outputs=progress_placeholder,
+        ).then(
+            lambda: gr.update(visible=False),
+            outputs=progress_placeholder,
+            show_progress="hidden",
         )
 
     species_tab.select(

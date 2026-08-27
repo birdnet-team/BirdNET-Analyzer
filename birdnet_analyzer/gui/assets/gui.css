@@ -21,6 +21,10 @@ footer {
     text-align: center;
 }
 
+#species-progress-placeholder {
+    height: 5rem;
+}
+
 #embeddings-search-results {
     max-height: 1107px;
     overflow: auto;
@@ -73,14 +77,6 @@ footer {
     font-weight: bolder;
 }
 
-/* The "Overall" footer row of the evaluation metrics table. It is a separate
-   one-row table glued under the class table (the virtualized Dataframe cannot
-   pin a row), so it stays visible while the class rows scroll. The strong top
-   border marks it as the aggregate of the rows above. */
-
-/* Both tables resolve their percentage column widths against their own viewport
-   width. Reserve the scrollbar gutter on both, so a scrollbar appearing on only
-   the class table cannot make the footer columns drift out of alignment. */
 .eval-metrics-table .virtual-table-viewport,
 .eval-overall-footer .virtual-table-viewport {
     scrollbar-gutter: stable;

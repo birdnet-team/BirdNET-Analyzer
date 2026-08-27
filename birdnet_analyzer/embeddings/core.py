@@ -126,11 +126,9 @@ def embeddings(
             s_start = j * step
             s_end = s_start + seg_dur
 
-            # Skip segments whose start is beyond the actual file duration
             if s_start >= file_dur:
                 continue
 
-            # Clamp end to actual file duration
             s_end = min(s_end, file_dur)
 
             windows_batch.append(
