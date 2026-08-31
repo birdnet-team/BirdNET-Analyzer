@@ -121,13 +121,13 @@ jobs:
           sphinx-build -E -d "$RUNNER_TEMP/doctrees" $EXTRA docs _build
       - name: Check out site chrome from main
         if: ${{ steps.target.outputs.dest != '' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: main
           path: chrome
       - name: Check out gh-pages
         if: ${{ steps.target.outputs.dest != '' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: site
