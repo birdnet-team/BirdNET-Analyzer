@@ -3,7 +3,7 @@ name: documentation
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
     branches: [main]
     paths:
       [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py]
@@ -90,17 +90,18 @@ jobs:
               echo "stable=false" >> "$GITHUB_OUTPUT"
               ;;
           esac
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.target.outputs.ref }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.0.1
         with:
-          enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
+          # Re-enabling needs a cache-suffix, or this key collides with the
+          # ubuntu/3.13 test job's.
+          enable-cache: false
       - name: Install dependencies
         run: uv pip install --system .[docs]
       - name: Sphinx build

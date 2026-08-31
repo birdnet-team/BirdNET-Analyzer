@@ -11,10 +11,9 @@ import warnings
 from collections.abc import Callable
 from contextlib import contextmanager, suppress
 from html import escape
-from typing import Literal, cast, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import gradio as gr
-import webview
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
 
 import birdnet_analyzer.config as cfg
@@ -22,6 +21,9 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
 from birdnet_analyzer import settings, utils
 from birdnet_analyzer.gui.state import TabState
+
+if TYPE_CHECKING:
+    import webview
 
 warnings.filterwarnings("ignore")
 loc.load_local_state()
@@ -41,7 +43,7 @@ _BIRDNET_MODEL_VERSIONS: dict[str, str] = {
     _USE_BIRDNET_3_0: "3.0",
 }
 
-_WINDOW: webview.Window | None = None
+_WINDOW: "webview.Window | None" = None
 _URL = ""
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
 _SAMPLE_KEYS = Literal[
@@ -204,6 +206,24 @@ def _format_bytes(n: int) -> str:
     return f"{n / 1e6:.0f} MB" if n < 1e9 else f"{n / 1e9:.1f} GB"
 
 
+def _effective_model_directory() -> str:
+    """The model directory this session actually uses (the library's resolved one)."""
+    from birdnet.utils.local_data import APP_DIR
+
+    return str(APP_DIR)
+
+
+def _default_model_directory() -> str:
+    """The model directory the next start uses once the setting is cleared."""
+    if settings.FROZEN:
+        return str(settings.default_model_directory())
+
+    from birdnet.globals import PKG_NAME
+    from birdnet.utils.local_data import get_app_data_path
+
+    return str(get_app_data_path() / PKG_NAME)
+
+
 # Download sinks by the thread that runs birdnet.load; the library's callback fires
 # synchronously on that thread. One dispatcher is registered with the library while
 # any sink is active, so overlapping GUI events neither misroute nor clobber each
@@ -291,6 +311,8 @@ def select_folder(state_key=None):
     Returns:
         str: The path of the selected folder, or None if no folder was selected.
     """
+    import webview
+
     if sys.platform == "win32":
         from tkinter import Tk, filedialog
 
@@ -499,6 +521,34 @@ def build_settings():
                     scale=10,
                 )
 
+            @gui_runtime_error_handler
+            def on_model_dir_select():
+                dir_name = select_folder(state_key="model-directory")
+
+                if not dir_name:
+                    return gr.update()
+
+                verdict = settings.probe_model_directory(dir_name)
+
+                if verdict == "invalid":
+                    raise gr.Error(loc.localize("model-dir-invalid-error"))
+                if verdict == "readonly":
+                    gr.Warning(loc.localize("model-dir-readonly-warning"))
+                elif verdict == "ok-low-space":
+                    gr.Warning(loc.localize("model-dir-low-space-warning"))
+
+                settings.set_setting(settings.MODEL_DIR_SETTING_KEY, dir_name)
+                gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
+
+                return dir_name
+
+            @gui_runtime_error_handler
+            def on_model_dir_reset():
+                settings.set_setting(settings.MODEL_DIR_SETTING_KEY, "")
+                gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
+
+                return _default_model_directory()
+
             state = TabState(_SETTINGS_TAB_ID)
 
             with gr.Accordion(
@@ -587,6 +637,38 @@ def build_settings():
                         ),
                         interactive=True,
                     )
+
+            env_controlled = settings.MODEL_DIR_FROM_ENV
+
+            with gr.Row(equal_height=True):
+                model_dir_tb = gr.Textbox(
+                    value=_effective_model_directory,
+                    interactive=False,
+                    max_lines=1,
+                    elem_classes="path-textbox",
+                    scale=3,
+                    label=loc.localize("settings-tab-model-dir-label"),
+                    info=loc.localize(
+                        "settings-tab-model-dir-env-info"
+                        if env_controlled
+                        else "settings-tab-model-dir-info"
+                    ),
+                )
+                model_dir_select_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-select-button"),
+                    interactive=not env_controlled,
+                )
+                model_dir_reset_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-reset-button"),
+                    interactive=not env_controlled,
+                )
+
+            model_dir_select_btn.click(
+                on_model_dir_select, outputs=model_dir_tb, show_progress="hidden"
+            )
+            model_dir_reset_btn.click(
+                on_model_dir_reset, outputs=model_dir_tb, show_progress="hidden"
+            )
 
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()
@@ -1023,8 +1105,9 @@ def species_list_coordinates(state: TabState, show_map=False):
                 info=loc.localize("species-list-coordinates-lon-number-info"),
             )
 
+        # No initial figure: open_window's demo.load repopulates every map plot on
+        # page load, so building one here only slows startup.
         map_plot = gr.Plot(
-            plot_map_scatter_mapbox(lat_number.value, lon_number.value),
             show_label=False,
             scale=2,
             visible=show_map,
@@ -1100,6 +1183,8 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    import webview
+
     assert _WINDOW is not None
 
     initial_selection = settings.get_state(state_key, "") if state_key else ""
@@ -1130,6 +1215,8 @@ def select_file(filetypes=(), state_key=None):
     Returns:
         The selected file or None of the dialog was canceled.
     """
+    import webview
+
     assert _WINDOW is not None
 
     initial_selection = settings.get_state(state_key, "") if state_key else ""
@@ -1404,6 +1491,7 @@ def species_lists(
 
 
 def download_plot(plot, filename=""):
+    import webview
     from PIL import Image
 
     res: str = _WINDOW.create_file_dialog(  # type: ignore
@@ -1594,6 +1682,8 @@ def open_window(
         builder (list[Callable] | Callable): A callable or a list of callables that
         build the GUI components.
     """
+    import webview
+
     global _URL
     multiprocessing.freeze_support()
 
@@ -1631,6 +1721,17 @@ def open_window(
                 ]
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
+
+        if settings.MODEL_DIR_STARTUP_WARNING:
+
+            def warn_model_dir_fallback():
+                gr.Warning(
+                    loc.localize("model-dir-fallback-warning").format(
+                        path=settings.MODEL_DIR_STARTUP_WARNING
+                    )
+                )
+
+            demo.load(warn_model_dir_fallback)
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,

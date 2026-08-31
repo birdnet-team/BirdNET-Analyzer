@@ -270,9 +270,13 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
         extract_segments_btn = gr.Button(
             loc.localize("segments-tab-extract-button-label"), variant="primary"
         )
-        result_grid = gr.List(headers=[""])
+        result_grid = gr.List(headers=[""], visible=False)
 
         extract_segments_btn.click(
+            lambda: gr.update(visible=True),
+            outputs=result_grid,
+            show_progress="hidden",
+        ).then(
             _extract_segments,
             inputs=[
                 audio_directory_state,

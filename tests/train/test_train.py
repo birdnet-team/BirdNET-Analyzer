@@ -158,7 +158,6 @@ def test_autotune_uses_optuna(
     mock_save_raven,
     setup_test_environment,
 ):
-    # prepare stubbed data and model training
     import numpy as np
 
     mock_load.return_value = (

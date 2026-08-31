@@ -293,7 +293,6 @@ def _find_segments_from_combined(
             confidence = float(d[header_mapping["Confidence"]])
             afile = d[header_mapping["File"]].replace("/", os.sep).replace("\\", os.sep)
 
-        # Check if confidence is high enough and label is not "nocall"
         if (
             confidence >= min_conf
             and confidence <= max_conf
@@ -373,7 +372,6 @@ def _find_segments(
             species = d[header_mapping["Common name"]]
             confidence = float(d[header_mapping["Confidence"]])
 
-        # Check if confidence is high enough and label is not "nocall"
         if (
             confidence >= min_conf
             and confidence <= max_conf

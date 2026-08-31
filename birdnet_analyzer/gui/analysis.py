@@ -27,7 +27,7 @@ def on_progress(update: AcousticProgressStats, progress: gr.Progress):
         progress(
             (update.processed_segments, update.total_segments),
             total=update.total_segments,
-            unit=loc.localize("progress-unit-files"),
+            unit=loc.localize("progress-unit-segments"),
             desc=loc.localize("progress-analyzing"),
         )
     else:

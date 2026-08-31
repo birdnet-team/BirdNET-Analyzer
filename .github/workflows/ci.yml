@@ -2,9 +2,6 @@ name: Tests
 
 on:
   pull_request:
-    # No `edited`: that fires on title/description edits too, which re-runs the
-    # whole 3-OS x 3-Python matrix on an unchanged commit. `synchronize` already
-    # covers every code change.
     types: [opened, synchronize, reopened]
     branches: [main]
     paths:
@@ -16,68 +13,74 @@ on:
 
 concurrency:
   group: "${{ github.event.pull_request.number }}-${{ github.ref_name }}-${{ github.workflow }}"
-  # Cancel superseded PR runs when new commits are pushed, but let pushes to main
-  # run to completion so a merge's CI is never cancelled by the next merge.
+  # Superseded PR runs are safe to cancel; a merge's CI on main is not.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   running-tests:
     runs-on: ${{ matrix.os }}
-    # Backstop for a wedged run (e.g. a hung model download or a native deadlock
-    # that pytest-timeout can't interrupt). Healthy jobs finish in ~2-6 min, plus a
-    # few for a cold-cache pre-download, so 30 caps a hang's cost with wide margin.
+    # Backstop for a wedged run - a hung download or a native deadlock that
+    # pytest-timeout cannot interrupt. Healthy jobs finish in ~2-6 min.
     timeout-minutes: 30
     env:
-      # Fixed, cacheable location for birdnet's model/label downloads. The acoustic
-      # (3.0 ONNX ~520 MB, 2.4 TF ~120 MB), geo (~15 MB) and perch-v2 (~380 MB)
-      # models all land here, and
-      # birdnet reads this env var at import time and skips the download when the
-      # files already exist - so a cache hit avoids re-fetching them from tuc.cloud
-      # on every job. Placed under the workspace because the `runner` context isn't
-      # available in job-level env but `github.workspace` is; checkout runs before
-      # the cache is restored, so it never wipes the restored models.
+      # birdnet reads this at import time and skips models already present, so a
+      # restored cache avoids re-fetching them from tuc.cloud. Under the workspace
+      # because job-level env can use `github.workspace` but not `runner`.
       BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
+      # acoustic 3.0 + geo 3.0 ONNX are the default analyze path; acoustic 2.4 TF
+      # is what embeddings and custom classifiers load. Hashed into the cache key
+      # below, so editing this list invalidates the entry rather than freezing it.
+      PREDOWNLOAD: "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.0.1
         with:
-          enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
-      # Cache the downloaded models across runs. Keyed on the birdnet dependency
-      # (via pyproject.toml) and the OS only - the model files are identical across
-      # Python versions, so all matrix jobs on an OS share one cache. birdnet
-      # re-downloads only missing/updated models, so restoring an older cache is safe.
+          # Must be explicit: the default ("auto") caches on hosted runners.
+          # Restoring ~0.7 GB costs about what re-downloading the wheels does.
+          enable-cache: false
+      - name: Resolve model cache key
+        id: models
+        shell: bash
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import hashlib, os, re, tomllib
+
+          deps = tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]
+          pin = next(d for d in deps if re.match(r"birdnet\s*[=<>!~;\[]", d))
+          models = hashlib.sha256(os.environ["PREDOWNLOAD"].encode()).hexdigest()[:12]
+          print("key=" + re.sub(r"[^A-Za-z0-9._-]", "_", pin) + "-" + models)
+          EOF
+      # Must stay after checkout: the path is gitignored, and checkout's default
+      # `clean` (`git clean -ffdx`) would delete the restored models.
       - name: Cache birdnet models
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.BIRDNET_APP_DATA }}
-          key: birdnet-models-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          # An exact hit skips the save, so the key has to cover everything that
+          # decides the contents - the birdnet pin and the model list. The files
+          # are identical across Python versions, so all matrix jobs on an OS
+          # share one entry, and birdnet re-fetches only what a prefix hit missed.
+          key: birdnet-models-${{ runner.os }}-${{ steps.models.outputs.key }}
           restore-keys: |
             birdnet-models-${{ runner.os }}-
       - name: Install dependencies
         run: uv pip install --system .[embeddings,train,tests,gui-tests]
-      # Pre-download the models outside pytest's per-test 120s timeout. On a cold
-      # cache the acoustic-model download from tuc.cloud can exceed 120s on slower
-      # (Windows/macOS) runners and trip the timeout mid-download - which also means
-      # the model cache never captures a complete model, so the next run is cold
-      # again and the flake is permanent. Fetching them here (no per-test timeout)
-      # breaks that cycle and lets the cache actually populate. Mirrors the models
-      # baked into the Docker image.
+      # Outside pytest: a cold download can exceed the per-test 120s timeout, and
+      # being killed mid-download would cache a truncated model.
       - name: Pre-download birdnet models
-        # Match what the suite loads: acoustic 3.0 ONNX + geo 3.0 ONNX (the default
-        # analyze/geomodel path) and acoustic 2.4 TF (embeddings/custom-classifier).
-        run: python -c "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
+        shell: bash
+        run: python -c "$PREDOWNLOAD"
       - name: Run tests
         run: |
           python -m pytest

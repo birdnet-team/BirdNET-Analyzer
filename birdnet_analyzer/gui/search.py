@@ -66,7 +66,14 @@ def update_export_state(audio_infos, checkbox_value, export_state: dict):
 
 @gu.gui_runtime_error_handler
 def run_search(
-    db_path, audio_root, query_path, max_samples, score_fn, crop_mode, crop_overlap
+    db_path,
+    audio_root,
+    query_path,
+    max_samples,
+    score_fn,
+    crop_mode,
+    crop_overlap,
+    progress=gr.Progress(),
 ):
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
     from birdnet_analyzer.search.utils import get_search_results
@@ -85,17 +92,18 @@ def run_search(
     settings["AUDIO_ROOT"] = audio_root
     db.insert_metadata(SETTINGS_KEY, settings)
 
-    results = get_search_results(
-        query_path,
-        db,
-        max_samples,
-        settings["AUDIO_SPEED"],
-        settings["BANDPASS_FMIN"],
-        settings["BANDPASS_FMAX"],
-        score_fn,
-        crop_mode,
-        crop_overlap,
-    )
+    with gu.download_progress(progress):
+        results = get_search_results(
+            query_path,
+            db,
+            max_samples,
+            settings["AUDIO_SPEED"],
+            settings["BANDPASS_FMIN"],
+            settings["BANDPASS_FMAX"],
+            score_fn,
+            crop_mode,
+            crop_overlap,
+        )
     db.db.close()  # Close the database connection to avoid having wal/shm files
 
     chunks = [results[i : i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]
@@ -104,7 +112,6 @@ def run_search(
 
 
 def build_search_tab() -> gu.TAB_BUILDER_RESULT:
-    from birdnet_analyzer import audio, utils
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
 
     state = TabState("search")
@@ -181,7 +188,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                         rtl=True,
                     )
 
-                query_spectrogram = gr.Plot(show_label=False)
+                query_spectrogram = gr.Plot(show_label=False, visible=False)
 
                 with gr.Group(), gr.Row(equal_height=True):
                     select_query_btn = gr.Button(
@@ -275,6 +282,8 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                         ],
                     )
                     def render_results(results, page, db_path, exports, audio_root):
+                        from birdnet_analyzer import utils
+
                         with gr.Row():
                             if db_path is not None and len(results) > 0:
                                 db = get_search_database(db_path)
@@ -445,6 +454,8 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
     def update_query_spectrogram(audiofilepath, db_selection, crop_mode, crop_overlap):
         import numpy as np
 
+        from birdnet_analyzer import audio, utils
+
         if audiofilepath and db_selection:
             db = get_embeddings_database(db_selection)
             settings = db.get_metadata(SETTINGS_KEY)
@@ -461,7 +472,6 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 speed=audio_speed,
             )
 
-            # Crop query audio
             if crop_mode == "center":
                 sig = [audio.crop_center(sig, rate, 3.0)][0]
             elif crop_mode == "first":
@@ -472,9 +482,9 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 sig, rate, fig_size=(10, 4), **gu.spectrogram_settings()
             )
 
-            return spec, [], {}
+            return gr.update(value=spec, visible=True), [], {}
 
-        return None, [], {}
+        return gr.update(value=None, visible=False), [], {}
 
     crop_mode.change(
         update_query_spectrogram,

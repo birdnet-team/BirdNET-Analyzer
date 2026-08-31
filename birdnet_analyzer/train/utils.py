@@ -826,7 +826,6 @@ def train_model(
 
     save_sample_counts(labels, y_train_full, output)
 
-    # Evaluate model on test data if available
     metrics = None
 
     if len(x_val_full) > 0:

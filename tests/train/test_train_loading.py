@@ -113,8 +113,8 @@ def short_wav():
 
 
 def test_read_and_crop_first_short_file_fails_soft(short_wav):
-    # 'first' mode used to index [0] into a possibly-empty split list -> IndexError.
-    # A sub-min_len file must fail soft (no segment), not crash the threaded loader.
+    # split_signal returns [] below min_len, so 'first' must slice rather than index
+    # [0]: a sub-min_len file yields no segment instead of crashing the threaded loader.
     segs, labels = _read_and_crop_file(
         short_wav, _label(), sample_rate=SR, crop_mode="first", sig_length=SIG_LENGTH
     )

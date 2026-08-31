@@ -618,7 +618,6 @@ def save_as_rtable(
         acumulated_start_times.append(row[1]["Begin Time (s)"] + accumulated_time)
         accumulated_end_times.append(row[1]["End Time (s)"] + accumulated_time)
 
-    # Reordering
     cols = [
         "Selection",
         "Begin Time (s)",

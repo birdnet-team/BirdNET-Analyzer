@@ -12,8 +12,6 @@ on:
       ]
   pull_request:
     branches: [main]
-    # See the note in ci.yml: `edited` would re-run this on title/description
-    # edits, with no commit behind them.
     types: [opened, synchronize, reopened]
     paths:
       [
@@ -27,10 +25,9 @@ jobs:
   ruff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      # ruff is a static analyzer and doesn't import the package, so skip the
-      # (heavy) dependency install entirely. Keep the version in sync with the
-      # ruff pin in pyproject.toml's [dev] extra.
+      - uses: actions/checkout@v7
+      # ruff never imports the package, so no dependency install is needed.
+      # Keep this version in sync with the ruff pin in pyproject.toml's [dev].
       - name: Lint with Ruff
         uses: astral-sh/ruff-action@v4.1.0
         with:

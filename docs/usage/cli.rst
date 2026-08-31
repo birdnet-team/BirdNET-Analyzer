@@ -77,7 +77,7 @@ birdnet_analyzer.train
    All you need is a dataset of labeled audio files, organized in folders by species (we use folder names as labels).
    This also works for non-bird species, as long as you have a dataset of labeled audio files.
    
-   Audio files will be resampled to 48 kHz and converted into 3-second segments (we support different crop segemnattion modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).
+   Audio files will be resampled to 48 kHz and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).
    
    You can download a sample training data set `here <https://drive.google.com/file/d/16hgka5aJ4U69ane9RQn_quVmgjVY2AY5/edit>`_.
 
@@ -89,11 +89,11 @@ birdnet_analyzer.train
    **The script saves the trained classifier model based on the best validation loss achieved during training. This ensures that the model saved is optimized for performance according to the chosen metric.**
 
    After training, you can use the custom trained classifier with the ``--classifier`` argument of the ``birdnet_analyzer.analyze`` script.
-   If you want to use the custom classifier in Raven, make sure to set ``--model_format raven``.
+   If you want to use the custom classifier in Raven, make sure to set ``--model_formats raven``.
 
    .. note::
       Adjusting hyperparameters (e.g., number of hidden units, learning rate, etc.) can have a big impact on the performance of the classifier.
-      We recommend trying different hyperparameter settings. If you want to automate this process, you can use the ``--autotune`` argument (in that case, make sure to install ``keras_tuner`` with ``pip install keras-tuner``).
+      We recommend trying different hyperparameter settings. If you want to automate this process, you can use the ``--autotune`` argument (in that case, make sure to install the ``train`` extra with ``pip install birdnet_analyzer[train]``, which provides ``optuna``).
 
    **Example usage** (when downloading and unzipping the sample training data set):
 

@@ -34,7 +34,6 @@ class ProcessorState(typing.NamedTuple):
 def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
     state = TabState("evaluation")
 
-    # Default columns for annotations
     annotation_default_columns = {
         "Start Time": "Begin Time (s)",
         "End Time": "End Time (s)",
@@ -43,7 +42,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         "Duration": "File Duration (s)",
     }
 
-    # Default columns for predictions
     prediction_default_columns = {
         "Start Time": "Begin Time (s)",
         "End Time": "End Time (s)",
@@ -216,7 +214,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         except (ValueError, TypeError):
             rec_dur = None
 
-        # Fill any blank column choice with its default.
         cols_ann = {
             key: ann_cols.get(key) or annotation_default_columns[key]
             for key in annotation_column_order
@@ -334,7 +331,10 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                         [],
                         "",
                         folder,
-                        [[loc.localize("eval-tab-no-files-found")]],
+                        gr.update(
+                            value=[[loc.localize("eval-tab-no-files-found")]],
+                            visible=True,
+                        ),
                         gr.update(visible=False),
                         *on_select([]),
                     ]
@@ -348,7 +348,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     files,
                     folder,
                     folder,
-                    rows,
+                    gr.update(value=rows, visible=True),
                     gr.update(visible=True),
                     *on_select(files),
                 ]
@@ -374,6 +374,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         annotation_directory_input = gr.Matrix(
             interactive=False,
+            visible=False,
             headers=[
                 loc.localize("eval-tab-selections-column-file-header"),
             ],
@@ -399,6 +400,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         prediction_directory_input = gr.Matrix(
             interactive=False,
+            visible=False,
             headers=[
                 loc.localize("eval-tab-selections-column-file-header"),
             ],
