@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>BirdNET-Analyzer documentation</title>
+</head>
+<body>
+    <p id="message">Page not found.</p>
+    <p><a id="home" href="/BirdNET-Analyzer/stable/">Go to the latest documentation</a></p>
+    <!-- Escape hatch that works without JavaScript and before the first
+         release is deployed, when /stable/ does not exist yet. -->
+    <p><a href="/BirdNET-Analyzer/dev/">Development documentation</a></p>
+    <script>
+        // Pre-versioning the docs lived at the site root, so old deep links like
+        // /BirdNET-Analyzer/usage/cli.html land here and are sent to the same
+        // page in the default version. Links already inside a version directory
+        // stay here: that page just doesn't exist in that version, and
+        // redirecting again would loop. The exception is /stable/, which is
+        // legitimately absent until the first release is published.
+        (function () {
+            "use strict";
+            var base = "/BirdNET-Analyzer/";
+            var message = document.getElementById("message");
+            var home = document.getElementById("home");
+            if (location.pathname.indexOf(base) !== 0) return;
+            var rest = location.pathname.slice(base.length);
+            var inVersion = rest.match(/^(stable|dev|v[0-9][^/]*)(?:\/(.*))?$/);
+
+            function pick(versions) {
+                if (!versions || !versions.length) return null;
+                var paths = versions.map(function (e) {
+                    return e.path;
+                });
+                if (paths.indexOf("stable") !== -1) return "stable";
+                for (var i = 0; i < paths.length; i++) {
+                    if (paths[i].charAt(0) === "v") return paths[i];
+                }
+                return paths[0];
+            }
+
+            function go(target, path) {
+                location.replace(
+                    base + target + "/" + path + location.search + location.hash
+                );
+            }
+
+            fetch(base + "versions.json")
+                .then(function (r) {
+                    return r.ok ? r.json() : null;
+                })
+                .then(function (versions) {
+                    var target = pick(versions);
+                    if (target) home.href = base + target + "/";
+                    if (inVersion) {
+                        if (inVersion[1] === "stable" && target && target !== "stable") {
+                            return go(target, inVersion[2] || "");
+                        }
+                        message.textContent =
+                            "This page does not exist in the documentation version you selected.";
+                        return;
+                    }
+                    go(target || "stable", rest);
+                })
+                .catch(function () {
+                    if (!inVersion) go("stable", rest);
+                });
+        })();
+    </script>
+</body>
+</html>

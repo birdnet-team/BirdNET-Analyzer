@@ -55,10 +55,30 @@ worth knowing before running the suite:
 ## CI
 
 Six workflows in `.github/workflows/`: `lint.yml` and `ci.yml` (the test matrix) run
-on every PR to `main`, `documentation.yml` on docs changes, `docker-build.yml` on
-Dockerfile/`pyproject.toml` changes and on release, and `publish.yml` /
-`test-publish.yml` on release. All of them use `paths:` filters, so a PR touching only
-docs will not run the test matrix.
+on every PR to `main`, `documentation.yml` on docs changes and on release,
+`docker-build.yml` on Dockerfile/`pyproject.toml` changes and on release, and
+`publish.yml` / `test-publish.yml` on release. All of them use `paths:` filters, so a
+PR touching only docs will not run the test matrix.
+
+The published docs are **versioned**: `documentation.yml` deploys each release to
+`/vX.Y.Z/` on `gh-pages` (mirrored at `/stable/`, the default landing spot), pushes
+to `main` deploy to `/dev/`, and old releases can be backfilled via the workflow's
+manual trigger (`tag`, plus `set_stable` when that tag is the newest release).
+Prereleases get their own directory but never become `/stable/`. The site-root
+redirect, 404 handler and version switcher live in `docs/_site/`, which is deployed
+to the `gh-pages` root and excluded from the Sphinx build.
+
+Two things worth knowing before touching this:
+
+- **`/stable/` only exists once a release has been deployed to the versioned site.**
+  Until then the root redirect and the 404 handler fall back to the newest version
+  directory and then to `/dev/`, so the site still works, but it is serving
+  unreleased docs. Backfill the current release (manual trigger, `set_stable`
+  ticked) right after the versioning workflow first lands on `main`.
+- **Backfilling only reaches `v2.1.0`–`v2.4.0`.** `v2.0.0` and `v2.0.0-rc` have a
+  `docs/conf.py` but no `docs` extra, so no Sphinx gets installed; every `v1.x` tag
+  predates `pyproject.toml` entirely. (The bare `1.4.0` tag is also rejected by the
+  workflow's `vX.Y.Z` pattern.)
 
 Run `ruff check` and `python -m pytest` before handing work back.
 
