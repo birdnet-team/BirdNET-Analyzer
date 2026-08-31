@@ -1,0 +1,269 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Breaking changes &mdash; BirdNET-Analyzer dev documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="_static/birdnet-icon.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=3ce10a4d"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="https://birdnet-team.github.io/BirdNET-Analyzer/switcher.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Usage" href="usage.html" />
+    <link rel="prev" title="Download &amp; Setup" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breaking changes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#default-model-is-now-birdnet-3-0">Default model is now BirdNET 3.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path">Inference runs on ONNX, not TensorFlow, on the default path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-species-lists-and-the-3-0-taxonomy">Custom species lists and the 3.0 taxonomy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#label-languages-differ-between-2-4-and-3-0">Label languages differ between 2.4 and 3.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sensitivity-has-no-effect-on-birdnet-3-0">Sensitivity has no effect on BirdNET 3.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-classifiers-and-training-stay-on-the-2-4-base">Custom classifiers and training stay on the 2.4 base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#resuming-an-interrupted-analysis-re-checks-changed-files">Resuming an interrupted analysis re-checks changed files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#other-changes">Other changes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="best-practices.html">Best practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-details.html">Implementation details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Breaking changes</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="breaking-changes">
+<h1>Breaking changes<a class="headerlink" href="#breaking-changes" title="Link to this heading"></a></h1>
+<p>This is a major release. Its central change is that analyses now use the <strong>BirdNET
+3.0</strong> acoustic and geolocation models by default, which is not backwards compatible
+with the previous release in several ways. Breaking changes are expected for a major
+release; this page lists every user-visible incompatibility relative to the previous
+release (<strong>v2.4.0</strong>) and what to do about it.</p>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#default-model-is-now-birdnet-3-0" id="id1">Default model is now BirdNET 3.0</a></p></li>
+<li><p><a class="reference internal" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path" id="id2">Inference runs on ONNX, not TensorFlow, on the default path</a></p></li>
+<li><p><a class="reference internal" href="#custom-species-lists-and-the-3-0-taxonomy" id="id3">Custom species lists and the 3.0 taxonomy</a></p></li>
+<li><p><a class="reference internal" href="#label-languages-differ-between-2-4-and-3-0" id="id4">Label languages differ between 2.4 and 3.0</a></p></li>
+<li><p><a class="reference internal" href="#sensitivity-has-no-effect-on-birdnet-3-0" id="id5">Sensitivity has no effect on BirdNET 3.0</a></p></li>
+<li><p><a class="reference internal" href="#custom-classifiers-and-training-stay-on-the-2-4-base" id="id6">Custom classifiers and training stay on the 2.4 base</a></p></li>
+<li><p><a class="reference internal" href="#resuming-an-interrupted-analysis-re-checks-changed-files" id="id7">Resuming an interrupted analysis re-checks changed files</a></p></li>
+<li><p><a class="reference internal" href="#other-changes" id="id8">Other changes</a></p></li>
+</ul>
+</nav>
+<section id="default-model-is-now-birdnet-3-0">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Default model is now BirdNET 3.0</a><a class="headerlink" href="#default-model-is-now-birdnet-3-0" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> Analyses use the BirdNET 3.0 acoustic model, and location-based
+species lists use the 3.0 geolocation model, by default. v2.4 was the previous default.</p>
+<p><strong>Consequence.</strong> Results are not directly comparable to v2.4 output: 3.0 is a different
+model with different confidence scores, a larger species set (11,560 labels) and an
+updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.</p>
+<p><strong>What to do.</strong> To keep the previous behaviour, select the 2.4 model explicitly:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>birdnet-analyze<span class="w"> </span>INPUT<span class="w"> </span>--birdnet<span class="w"> </span><span class="m">2</span>.4
+</pre></div>
+</div>
+<p>In the GUI, choose <em>BirdNET 2.4</em> under model selection. The 2.4 model remains fully
+supported.</p>
+</section>
+<section id="inference-runs-on-onnx-not-tensorflow-on-the-default-path">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Inference runs on ONNX, not TensorFlow, on the default path</a><a class="headerlink" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> The default 3.0 analysis and geolocation paths run on
+<code class="docutils literal notranslate"><span class="pre">onnxruntime</span></code> instead of TensorFlow, which is now a required dependency.</p>
+<p><strong>Consequence.</strong></p>
+<ul class="simple">
+<li><p>Default analyses are faster on CPU and no longer load TensorFlow.</p></li>
+<li><p>TensorFlow is still required — and still installed — for the 2.4 model, the Perch
+model, custom classifiers, and training.</p></li>
+<li><p>The Docker image is substantially larger: it bakes the ~520 MB 3.0 ONNX model
+(the 2.4 TFLite model was ~120 MB).</p></li>
+</ul>
+<p><strong>What to do.</strong> Reinstall the package so <code class="docutils literal notranslate"><span class="pre">onnxruntime</span></code> is pulled in (your usual
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code> step). Nothing changes for the 2.4, Perch, custom-classifier or
+training paths.</p>
+</section>
+<section id="custom-species-lists-and-the-3-0-taxonomy">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Custom species lists and the 3.0 taxonomy</a><a class="headerlink" href="#custom-species-lists-and-the-3-0-taxonomy" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> The 3.0 model uses an updated taxonomy, so labels from a v2.4-era
+species list may no longer match verbatim — for example <code class="docutils literal notranslate"><span class="pre">Accipiter</span> <span class="pre">cooperii</span></code> became
+<code class="docutils literal notranslate"><span class="pre">Astur</span> <span class="pre">cooperii</span></code>, and several common names changed (<code class="docutils literal notranslate"><span class="pre">Rock</span> <span class="pre">Pigeon</span></code> → <code class="docutils literal notranslate"><span class="pre">Rock</span> <span class="pre">Dove</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Raven</span></code> → <code class="docutils literal notranslate"><span class="pre">Northern</span> <span class="pre">Raven</span></code>, <code class="docutils literal notranslate"><span class="pre">Herring</span> <span class="pre">Gull</span></code> → <code class="docutils literal notranslate"><span class="pre">European</span> <span class="pre">Herring</span> <span class="pre">Gull</span></code>,
+<code class="docutils literal notranslate"><span class="pre">European</span> <span class="pre">Starling</span></code> → <code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Starling</span></code>).</p>
+<p>A species list passed with <code class="docutils literal notranslate"><span class="pre">--slist</span></code> is now <strong>reconciled</strong> to the loaded model
+instead of having to match it exactly: each entry is matched by its exact label, then
+its scientific name, then its common name. This carries most legacy lists over
+automatically.</p>
+<p><strong>Consequence.</strong></p>
+<ul class="simple">
+<li><p>Species that still cannot be matched (genuinely absent from the model, or a typo)
+are <strong>skipped with a warning</strong>, and the analysis proceeds with the rest.</p></li>
+<li><p>If <strong>none</strong> of the list’s species can be matched, the analysis <strong>errors</strong> instead of
+silently analysing every species.</p></li>
+<li><p>Previously, an unknown entry in a <code class="docutils literal notranslate"><span class="pre">--slist</span></code> file aborted the run with a library
+error; most such lists now succeed after reconciliation.</p></li>
+</ul>
+<p><strong>What to do.</strong> Legacy lists generally work unchanged. To require that every entry
+match — turning any unmatched species into a hard error — use the new <code class="docutils literal notranslate"><span class="pre">--strict</span></code>
+flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>birdnet-analyze<span class="w"> </span>INPUT<span class="w"> </span>--slist<span class="w"> </span>my_list.txt<span class="w"> </span>--strict
+</pre></div>
+</div>
+<p>In the GUI, selecting a species-list file shows a warning if it contains species the
+chosen model does not have (only once that model has been downloaded).</p>
+</section>
+<section id="label-languages-differ-between-2-4-and-3-0">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Label languages differ between 2.4 and 3.0</a><a class="headerlink" href="#label-languages-differ-between-2-4-and-3-0" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> The set of label languages (<code class="docutils literal notranslate"><span class="pre">--locale</span></code>) is not identical across
+model versions. Nine languages available in 2.4 are <strong>not</strong> in 3.0:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">af</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>, <code class="docutils literal notranslate"><span class="pre">en_uk</span></code>, <code class="docutils literal notranslate"><span class="pre">hu</span></code>, <code class="docutils literal notranslate"><span class="pre">it</span></code>, <code class="docutils literal notranslate"><span class="pre">ko</span></code>, <code class="docutils literal notranslate"><span class="pre">ro</span></code>, <code class="docutils literal notranslate"><span class="pre">sl</span></code>, <code class="docutils literal notranslate"><span class="pre">th</span></code></p>
+</div></blockquote>
+<p>Eleven languages are <strong>new</strong> in 3.0:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">bg</span></code>, <code class="docutils literal notranslate"><span class="pre">ca</span></code>, <code class="docutils literal notranslate"><span class="pre">cy</span></code>, <code class="docutils literal notranslate"><span class="pre">es_ec</span></code>, <code class="docutils literal notranslate"><span class="pre">es_es</span></code>, <code class="docutils literal notranslate"><span class="pre">es_mx</span></code>, <code class="docutils literal notranslate"><span class="pre">fa</span></code>, <code class="docutils literal notranslate"><span class="pre">hr</span></code>, <code class="docutils literal notranslate"><span class="pre">lt</span></code>,
+<code class="docutils literal notranslate"><span class="pre">pt_pt</span></code>, <code class="docutils literal notranslate"><span class="pre">sr</span></code></p>
+</div></blockquote>
+<p><strong>Consequence.</strong> Requesting a locale the selected model version does not support falls
+back to <code class="docutils literal notranslate"><span class="pre">en_us</span></code>, with a warning. For example, <code class="docutils literal notranslate"><span class="pre">--locale</span> <span class="pre">it</span></code> with the default 3.0
+model produces English labels.</p>
+<p><strong>What to do.</strong> Use a locale the model version supports, or switch to the 2.4 model if
+you need one of its dropped languages. In the GUI the locale dropdown offers only the
+selected model’s languages.</p>
+</section>
+<section id="sensitivity-has-no-effect-on-birdnet-3-0">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Sensitivity has no effect on BirdNET 3.0</a><a class="headerlink" href="#sensitivity-has-no-effect-on-birdnet-3-0" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> The 3.0 model applies its sigmoid inside the model graph and
+outputs probabilities directly, so the sigmoid cannot be rescaled. <code class="docutils literal notranslate"><span class="pre">--sensitivity</span></code>
+therefore only applies to BirdNET 2.4 and custom classifiers (which run on the 2.4
+base); Perch never used it.</p>
+<p><strong>Consequence.</strong> With the default 3.0 model a <code class="docutils literal notranslate"><span class="pre">--sensitivity</span></code> other than <code class="docutils literal notranslate"><span class="pre">1.0</span></code> is
+ignored, with a warning. In the GUI the sensitivity slider is disabled while 3.0 or
+Perch is selected.</p>
+<p><strong>What to do.</strong> Use <code class="docutils literal notranslate"><span class="pre">--min_conf</span></code> to tune 3.0 detections. If you rely on
+sensitivity, select the 2.4 model (<code class="docutils literal notranslate"><span class="pre">--birdnet</span> <span class="pre">2.4</span></code>).</p>
+</section>
+<section id="custom-classifiers-and-training-stay-on-the-2-4-base">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Custom classifiers and training stay on the 2.4 base</a><a class="headerlink" href="#custom-classifiers-and-training-stay-on-the-2-4-base" title="Link to this heading"></a></h2>
+<p><strong>What changed / consequence.</strong> Training and custom classifiers still use the 2.4 model
+and its embeddings; 3.0 training is not yet supported. A custom classifier is therefore
+loaded on the 2.4 base regardless of the default acoustic model. This behaviour is
+unchanged, but is worth noting now that 3.0 is the default elsewhere.</p>
+<p>The default output location for a trained classifier is now
+<code class="docutils literal notranslate"><span class="pre">checkpoints/custom/Custom_Classifier</span></code> <strong>relative to the current working directory</strong>
+(previously an absolute path inside the installed package). Scripts that relied on the
+old install-directory location will now write to, or look in, a different place; pass an
+explicit <code class="docutils literal notranslate"><span class="pre">-o/--output</span></code> to pin a location. The new default is writable on a
+pip-installed package and survives upgrades.</p>
+</section>
+<section id="resuming-an-interrupted-analysis-re-checks-changed-files">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Resuming an interrupted analysis re-checks changed files</a><a class="headerlink" href="#resuming-an-interrupted-analysis-re-checks-changed-files" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> A directory analysis now keeps a crash-safe journal so an interrupted
+run can be continued: re-running the same analysis skips files that already completed.
+Each file’s stored result is keyed on its path <strong>and its size and modification time</strong>.</p>
+<p><strong>Consequence.</strong> When a run is resumed, an input file that changed on disk (edited,
+regenerated, or merely touched so its modification time moved) since it was first
+analysed is <strong>re-analysed</strong> rather than reusing the earlier result. Unchanged files are
+skipped as before.</p>
+</section>
+<section id="other-changes">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Python 3.11+</strong> is required (tested on 3.11–3.13).</p></li>
+<li><p><strong>Perch</strong> is not available on macOS — it needs a TensorFlow build that is not yet
+published for that platform.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Download &amp; Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
