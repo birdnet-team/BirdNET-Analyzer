@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: false
+      python_version:
+        description: "Python to build with (3.11 for tags pinning tensorflow 2.15)"
+        required: false
+        type: string
+        default: "3.13"
 
 permissions:
   contents: write
@@ -95,7 +100,8 @@ jobs:
           ref: ${{ steps.target.outputs.ref }}
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          # Old tags pin dependencies that have no wheels for current Python.
+          python-version: ${{ inputs.python_version || '3.13' }}
       - name: Set up uv
         uses: astral-sh/setup-uv@v10.0.1
         with:

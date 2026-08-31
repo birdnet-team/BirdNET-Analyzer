@@ -9,7 +9,7 @@ can be judged from the diff text alone.
 
 - **Localization is all-or-nothing.** A diff that adds a key to
   `birdnet_analyzer/lang/en.json`, or a `loc.localize("...")` call with a new key,
-  must add that key to **all** files in `birdnet_analyzer/lang/` (currently 10) with a
+  must add that key to **all** files in `birdnet_analyzer/lang/` with a
   real translation — English text copied into `de.json` is a defect, not a
   placeholder. The files stay sorted with 4-space indent (a json load/dump round-trip
   with `ensure_ascii=False, indent=4, sort_keys=True`), and every translation keeps
