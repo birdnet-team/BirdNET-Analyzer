@@ -9,3 +9,4 @@ Implementation details
    implementation-details/training-hyperparameters
    implementation-details/segment-collection-mode
    implementation-details/sensitivity
+   implementation-details/gpu-inference

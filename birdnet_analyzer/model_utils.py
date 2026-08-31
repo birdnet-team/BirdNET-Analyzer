@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 from contextlib import suppress
+from functools import cache
 from typing import TYPE_CHECKING, cast
 
 import birdnet
@@ -309,6 +310,126 @@ def _language_for_version(language: MODEL_LANGUAGES, version: str) -> MODEL_LANG
     return MODEL_LANGUAGE_EN_US
 
 
+# Accepted as a GPU. DirectML is excluded on purpose, and a provider only belongs
+# here once birdnet selects it; see docs/implementation-details/gpu-inference.rst.
+GPU_EXECUTION_PROVIDERS = ("CUDAExecutionProvider",)
+
+
+def gpu_available() -> bool:
+    """Whether an ONNX Runtime that can run BirdNET 3.0 on a GPU is installed.
+
+    Reports what the installed build *can* do, not whether its libraries resolve at
+    runtime - a mismatched CUDA runtime makes ONNX Runtime fall back to the CPU
+    provider silently. The providers that count are :data:`GPU_EXECUTION_PROVIDERS`.
+    """
+    from importlib.util import find_spec
+
+    if find_spec("onnxruntime") is None:
+        return False
+
+    try:
+        import onnxruntime as ort
+
+        available = set(ort.get_available_providers())
+        return any(provider in available for provider in GPU_EXECUTION_PROVIDERS)
+    except Exception:
+        return False
+
+
+@cache
+def _add_cuda_libraries_to_path() -> None:
+    """Put the CUDA libraries of the ``nvidia-*`` pip packages on PATH (Windows).
+
+    Without this ONNX Runtime does not find them and falls back to the CPU provider.
+    PATH rather than ``onnxruntime.preload_dlls()`` because inference runs in worker
+    subprocesses, which inherit the environment but not a DLL directory added here.
+    """
+    import os
+
+    if os.name != "nt":
+        return
+
+    from importlib.util import find_spec
+    from pathlib import Path
+
+    spec = find_spec("nvidia")
+    roots = list(spec.submodule_search_locations) if spec else []
+    dirs = [
+        str(path)
+        for root in roots
+        for path in sorted(Path(root).glob("*/bin"))
+        if path.is_dir()
+    ]
+
+    if dirs:
+        os.environ["PATH"] = os.pathsep.join([*dirs, os.environ.get("PATH", "")])
+
+
+def supports_gpu(
+    model: str, version: str = "3.0", classifier: str | None = None
+) -> bool:
+    """Whether the selected model has a backend that can run on the GPU.
+
+    Only BirdNET 3.0 qualifies - it is the one model loaded on the ONNX backend. See
+    docs/implementation-details/gpu-inference.rst.
+    """
+    if classifier:
+        return False
+
+    return model == "birdnet" and version == "3.0"
+
+
+def effective_device(
+    device: str,
+    model: str = "birdnet",
+    version: str = "3.0",
+    classifier: str | None = None,
+) -> str:
+    """The device the analysis will use; warns and falls back to CPU.
+
+    ``device`` is ``"CPU"``, ``"GPU"`` or ``"GPU:<index>"``, in any case. A GPU that
+    the model or the installation cannot deliver is reported and downgraded here, in
+    the main process: the library would otherwise only fail once the worker
+    subprocesses load the model, mid-analysis.
+    """
+    device = device.strip().upper()
+    name, _, index = device.partition(":")
+
+    if name not in ("CPU", "GPU"):
+        raise ValueError(
+            f"Unknown device: {device!r}. Use 'CPU', 'GPU' or 'GPU:<index>'."
+        )
+
+    if index and not index.isdigit():
+        raise ValueError(
+            f"Unknown device: {device!r}. The device index must be a number."
+        )
+
+    if name == "CPU":
+        return "CPU"
+
+    if not supports_gpu(model, version, classifier):
+        logger.warning(
+            "GPU inference is not available for %s; running on the CPU instead.",
+            "a custom classifier"
+            if classifier
+            else ("Perch" if model == "perch" else f"BirdNET {version}"),
+        )
+        return "CPU"
+
+    if not gpu_available():
+        logger.warning(
+            "No GPU-capable ONNX Runtime found; running on the CPU instead. Install "
+            "the GPU build with 'pip install onnxruntime-gpu' (and a matching CUDA "
+            "runtime) to use the GPU.",
+        )
+        return "CPU"
+
+    _add_cuda_libraries_to_path()
+
+    return device
+
+
 def supports_sensitivity(
     model: str, version: str = "3.0", classifier: str | None = None
 ) -> bool:
@@ -364,9 +485,22 @@ def run_inference(
     classifier: str | None = None,
     cc_species_list: str | None = None,
     strict_species_list: bool = False,
+    device: str = "CPU",
     callback: Callable[[AcousticProgressStats], None] | None = None,
     on_file_complete: Callable[[AcousticFilePredictionResult], None] | None = None,
 ) -> AcousticFilePredictionResult:
+    device = effective_device(device, model, version, classifier)
+
+    if device.startswith("GPU"):
+        if n_workers is None:
+            n_workers = 1
+
+        if batch_size == 1:
+            logger.info(
+                "Running on the GPU with batch size 1. A larger batch size is "
+                "typically several times faster."
+            )
+
     if classifier:
         if not cc_species_list:
             cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
@@ -434,6 +568,7 @@ def run_inference(
         n_producers=n_producers,
         apply_sigmoid=model != "perch",
         max_n_files=len(input_files),
+        device=device,
         on_file_complete=on_file_complete,
     ) as session:
         _register_session(session)

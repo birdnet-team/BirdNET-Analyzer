@@ -118,6 +118,7 @@ def load_analysis_params(path: str) -> dict[str, Any]:
     parse("batch_size", _to_int, "Batch size")
     parse("n_producers", _to_int, "Number of producers")
     parse("n_workers", _to_int, "Number of workers")
+    parse("device", str, "Device")
     parse("top_n", _to_int, "Top N")
     parse("lat", float, "Latitude")
     parse("lon", float, "Longitude")

@@ -63,6 +63,7 @@ def run_batch_analysis(
     batch_size,
     producers_number,
     workers_number,
+    device,
     input_dir,
     progress=gr.Progress(),
 ):
@@ -103,6 +104,7 @@ def run_batch_analysis(
             progress=progress,
             n_producers=producers_number,
             n_workers=workers_number,
+            device=device,
             split_tables=split_tables_checkbox,
         )
     except RuntimeError:
@@ -342,7 +344,9 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 info=loc.localize("multi-tab-split-table-checkbox-info"),
             )
 
-        bs_number, producers_number, workers_number = gu.computing_settings(state)
+        bs_number, producers_number, workers_number, device_radio = (
+            gu.computing_settings(state, with_device=True)
+        )
         resume_status_md = gr.Markdown(visible=False)
 
         with gr.Row(equal_height=True):
@@ -386,6 +390,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             bs_number,
             producers_number,
             workers_number,
+            device_radio,
             input_directory_state,
         ]
 

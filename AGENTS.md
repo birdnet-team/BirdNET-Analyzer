@@ -131,6 +131,14 @@ that directory is the way to test a first-run experience.
   of what the next line does or how the code was arrived at — that belongs in
   commit messages and the changelog. The same bar applies to test comments: the
   test name and its assertions are the explanation.
+- **GPU inference is BirdNET 3.0 only.** `--device GPU` reaches the birdnet session,
+  but only the ONNX backend 3.0 runs on has a device to dispatch to: 2.4 and custom
+  classifiers are asserted to CPU by the TensorFlow Lite backend, and Perch's
+  TensorFlow backend has no GPU on native Windows. `model_utils.effective_device`
+  downgrades anything else to CPU up front, because the library would otherwise only
+  fail inside the worker subprocesses. See
+  `docs/implementation-details/gpu-inference.rst`, which also records why DirectML is
+  not accepted as a GPU.
 - **Don't widen the ruff config to make a fix pass.** The `select`/`ignore` lists in
   `pyproject.toml` are deliberate.
 - **Packaging is an allow-list, not a deny-list.** What ships is decided by the

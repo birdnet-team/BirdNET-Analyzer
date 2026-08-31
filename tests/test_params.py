@@ -162,6 +162,14 @@ def test_the_values_are_returned_exactly_as_the_analysis_ran_with_them(tmp_path)
     assert kwargs["min_conf"] == 0
 
 
+def test_the_device_of_an_analysis_is_read_back(tmp_path):
+    file = tall_file(tmp_path, analysis_values(Device="GPU:1"))
+    older = tall_file(tmp_path, analysis_values(), name="older.analyze-params.csv")
+
+    assert params.load_analysis_params(file)["device"] == "GPU:1"
+    assert "device" not in params.load_analysis_params(older)
+
+
 def test_files_of_an_analysis_are_read_back(tmp_path):
     file = tall_file(
         tmp_path,
