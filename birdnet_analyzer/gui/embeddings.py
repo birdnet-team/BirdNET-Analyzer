@@ -246,7 +246,9 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("embedding-settings-audio-speed-slider-info"),
                 )
 
-            bs_number, producers_number, workers_number = gu.computing_settings(state)
+            bs_number, producers_number, workers_number, _ = gu.computing_settings(
+                state
+            )
 
             fmin_number, fmax_number = gu.bandpass_settings(state)
 

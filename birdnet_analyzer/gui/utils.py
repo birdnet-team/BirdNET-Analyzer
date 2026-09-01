@@ -1578,8 +1578,31 @@ def _get_win_drives():
     return [f"{drive}:\\" for drive in UPPER_CASE] + _get_network_shortcuts()
 
 
-def computing_settings(state: TabState):
+# Measured several times faster than the batch size of 1 the CPU defaults to.
+GPU_BATCH_SIZE = 16
+
+
+def analysis_devices() -> list[str]:
+    """The device choices to offer, newest-model first.
+
+    ``GPU`` is only offered when an ONNX Runtime that can actually run BirdNET 3.0 on
+    it is installed, so the choice never silently degrades to CPU mid-analysis.
+    """
+    from birdnet_analyzer.model_utils import gpu_available
+
+    return ["CPU", "GPU"] if gpu_available() else ["CPU"]
+
+
+def computing_settings(state: TabState, with_device: bool = False):
+    """Build the shared computing settings row.
+
+    Always returns four components; ``device_radio`` is None unless ``with_device``,
+    which only the analysis tab sets - the other tabs run models that are CPU-only.
+    """
     import psutil
+
+    device_radio = None
+    cpu_workers = psutil.cpu_count(logical=True) or 1
 
     with gr.Row():
         bs_number = state.persist(
@@ -1605,12 +1628,43 @@ def computing_settings(state: TabState):
             gr.Number,
             precision=1,
             label=loc.localize("computing-settings-workers-number-label"),
-            value=psutil.cpu_count(logical=True) or 1,
+            value=cpu_workers,
             info=loc.localize("computing-settings-workers-number-info"),
             minimum=1,
         )
 
-    return bs_number, producers_number, workers_number
+        if with_device:
+            devices = analysis_devices()
+            device_radio = state.persist(
+                "device_radio",
+                gr.Radio,
+                choices=devices,
+                value="CPU",
+                label=loc.localize("computing-settings-device-radio-label"),
+                info=loc.localize("computing-settings-device-radio-info")
+                if len(devices) > 1
+                else loc.localize("computing-settings-device-radio-unavailable-info"),
+                interactive=len(devices) > 1,
+            )
+
+    if device_radio is not None:
+
+        def settings_for_device(device):
+            on_gpu = device != "CPU"
+
+            return gr.update(value=1 if on_gpu else cpu_workers), gr.update(
+                value=GPU_BATCH_SIZE if on_gpu else 1
+            )
+
+        device_radio.input(
+            settings_for_device,
+            inputs=device_radio,
+            outputs=[workers_number, bs_number],
+            show_progress="hidden",
+            queue=False,
+        )
+
+    return bs_number, producers_number, workers_number, device_radio
 
 
 def info_box(description: str, title="Info") -> gr.Accordion:

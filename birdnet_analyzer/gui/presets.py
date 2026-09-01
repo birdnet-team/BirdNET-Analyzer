@@ -326,6 +326,7 @@ def load_analysis_params(path: str) -> dict[str, Any]:
             "batch_size": "batch_size_number",
             "n_producers": "producers_number",
             "n_workers": "workers_number",
+            "device": "device_radio",
             "top_n": "top_n_input",
             "lat": "lat_number",
             "lon": "lon_number",
@@ -339,6 +340,12 @@ def load_analysis_params(path: str) -> dict[str, Any]:
 
     if "audio_speed" in kwargs:
         values["audio_speed_slider"] = _speed_to_slider(kwargs["audio_speed"])
+
+    if "device_radio" in values:
+        import birdnet_analyzer.gui.utils as gu
+
+        device = str(values["device_radio"]).strip().upper().partition(":")[0]
+        values["device_radio"] = device if device in gu.analysis_devices() else "CPU"
 
     values["use_top_n_checkbox"] = "top_n" in kwargs
 

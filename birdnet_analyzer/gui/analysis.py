@@ -64,6 +64,7 @@ def run_analysis(
     n_producers,
     n_workers,
     progress: gr.Progress | None,
+    device: str = "CPU",
     split_tables: bool = False,
 ):
     """Starts the analysis.
@@ -93,6 +94,7 @@ def run_analysis(
         batch_size: The number of samples in a batch.
         n_producers: The number of producer threads to be used.
         n_workers: The number of worker threads to be used.
+        device: The device to run inference on ("CPU", "GPU" or "GPU:<index>").
         input_dir: The input directory.
         progress: The gradio progress bar.
         split_tables: Whether to split the output into separate tables per input file.
@@ -160,6 +162,7 @@ def run_analysis(
             save_params=save_params,
             n_producers=n_producers,
             n_workers=n_workers,
+            device=device,
             split_tables=split_tables,
             _return_only=bool(input_path),  # only for single file tab
         )

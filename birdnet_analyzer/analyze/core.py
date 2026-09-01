@@ -39,6 +39,7 @@ def analyze(
     batch_size: int = 1,
     n_workers: int | None = None,
     n_producers: int = 1,
+    device: str = "CPU",
     rtype: RESULT_TYPES | list[RESULT_TYPES] = "table",
     sf_thresh: float = 0.03,
     top_n: int | None = None,
@@ -79,6 +80,10 @@ def analyze(
         audio_speed (float, optional): Speed factor for audio playback during analysis.
             Defaults to 1.0.
         batch_size (int, optional): Batch size for processing. Defaults to 1.
+        device (str, optional): Device to run inference on: "CPU", "GPU" or
+            "GPU:<index>". Only BirdNET 3.0 can use the GPU, and only with a
+            GPU-capable ONNX Runtime installed; any other combination falls back to
+            the CPU with a warning. Defaults to "CPU".
         rtype (Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] |
         List[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]], optional):
             Output format(s) for results. Defaults to "table".
@@ -117,6 +122,7 @@ def analyze(
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
     from birdnet_analyzer.model_utils import (
+        effective_device,
         effective_sensitivity,
         run_geomodel,
         run_inference,
@@ -125,6 +131,8 @@ def analyze(
 
     # Settled before the params file, result columns and resume fingerprint see it.
     sensitivity = effective_sensitivity(sensitivity, model, birdnet, classifier)
+    # Deliberately not part of the resume fingerprint: it does not change results.
+    device = effective_device(device, model, birdnet, classifier)
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
     rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype
@@ -209,6 +217,7 @@ def analyze(
             callback=on_update,
             n_workers=n_workers,
             n_producers=n_producers,
+            device=device,
             on_file_complete=journal.on_file_complete if journal else None,
         )
 
@@ -323,6 +332,7 @@ def analyze(
                 "Batch size": batch_size,
                 "Number of workers": n_workers or "",
                 "Number of producers": n_producers,
+                "Device": device,
                 "Result type(s)": ", ".join(rtypes),
                 "Additional columns": ", ".join(additional_columns)
                 if additional_columns

@@ -412,6 +412,22 @@ def computing_resources_args():
     return p
 
 
+def device_args():
+    """Argument parser for the inference device (--device)."""
+    p = argparse.ArgumentParser(add_help=False)
+
+    p.add_argument(
+        "--device",
+        type=str,
+        default="CPU",
+        help="Device to run inference on: 'CPU', 'GPU' or 'GPU:<index>'. Only BirdNET "
+        "3.0 supports the GPU, and only with a GPU-capable ONNX Runtime installed; "
+        "anything else falls back to the CPU with a warning.",
+    )
+
+    return p
+
+
 def db_args():
     """Argument parser for the database path (-db/--database)."""
     p = argparse.ArgumentParser(add_help=False)
@@ -442,6 +458,7 @@ def analyzer_parser():
         locale_args(),
         bs_args(),
         computing_resources_args(),
+        device_args(),
         load_params_args("analysis", "birdnet.analyze-params.csv"),
         verbosity_args(),
     ]
