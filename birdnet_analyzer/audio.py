@@ -48,7 +48,7 @@ def open_audio_file(
             offset=offset,
             duration=duration,
             mono=True,
-            res_type="kaiser_fast",
+            res_type="soxr_hq",
         )
 
     else:
@@ -61,7 +61,7 @@ def open_audio_file(
             sig,
             orig_sr=int(rate * speed),
             target_sr=sample_rate,
-            res_type="kaiser_fast",
+            res_type="soxr_hq",
         )
         rate = sample_rate
 
