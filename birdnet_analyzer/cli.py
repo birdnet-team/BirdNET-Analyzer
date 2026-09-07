@@ -349,7 +349,10 @@ def min_conf_args():
         "--min_conf",
         default=0.25,
         type=lambda a: max(0.00001, min(0.99, float(a))),
-        help="Minimum confidence threshold. Values in [0.00001, 0.99].",
+        help="Minimum confidence threshold. Values in [0.00001, 0.99]. Perch "
+        "confidences are softmax probabilities: simultaneous vocalizations "
+        "share the probability mass, so dense soundscapes may need a lower "
+        "threshold than BirdNET models.",
     )
 
     return p

@@ -15,6 +15,7 @@ from birdnet_analyzer.analyze.core import (
 from birdnet_analyzer.gui.state import TabState
 
 MATPLOTLIB_FIGURE_NUM = "single-file-tab-spectrogram-plot"
+MAX_TABLE_ROWS = 50
 HEADER_START_LBL = loc.localize("single-tab-output-header-start")
 HEADER_END_LBL = loc.localize("single-tab-output-header-end")
 HEADER_SCI_NAME_LBL = loc.localize("single-tab-output-header-sci-name")
@@ -91,6 +92,18 @@ def run_single_file_analysis(
         return time_str
 
     table = predictions.to_dataframe()
+    n_total = table.shape[0]
+
+    if n_total > MAX_TABLE_ROWS:
+        table = table.nlargest(MAX_TABLE_ROWS, "confidence").sort_values(
+            ["start_time", "end_time"]
+        )
+        gr.Warning(
+            loc.localize("single-tab-results-truncated-warning").format(
+                shown=MAX_TABLE_ROWS, total=n_total
+            )
+        )
+
     n_rows = table.shape[0]
 
     if n_rows > 0:

@@ -25,6 +25,13 @@ birdnet_analyzer.analyze
 
       python3 -m birdnet_analyzer.analyze example/ --lat 42.5 --lon -76.45 --week 4 --sensitivity 1.0
 
+   Directory analyses are resumable: progress is saved continuously to a
+   ``.birdnet-resume`` folder in the output directory, so an interrupted run (crash,
+   power loss, Ctrl+C) can be continued by re-running the same command — files that
+   were already analyzed are skipped. The settings that affect the detections have to
+   match the interrupted run, otherwise the analysis starts over; see
+   :ref:`resumable-analysis` for details.
+
 birdnet_analyzer.embeddings
 ---------------------------
 

@@ -316,8 +316,8 @@ def supports_sensitivity(
 
     BirdNET 2.4 and custom classifiers (which run on the 2.4 base) do. BirdNET 3.0
     applies the sigmoid inside the model graph, and the birdnet library rejects a
-    sensitivity other than 1.0 for it. Perch outputs raw logits and is run without a
-    sigmoid here (its scores are not probabilities), so sensitivity does not apply.
+    sensitivity other than 1.0 for it. Perch outputs logits that are normalized
+    with a softmax (not a sigmoid), so sensitivity does not apply.
     Newer BirdNET versions are assumed to behave like 3.0 until known otherwise.
     """
     if classifier:
@@ -342,6 +342,20 @@ def effective_sensitivity(
         )
 
     return 1.0
+
+
+def validate_min_conf(min_conf: float) -> None:
+    """Rejects confidence thresholds outside [0, 1).
+
+    Every model's scores are normalized to probabilities (sigmoid for BirdNET
+    and custom classifiers, softmax for Perch), so a threshold of 1 or more
+    would silently discard every detection.
+    """
+    if not 0 <= min_conf < 1:
+        raise ValueError(
+            f"min_conf {min_conf} is out of range: confidence scores are "
+            "probabilities, so the threshold must lie in [0, 1)."
+        )
 
 
 def run_inference(
@@ -433,6 +447,7 @@ def run_inference(
         n_workers=n_workers,
         n_producers=n_producers,
         apply_sigmoid=model != "perch",
+        apply_softmax=model == "perch",
         max_n_files=len(input_files),
         on_file_complete=on_file_complete,
     ) as session:

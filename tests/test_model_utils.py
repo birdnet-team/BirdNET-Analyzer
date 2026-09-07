@@ -1,5 +1,7 @@
 """Tests for analysis session pause/cancel behavior in model_utils."""
 
+import pytest
+
 from birdnet_analyzer import model_utils
 
 
@@ -70,6 +72,46 @@ def test_supports_sensitivity_only_for_2_4_based_models():
     assert model_utils.supports_sensitivity("birdnet", "3.0", classifier="cc.tflite")
     assert not model_utils.supports_sensitivity("birdnet", "3.0")
     assert not model_utils.supports_sensitivity("perch")
+
+
+def test_validate_min_conf_rejects_non_probabilities():
+    model_utils.validate_min_conf(0.25)
+    model_utils.validate_min_conf(0.0)  # the GUI's top-n path passes 0
+
+    with pytest.raises(ValueError, match="probabilities"):
+        model_utils.validate_min_conf(1.0)
+
+    with pytest.raises(ValueError, match="probabilities"):
+        model_utils.validate_min_conf(-0.1)
+
+
+def test_run_inference_normalizes_perch_with_softmax(monkeypatch, tmp_path):
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock
+
+    seen = {}
+
+    @contextmanager
+    def fake_predict_session(**kwargs):
+        seen.update(kwargs)
+        session = MagicMock()
+        session.run.return_value = "result"
+        yield session
+
+    fake_model = MagicMock()
+    fake_model.predict_session = fake_predict_session
+    monkeypatch.setattr(
+        model_utils.birdnet, "load_perch_v2", lambda *a, **k: fake_model
+    )
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"")
+
+    result = model_utils.run_inference(str(audio), model="perch")
+
+    assert result == "result"
+    assert seen["apply_softmax"] is True
+    assert seen["apply_sigmoid"] is False
 
 
 def test_run_inference_drops_sensitivity_for_3_0(monkeypatch, tmp_path):

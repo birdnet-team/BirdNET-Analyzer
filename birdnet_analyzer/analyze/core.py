@@ -120,11 +120,13 @@ def analyze(
         effective_sensitivity,
         run_geomodel,
         run_inference,
+        validate_min_conf,
     )
     from birdnet_analyzer.utils import save_params_file
 
     # Settled before the params file, result columns and resume fingerprint see it.
     sensitivity = effective_sensitivity(sensitivity, model, birdnet, classifier)
+    validate_min_conf(min_conf)
 
     species_list_file = slist if isinstance(slist, (str, Path)) else ""
     rtypes: list[RESULT_TYPES] = [rtype] if isinstance(rtype, str) else rtype
