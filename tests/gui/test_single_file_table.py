@@ -5,6 +5,7 @@ hundred rows, so the handler caps the table at the highest-confidence
 detections and points at the download buttons for the rest.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -30,7 +31,10 @@ def make_result(n_rows):
                 "start_time": [float(3 * i) for i in range(n_rows)],
                 "end_time": [float(3 * i + 3) for i in range(n_rows)],
                 "species_name": [f"Sci{i}_Common{i}" for i in range(n_rows)],
-                "confidence": [(i + 1) / n_rows for i in range(n_rows)],
+                # float16 like the library's half_precision output
+                "confidence": np.array(
+                    [(i + 1) / n_rows for i in range(n_rows)], dtype=np.float16
+                ),
             }
         )
     )

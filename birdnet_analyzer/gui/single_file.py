@@ -95,6 +95,8 @@ def run_single_file_analysis(
     n_total = table.shape[0]
 
     if n_total > MAX_TABLE_ROWS:
+        # nlargest has no float16 kernel
+        table["confidence"] = table["confidence"].astype("float32")
         table = table.nlargest(MAX_TABLE_ROWS, "confidence").sort_values(
             ["start_time", "end_time"]
         )
