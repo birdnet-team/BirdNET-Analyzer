@@ -108,6 +108,12 @@ You need to set paths for the audio file and selection table output. Here is an 
 python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--lat<span class="w"> </span><span class="m">42</span>.5<span class="w"> </span>--lon<span class="w"> </span>-76.45<span class="w"> </span>--week<span class="w"> </span><span class="m">4</span><span class="w"> </span>--sensitivity<span class="w"> </span><span class="m">1</span>.0
 </pre></div>
 </div>
+<p>Directory analyses are resumable: progress is saved continuously to a
+<code class="docutils literal notranslate"><span class="pre">.birdnet-resume</span></code> folder in the output directory, so an interrupted run (crash,
+power loss, Ctrl+C) can be continued by re-running the same command — files that
+were already analyzed are skipped. The settings that affect the detections have to
+match the interrupted run, otherwise the analysis starts over; see
+<a class="reference internal" href="../implementation-details/resumable-analysis.html#resumable-analysis"><span class="std std-ref">Resumable Analysis</span></a> for details.</p>
 <div class="highlight-default notranslate" id="birdnet_analyzer.analyze"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">analyze</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">birdnet</span> <span class="p">[{</span><span class="mf">2.4</span><span class="p">,</span><span class="mf">3.0</span><span class="p">}]]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span>
                                 <span class="p">[</span><span class="o">--</span><span class="n">fmin</span> <span class="n">FMIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fmax</span> <span class="n">FMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lat</span> <span class="n">LAT</span><span class="p">]</span>
                                 <span class="p">[</span><span class="o">--</span><span class="n">lon</span> <span class="n">LON</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">week</span> <span class="n">WEEK</span><span class="p">]</span>
@@ -188,7 +194,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyz
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
 </dd>
 <dt><kbd>--min_conf</kbd></dt>
-<dd><p>Minimum confidence threshold. Values in [0.00001, 0.99].</p>
+<dd><p>Minimum confidence threshold. Values in [0.00001, 0.99]. Perch confidences are softmax probabilities: simultaneous vocalizations share the probability mass, so dense soundscapes may need a lower threshold than BirdNET models.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.25</span></code></p>
 </dd>
 <dt><kbd>-l, --locale</kbd></dt>
@@ -353,7 +359,7 @@ This way, it might be easier to review results instead of loading hundreds of re
 <p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
 </dd>
 <dt><kbd>--min_conf</kbd></dt>
-<dd><p>Minimum confidence threshold. Values in [0.00001, 0.99].</p>
+<dd><p>Minimum confidence threshold. Values in [0.00001, 0.99]. Perch confidences are softmax probabilities: simultaneous vocalizations share the probability mass, so dense soundscapes may need a lower threshold than BirdNET models.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.25</span></code></p>
 </dd>
 <dt><kbd>-v, --verbose</kbd></dt>

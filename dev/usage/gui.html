@@ -102,6 +102,22 @@
 <p>Set all folders and parameters, after that, click ‘Analyze’. GUI items represent the command line arguments.
 For more information about the command line arguments, please refer to the <a class="reference internal" href="cli.html#cli-docs"><span class="std std-ref">Command line interface documentation</span></a>.</p>
 <p><cite>Alternatively download the installer to run the GUI on your system</cite>.</p>
+<section id="pausing-and-resuming-a-batch-analysis">
+<h2>Pausing and resuming a batch analysis<a class="headerlink" href="#pausing-and-resuming-a-batch-analysis" title="Link to this heading"></a></h2>
+<p>A running batch analysis can be interrupted with the <strong>Pause</strong> button — the progress
+made so far is kept in the output folder. To continue later (even after closing the
+GUI), select the same input and output folders again: a status line shows how many
+files were already analyzed and the start button changes to <strong>Continue analysis</strong>.
+The same happens after a crash or power loss, since progress is saved continuously
+while the analysis runs.</p>
+<p>Continuing uses the settings <em>currently set in the GUI</em>, not the ones the
+interrupted run started with. Settings that affect the detections — the model,
+minimum confidence, species list, and so on — must therefore be left unchanged (or
+restored by loading the run’s <code class="docutils literal notranslate"><span class="pre">*-params.csv</span></code> file); if one of them differs, the
+saved progress is discarded and the analysis starts over. Output settings such as
+the output format or additional columns may be changed freely. See
+<a class="reference internal" href="../implementation-details/resumable-analysis.html#resumable-analysis"><span class="std std-ref">Resumable Analysis</span></a> for the details.</p>
+</section>
 <section id="segment-review">
 <h2>Segment review<a class="headerlink" href="#segment-review" title="Link to this heading"></a></h2>
 <p>Please read the paper from <a class="reference external" href="https://scholar.google.com/citations?view_op=view_citation&amp;hl=en&amp;user=Uwta4wYAAAAJ&amp;sortby=pubdate&amp;citation_for_view=Uwta4wYAAAAJ:j3f4tGmQtD8C">Connor M. Wood and Stefan Kahl: Guidelines for appropriate use of BirdNET scores and other detector outputs</a>.</p>

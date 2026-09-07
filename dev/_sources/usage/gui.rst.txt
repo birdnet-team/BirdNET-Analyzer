@@ -17,6 +17,24 @@ For more information about the command line arguments, please refer to the :ref:
 
 `Alternatively download the installer to run the GUI on your system`.
 
+Pausing and resuming a batch analysis
+-------------------------------------
+
+A running batch analysis can be interrupted with the **Pause** button — the progress
+made so far is kept in the output folder. To continue later (even after closing the
+GUI), select the same input and output folders again: a status line shows how many
+files were already analyzed and the start button changes to **Continue analysis**.
+The same happens after a crash or power loss, since progress is saved continuously
+while the analysis runs.
+
+Continuing uses the settings *currently set in the GUI*, not the ones the
+interrupted run started with. Settings that affect the detections — the model,
+minimum confidence, species list, and so on — must therefore be left unchanged (or
+restored by loading the run's ``*-params.csv`` file); if one of them differs, the
+saved progress is discarded and the analysis starts over. Output settings such as
+the output format or additional columns may be changed freely. See
+:ref:`resumable-analysis` for the details.
+
 Segment review
 --------------
 

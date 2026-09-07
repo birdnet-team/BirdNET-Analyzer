@@ -1,0 +1,216 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resumable Analysis &mdash; BirdNET-Analyzer dev documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=c9d0a6ec" />
+
+  
+    <link rel="shortcut icon" href="../_static/birdnet-icon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=3ce10a4d"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="https://birdnet-team.github.io/BirdNET-Analyzer/switcher.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="FAQ" href="../faq.html" />
+    <link rel="prev" title="Sensitivity" href="sensitivity.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            BirdNET-Analyzer
+              <img src="../_static/birdnet_logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Download &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../breaking-changes.html">Breaking changes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best-practices.html">Best practices</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../implementation-details.html">Implementation details</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="crop-modes.html">Crop Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training-hyperparameters.html">Hyperparameters for Custom Classifier Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segment-collection-mode.html">Segment Collection Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sensitivity.html">Sensitivity</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Resumable Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">BirdNET-Analyzer</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../implementation-details.html">Implementation details</a></li>
+      <li class="breadcrumb-item active">Resumable Analysis</li>
+      <li class="wy-breadcrumbs-aside">
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="resumable-analysis">
+<span id="id1"></span><h1>Resumable Analysis<a class="headerlink" href="#resumable-analysis" title="Link to this heading"></a></h1>
+<p>When you analyze a directory of audio files, BirdNET-Analyzer keeps a crash-safe
+journal of its progress. If the run is interrupted (by a crash, a power loss, a closed
+window, or the <strong>Pause</strong> button in the GUI), you can continue it later instead of
+starting over: files that were already analyzed are skipped, and their stored
+detections are combined with the fresh results as if the run had never stopped.</p>
+<section id="how-to-resume-a-run">
+<h2>How to resume a run<a class="headerlink" href="#how-to-resume-a-run" title="Link to this heading"></a></h2>
+<p>Progress is stored in a hidden <code class="docutils literal notranslate"><span class="pre">.birdnet-resume</span></code> folder inside the output
+directory (or inside the input directory, if no separate output directory was
+chosen). To continue an interrupted run, simply start the same analysis again:</p>
+<ul class="simple">
+<li><p><strong>CLI</strong>: re-run the same <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.analyze</span></code> command with the same
+arguments and output folder.</p></li>
+<li><p><strong>GUI</strong>: in the batch analysis tab, select the same input and output folders. A
+status line shows how many files were already completed and the start button
+changes to <strong>Continue analysis</strong>.</p></li>
+</ul>
+<p>Files that were already analyzed are skipped, the remaining files are processed, and
+the output files are written for the complete set. After a successful run the
+journal folder is deleted, so a finished analysis leaves nothing behind.</p>
+</section>
+<section id="which-settings-have-to-match">
+<h2>Which settings have to match<a class="headerlink" href="#which-settings-have-to-match" title="Link to this heading"></a></h2>
+<p>The journal records a fingerprint of every setting that affects <em>which detections
+are produced</em>: the input directory, the model and its version, a custom classifier,
+minimum confidence, top-N, sensitivity, overlap, the bandpass frequencies, audio
+speed, latitude/longitude/week, a custom species list, the species filter threshold,
+and the species-name language.</p>
+<p>A run only continues if all of these match the interrupted run. If any of them
+changed, the stored progress is discarded and the analysis starts from the beginning
+— results produced with different settings are never mixed.</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>The GUI does not restore the settings of the interrupted run when you click
+<strong>Continue analysis</strong> — it uses whatever is currently set in the interface. If
+you changed one of the settings listed above in the meantime, the saved progress
+is discarded and the analysis silently starts over. Loading the <code class="docutils literal notranslate"><span class="pre">*-params.csv</span></code>
+file written next to the results restores the original settings.</p>
+</div>
+<p>Settings that only affect how results are <em>formatted</em> may change freely between the
+interrupted run and its resume: the output formats, additional columns, table
+splitting, merging of consecutive detections, batch size, and the number of workers
+and producers. The journal stores raw detections, so the outputs are always written
+with the settings of the resuming run.</p>
+</section>
+<section id="changed-and-added-files">
+<h2>Changed and added files<a class="headerlink" href="#changed-and-added-files" title="Link to this heading"></a></h2>
+<p>Each stored result is keyed on the input file’s path <em>and</em> its size and modification
+time. A file that changed on disk since it was first analyzed — edited, regenerated,
+or merely touched — is re-analyzed instead of reusing the stale result. Files added
+to the input directory are picked up and analyzed; stored results for files that no
+longer exist are ignored.</p>
+</section>
+<section id="how-it-works-internally">
+<h2>How it works internally<a class="headerlink" href="#how-it-works-internally" title="Link to this heading"></a></h2>
+<p>The implementation lives in <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer/analyze/resume.py</span></code>. The journal
+directory contains:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> — the parameter fingerprint (a hash over the detection-relevant
+settings), a human-readable snapshot of those settings, the total file count, and
+the model metadata needed to write outputs when a resume finds no work left.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">results/&lt;key&gt;.parquet</span></code> — one file per completed input file, holding that file’s
+detections. <code class="docutils literal notranslate"><span class="pre">&lt;key&gt;</span></code> hashes the input path plus its size and modification time.
+Files the inference library reported as unprocessable are stored with an
+<code class="docutils literal notranslate"><span class="pre">.invalid.parquet</span></code> suffix so a resume does not retry them.</p></li>
+</ul>
+<p>While an analysis runs, the <code class="docutils literal notranslate"><span class="pre">birdnet</span></code> library invokes an <code class="docutils literal notranslate"><span class="pre">on_file_complete</span></code>
+callback after each finished file, off the inference hot path. The callback writes
+the file’s detections to a temporary name and moves it into place atomically, so a
+result file’s presence <em>is</em> the “this file is done” marker — a crash can never leave
+a half-written result that a resume would trust. The callback never raises: a
+persistence problem (a full disk, say) costs the resumability of that one file, not
+the running analysis.</p>
+<p>On the next run, <code class="docutils literal notranslate"><span class="pre">analyze()</span></code> opens the journal before inference starts. A journal
+whose fingerprint does not match the current settings is wiped and replaced. With a
+matching fingerprint, the completed files are removed from the inference input, the
+remaining files are analyzed (journaled the same way), and the stored detections are
+merged with the fresh ones in input order — so outputs that accumulate offsets
+across files, like the combined Raven table, come out exactly as they would from an
+uninterrupted run. If every file was already completed, no inference happens at all
+and the outputs are rebuilt from the journal alone, using the model metadata saved
+in the manifest. Once the outputs are written, the journal is deleted.</p>
+<p>The GUI builds on the same mechanism: <strong>Pause</strong> cancels the running inference
+session while leaving the journal in place, and selecting the input/output folders
+calls <code class="docutils literal notranslate"><span class="pre">ResumeJournal.inspect()</span></code> to display the paused progress and relabel the
+start button.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sensitivity.html" class="btn btn-neutral float-left" title="Sensitivity" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../faq.html" class="btn btn-neutral float-right" title="FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, BirdNET-Team.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
