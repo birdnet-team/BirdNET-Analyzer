@@ -8,6 +8,23 @@ GUI installer
 
 You can download the latest BirdNET-Analyzer installer for Windows and MacOS from our `Releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_. This installer provides an easy setup process for running BirdNET-Analyzer on your system. Make sure to check to select the correct installer for your system.
 
+Windows package manager (winget)
+--------------------------------
+
+On Windows, once the package is published in the Windows Package Manager, you can install BirdNET-Analyzer with:
+
+.. code-block:: powershell
+
+   winget install BirdNET-Team.BirdNETAnalyzer
+
+To upgrade later:
+
+.. code-block:: powershell
+
+   winget upgrade BirdNET-Team.BirdNETAnalyzer
+
+For maintainers, this repository contains a release workflow in `.github/workflows/winget.yml` that submits an updated Winget manifest PR based on the current GitHub release assets (via wingetcreate), ready for review/merge in winget-pkgs.
+
 .. note::
     | Installation was only tested on M1 and M2 chips.
     | Feedback on older Intel CPUs or newer M3 chips is welcome!
