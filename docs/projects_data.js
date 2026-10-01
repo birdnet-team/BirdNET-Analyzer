@@ -952,16 +952,16 @@ var projects_data = [
   "Species Icon": "feather"
 },
 {
-  "Project name": "NWE-Monitoring",
-  "Organization/Project lead": "Northwest German Forest Research Institute- David Singer, Jonas Hagge",
+  "Project name": "Biodiversity monitoring in forests under natural development",
+  "Organization/Project lead": "Northwest German Forest Research Institute - David Singer, Jonas Hagge",
   "Target species": "Birds",
   "Country": "Germany",
   "Region/Location": "Lower-Saxony",
   "Latitude": 52.4,
   "Longitude": 9.8,
   "Contact": "david.singer@nw-fva.de",
-  "Website": "https://www.nw-fva.de/forschen/projekte/nwe-monitoring-ni",
-  "Paper": null,
+  "Website": "https://doi.org/10.5281/zenodo.14535158",
+  "Paper": "https://doi.org/10.1007/s10336-025-02307-y",
   "Species Image": "_static/dummy_birds_image.png",
   "Species Image Credit": "ChatGPT",
   "Species Icon": "feather"
@@ -979,6 +979,36 @@ var projects_data = [
   "Paper": "https://zslpublications.onlinelibrary.wiley.com/doi/10.1002/rse2.385",
   "Species Image": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Wryneck_by_Pepe_Reigada.jpg",
   "Species Image Credit": "Pepe Reigada, via Wikimedia Commons",
+  "Species Icon": "feather"
+},
+{
+  "Project name": "Biodiversity monitoring - Wildnisgebiet Solling",
+  "Organization/Project lead": "Northwest German Forest Research Institute - David Singer",
+  "Target species": "Birds",
+  "Country": "Germany",
+  "Region/Location": "Lower-Saxony, Solling",
+  "Latitude": 51.713,
+  "Longitude": 9.678,
+  "Contact": "david.singer@nw-fva.de",
+  "Website": "https://www.nw-fva.de/forschen/projekte/wildnisgebiet-solling",
+  "Paper": null,
+  "Species Image": "https://www.nw-fva.de/fileadmin/_processed_/7/b/csm_Wildnis_Naturwald_Limker_Strang_DSinger_1200_6a3c7e65e6.jpg",
+  "Species Image Credit": "David Singer",
+  "Species Icon": "feather"
+},
+{
+  "Project name": "Bird monitoring - Mittelwald Liebenburg",
+  "Organization/Project lead": "Northwest German Forest Research Institute - David Singer",
+  "Target species": "Birds",
+  "Country": "Germany",
+  "Region/Location": "Lower-Saxony",
+  "Latitude": 51.983,
+  "Longitude": 10.415,
+  "Contact": "david.singer@nw-fva.de",
+  "Website": "https://www.nw-fva.de/forschen/projekte/win-1",
+  "Paper": null,
+  "Species Image": "https://www.nw-fva.de/fileadmin/_processed_/2/3/csm_WIN_1a_AMolder_1200_2830a80628.jpg",
+  "Species Image Credit": "Andreas Mölder",
   "Species Icon": "feather"
 },
 {
