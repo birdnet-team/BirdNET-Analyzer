@@ -7,14 +7,18 @@ import csv
 import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 import keras
 import numpy as np
 import tensorflow as tf
+from birdnet.acoustic.models.v2_4.model import AcousticModelV2_4
 from birdnet.acoustic.models.v2_4.pb import AcousticPBDownloaderV2_4
+from birdnet.acoustic.models.v3_0.model import AcousticModelV3_0
+from birdnet.acoustic.models.v3_0.pb import AcousticPBDownloaderV3_0
 
-from birdnet_analyzer.config import RANDOM_SEED
+from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION, RANDOM_SEED
 from birdnet_analyzer.train import custom_models
 
 if TYPE_CHECKING:
@@ -27,14 +31,81 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 EMPTY_CLASS_EXCEPTION_REF = None
 
 
+@dataclass(frozen=True)
+class BaseModel:
+    """The BirdNET model a custom classifier is trained on and exported with."""
+
+    version: str
+    segment_samples: int
+    sample_rate: int
+    embeddings_dim: int
+    # 3.0 applies the sigmoid inside its graph and outputs probabilities, so every
+    # export built on it does the same. 2.4 outputs logits; the pipeline's sigmoid
+    # (and with it the sensitivity setting) applies to those.
+    outputs_probabilities: bool
+
+    def load(self):
+        """The SavedModel and its English labels; downloads the model on first use."""
+        downloader = (
+            AcousticPBDownloaderV2_4
+            if self.version == "2.4"
+            else AcousticPBDownloaderV3_0
+        )
+        path, labels = downloader.get_model_path_and_labels("en_us")
+
+        return tf.saved_model.load(str(path)), list(labels)
+
+
+_BASE_MODELS = {
+    "2.4": BaseModel(
+        "2.4",
+        AcousticModelV2_4.get_segment_size_samples(),
+        AcousticModelV2_4.get_sample_rate(),
+        AcousticModelV2_4.get_embeddings_dim(),
+        outputs_probabilities=False,
+    ),
+    "3.0": BaseModel(
+        "3.0",
+        AcousticModelV3_0.get_segment_size_samples(),
+        AcousticModelV3_0.get_sample_rate(),
+        AcousticModelV3_0.get_embeddings_dim(),
+        outputs_probabilities=True,
+    ),
+}
+
+
+def base_model(version: str) -> BaseModel:
+    if version not in _BASE_MODELS:
+        raise ValueError(
+            f"Unsupported BirdNET version for training: {version}. "
+            f"Supported versions are: {', '.join(_BASE_MODELS)}."
+        )
+
+    return _BASE_MODELS[version]
+
+
+def version_for_embeddings_dim(dim: int) -> str:
+    """The BirdNET version whose embeddings are ``dim`` wide.
+
+    Caches written before training recorded the version identify their base model by
+    nothing else.
+    """
+    for base in _BASE_MODELS.values():
+        if base.embeddings_dim == dim:
+            return base.version
+
+    raise ValueError(f"No BirdNET model has {dim}-dimensional embeddings.")
+
+
 class WrappedSavedModel(keras.layers.Layer):
-    def __init__(self, fn):
+    def __init__(self, pb_model, version: str, output: str):
         super().__init__()
-        self.fn = fn
+        self.fn, self.input_key, self.output_key = custom_models.base_signature(
+            pb_model, version, output
+        )
 
     def call(self, inputs):
-        outputs = self.fn(inputs)
-        return list(outputs.values())[0]
+        return self.fn(**{self.input_key: inputs})[self.output_key]
 
 
 def get_empty_class_exception():
@@ -619,33 +690,53 @@ def save_linear_classifier(
     model_path: str,
     labels: list[str],
     mode: Literal["replace", "append"] = "replace",
+    version: str = DEFAULT_ACOUSTIC_MODEL_VERSION,
 ):
     """Saves the classifier as a tflite model, as well as the used labels in a .txt.
+
+    On the 3.0 base the export mirrors the official 3.0 tflite model: input ``x`` and
+    the named outputs ``predictions`` (probabilities) and ``embeddings``. On 2.4 the
+    single output holds logits, as the 2.4 model does.
 
     Args:
         classifier: The custom classifier.
         model_path: Path the model will be saved at.
         labels: List of labels used for the classifier.
+        mode: Whether the classifier replaces the base model's classes or is appended
+            to them.
+        version: The BirdNET version the classifier was trained on.
     """
     if mode not in ("replace", "append"):
         raise ValueError("Model save mode must be either 'replace' or 'append'")
 
-    saved_model_path, original_labels = (
-        AcousticPBDownloaderV2_4.get_model_path_and_labels("en_us")
-    )
-    saved_model = tf.saved_model.load(saved_model_path)
-    inputs = keras.Input(shape=(144000,), dtype=tf.float32, name="input_audio")
-    wrapper = WrappedSavedModel(saved_model.signatures["embeddings"])(inputs)
+    base = base_model(version)
+    saved_model, original_labels = base.load()
 
-    if mode == "replace":
-        output = classifier(wrapper)
-    elif mode == "append":
-        basic = WrappedSavedModel(saved_model.signatures["basic"])(inputs)
-        output = keras.layers.concatenate(
-            [basic, classifier(wrapper)], name="combined_output"
+    if base.outputs_probabilities:
+        inputs = keras.Input(shape=(base.segment_samples,), dtype=tf.float32, name="x")
+        embeddings = WrappedSavedModel(saved_model, version, "embeddings")(inputs)
+        output = keras.layers.Activation("sigmoid")(classifier(embeddings))
+
+        if mode == "append":
+            basic = WrappedSavedModel(saved_model, version, "predictions")(inputs)
+            output = keras.layers.concatenate([basic, output])
+
+        outputs = {
+            "predictions": keras.layers.Identity(name="predictions")(output),
+            "embeddings": keras.layers.Identity(name="embeddings")(embeddings),
+        }
+    else:
+        inputs = keras.Input(
+            shape=(base.segment_samples,), dtype=tf.float32, name="input_audio"
         )
+        embeddings = WrappedSavedModel(saved_model, version, "embeddings")(inputs)
+        outputs = classifier(embeddings)
 
-    combined_model = keras.Model(inputs=inputs, outputs=output, name="basic")
+        if mode == "append":
+            basic = WrappedSavedModel(saved_model, version, "predictions")(inputs)
+            outputs = keras.layers.concatenate([basic, outputs], name="combined_output")
+
+    combined_model = keras.Model(inputs=inputs, outputs=outputs, name="basic")
 
     if not model_path.endswith(".tflite"):
         model_path += ".tflite"
@@ -672,7 +763,7 @@ def save_raven_model(
     mode: Literal["replace", "append"] = "replace",
     sig_fmin=0,
     sig_fmax=15000,
-    model_version="2.4",
+    version: str = DEFAULT_ACOUSTIC_MODEL_VERSION,
 ):
     """
     Save a TensorFlow model with a custom classifier and associated metadata for use
@@ -684,6 +775,7 @@ def save_raven_model(
         labels (list[str]): A list of labels associated with the classifier.
         mode (str, optional): The mode for saving the model. Can be either "replace" or
             "append". Defaults to "replace".
+        version: The BirdNET version the classifier was trained on.
 
     Raises:
         ValueError: If the mode is not "replace" or "append".
@@ -692,19 +784,21 @@ def save_raven_model(
         None
     """
 
-    saved_model_path, original_labels = (
-        AcousticPBDownloaderV2_4.get_model_path_and_labels("en_us")
-    )
-    saved_model = tf.saved_model.load(saved_model_path)
+    base = base_model(version)
+    saved_model, original_labels = base.load()
     model_cls = (
         custom_models.CombinedModelAppendWithSigmoid
         if mode == "append"
         else custom_models.CombinedModelReplaceWithSigmoid
     )
-    combined_model = model_cls(saved_model, classifier)
+    combined_model = model_cls(
+        saved_model, classifier, version, base.outputs_probabilities
+    )
 
     @tf.function(
-        input_signature=[tf.TensorSpec(shape=[None, 144000], dtype=tf.float32)]
+        input_signature=[
+            tf.TensorSpec(shape=[None, base.segment_samples], dtype=tf.float32)
+        ]
     )  # pyright: ignore[reportCallIssue]
     def basic(inputs):
         return {"scores": combined_model(inputs)}
@@ -758,7 +852,7 @@ def save_raven_model(
         modelconfig = {
             "specVersion": 1,
             "modelDescription": "Custom classifier trained with BirdNET "
-            + model_version
+            + version
             + " embeddings.\n"
             + "BirdNET was developed by the K. Lisa Yang Center for Conservation "
             + "Bioacoustics at the Cornell Lab of Ornithology in collaboration with "
@@ -770,7 +864,7 @@ def save_raven_model(
                     "modelInputs": [
                         {
                             "inputName": "inputs",
-                            "sampleRate": 48000.0,
+                            "sampleRate": float(base.sample_rate),
                             "inputConfig": ["batch", "samples"],
                         }
                     ],
@@ -787,14 +881,21 @@ def save_detached_classifier(
     classifier,
     model_path: str,
     labels: list[str] | None = None,
+    version: str = DEFAULT_ACOUSTIC_MODEL_VERSION,
 ):
     """Saves the detached classifier head as pb and tflite models.
+
+    The head takes the base model's embeddings and scores them the way that base
+    does: probabilities on 3.0, logits on 2.4.
 
     Args:
         classifier: The custom classifier.
         model_path: Path the model will be saved at.
         labels: List of labels to save for the detached classifier.
+        version: The BirdNET version the classifier was trained on.
     """
+    base = base_model(version)
+
     if model_path.endswith(".tflite"):
         model_path = model_path.removesuffix(".tflite")
 
@@ -803,9 +904,14 @@ def save_detached_classifier(
     detached_classifier_path = model_path + "_detached"
 
     detached_model_inputs = keras.Input(
-        shape=(1024,), dtype=tf.float32, name="detached_input"
+        shape=(base.embeddings_dim,), dtype=tf.float32, name="detached_input"
     )
     detached_model_outputs = classifier(detached_model_inputs)
+
+    if base.outputs_probabilities:
+        detached_model_outputs = keras.layers.Activation("sigmoid")(
+            detached_model_outputs
+        )
     detached_model = keras.Model(
         inputs=detached_model_inputs,
         outputs=detached_model_outputs,

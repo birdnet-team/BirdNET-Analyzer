@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "Repetições",
     "training-tab-autotune-trials-number-info": "Número de iterações de treinamento para ajuste de hiperparâmetros.",
     "training-tab-autotune-trials-number-label": "Iterações",
+    "training-tab-base-model-radio-info": "Versão do BirdNET na qual o classificador é treinado. Seus embeddings são a entrada do classificador, por isso ele só funciona com esta versão. Ao carregar um arquivo de cache, é usada a versão com a qual ele foi criado.",
+    "training-tab-base-model-radio-label": "Modelo base",
     "training-tab-batchsize-number-info": "Número de amostras a serem processadas em um lote.",
     "training-tab-batchsize-number-label": "Tamanho do lote (Batch size)",
     "training-tab-cache-file-name-textbox-info": "O nome do arquivo de cache.",

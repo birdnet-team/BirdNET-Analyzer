@@ -740,22 +740,28 @@ def build_settings():
         settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
 
 
-def model_choices():
-    """Returns the models that can be selected on the current platform.
+def birdnet_model_choices() -> list[tuple[str, str]]:
+    """The BirdNET acoustic models as ``(label, version)``, newest first.
 
-    The known BirdNET acoustic versions (newest first) are filtered down to those the
-    installed birdnet library ships, so a dropped version stops being offered without a
-    code change. A brand-new major version still needs a label added here.
+    The known versions are filtered down to those the installed birdnet library ships,
+    so a dropped version stops being offered without a code change. A brand-new major
+    version still needs a label added here.
     """
     available = get_args(ACOUSTIC_MODEL_VERSIONS)
-    birdnet_models = [
-        label
+
+    return [
+        (label, version)
         for label, version in (
             (_USE_BIRDNET_3_0, "3.0"),
             (_USE_BIRDNET_2_4, "2.4"),
         )
         if version in available
     ]
+
+
+def model_choices():
+    """Returns the models that can be selected on the current platform."""
+    birdnet_models = [label for label, _ in birdnet_model_choices()]
 
     values = [*birdnet_models, _CUSTOM_CLASSIFIER, _USE_PERCH]
 

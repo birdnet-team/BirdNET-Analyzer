@@ -209,7 +209,18 @@ def test_train_params_are_read_back_as_train_arguments(tmp_path):
         "focal_loss_alpha": 0.25,
         "upsampling_mode": "repeat",
         "upsampling_ratio": 0.5,
+        "birdnet": "2.4",
     }
+
+
+def test_an_unknown_model_version_is_left_out(tmp_path):
+    file = tall_file(
+        tmp_path,
+        train_values(**{"BirdNET model version": "9.9"}),
+        name="MyClassifier.birdnet.train-params.csv",
+    )
+
+    assert "birdnet" not in params.load_train_params(file)
 
 
 def test_an_old_train_params_file_is_still_understood(tmp_path):
@@ -250,6 +261,7 @@ def test_an_old_train_params_file_is_still_understood(tmp_path):
         "use_focal_loss": False,
         "focal_loss_alpha": 0.25,
         "focal_loss_gamma": 2.0,
+        "birdnet": "2.4",
     }
 
 

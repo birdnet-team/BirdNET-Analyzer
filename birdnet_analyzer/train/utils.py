@@ -13,21 +13,23 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import tqdm
-from birdnet import load
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from birdnet_analyzer import audio, model, model_utils, utils
 from birdnet_analyzer.config import (
     ALLOWED_FILETYPES,
     AUTOTUNE_METRICS,
+    DEFAULT_ACOUSTIC_MODEL_VERSION,
     NON_EVENT_CLASSES,
     TRAIN_PARAMS_SUFFIX,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
 
-# On CPU the tflite model resizes its input tensor when the batch shape changes, so
-# small batches encode fastest (~24 ms/segment at 1-4, ~42 ms at 32 on BirdNET 2.4).
-ENCODE_BATCH_SIZE = 4
+# Encode batch size per base model, measured on CPU inside a warm session: the 2.4
+# tflite interpreter re-plans on every batch-shape change, so small batches win
+# (16 ms/segment at 1-4, 34 ms at 32); the 3.0 ONNX model gains from large ones
+# (210 ms/segment at 1, 111 ms at 32).
+ENCODE_BATCH_SIZES = {"2.4": 4, "3.0": 32}
 # Decoded segments buffered before a batched encode flush. Bounds peak buffered-audio
 # memory (~0.5 MiB per 3 s float32 segment at 48 kHz) while amortising call overhead.
 ENCODE_CHUNK_SIZE = 1024
@@ -193,6 +195,7 @@ def _load_training_data(
     threads=1,
     save_cache_to: str | None = None,
     progress_callback=None,
+    model_version: str = DEFAULT_ACOUSTIC_MODEL_VERSION,
 ):
     """Loads the data for training.
 
@@ -217,9 +220,13 @@ def _load_training_data(
         crop_mode: Mode for cropping audio samples. Defaults to "center".
         overlap: Overlap between audio chunks. Defaults to 0.0.
         min_len: Minimum length of audio chunks. Defaults to 1.0.
+        model_version: The BirdNET version whose embeddings become the samples. A
+                       cache file was embedded with a fixed version, which is
+                       returned instead.
 
     Returns:
-        A tuple of (x_train, y_train, x_test, y_test, labels, is_binary, is_multi_label)
+        A tuple of (x_train, y_train, x_test, y_test, labels, is_binary, is_multi_label,
+        model_version)
     """
 
     if audio_input.endswith(".npz"):
@@ -272,8 +279,10 @@ def _load_training_data(
     _check_input_folders(audio_input, train_folders)
 
     x_train, y_train, x_test, y_test = [], [], [], []
-    model = load("acoustic", "2.4", "tf")
-    model_sr = int(model.get_sample_rate())
+    # Fail here rather than at export time, after the data has been embedded.
+    model.base_model(model_version)
+    acoustic_model = model_utils._load_acoustic_for_embeddings(model_version)
+    model_sr = int(acoustic_model.get_sample_rate())
 
     # librosa/scipy release the GIL for the heavy numeric work, so threaded decode
     # workers parallelise well without multiprocessing's pickling/spawn overhead.
@@ -282,8 +291,8 @@ def _load_training_data(
     # Bandpass and speed are already applied in open_audio_file (see
     # _read_and_crop_file), so the encoding session uses no-op defaults (fmin=0,
     # fmax=15000, speed=1.0) to avoid applying them twice.
-    with model.encode_session(
-        batch_size=ENCODE_BATCH_SIZE,
+    with acoustic_model.encode_session(
+        batch_size=ENCODE_BATCH_SIZES[model_version],
         n_workers=None,
         n_producers=1,
         progress_callback=None,
@@ -426,11 +435,21 @@ def _load_training_data(
                 crop_mode=crop_mode,
                 is_binary=is_binary,
                 is_multi_label=is_multi_label,
+                model_version=model_version,
             )
         except Exception as e:
             logger.warning(f"\t...error saving cache: {e}")
 
-    return x_train, y_train, x_test, y_test, valid_labels, is_binary, is_multi_label
+    return (
+        x_train,
+        y_train,
+        x_test,
+        y_test,
+        valid_labels,
+        is_binary,
+        is_multi_label,
+        model_version,
+    )
 
 
 def train_model(
@@ -466,6 +485,7 @@ def train_model(
     autotune_n_splits: int = 1,
     autotune_n_repeats: int = 1,
     autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
+    birdnet: str = DEFAULT_ACOUSTIC_MODEL_VERSION,
     on_epoch_end=None,
     on_trial_result=None,
     on_data_load_end=None,
@@ -473,6 +493,9 @@ def train_model(
     """Trains a custom classifier.
 
     Args:
+        birdnet: The BirdNET version to train on. Its embeddings are the classifier's
+            input, so the classifier only works with that version. A cache file keeps
+            the version it was embedded with.
         on_epoch_end: A callback function that takes two arguments `epoch`, `logs`.
         on_trial_result: A callback function for hyperparameter tuning.
         on_data_load_end: A callback function for data loading progress.
@@ -492,6 +515,7 @@ def train_model(
         labels,
         is_binary,
         is_multi_label,
+        version,
     ) = _load_training_data(
         audio_input,
         test_data=test_data,
@@ -506,7 +530,17 @@ def train_model(
         threads=threads,
         save_cache_to=save_cache_to,
         progress_callback=on_data_load_end,
+        model_version=birdnet,
     )
+
+    if version != birdnet:
+        logger.warning(
+            "The training data cache holds BirdNET %s embeddings; training on that "
+            "version instead of %s.",
+            version,
+            birdnet,
+        )
+
     logger.info(
         f"...Done. Loaded {x_train_full.shape[0]} training samples "
         f"and {y_train_full.shape[1]} labels."
@@ -805,21 +839,21 @@ def train_model(
                 "Focal loss alpha": focal_loss_alpha,
                 "Upsampling mode": upsampling_mode,
                 "Upsampling ratio": upsampling_ratio,
-                "BirdNET model version": "2.4",
+                "BirdNET model version": version,
             },
         )
 
         if "tflite" in formats:
             model.save_linear_classifier(
-                classifier, output, labels, mode=model_save_mode
+                classifier, output, labels, mode=model_save_mode, version=version
             )
         if "raven" in formats:
-            model.save_raven_model(classifier, output, labels, mode=model_save_mode)
+            model.save_raven_model(
+                classifier, output, labels, mode=model_save_mode, version=version
+            )
         if "detached" in formats:
             model.save_detached_classifier(
-                classifier,
-                output,
-                labels=labels,
+                classifier, output, labels=labels, version=version
             )
     except Exception as e:
         raise Exception("Error saving model") from e
@@ -1119,6 +1153,7 @@ def _save_to_cache(
     crop_mode="center",
     is_binary=False,
     is_multi_label=False,
+    model_version: str = DEFAULT_ACOUSTIC_MODEL_VERSION,
 ):
     """Saves training data to cache.
 
@@ -1136,6 +1171,7 @@ def _save_to_cache(
         crop_mode: Mode for cropping samples.
         is_binary: Whether it's a binary classification task.
         is_multi_label: Whether it's a multi-label classification task.
+        model_version: The BirdNET version the samples were embedded with.
     """
     import numpy as np
 
@@ -1157,6 +1193,7 @@ def _save_to_cache(
         audio_speed=audio_speed,
         crop_mode=crop_mode,
         overlap=overlap,
+        model_version=model_version,
     )
 
 
@@ -1167,7 +1204,8 @@ def _load_from_cache(path):
         path: Path to the cache file.
 
     Returns:
-        A tuple of (x_train, y_train, labels, binary_classification, multi_label).
+        A tuple of (x_train, y_train, x_test, y_test, labels, binary_classification,
+        multi_label, model_version).
     """
     import numpy as np
 
@@ -1179,5 +1217,19 @@ def _load_from_cache(path):
     labels = data["labels"]
     binary_classification = bool(data.get("binary_classification", False))
     multi_label = bool(data.get("multi_label", False))
+    model_version = (
+        str(data["model_version"])
+        if "model_version" in data
+        else model.version_for_embeddings_dim(x_train.shape[1])
+    )
 
-    return x_train, y_train, x_test, y_test, labels, binary_classification, multi_label
+    return (
+        x_train,
+        y_train,
+        x_test,
+        y_test,
+        labels,
+        binary_classification,
+        multi_label,
+        model_version,
+    )

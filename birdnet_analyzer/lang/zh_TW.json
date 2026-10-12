@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "重複次數",
     "training-tab-autotune-trials-number-info": "模型的訓練次數，用來微調模型的超參數",
     "training-tab-autotune-trials-number-label": "試驗數量",
+    "training-tab-base-model-radio-info": "訓練分類器所基於的 BirdNET 版本。其嵌入向量是分類器的輸入，因此分類器只能與此版本搭配使用。載入快取檔案時，會使用建立該檔案時的版本。",
+    "training-tab-base-model-radio-label": "基礎模型",
     "training-tab-batchsize-number-info": "在同一時間分析的音檔數量",
     "training-tab-batchsize-number-label": "批次量",
     "training-tab-cache-file-name-textbox-info": "指定快取檔案名稱",

@@ -703,6 +703,12 @@ def train_parser():
         help="Crop mode for training data. Can be 'center', 'first', 'segments' or 'smart'.",
     )
     parser.add_argument(
+        "--birdnet",
+        default=DEFAULT_ACOUSTIC_MODEL_VERSION,
+        choices=get_args(ACOUSTIC_MODEL_VERSIONS),
+        help="BirdNET version to train on. Its embeddings are the classifier's input, so the classifier only works with this version. A cache file keeps the version it was created with.",
+    )
+    parser.add_argument(
         "-o", "--output", default=c, help="Path to trained classifier model output."
     )
     parser.add_argument(

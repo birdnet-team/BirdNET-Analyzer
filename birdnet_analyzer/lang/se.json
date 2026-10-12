@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "Upprepningar",
     "training-tab-autotune-trials-number-info": "Antal träningskörningar för hyperparameterjustering.",
     "training-tab-autotune-trials-number-label": "Försök",
+    "training-tab-base-model-radio-info": "BirdNET-version som klassificeraren tränas på. Dess inbäddningar är klassificerarens indata, så klassificeraren fungerar bara med den här versionen. När en cachefil läses in används versionen som den skapades med.",
+    "training-tab-base-model-radio-label": "Basmodell",
     "training-tab-batchsize-number-info": "Antal prover att bearbeta i en batch.",
     "training-tab-batchsize-number-label": "Batchstorlek",
     "training-tab-cache-file-name-textbox-info": "Namnet på cachfilen.",

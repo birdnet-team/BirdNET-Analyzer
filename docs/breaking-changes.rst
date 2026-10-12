@@ -124,13 +124,21 @@ Perch is selected.
 sensitivity, select the 2.4 model (``--birdnet 2.4``).
 
 
-Custom classifiers and training stay on the 2.4 base
-----------------------------------------------------
+Training defaults to the 3.0 base
+---------------------------------
 
-**What changed / consequence.** Training and custom classifiers still use the 2.4 model
-and its embeddings; 3.0 training is not yet supported. A custom classifier is therefore
-loaded on the 2.4 base regardless of the default acoustic model. This behaviour is
-unchanged, but is worth noting now that 3.0 is the default elsewhere.
+**What changed.** ``birdnet_analyzer.train`` takes ``--birdnet {3.0,2.4}`` (the train
+tab a "Base model" choice) and trains on BirdNET 3.0 unless told otherwise. All output
+formats (tflite, Raven, detached) are available on both bases. A classifier only works
+with the version it was trained on; that version is recorded in the
+``*.birdnet.train-params.csv`` and in training data caches, and a cache is always
+trained on the version it was created with.
+
+**Consequence.** Classifiers trained on 3.0 output probabilities like the 3.0 model,
+so ``--sensitivity`` does not apply to them. Pass ``--birdnet 2.4`` to keep training
+2.4 classifiers, which behave as before. Analyzing with a 3.0-based classifier needs a
+birdnet library version that can load such classifiers; until then analysis supports
+2.4-based classifiers only.
 
 The default output location for a trained classifier is now
 ``checkpoints/custom/Custom_Classifier`` **relative to the current working directory**

@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "Wiederholungen",
     "training-tab-autotune-trials-number-info": "Anzahl der Trainingsläufe für die Hyperparametersuche.",
     "training-tab-autotune-trials-number-label": "Versuche",
+    "training-tab-base-model-radio-info": "BirdNET-Version, auf der der Klassifikator trainiert wird. Seine Embeddings sind die Eingabe des Klassifikators, daher funktioniert dieser nur mit dieser Version. Beim Laden einer Cache-Datei wird die Version verwendet, mit der sie erstellt wurde.",
+    "training-tab-base-model-radio-label": "Basismodell",
     "training-tab-batchsize-number-info": "Anzahl der Samples, die in einem Batch verarbeitet werden.",
     "training-tab-batchsize-number-label": "Batch-Größe",
     "training-tab-cache-file-name-textbox-info": "Der Name der Cache-Datei.",

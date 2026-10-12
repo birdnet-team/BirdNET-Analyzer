@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "Повторения",
     "training-tab-autotune-trials-number-info": "Количество тренировок для настройки гиперпараметров.",
     "training-tab-autotune-trials-number-label": "Тренировка",
+    "training-tab-base-model-radio-info": "Версия BirdNET, на которой обучается классификатор. Её эмбеддинги служат входом классификатора, поэтому он работает только с этой версией. При загрузке файла кэша используется версия, с которой он был создан.",
+    "training-tab-base-model-radio-label": "Базовая модель",
     "training-tab-batchsize-number-info": "Количество образцов для обработки в пакете.",
     "training-tab-batchsize-number-label": "Объем пакета",
     "training-tab-cache-file-name-textbox-info": "Имя файла кэша.",

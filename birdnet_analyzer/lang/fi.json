@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "Toistot",
     "training-tab-autotune-trials-number-info": "Koulutusajojen määrä hyperparametrien virittämiseen.",
     "training-tab-autotune-trials-number-label": "Kokeilut",
+    "training-tab-base-model-radio-info": "BirdNET-versio, jolla luokitin koulutetaan. Sen upotukset ovat luokittimen syöte, joten luokitin toimii vain tämän version kanssa. Välimuistitiedostoa ladattaessa käytetään versiota, jolla tiedosto luotiin.",
+    "training-tab-base-model-radio-label": "Perusmalli",
     "training-tab-batchsize-number-info": "Erässä käsiteltävien näytteiden määrä.",
     "training-tab-batchsize-number-label": "Eräkoko",
     "training-tab-cache-file-name-textbox-info": "Välimuistitiedoston nimi.",

@@ -14,7 +14,9 @@ components in :mod:`birdnet_analyzer.gui.presets`.
 """
 
 from contextlib import suppress
-from typing import Any
+from typing import Any, get_args
+
+from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
 
 # Minimum parameters for a file to count as one. High enough to reject the other
 # command's params file (it shares a few names) and any other CSV output.
@@ -83,6 +85,13 @@ def _to_bool(raw: str) -> bool:
 
 def _to_list(raw: str) -> list[str]:
     return [entry.strip() for entry in raw.split(",") if entry.strip()]
+
+
+def _to_acoustic_version(raw: str) -> str:
+    if raw not in get_args(ACOUSTIC_MODEL_VERSIONS):
+        raise ValueError(f"Not a BirdNET version: {raw!r}")
+
+    return raw
 
 
 def load_analysis_params(path: str) -> dict[str, Any]:
@@ -191,6 +200,12 @@ def load_train_params(path: str) -> dict[str, Any]:
     parse("use_focal_loss", _to_bool, "Use focal loss", "use focal loss")
     parse("focal_loss_gamma", float, "Focal loss gamma", "focal loss gamma")
     parse("focal_loss_alpha", float, "Focal loss alpha", "focal loss alpha")
+    parse(
+        "birdnet",
+        _to_acoustic_version,
+        "BirdNET model version",
+        "BirdNET Model version",
+    )
 
     if len(values) < _MIN_RECOGNIZED_PARAMS:
         raise ValueError(f"Not a training parameters file: {path}")

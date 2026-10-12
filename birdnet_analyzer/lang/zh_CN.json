@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "重复次数",
     "training-tab-autotune-trials-number-info": "用于超参数调优的训练运行次数。",
     "training-tab-autotune-trials-number-label": "试验次数",
+    "training-tab-base-model-radio-info": "训练分类器所基于的 BirdNET 版本。其嵌入向量是分类器的输入，因此分类器只能与该版本配合使用。加载缓存文件时，将使用创建该文件时的版本。",
+    "training-tab-base-model-radio-label": "基础模型",
     "training-tab-batchsize-number-info": "一批中要处理的样本数量。",
     "training-tab-batchsize-number-label": "批大小",
     "training-tab-cache-file-name-textbox-info": "缓存文件的名称。",

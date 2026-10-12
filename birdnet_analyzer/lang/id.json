@@ -379,6 +379,8 @@
     "training-tab-autotune-repeats-number-label": "Pengulangan",
     "training-tab-autotune-trials-number-info": "Jumlah pelatihan yang dijalankan untuk penyetelan hiperparameter.",
     "training-tab-autotune-trials-number-label": "Percobaan",
+    "training-tab-base-model-radio-info": "Versi BirdNET yang digunakan untuk melatih pengklasifikasi. Embedding-nya menjadi masukan pengklasifikasi, sehingga pengklasifikasi hanya bekerja dengan versi ini. Saat memuat berkas cache, versi yang dipakai saat membuatnya akan digunakan.",
+    "training-tab-base-model-radio-label": "Model dasar",
     "training-tab-batchsize-number-info": "Jumlah sampel yang diproses dalam satu batch.",
     "training-tab-batchsize-number-label": "Ukuran batch",
     "training-tab-cache-file-name-textbox-info": "Nama cache file.",
