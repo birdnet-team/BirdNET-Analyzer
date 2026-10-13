@@ -122,6 +122,7 @@ def test_raven_export_on_3_0_scores_probabilities_at_32_khz(tmp_path):
 
     assert config["signatures"][0]["modelInputs"][0]["sampleRate"] == 32000.0
     assert "BirdNET 3.0" in config["modelDescription"]
+    assert _read_labels(tmp_path / "cc_Labels.txt") == LABELS
 
 
 @needs_3_0

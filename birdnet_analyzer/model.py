@@ -752,7 +752,11 @@ def save_linear_classifier(
     if mode == "append":
         labels = [*original_labels, *labels]
 
-    with open(model_path.replace(".tflite", "_Labels.txt"), "w", encoding="utf-8") as f:
+    _write_labels(model_path.replace(".tflite", "_Labels.txt"), labels)
+
+
+def _write_labels(path: str, labels: list[str]) -> None:
+    with open(path, "w", encoding="utf-8") as f:
         f.writelines(label + "\n" for label in labels)
 
 
@@ -822,6 +826,9 @@ def save_raven_model(
 
     if mode == "append":
         labels = [*original_labels, *labels]
+
+    # The species list birdnet reads; Raven itself uses label_names.csv below.
+    _write_labels(model_path + "_Labels.txt", labels)
 
     labelIds = [
         label[:4].replace(" ", "") + str(i) for i, label in enumerate(labels, 1)
