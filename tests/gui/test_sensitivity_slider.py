@@ -28,6 +28,14 @@ def appdir(monkeypatch, tmp_path):
     return tmp_path
 
 
+@pytest.fixture
+def perch_offered(monkeypatch):
+    """macOS drops Perch from the choices, and a persisted choice that is not
+    offered falls back to the default model."""
+    choices = [*gu.model_choices(), gu._USE_PERCH]
+    monkeypatch.setattr(gu, "model_choices", lambda: list(dict.fromkeys(choices)))
+
+
 def build():
     with gr.Blocks() as demo:
         sample, _, model = gu.sample_species_model_settings(gs.TabState("multi"))
@@ -64,7 +72,7 @@ def test_slider_disabled_for_perch_and_restored_for_birdnet(appdir):
     assert to_custom["value"] == 1.25, "the user's sensitivity comes back"
 
 
-def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir):
+def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir, perch_offered):
     settings.set_tab_setting("multi", "sensitivity_slider", 1.25)
     settings.set_tab_setting("multi", "model_selection_radio", gu._USE_PERCH)
 
@@ -73,7 +81,7 @@ def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir):
     assert slider.value == 1.0
 
 
-def test_programmatic_value_on_disabled_slider_snaps_back_to_1_0(appdir):
+def test_programmatic_value_on_disabled_slider_snaps_back_to_1_0(appdir, perch_offered):
     settings.set_tab_setting("multi", "model_selection_radio", gu._USE_PERCH)
 
     with gr.Blocks() as demo:
