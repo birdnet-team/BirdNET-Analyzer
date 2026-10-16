@@ -290,7 +290,7 @@ def sigmoid_args():
         "--sensitivity",
         type=lambda a: min(1.5, max(0.5, float(a))),
         default=1.0,
-        help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid function on the x-axis. Use complementary to the cut-off threshold. Only applies to BirdNET 2.4 and custom classifiers; ignored for BirdNET 3.0 (which applies the sigmoid inside the model) and Perch.",
+        help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid function on the x-axis. Use complementary to the cut-off threshold. Applies to every BirdNET model and custom classifier; ignored for Perch.",
     )
 
     return p
@@ -390,7 +390,7 @@ def bs_args(default=1):
         "--batch_size",
         type=lambda a: max(1, int(a)),
         default=default,
-        help="Number of samples to process at the same time.",
+        help="Number of samples to process at the same time. A custom classifier trained on BirdNET 3.0 always processes 1.",
     )
 
     return p

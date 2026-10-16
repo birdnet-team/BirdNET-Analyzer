@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import functools
 import logging
+import os
 import threading
 from contextlib import suppress
 from typing import TYPE_CHECKING, cast
@@ -309,36 +311,67 @@ def _language_for_version(language: MODEL_LANGUAGES, version: str) -> MODEL_LANG
     return MODEL_LANGUAGE_EN_US
 
 
-def supports_sensitivity(
-    model: str, version: str = "3.0", classifier: str | None = None
-) -> bool:
+def classifier_version(classifier: str) -> ACOUSTIC_MODEL_VERSIONS:
+    """The BirdNET version a custom classifier was trained on, read from its file.
+
+    Raises:
+        OSError: The file cannot be read.
+        ValueError: The file is not a BirdNET classifier (e.g. a detached head).
+    """
+    stat = os.stat(classifier)
+    info = _inspect_classifier(
+        os.path.abspath(classifier), stat.st_mtime_ns, stat.st_size
+    )
+
+    return cast("ACOUSTIC_MODEL_VERSIONS", info.version)
+
+
+@functools.lru_cache(maxsize=8)
+def _inspect_classifier(
+    path: str, mtime_ns: int, size: int
+) -> birdnet.CustomTFLiteInfo:
+    # Opened in a subprocess: ~0.3 s with litert, ~3.5 s with TensorFlow's interpreter.
+    return birdnet.inspect_custom_tflite(path, library="litert")
+
+
+def classifier_batch_size(version: str, batch_size: int) -> int:
+    """The batch size a custom classifier can take.
+
+    Classifiers trained on 3.0 inherit the base model's static batch of one segment.
+    """
+    if version == "2.4" or batch_size == 1:
+        return batch_size
+
+    logger.info(
+        "Batch size %d reduced to 1: a classifier trained on BirdNET %s processes "
+        "one segment at a time.",
+        batch_size,
+        version,
+    )
+
+    return 1
+
+
+def supports_sensitivity(model: str) -> bool:
     """Whether the selected model takes a scaled (sensitivity) sigmoid.
 
-    BirdNET 2.4 and custom classifiers (which run on the 2.4 base) do. BirdNET 3.0
-    applies the sigmoid inside the model graph, and the birdnet library rejects a
-    sensitivity other than 1.0 for it. Perch outputs logits that are normalized
-    with a softmax (not a sigmoid), so sensitivity does not apply.
-    Newer BirdNET versions are assumed to behave like 3.0 until known otherwise.
+    Every BirdNET model and custom classifier does; for one with the sigmoid in its
+    graph the birdnet library recovers the logits first. Perch outputs logits that
+    are normalized with a softmax (not a sigmoid), so sensitivity does not apply.
     """
-    if classifier:
-        return True
-
-    return model == "birdnet" and version == "2.4"
+    return model != "perch"
 
 
-def effective_sensitivity(
-    sensitivity: float, model: str, version: str = "3.0", classifier: str | None = None
-) -> float:
+def effective_sensitivity(sensitivity: float, model: str) -> float:
     """The sensitivity the analysis will use; warns if the requested one is dropped."""
-    if supports_sensitivity(model, version, classifier):
+    if supports_sensitivity(model):
         return sensitivity
 
     if sensitivity != 1.0:
         logger.warning(
-            "Sensitivity %s ignored: it only applies to BirdNET 2.4 and custom "
-            "classifiers, not to %s.",
+            "Sensitivity %s ignored: Perch normalizes its scores with a softmax, "
+            "not a sigmoid.",
             sensitivity,
-            "Perch" if model == "perch" else f"BirdNET {version}",
         )
 
     return 1.0
@@ -385,10 +418,10 @@ def run_inference(
         if not cc_species_list:
             cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
 
-        # Custom classifiers are trained on 2.4 embeddings (training does not support
-        # 3.0 yet), so they are loaded on the 2.4 base regardless of ``version``.
+        version = classifier_version(classifier)
+        batch_size = classifier_batch_size(version, batch_size)
         acoustic_model = birdnet.load_custom(
-            "acoustic", "2.4", "tf", classifier, cc_species_list
+            "acoustic", version, "tf", classifier, cc_species_list
         )
     elif model == "birdnet":
         # Coerce the locale to one this version supports (the library rejects an
@@ -427,9 +460,7 @@ def run_inference(
 
     input_files = InferenceConfig.validate_input_files(path)
 
-    sigmoid_sensitivity = effective_sensitivity(
-        sigmoid_sensitivity, model, version, classifier
-    )
+    sigmoid_sensitivity = effective_sensitivity(sigmoid_sensitivity, model)
 
     with acoustic_model.predict_session(
         top_k=top_k,

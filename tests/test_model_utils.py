@@ -66,12 +66,46 @@ def test_language_for_version_keeps_supported_and_falls_back_otherwise():
     assert model_utils._language_for_version(only_v30[0], "2.4") == MODEL_LANGUAGE_EN_US
 
 
-def test_supports_sensitivity_only_for_2_4_based_models():
-    assert model_utils.supports_sensitivity("birdnet", "2.4")
-    assert not model_utils.supports_sensitivity("birdnet", "3.1")
-    assert model_utils.supports_sensitivity("birdnet", "3.0", classifier="cc.tflite")
-    assert not model_utils.supports_sensitivity("birdnet", "3.0")
+def test_supports_sensitivity_for_every_model_but_perch():
+    assert model_utils.supports_sensitivity("birdnet")
     assert not model_utils.supports_sensitivity("perch")
+
+    assert model_utils.effective_sensitivity(1.25, "birdnet") == 1.25
+    assert model_utils.effective_sensitivity(1.25, "perch") == 1.0
+
+
+def test_classifier_version_reads_each_file_once(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    calls = []
+
+    def fake_inspect(path, *, library):
+        calls.append((path, library))
+        return SimpleNamespace(version="3.0")
+
+    monkeypatch.setattr(model_utils.birdnet, "inspect_custom_tflite", fake_inspect)
+    model_utils._inspect_classifier.cache_clear()
+    classifier = tmp_path / "cc.tflite"
+    classifier.write_bytes(b"v1")
+
+    assert model_utils.classifier_version(str(classifier)) == "3.0"
+    assert model_utils.classifier_version(str(classifier)) == "3.0"
+    assert calls == [(str(classifier), "litert")]
+
+    classifier.write_bytes(b"v2, longer")
+    assert model_utils.classifier_version(str(classifier)) == "3.0"
+    assert len(calls) == 2, "a changed file is inspected again"
+
+
+def test_classifier_version_rejects_a_missing_file():
+    with pytest.raises(FileNotFoundError):
+        model_utils.classifier_version("nowhere/cc.tflite")
+
+
+def test_classifier_batch_size_is_one_on_3_0():
+    assert model_utils.classifier_batch_size("2.4", 8) == 8
+    assert model_utils.classifier_batch_size("3.0", 8) == 1
+    assert model_utils.classifier_batch_size("3.0", 1) == 1
 
 
 def test_validate_min_conf_rejects_non_probabilities():
@@ -114,7 +148,7 @@ def test_run_inference_normalizes_perch_with_softmax(monkeypatch, tmp_path):
     assert seen["apply_sigmoid"] is False
 
 
-def test_run_inference_drops_sensitivity_for_3_0(monkeypatch, tmp_path):
+def test_run_inference_keeps_the_sensitivity_for_3_0(monkeypatch, tmp_path):
     from contextlib import contextmanager
     from unittest.mock import MagicMock
 
@@ -139,4 +173,50 @@ def test_run_inference_drops_sensitivity_for_3_0(monkeypatch, tmp_path):
     )
 
     assert result == "result"
-    assert seen["sigmoid_sensitivity"] == 1.0
+    assert seen["sigmoid_sensitivity"] == 1.25
+
+
+@pytest.mark.parametrize(
+    ("version", "batch_size", "sensitivity"), [("2.4", 4, 1.25), ("3.0", 1, 1.25)]
+)
+def test_run_inference_loads_a_classifier_on_its_own_version(
+    monkeypatch, tmp_path, version, batch_size, sensitivity
+):
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock
+
+    seen = {}
+    loaded = {}
+
+    @contextmanager
+    def fake_predict_session(**kwargs):
+        seen.update(kwargs)
+        session = MagicMock()
+        session.run.return_value = "result"
+        yield session
+
+    fake_model = MagicMock()
+    fake_model.predict_session = fake_predict_session
+
+    def fake_load_custom(model_type, loaded_version, backend, classifier, labels):
+        loaded.update(version=loaded_version, classifier=classifier, labels=labels)
+        return fake_model
+
+    monkeypatch.setattr(model_utils, "classifier_version", lambda path: version)
+    monkeypatch.setattr(model_utils.birdnet, "load_custom", fake_load_custom)
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"")
+
+    result = model_utils.run_inference(
+        str(audio), classifier="cc.tflite", batch_size=4, sigmoid_sensitivity=1.25
+    )
+
+    assert result == "result"
+    assert loaded == {
+        "version": version,
+        "classifier": "cc.tflite",
+        "labels": "cc_Labels.txt",
+    }
+    assert seen["batch_size"] == batch_size
+    assert seen["sigmoid_sensitivity"] == sensitivity

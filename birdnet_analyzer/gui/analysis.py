@@ -110,8 +110,8 @@ def run_analysis(
         custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
     )
     use_perch = selected_model == gu._USE_PERCH
-    # Custom classifiers are trained on 2.4 embeddings and perch ignores the version,
-    # so only an explicit BirdNET model choice changes the acoustic model version.
+    # Only a BirdNET model choice uses this: Perch ignores it and a custom classifier
+    # carries its own version in its file.
     birdnet_version = gu.birdnet_version(selected_model)
     slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]

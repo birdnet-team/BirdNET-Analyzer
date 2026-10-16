@@ -162,3 +162,38 @@ def test_tflite_export_on_2_4_keeps_its_single_logit_output(tmp_path, mode, n_ou
     assert list(inp["shape"]) == [1, base.segment_samples]
     assert list(out["shape"]) == [1, n_outputs]
     assert len(interpreter.get_signature_list()["serving_default"]["outputs"]) == 1
+
+
+@pytest.mark.parametrize(
+    "version",
+    [pytest.param("3.0", marks=needs_3_0), pytest.param("2.4", marks=needs_2_4)],
+)
+def test_exports_run_through_the_analysis(tmp_path, version):
+    """Batch size 2 would be rejected by birdnet for a 3.0 classifier, so the
+    analysis settles it from the file's version; the sensitivity applies on both."""
+    from birdnet_analyzer import model_utils
+
+    path = tmp_path / "cc.tflite"
+    model.save_linear_classifier(_head(version), str(path), LABELS, version=version)
+
+    def scores(sensitivity):
+        result = model_utils.run_inference(
+            "tests/data/embeddings/embeddings-dataset/s1/file01.wav",
+            classifier=str(path),
+            batch_size=2,
+            sigmoid_sensitivity=sensitivity,
+            min_confidence=0.0,
+            top_k=None,
+            n_workers=1,
+        )
+        order = np.argsort(result.species_ids, axis=-1)
+
+        return np.take_along_axis(result.species_probs, order, axis=-1)
+
+    assert model_utils.classifier_version(str(path)) == version
+    plain = scores(1.0)
+    raised = scores(1.25)
+    assert plain.shape[-1] == len(LABELS)
+    assert np.isfinite(plain).all()
+    assert (raised >= plain).all()
+    assert (raised > plain).any()

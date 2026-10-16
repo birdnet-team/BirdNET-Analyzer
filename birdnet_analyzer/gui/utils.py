@@ -97,13 +97,7 @@ def model_supports_sensitivity(model_choice: str) -> bool:
     """Whether the sensitivity slider applies to the selected model choice."""
     from birdnet_analyzer.model_utils import supports_sensitivity
 
-    if model_choice == _CUSTOM_CLASSIFIER:
-        return True
-
-    if model_choice == _USE_PERCH:
-        return False
-
-    return supports_sensitivity("birdnet", birdnet_version(model_choice))
+    return supports_sensitivity("perch" if model_choice == _USE_PERCH else "birdnet")
 
 
 def model_languages(model_choice: str) -> list[str]:
@@ -841,7 +835,7 @@ def sample_species_model_settings(state: TabState, opened=True):
     )
 
     def keep_disabled_slider_at_default(sensitivity, model_choice):
-        # A preset or params file can set the slider while the model stays 3.0/Perch,
+        # A preset or params file can set the slider while the model stays Perch,
         # which fires no model change to reset it.
         if model_supports_sensitivity(model_choice) or sensitivity == 1.0:
             return gr.update()
@@ -1307,6 +1301,8 @@ def model_selection(state: TabState, opened=True):
                 selected_classifier_state = gr.State()
 
                 def on_custom_classifier_selection_click():
+                    from birdnet_analyzer.model_utils import classifier_version
+
                     file = select_file(
                         ("TFLite classifier (*.tflite)",),
                         state_key="custom_classifier_file",
@@ -1314,6 +1310,17 @@ def model_selection(state: TabState, opened=True):
 
                     if not file:
                         return None, None, None
+
+                    try:
+                        classifier_version(file)
+                    except (OSError, ValueError) as e:
+                        gr.Warning(
+                            loc.localize(
+                                "species-list-custom-classifier-invalid-warning"
+                            ).format(e)
+                        )
+
+                        return gr.skip(), gr.skip(), gr.skip()
 
                     labels = utils.read_classifier_labels(file)
 

@@ -66,8 +66,6 @@ A custom classifier is trained on the embeddings of a BirdNET model and only wor
 You can choose between BirdNET 3.0 (the default) and BirdNET 2.4 with the "Base model" setting in the GUI or ``--birdnet`` on the command line.
 
 The base model also sets the audio processing: BirdNET 3.0 works on 32 kHz audio, BirdNET 2.4 on 48 kHz, both in 3-second segments.
-Classifiers trained on 3.0 output probabilities, as the 3.0 model itself does, so the sensitivity setting of the analysis does not apply to them.
-Classifiers trained on 2.4 output logits like the 2.4 model, and the sensitivity setting applies.
 
 .. note::
   A training data cache (see 3.4) holds the embeddings of one base model. Loading a cache trains on the version it was created with, whatever base model is selected.
@@ -168,4 +166,4 @@ To use this classifier select the "Custom classifier" option in the species sele
 When using the CLI you can specify the path to the .tflite file using the `-\-classifier` or `-c` argument.
 
 .. note::
-  Analyzing with a classifier trained on the 3.0 base needs a version of the birdnet library that can load such classifiers; this release can only analyze with classifiers trained on 2.4.
+  The analysis reads the base model version from the classifier file, so classifiers trained on either base can be used. A classifier trained on 3.0 processes one segment at a time; the batch size setting is reduced to 1 for it.

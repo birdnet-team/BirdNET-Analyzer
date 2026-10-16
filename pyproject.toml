@@ -48,7 +48,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet==1.1.0",
+    "birdnet>=1.3.0",
 ]
 
 [project.optional-dependencies]
