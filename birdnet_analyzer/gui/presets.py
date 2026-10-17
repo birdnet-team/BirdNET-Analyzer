@@ -417,6 +417,7 @@ def load_train_params(path: str) -> dict[str, Any]:
             "focal_loss_alpha": "focal_loss_alpha_slider",
             "upsampling_mode": "upsampling_mode_radio",
             "upsampling_ratio": "upsampling_ratio_slider",
+            "birdnet": "birdnet_version_radio",
         },
     )
 

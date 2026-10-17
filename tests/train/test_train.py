@@ -51,8 +51,8 @@ def test_train_cli(mock_train_model, setup_test_environment):
 
 @patch("birdnet_analyzer.train.utils.train_model")
 def test_train_cli_accepts_full_parser_surface(
-        mock_train_model, setup_test_environment
-    ):
+    mock_train_model, setup_test_environment
+):
     env = setup_test_environment
 
     parser = train_parser()
@@ -64,6 +64,8 @@ def test_train_cli_accepts_full_parser_surface(
             env["output_dir"],
             "--crop_mode",
             "smart",
+            "--birdnet",
+            "2.4",
             "-o",
             env["classifier_output"],
             "--epochs",
@@ -134,6 +136,7 @@ def test_train_cli_accepts_full_parser_surface(
     assert call_kwargs["save_cache_to"] == cache_path
     assert call_kwargs["autotune"] is True
     assert call_kwargs["autotune_metric"] == "val_loss"
+    assert call_kwargs["birdnet"] == "2.4"
 
 
 def _make_dummy_history():
@@ -168,6 +171,7 @@ def test_autotune_uses_optuna(
         ["a", "b", "c"],
         False,
         False,
+        "2.4",
     )
     # use a mutable sequence so classifier.pop() used during save does not blow up
     mock_build.return_value = []

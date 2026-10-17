@@ -402,6 +402,7 @@ def test_train_tab_shows_the_download_on_its_progress_bar(monkeypatch):
         output_dir="classifiers",
         classifier_name="classifier",
         model_save_mode="replace",
+        birdnet_version="3.0",
         cache_mode="none",
         cache_file="",
         cache_file_name="",

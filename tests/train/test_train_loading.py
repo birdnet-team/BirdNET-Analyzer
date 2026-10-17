@@ -21,7 +21,12 @@ import pytest
 import soundfile as sf
 
 from birdnet_analyzer import model_utils
-from birdnet_analyzer.train.utils import _load_training_data, _read_and_crop_file
+from birdnet_analyzer.train.utils import (
+    _load_from_cache,
+    _load_training_data,
+    _read_and_crop_file,
+    _save_to_cache,
+)
 
 SR = 48000
 SIG_LENGTH = 3.0
@@ -89,9 +94,10 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
     robin_dir.mkdir()
     (robin_dir / "recording.wav").touch()
 
-    with patch("birdnet_analyzer.train.utils.load") as mock_load, pytest.raises(
-        ValueError, match=r"blackbird.*bluebird"
-    ) as error:
+    with (
+        patch.object(model_utils, "_load_acoustic_for_embeddings") as mock_load,
+        pytest.raises(ValueError, match=r"blackbird.*bluebird") as error,
+    ):
         _load_training_data(str(tmp_path))
 
     assert "robin" not in str(error.value)
@@ -182,3 +188,45 @@ def test_encode_arrays_batched_rejects_multi_segment():
     signals = [(np.zeros(4, dtype="float32"), SR) for _ in range(2)]
     with pytest.raises(ValueError, match="one segment per input"):
         model_utils.encode_arrays_batched(session, signals)
+
+
+def _cache_arrays(embeddings_dim):
+    x = np.zeros((4, embeddings_dim), dtype="float32")
+    y = np.zeros((4, 2), dtype="float32")
+    return x, y
+
+
+def test_cache_round_trip_keeps_the_model_version(tmp_path):
+    """Recorded as 3.0 although the width says 2.4: the record is what comes back."""
+    x, y = _cache_arrays(1024)
+    path = str(tmp_path / "cache.npz")
+
+    _save_to_cache(
+        path, x, y, np.array([]), np.array([]), ["a", "b"], model_version="3.0"
+    )
+
+    *_, version = _load_from_cache(path)
+    assert version == "3.0"
+
+
+@pytest.mark.parametrize(("embeddings_dim", "version"), [(1024, "2.4"), (1280, "3.0")])
+def test_a_cache_without_a_version_is_identified_by_its_embeddings(
+    tmp_path, embeddings_dim, version
+):
+    x, y = _cache_arrays(embeddings_dim)
+    path = str(tmp_path / "cache.npz")
+    np.savez(path, x_train=x, y_train=y, labels=np.array(["a", "b"], dtype=object))
+
+    *_, loaded_version = _load_from_cache(path)
+    assert loaded_version == version
+
+
+def test_loading_a_cache_returns_its_version_not_the_requested_one(tmp_path):
+    x, y = _cache_arrays(1024)
+    path = str(tmp_path / "cache.npz")
+    _save_to_cache(
+        path, x, y, np.array([]), np.array([]), ["a", "b"], model_version="2.4"
+    )
+
+    *_, version = _load_training_data(path, model_version="3.0")
+    assert version == "2.4"

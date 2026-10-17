@@ -4,6 +4,7 @@ from pathlib import Path
 
 import gradio as gr
 
+import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
@@ -11,6 +12,35 @@ from birdnet_analyzer.gui.presets import PresetControls, load_train_params
 from birdnet_analyzer.gui.state import TabState
 
 _GRID_MAX_HEIGHT = 240
+
+
+def cache_model_version(path: str) -> str | None:
+    """The BirdNET version a training data cache was embedded with."""
+    import zipfile
+
+    import numpy as np
+    from numpy.lib import format as npformat
+
+    from birdnet_analyzer.base_models import version_for_embeddings_dim
+
+    try:
+        with np.load(path) as data:
+            if "model_version" in data:
+                return str(data["model_version"])
+
+        # Only the header: the samples themselves can be hundreds of MB.
+        with zipfile.ZipFile(path) as archive, archive.open("x_train.npy") as member:
+            version = npformat.read_magic(member)
+            read_header = (
+                npformat.read_array_header_2_0
+                if version == (2, 0)
+                else npformat.read_array_header_1_0
+            )
+            shape, _, _ = read_header(member)
+
+        return version_for_embeddings_dim(shape[1])
+    except Exception:
+        return None
 
 
 def select_subdirectories(state_key=None):
@@ -49,6 +79,7 @@ def start_training(
     output_dir,
     classifier_name,
     model_save_mode,
+    birdnet_version,
     cache_mode,
     cache_file,
     cache_file_name,
@@ -85,6 +116,7 @@ def start_training(
         output_dir: Directory to save the trained model.
         classifier_name: Name of the custom classifier.
         model_save_mode: Save mode for the model (replace or append).
+        birdnet_version: The BirdNET version to train on.
         cache_mode: Cache mode for training data (load, save, or None).
         cache_file: Path to the cache file.
         cache_file_name: Name of the cache file.
@@ -210,6 +242,7 @@ def start_training(
                 fmin=max(0, min(15000, int(fmin))),
                 fmax=max(0, min(15000, int(fmax))),
                 model_save_mode=model_save_mode,
+                birdnet=birdnet_version,
                 save_cache_to=os.path.join(cache_file, cache_file_name)
                 if cache_mode == "save"
                 else None,
@@ -428,6 +461,17 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
             show_progress="hidden",
         )
 
+        with gr.Group():
+            base_model_radio = state.persist(
+                "birdnet_version_radio",
+                gr.Radio,
+                choices=gu.birdnet_model_choices(),
+                value=cfg.DEFAULT_ACOUSTIC_MODEL_VERSION,
+                interactive=not uses_cache_file,
+                label=loc.localize("training-tab-base-model-radio-label"),
+                info=loc.localize("training-tab-base-model-radio-info"),
+            )
+
         with gr.Row():
             cache_file_state = gr.State()
             cache_mode = state.persist(
@@ -523,9 +567,16 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     )
 
                     if file:
-                        return file, file, gr.update(value=file, visible=True)
+                        version = cache_model_version(file)
 
-                    return gr.update(), gr.update(), gr.update()
+                        return (
+                            file,
+                            file,
+                            gr.update(value=file, visible=True),
+                            gr.update(value=version) if version else gr.update(),
+                        )
+
+                    return gr.update(), gr.update(), gr.update(), gr.update()
 
                 selected_cache_file_btn.click(
                     on_cache_file_selection_click,
@@ -533,6 +584,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                         cache_file_state,
                         selected_cache_file_textbox,
                         cache_file_input,
+                        base_model_radio,
                     ],
                     show_progress="hidden",
                 )
@@ -545,6 +597,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     gr.update(visible=value != "load" and bool(data_dir)),
                     gr.update(interactive=value != "load"),
                     gr.update(visible=value != "load" and bool(test_data_dir)),
+                    gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
@@ -673,6 +726,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     crop_mode,
                     crop_overlap,
                     threads_number,
+                    base_model_radio,
                 ],
                 show_progress="hidden",
             )
@@ -1006,6 +1060,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 output_directory_state,
                 classifier_name,
                 model_save_mode,
+                base_model_radio,
                 cache_mode,
                 cache_file_state,
                 cache_file_name,

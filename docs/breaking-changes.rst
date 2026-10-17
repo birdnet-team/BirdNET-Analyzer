@@ -108,29 +108,20 @@ you need one of its dropped languages. In the GUI the locale dropdown offers onl
 selected model's languages.
 
 
-Sensitivity has no effect on BirdNET 3.0
-----------------------------------------
+Training defaults to the 3.0 base
+---------------------------------
 
-**What changed.** The 3.0 model applies its sigmoid inside the model graph and
-outputs probabilities directly, so the sigmoid cannot be rescaled. ``--sensitivity``
-therefore only applies to BirdNET 2.4 and custom classifiers (which run on the 2.4
-base); Perch never used it.
+**What changed.** ``birdnet_analyzer.train`` takes ``--birdnet {3.0,2.4}`` (the train
+tab a "Base model" choice) and trains on BirdNET 3.0 unless told otherwise. All output
+formats (tflite, Raven, detached) are available on both bases. A classifier only works
+with the version it was trained on; that version is recorded in the
+``*.birdnet.train-params.csv`` and in training data caches, and a cache is always
+trained on the version it was created with.
 
-**Consequence.** With the default 3.0 model a ``--sensitivity`` other than ``1.0`` is
-ignored, with a warning. In the GUI the sensitivity slider is disabled while 3.0 or
-Perch is selected.
-
-**What to do.** Use ``--min_conf`` to tune 3.0 detections. If you rely on
-sensitivity, select the 2.4 model (``--birdnet 2.4``).
-
-
-Custom classifiers and training stay on the 2.4 base
-----------------------------------------------------
-
-**What changed / consequence.** Training and custom classifiers still use the 2.4 model
-and its embeddings; 3.0 training is not yet supported. A custom classifier is therefore
-loaded on the 2.4 base regardless of the default acoustic model. This behaviour is
-unchanged, but is worth noting now that 3.0 is the default elsewhere.
+**Consequence.** Classifiers trained on 3.0 process one segment at a time
+(``--batch_size`` is reduced to 1). Pass ``--birdnet 2.4`` to keep training 2.4
+classifiers, which behave as before. The analysis reads the version from the
+classifier file, so both kinds are used the same way.
 
 The default output location for a trained classifier is now
 ``checkpoints/custom/Custom_Classifier`` **relative to the current working directory**

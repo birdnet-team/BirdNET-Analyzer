@@ -101,8 +101,11 @@ def test_analyze_cli_accepts_full_parser_surface(
 
     kwargs = vars(args)
     assert kwargs["use_perch"] is True
+    assert kwargs["model"] == "perch"
     kwargs.pop("use_perch", None)
     kwargs.pop("load_params")
+    # Perch takes no sensitivity, which the assertion below needs to see flow.
+    kwargs["model"] = "birdnet"
 
     analyze(**kwargs, _return_only=True)
 

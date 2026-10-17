@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
+
 if TYPE_CHECKING:
+    from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
+
     from birdnet_analyzer.config import (
         AUTOTUNE_METRICS,
         SAMPLE_CROP_MODES,
@@ -45,12 +49,17 @@ def train(
     autotune_n_repeats: int = 1,
     autotune_n_splits: int = 3,
     autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
+    birdnet: ACOUSTIC_MODEL_VERSIONS = DEFAULT_ACOUSTIC_MODEL_VERSION,  # ty:ignore[invalid-parameter-default]
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
     Args:
         audio_input (str): Path to the training data directory or path to a cache file
                            ("train_cache.npz" for example).
+        birdnet (Literal["2.4", "3.0"], optional): The BirdNET version to train on. Its
+            embeddings are the classifier's input, so the classifier only works with
+            that version. A cache file keeps the version it was embedded with.
+            Defaults to the newest version.
         test_data (str, optional): Path to the test data directory. Defaults to None.
                                    If not specified, a validation split will be used.
         output (str, optional): Path to save the trained model.
@@ -140,4 +149,5 @@ def train(
         autotune_n_repeats=autotune_n_repeats,
         autotune_n_splits=autotune_n_splits,
         autotune_metric=autotune_metric,
+        birdnet=birdnet,
     )
