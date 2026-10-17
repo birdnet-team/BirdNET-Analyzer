@@ -15,12 +15,30 @@ _GRID_MAX_HEIGHT = 240
 
 
 def cache_model_version(path: str) -> str | None:
-    """The BirdNET version a training data cache was embedded with, if recorded."""
+    """The BirdNET version a training data cache was embedded with."""
+    import zipfile
+
     import numpy as np
+    from numpy.lib import format as npformat
+
+    from birdnet_analyzer.base_models import version_for_embeddings_dim
 
     try:
         with np.load(path) as data:
-            return str(data["model_version"]) if "model_version" in data else None
+            if "model_version" in data:
+                return str(data["model_version"])
+
+        # Only the header: the samples themselves can be hundreds of MB.
+        with zipfile.ZipFile(path) as archive, archive.open("x_train.npy") as member:
+            version = npformat.read_magic(member)
+            read_header = (
+                npformat.read_array_header_2_0
+                if version == (2, 0)
+                else npformat.read_array_header_1_0
+            )
+            shape, _, _ = read_header(member)
+
+        return version_for_embeddings_dim(shape[1])
     except Exception:
         return None
 

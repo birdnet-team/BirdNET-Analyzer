@@ -424,8 +424,4 @@ def load_train_params(path: str) -> dict[str, Any]:
     if "audio_speed" in kwargs:
         values["audio_speed_slider"] = _speed_to_slider(kwargs["audio_speed"])
 
-    # Files written before 3.0 could be trained on may lack the version; every
-    # classifier trained back then is a 2.4 one.
-    values.setdefault("birdnet_version_radio", "2.4")
-
     return values

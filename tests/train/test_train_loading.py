@@ -197,7 +197,8 @@ def _cache_arrays(embeddings_dim):
 
 
 def test_cache_round_trip_keeps_the_model_version(tmp_path):
-    x, y = _cache_arrays(1280)
+    """Recorded as 3.0 although the width says 2.4: the record is what comes back."""
+    x, y = _cache_arrays(1024)
     path = str(tmp_path / "cache.npz")
 
     _save_to_cache(

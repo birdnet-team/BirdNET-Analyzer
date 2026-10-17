@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from birdnet_analyzer import model
+from birdnet_analyzer import base_models
 from birdnet_analyzer.model import (
     get_empty_class_exception,
     random_multilabel_split,
@@ -104,8 +104,8 @@ def test_base_models_carry_the_library_constants():
     from birdnet.acoustic.models.v2_4.model import AcousticModelV2_4
     from birdnet.acoustic.models.v3_0.model import AcousticModelV3_0
 
-    two_four = model.base_model("2.4")
-    three_zero = model.base_model("3.0")
+    two_four = base_models.base_model("2.4")
+    three_zero = base_models.base_model("3.0")
 
     assert two_four.segment_samples == AcousticModelV2_4.get_segment_size_samples()
     assert two_four.sample_rate == AcousticModelV2_4.get_sample_rate()
@@ -119,12 +119,12 @@ def test_base_models_carry_the_library_constants():
 
 def test_an_unknown_base_version_is_rejected():
     with pytest.raises(ValueError, match=r"9\.9"):
-        model.base_model("9.9")
+        base_models.base_model("9.9")
 
 
 def test_embeddings_width_identifies_the_base_model():
-    assert model.version_for_embeddings_dim(1024) == "2.4"
-    assert model.version_for_embeddings_dim(1280) == "3.0"
+    assert base_models.version_for_embeddings_dim(1024) == "2.4"
+    assert base_models.version_for_embeddings_dim(1280) == "3.0"
 
     with pytest.raises(ValueError, match="512"):
-        model.version_for_embeddings_dim(512)
+        base_models.version_for_embeddings_dim(512)

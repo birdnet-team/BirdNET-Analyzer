@@ -15,7 +15,7 @@ import numpy as np
 import tqdm
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-from birdnet_analyzer import audio, model, model_utils, utils
+from birdnet_analyzer import audio, base_models, model, model_utils, utils
 from birdnet_analyzer.config import (
     ALLOWED_FILETYPES,
     AUTOTUNE_METRICS,
@@ -1220,7 +1220,7 @@ def _load_from_cache(path):
     model_version = (
         str(data["model_version"])
         if "model_version" in data
-        else model.version_for_embeddings_dim(x_train.shape[1])
+        else base_models.version_for_embeddings_dim(x_train.shape[1])
     )
 
     return (

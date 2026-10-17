@@ -128,20 +128,23 @@ def test_raven_export_on_3_0_scores_probabilities_at_32_khz(tmp_path):
 @needs_3_0
 def test_detached_export_on_3_0_takes_1280_embeddings(tmp_path):
     base = model.base_model("3.0")
+    head = _head("3.0")
 
     model.save_detached_classifier(
-        _head("3.0"), str(tmp_path / "cc"), labels=LABELS, version="3.0"
+        head, str(tmp_path / "cc"), labels=LABELS, version="3.0"
     )
 
     interpreter = _interpreter(tmp_path / "cc_detached.tflite")
     (inp,) = interpreter.get_input_details()
     assert list(inp["shape"]) == [1, base.embeddings_dim]
 
-    interpreter.set_tensor(inp["index"], np.zeros((1, base.embeddings_dim), np.float32))
+    embeddings = np.random.default_rng(0).normal(0, 1, (1, base.embeddings_dim))
+    embeddings = embeddings.astype(np.float32)
+    interpreter.set_tensor(inp["index"], embeddings)
     interpreter.invoke()
     out = interpreter.get_tensor(interpreter.get_output_details()[0]["index"])
-    assert out.min() >= 0
-    assert out.max() <= 1
+    logits = head.predict(embeddings, verbose=0)
+    np.testing.assert_allclose(out, 1 / (1 + np.exp(-logits)), atol=1e-5)
     assert (tmp_path / "cc_detached" / "saved_model.pb").is_file()
     assert _read_labels(tmp_path / "cc_detached_Labels.txt") == LABELS
 
@@ -197,3 +200,32 @@ def test_exports_run_through_the_analysis(tmp_path, version):
     assert np.isfinite(plain).all()
     assert (raised >= plain).all()
     assert (raised > plain).any()
+
+
+@pytest.mark.parametrize(
+    "version",
+    [pytest.param("3.0", marks=needs_3_0), pytest.param("2.4", marks=needs_2_4)],
+)
+def test_raven_append_keeps_the_official_scores(tmp_path, version):
+    from birdnet_analyzer.train import custom_models
+
+    base = model.base_model(version)
+    pb_model, official = base.load()
+    audio = tf.constant(_audio(base))
+    signature, input_key, output_key = custom_models.base_signature(
+        pb_model, version, "predictions"
+    )
+    expected = signature(**{input_key: audio})[output_key].numpy()
+    if not base.outputs_probabilities:
+        expected = 1 / (1 + np.exp(-expected))
+
+    path = tmp_path / "cc"
+    model.save_raven_model(
+        _head(version), str(path), LABELS, mode="append", version=version
+    )
+
+    basic = tf.saved_model.load(str(path)).signatures["basic"]
+    scores = basic(inputs=audio)["scores"].numpy()
+    assert scores.shape == (1, len(official) + len(LABELS))
+    np.testing.assert_allclose(scores[:, : len(official)], expected, atol=1e-5)
+    assert _read_labels(tmp_path / "cc_Labels.txt") == [*official, *LABELS]

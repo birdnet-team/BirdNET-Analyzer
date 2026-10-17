@@ -388,3 +388,10 @@ def test_the_cli_arguments_stay_in_sync_with_the_api():
     train_args.pop("load_params")
 
     assert set(train_args) <= set(inspect.signature(train).parameters)
+
+
+def test_a_train_params_file_without_a_version_is_a_2_4_one(tmp_path):
+    values = {k: v for k, v in train_values().items() if k != "BirdNET model version"}
+    file = tall_file(tmp_path, values, name="MyClassifier.birdnet.train-params.csv")
+
+    assert params.load_train_params(file)["birdnet"] == "2.4"

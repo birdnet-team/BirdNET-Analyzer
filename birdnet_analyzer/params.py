@@ -200,14 +200,16 @@ def load_train_params(path: str) -> dict[str, Any]:
     parse("use_focal_loss", _to_bool, "Use focal loss", "use focal loss")
     parse("focal_loss_gamma", float, "Focal loss gamma", "focal loss gamma")
     parse("focal_loss_alpha", float, "Focal loss alpha", "focal loss alpha")
-    parse(
-        "birdnet",
-        _to_acoustic_version,
-        "BirdNET model version",
-        "BirdNET Model version",
-    )
+    parse("birdnet", _to_acoustic_version, *_VERSION_HEADERS)
 
     if len(values) < _MIN_RECOGNIZED_PARAMS:
         raise ValueError(f"Not a training parameters file: {path}")
 
+    if not any(params.get(header, "").strip() for header in _VERSION_HEADERS):
+        # Written before training could use 3.0, so trained on 2.4.
+        values["birdnet"] = "2.4"
+
     return values
+
+
+_VERSION_HEADERS = ("BirdNET model version", "BirdNET Model version")
