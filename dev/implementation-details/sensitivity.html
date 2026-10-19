@@ -101,6 +101,7 @@ Our goal with this change is to make the sensitivity more intuitive by changing 
 <section id="comparison-to-the-previous-implementation">
 <h2>Comparison to the previous implementation<a class="headerlink" href="#comparison-to-the-previous-implementation" title="Link to this heading"></a></h2>
 <p>Where the old implementation changed the slope of the sigmoid function, the new implementation performs a shift of the function.</p>
+<p>The shift is applied to the model’s logits. Models that apply the sigmoid inside their graph (BirdNET 3.0, classifiers trained on it, and Raven exports) have their logits recovered from the scores first, so the sensitivity behaves the same for every BirdNET model.</p>
 <p>We have a little demo where you can explore the behavior of the old and the new sensitivity implementations <a class="reference external" href="../_static/birdnet_sigmoid_sensitivity_old_vs_new.html">here</a>.</p>
 </section>
 </section>

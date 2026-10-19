@@ -148,8 +148,18 @@ In case your audio files are longer than 3 seconds, you can specify a crop mode 
 The feature can be used via the GUI or the command line interface.</p>
 <p>In the GUI go the Train-Tab and select the directory containing your training data. The detected class names will be displayed in a table.
 Further select the output directory and specify the name for your custom classifier. After that you can already start training your classifier with the default settings by clicking the “Start training” button.</p>
+<section id="base-model">
+<h3>3.1 Base Model<a class="headerlink" href="#base-model" title="Link to this heading"></a></h3>
+<p>A custom classifier is trained on the embeddings of a BirdNET model and only works together with the version it was trained on.
+You can choose between BirdNET 3.0 (the default) and BirdNET 2.4 with the “Base model” setting in the GUI or <code class="docutils literal notranslate"><span class="pre">--birdnet</span></code> on the command line.</p>
+<p>The base model also sets the audio processing: BirdNET 3.0 works on 32 kHz audio, BirdNET 2.4 on 48 kHz, both in 3-second segments.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A training data cache (see 3.4) holds the embeddings of one base model. Loading a cache trains on the version it was created with, whatever base model is selected.</p>
+</div>
+</section>
 <section id="hyperparameters-and-autotune">
-<h3>3.1 Hyperparameters and Autotune<a class="headerlink" href="#hyperparameters-and-autotune" title="Link to this heading"></a></h3>
+<h3>3.2 Hyperparameters and Autotune<a class="headerlink" href="#hyperparameters-and-autotune" title="Link to this heading"></a></h3>
 <p>There are several hyperparameters that can be adjusted to optimize the classifier training.
 If you don’t have experience with training machine learning models, we recommend using the autotune feature.
 This will run multiple training runs (aka trials) with different hyperparameter settings and select the best performing settings based on the validation data.
@@ -158,7 +168,7 @@ When using autotune you can specify the number of trials as well as the number o
 <p>If you want to adjust the hyperparameters manually, we have a more detailed documentation available <a class="reference internal" href="../implementation-details/training-hyperparameters.html"><span class="doc">here</span></a>.</p>
 </section>
 <section id="audio-settings">
-<h3>3.2 Audio Settings<a class="headerlink" href="#audio-settings" title="Link to this heading"></a></h3>
+<h3>3.3 Audio Settings<a class="headerlink" href="#audio-settings" title="Link to this heading"></a></h3>
 <p>When training a custom classifier you can apply a bandpass filter and also modify the speed of your audio to shift the frequency of your audio to the range of the BirdNET model.
 This also enables you to train classifiers for ultra- or infrasonic signals, i.e. bats or whales.</p>
 <div class="admonition caution">
@@ -167,7 +177,7 @@ This also enables you to train classifiers for ultra- or infrasonic signals, i.e
 </div>
 </section>
 <section id="caching-training-data">
-<h3>3.3 Caching Training Data<a class="headerlink" href="#caching-training-data" title="Link to this heading"></a></h3>
+<h3>3.4 Caching Training Data<a class="headerlink" href="#caching-training-data" title="Link to this heading"></a></h3>
 <p>A majority of the training time is spent on loading the audio data and extracting the embeddings which are used for training the classifier.
 To speed up the iteration of multiple training runs with same data we recommend using the caching feature. This will store the extracted embeddings in a cache file which can be loaded in later training runs.</p>
 <p>To create a cache file choose “save” as the “training data cache mode” in the settings and specify the location and the name for the cache file.
@@ -178,7 +188,7 @@ In later training runs you can then choose “load” as the “training data ca
 </div>
 </section>
 <section id="using-test-data">
-<h3>3.4 Using test data<a class="headerlink" href="#using-test-data" title="Link to this heading"></a></h3>
+<h3>3.5 Using test data<a class="headerlink" href="#using-test-data" title="Link to this heading"></a></h3>
 <p>You can provide a separate dataset for testing your custom classifier after training is finished.
 The test data should be structured in the same way as the training data, with each class having its own folder.</p>
 <p>Precision, Recall, F1-Score, AUPRC and AUROC will be calculated for the test data.
@@ -192,7 +202,7 @@ The complete results, including results for the optimal threshold, will be saved
 </div>
 </section>
 <section id="model-save-mode">
-<h3>3.5 Model Save Mode<a class="headerlink" href="#model-save-mode" title="Link to this heading"></a></h3>
+<h3>3.6 Model Save Mode<a class="headerlink" href="#model-save-mode" title="Link to this heading"></a></h3>
 <p>Custom classifiers can be saved with 2 different modes:</p>
 <ul class="simple">
 <li><p><strong>Append</strong>: The trained classifier will extend the existing set of classes that BirdNET can detect.</p></li>
@@ -205,10 +215,11 @@ The complete results, including results for the optimal threshold, will be saved
 </div>
 </section>
 <section id="detached-classifier">
-<h3>3.6 Detached Classifier<a class="headerlink" href="#detached-classifier" title="Link to this heading"></a></h3>
+<h3>3.7 Detached Classifier<a class="headerlink" href="#detached-classifier" title="Link to this heading"></a></h3>
 <p>You can additionally choose to save a detached version of the trained classifier.
 This will save the classification head in tflite and saved model (pb) format.
-Instead of audio the classification head will take the embeddings extracted from the BirdNET model as input.
+Instead of audio the classification head will take the embeddings extracted from the BirdNET model as input (1024 values for BirdNET 2.4, 1280 for BirdNET 3.0).
+On the 3.0 base the detached classifier outputs probabilities, on 2.4 logits, matching the respective BirdNET model.
 This is meant as a way to provide a lightweight version of the classifier that can more easily be transferred to edge devices in the field that already run BirdNET.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -233,6 +244,10 @@ If the original BirdNET classifications are needed they should be extracted from
 </div>
 <p>To use this classifier select the “Custom classifier” option in the species selection section of the BirdNET-Analyzer GUI and select the .tflite file.</p>
 <p>When using the CLI you can specify the path to the .tflite file using the <cite>--classifier</cite> or <cite>-c</cite> argument.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The analysis reads the base model version from the classifier file, so classifiers trained on either base can be used. A classifier trained on 3.0 processes one segment at a time; the batch size setting is reduced to 1 for it.</p>
+</div>
 </section>
 </section>
 

@@ -182,7 +182,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <dd><p>Path to species list file or folder. If folder is provided, species list needs to be named “species_list.txt”. Cannot be used together with –lat and –lon, use either the species list or the location coordinates.</p>
 </dd>
 <dt><kbd>--sensitivity</kbd></dt>
-<dd><p>Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid function on the x-axis. Use complementary to the cut-off threshold. Only applies to BirdNET 2.4 and custom classifiers; ignored for BirdNET 3.0 (which applies the sigmoid inside the model) and Perch.</p>
+<dd><p>Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid function on the x-axis. Use complementary to the cut-off threshold. Applies to every BirdNET model and custom classifier; ignored for Perch.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
 </dd>
 <dt><kbd>--overlap</kbd></dt>
@@ -203,7 +203,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'en_us'</span></code></p>
 </dd>
 <dt><kbd>-b, --batch_size</kbd></dt>
-<dd><p>Number of samples to process at the same time.</p>
+<dd><p>Number of samples to process at the same time. A custom classifier trained on BirdNET 3.0 always processes 1.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--n_workers</kbd></dt>
@@ -299,7 +299,7 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
 </dd>
 <dt><kbd>-b, --batch_size</kbd></dt>
-<dd><p>Number of samples to process at the same time.</p>
+<dd><p>Number of samples to process at the same time. A custom classifier trained on BirdNET 3.0 always processes 1.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">8</span></code></p>
 </dd>
 <dt><kbd>--n_workers</kbd></dt>
@@ -453,7 +453,8 @@ This is useful if you want to detect species that are not included in the defaul
 You can also use this to train a classifier for a specific location or season.</p>
 <p>All you need is a dataset of labeled audio files, organized in folders by species (we use folder names as labels).
 This also works for non-bird species, as long as you have a dataset of labeled audio files.</p>
-<p>Audio files will be resampled to 48 kHz and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).</p>
+<p>Audio files will be resampled to the sample rate of the base model (48 kHz for BirdNET 2.4, 32 kHz for BirdNET 3.0) and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).</p>
+<p>The classifier is trained on the embeddings of one BirdNET version, chosen with <code class="docutils literal notranslate"><span class="pre">--birdnet</span></code> (3.0 by default), and only works with that version.</p>
 <p>You can download a sample training data set <a class="reference external" href="https://drive.google.com/file/d/16hgka5aJ4U69ane9RQn_quVmgjVY2AY5/edit">here</a>.</p>
 <ol class="arabic simple">
 <li><p>Collect training data and organize in folders based on species names.</p></li>
@@ -499,8 +500,8 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
                               <span class="p">[</span><span class="o">--</span><span class="n">load_params</span> <span class="n">PARAMS_FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span> <span class="o">|</span> <span class="o">--</span><span class="n">quiet</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">test_data</span> <span class="n">TEST_DATA</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">crop_mode</span> <span class="p">{</span><span class="n">center</span><span class="p">,</span><span class="n">first</span><span class="p">,</span><span class="n">segments</span><span class="p">,</span><span class="n">smart</span><span class="p">}]</span>
-                              <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">epochs</span> <span class="n">EPOCHS</span><span class="p">]</span>
-                              <span class="p">[</span><span class="o">--</span><span class="n">val_split</span> <span class="n">VAL_SPLIT</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">birdnet</span> <span class="p">{</span><span class="mf">2.4</span><span class="p">,</span><span class="mf">3.0</span><span class="p">}]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span><span class="p">]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">epochs</span> <span class="n">EPOCHS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">val_split</span> <span class="n">VAL_SPLIT</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">learning_rate</span> <span class="n">LEARNING_RATE</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">focal</span><span class="o">-</span><span class="n">loss</span> <span class="o">|</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">focal</span><span class="o">-</span><span class="n">loss</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">focal</span><span class="o">-</span><span class="n">loss</span><span class="o">-</span><span class="n">gamma</span> <span class="n">FOCAL_LOSS_GAMMA</span><span class="p">]</span>
@@ -550,7 +551,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
 </dd>
 <dt><kbd>-b, --batch_size</kbd></dt>
-<dd><p>Number of samples to process at the same time.</p>
+<dd><p>Number of samples to process at the same time. A custom classifier trained on BirdNET 3.0 always processes 1.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">32</span></code></p>
 </dd>
 <dt><kbd>--overlap</kbd></dt>
@@ -573,6 +574,11 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <dd><p>Possible choices: center, first, segments, smart</p>
 <p>Crop mode for training data. Can be ‘center’, ‘first’, ‘segments’ or ‘smart’.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'center'</span></code></p>
+</dd>
+<dt><kbd>--birdnet</kbd></dt>
+<dd><p>Possible choices: 2.4, 3.0</p>
+<p>BirdNET version to train on. Its embeddings are the classifier’s input, so the classifier only works with this version. A cache file keeps the version it was created with.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'3.0'</span></code></p>
 </dd>
 <dt><kbd>-o, --output</kbd></dt>
 <dd><p>Path to trained classifier model output.</p>
