@@ -8,6 +8,7 @@ import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer import utils
 from birdnet_analyzer.analyze.core import (
+    result_dataframe,
     save_as_csv,
     save_as_kaleidoscope,
     save_as_rtable,
@@ -91,7 +92,8 @@ def run_single_file_analysis(
             time_str = time_str[: time_str.index(".") + 2]
         return time_str
 
-    table = predictions.to_dataframe()
+    detections = result_dataframe(predictions, merge_consecutive)
+    table = detections.copy()
     n_total = table.shape[0]
 
     if n_total > MAX_TABLE_ROWS:
@@ -148,6 +150,7 @@ def run_single_file_analysis(
         gr.update(visible=True),
         {
             "predictions": predictions,
+            "table": detections,
             "fmin": fmin,
             "fmax": fmax,
             "overlap": overlap,
@@ -408,7 +411,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
                 if file_location:
                     save_as_rtable(
-                        prediction_state["predictions"].to_dataframe(),
+                        prediction_state["table"],
                         prediction_state["fmin"],
                         prediction_state["fmax"],
                         prediction_state["predictions"].model_fmin,
@@ -427,7 +430,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
                 if file_location:
                     save_as_csv(
-                        prediction_state["predictions"].to_dataframe(),
+                        prediction_state["table"],
                         Path(file_location),
                     )
 
@@ -441,7 +444,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
                 if file_location:
                     save_as_kaleidoscope(
-                        prediction_state["predictions"].to_dataframe(),
+                        prediction_state["table"],
                         Path(file_location),
                     )
 

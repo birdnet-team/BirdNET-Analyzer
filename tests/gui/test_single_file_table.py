@@ -16,6 +16,8 @@ import birdnet_analyzer.gui.single_file as sfa  # noqa: E402
 
 
 class FakePredictions:
+    hop_duration_s = 3.0
+
     def __init__(self, df):
         self._df = df
 
@@ -40,19 +42,19 @@ def make_result(n_rows):
     )
 
 
-def run(monkeypatch, n_rows):
+def run(monkeypatch, result, merge_consecutive=1):
     warnings = []
     monkeypatch.setattr(gr, "Warning", lambda msg, **kw: warnings.append(msg))
-    monkeypatch.setattr(ga, "run_analysis", lambda **kw: make_result(n_rows))
+    monkeypatch.setattr(ga, "run_analysis", lambda **kw: result)
 
-    table, _, _ = sfa.run_single_file_analysis(
+    table, _, state = sfa.run_single_file_analysis(
         "a.wav",
         False,
         5,
         0.25,
         1.0,
         0.0,
-        1,
+        merge_consecutive,
         1.0,
         0,
         15000,
@@ -67,11 +69,11 @@ def run(monkeypatch, n_rows):
         None,
         "en_us",
     )
-    return table, warnings
+    return table, warnings, state
 
 
 def test_small_results_are_shown_in_full(monkeypatch):
-    table, warnings = run(monkeypatch, 10)
+    table, warnings, _ = run(monkeypatch, make_result(10))
 
     assert table.shape[0] == 10
     assert not warnings
@@ -79,7 +81,7 @@ def test_small_results_are_shown_in_full(monkeypatch):
 
 def test_large_results_keep_top_confidences_in_time_order(monkeypatch):
     n_rows = 4 * sfa.MAX_TABLE_ROWS
-    table, warnings = run(monkeypatch, n_rows)
+    table, warnings, _ = run(monkeypatch, make_result(n_rows))
 
     assert table.shape[0] == sfa.MAX_TABLE_ROWS
 
@@ -93,3 +95,23 @@ def test_large_results_keep_top_confidences_in_time_order(monkeypatch):
     assert len(warnings) == 1
     assert str(sfa.MAX_TABLE_ROWS) in warnings[0]
     assert str(n_rows) in warnings[0]
+
+
+def test_consecutive_detections_are_merged_for_table_and_downloads(monkeypatch):
+    one_species = FakePredictions(
+        pd.DataFrame(
+            {
+                "input": ["a.wav"] * 6,
+                "start_time": [float(3 * i) for i in range(6)],
+                "end_time": [float(3 * i + 3) for i in range(6)],
+                "species_name": ["Sci_Common"] * 6,
+                "confidence": np.array([0.5] * 6, dtype=np.float16),
+            }
+        )
+    )
+
+    table, _, state = run(monkeypatch, one_species, merge_consecutive=3)
+
+    assert table.shape[0] == 2
+    assert list(state["table"]["start_time"]) == [0.0, 9.0]
+    assert list(state["table"]["end_time"]) == [9.0, 18.0]
