@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from birdnet_analyzer import base_models
 from birdnet_analyzer.model import (
     get_empty_class_exception,
     random_multilabel_split,
@@ -26,9 +27,7 @@ def test_random_split_adds_negative_samples_only_once():
         ]
     )
 
-    x_train, _, x_val, _ = random_split(
-        x, y, np.random.default_rng(42), val_ratio=0.5
-    )
+    x_train, _, x_val, _ = random_split(x, y, np.random.default_rng(42), val_ratio=0.5)
 
     assert len(x_train) + len(x_val) == len(x)
     assert len(np.unique(x_train)) == len(x_train)
@@ -99,3 +98,33 @@ def test_smote_only_interpolates_between_samples_of_the_same_class():
     assert len(x_upsampled) == 6
     assert np.array_equal(y_upsampled.sum(axis=0), [3, 3])
     assert 0 <= x_upsampled[-1, 0] <= 1
+
+
+def test_base_models_carry_the_library_constants():
+    from birdnet.acoustic.models.v2_4.model import AcousticModelV2_4
+    from birdnet.acoustic.models.v3_0.model import AcousticModelV3_0
+
+    two_four = base_models.base_model("2.4")
+    three_zero = base_models.base_model("3.0")
+
+    assert two_four.segment_samples == AcousticModelV2_4.get_segment_size_samples()
+    assert two_four.sample_rate == AcousticModelV2_4.get_sample_rate()
+    assert two_four.embeddings_dim == AcousticModelV2_4.get_embeddings_dim()
+    assert not two_four.outputs_probabilities
+    assert three_zero.segment_samples == AcousticModelV3_0.get_segment_size_samples()
+    assert three_zero.sample_rate == AcousticModelV3_0.get_sample_rate()
+    assert three_zero.embeddings_dim == AcousticModelV3_0.get_embeddings_dim()
+    assert three_zero.outputs_probabilities
+
+
+def test_an_unknown_base_version_is_rejected():
+    with pytest.raises(ValueError, match=r"9\.9"):
+        base_models.base_model("9.9")
+
+
+def test_embeddings_width_identifies_the_base_model():
+    assert base_models.version_for_embeddings_dim(1024) == "2.4"
+    assert base_models.version_for_embeddings_dim(1280) == "3.0"
+
+    with pytest.raises(ValueError, match="512"):
+        base_models.version_for_embeddings_dim(512)

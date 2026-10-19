@@ -84,7 +84,9 @@ birdnet_analyzer.train
    All you need is a dataset of labeled audio files, organized in folders by species (we use folder names as labels).
    This also works for non-bird species, as long as you have a dataset of labeled audio files.
    
-   Audio files will be resampled to 48 kHz and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).
+   Audio files will be resampled to the sample rate of the base model (48 kHz for BirdNET 2.4, 32 kHz for BirdNET 3.0) and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).
+
+   The classifier is trained on the embeddings of one BirdNET version, chosen with ``--birdnet`` (3.0 by default), and only works with that version.
    
    You can download a sample training data set `here <https://drive.google.com/file/d/16hgka5aJ4U69ane9RQn_quVmgjVY2AY5/edit>`_.
 
