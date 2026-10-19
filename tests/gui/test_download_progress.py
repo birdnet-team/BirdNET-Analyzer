@@ -244,6 +244,8 @@ def _run_single_file_tab(monkeypatch, report):
     records, infos = _capture_progress(monkeypatch)
 
     class FakePredictions:
+        hop_duration_s = 3.0
+
         def to_dataframe(self):
             return pd.DataFrame(
                 columns=["species_name", "start_time", "end_time", "confidence"]

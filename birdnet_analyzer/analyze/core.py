@@ -447,6 +447,15 @@ def _split_tables(
             )
 
 
+def result_dataframe(predictions, merge_consecutive: int) -> pd.DataFrame:
+    """The detections of an in-memory result as the result files would hold them."""
+    return _merge_consecutive_segments(
+        predictions.to_dataframe(),
+        merge_consecutive,
+        hop_size=float(predictions.hop_duration_s),
+    )
+
+
 def _merge_consecutive_segments(
     df: pd.DataFrame, merge_consecutive: int, hop_size: float = 3.0
 ) -> pd.DataFrame:
