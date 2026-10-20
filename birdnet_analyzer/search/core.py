@@ -22,6 +22,8 @@ def search(
     Args:
         output (str): Path to the output directory where the results will be saved.
         database (str): Path to the database file to search in.
+        audio_root (str): Folder that the recording paths stored in the database are
+            relative to.
         queryfile (str): Path to the query file containing the search input.
         n_results (int, optional): Number of top results to return. Defaults to 10.
         score_function (SCORE_FUNCTIONS, optional):

@@ -3,6 +3,8 @@ import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from birdnet_analyzer.cli import search_parser
 from birdnet_analyzer.search.core import search
 
@@ -86,3 +88,14 @@ def test_search_cli_accepts_full_parser_surface(
         mock_save_signal.assert_called_once()
     finally:
         shutil.rmtree(env["test_dir"])
+
+
+def test_search_cli_requires_query_output_and_audio_root(capsys):
+    with pytest.raises(SystemExit) as exc:
+        search_parser().parse_args(["-db", "x"])
+
+    assert exc.value.code == 2
+    assert (
+        "the following arguments are required: -q/--queryfile, -o/--output, "
+        "--audio_root" in capsys.readouterr().err
+    )

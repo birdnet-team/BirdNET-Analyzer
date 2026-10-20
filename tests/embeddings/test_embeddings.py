@@ -195,3 +195,11 @@ def test_embeddings_inserts_windows_per_file_in_batch(
         assert call_kwargs["handle_duplicates"] == "skip"
     finally:
         shutil.rmtree(tmpdir)
+
+
+def test_embeddings_cli_requires_input(capsys):
+    with pytest.raises(SystemExit) as exc:
+        embeddings_parser().parse_args(["-db", "x"])
+
+    assert exc.value.code == 2
+    assert "the following arguments are required: -i/--input" in capsys.readouterr().err

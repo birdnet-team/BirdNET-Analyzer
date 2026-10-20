@@ -7,7 +7,18 @@ import pytest
 
 from birdnet_analyzer.cli import segments_parser
 from birdnet_analyzer.segments.core import segments
-from birdnet_analyzer.segments.utils import _find_segments, _find_segments_from_combined
+from birdnet_analyzer.segments.utils import (
+    _find_segments,
+    _find_segments_from_combined,
+    parse_files,
+    parse_folders,
+)
+
+RAVEN_HEADER = (
+    "Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tLow Freq (Hz)\t"
+    "High Freq (Hz)\tCommon Name\tScientific Name\tSpecies Code\tConfidence\t"
+    "Begin Path\tFile Offset (s)"
+)
 
 
 @pytest.fixture
@@ -163,3 +174,70 @@ def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):
 
     assert _find_segments_from_combined(str(rfile)) == [expected]
     assert _find_segments(audio, str(rfile)) == [expected]
+
+
+@pytest.mark.parametrize(
+    ("audio_dir", "results_dir"),
+    [
+        (os.path.join("data", "audio"), os.path.join("data", "results")),
+        (os.path.join("data", "audio", ""), os.path.join("data", "results")),
+        (os.path.join("data", "audio"), os.path.join("data", "audio")),
+    ],
+    ids=["separate", "trailing-separator", "same-folder"],
+)
+@pytest.mark.parametrize("folder", ["site1", "tree"])
+def test_parse_folders_pairs_every_audio_file_with_its_result(
+    tmp_path, monkeypatch, audio_dir, results_dir, folder
+):
+    monkeypatch.chdir(tmp_path)
+    expected = []
+
+    for sub in ("", folder):
+        audio = os.path.join(audio_dir, sub, "rec.wav")
+        result = os.path.join(results_dir, sub, "rec.BirdNET.selection.table.txt")
+        for path in (audio, result):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "w").close()
+        expected.append((audio, result))
+
+    flist = parse_folders(audio_dir, results_dir)
+
+    assert sorted((f["audio"], f["result"]) for f in flist) == sorted(expected)
+
+
+@pytest.mark.parametrize(
+    ("extension", "allowed"),
+    [("TXT", ("txt", "csv")), ("TXT", ("TXT",)), ("txt", ("TXT",))],
+)
+def test_parse_folders_matches_result_extensions_case_insensitively(
+    tmp_path, extension, allowed
+):
+    audio = tmp_path / "rec.wav"
+    result = tmp_path / f"rec.BirdNET.selection.table.{extension}"
+    audio.touch()
+    result.touch()
+
+    flist = parse_folders(str(tmp_path), str(tmp_path), allowed)
+
+    assert flist == [{"audio": str(audio), "result": str(result)}]
+
+
+@pytest.mark.parametrize("combined", [True, False])
+def test_parse_files_drops_detections_above_max_conf(tmp_path, combined):
+    audio = str(tmp_path / "rec.wav")
+    rfile = tmp_path / "rec.BirdNET.selection.table.txt"
+    rows = [
+        f"{i}\tSpectrogram 1\t1\t{3 * i}\t{3 * i + 3}\t0\t15000\tAmerican Robin\t"
+        f"Turdus migratorius\tamerob\t{confidence}\t{audio}\t{3 * i}"
+        for i, confidence in enumerate([0.3, 0.6, 0.9])
+    ]
+    rfile.write_text("\n".join([RAVEN_HEADER, *rows]) + "\n", encoding="utf-8")
+    flist = (
+        [{"isCombinedFile": True, "result": str(rfile)}]
+        if combined
+        else [{"audio": audio, "result": str(rfile)}]
+    )
+
+    result = parse_files(flist, min_conf=0.25, max_conf=0.7)
+
+    assert sorted(s["confidence"] for _, segs in result for s in segs) == [0.3, 0.6]

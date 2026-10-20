@@ -49,7 +49,6 @@ def embeddings(
             Defaults to 0.
         fmax (int, optional): Maximum frequency (in Hz) for audio analysis.
             Defaults to 15000.
-        threads (int, optional): Number of threads to use for processing. Defaults to 8.
         batch_size (int, optional): Number of audio segments to process in a single
             batch. Defaults to 1.
         file_output (str | None, optional): Path to save the output embeddings. If None,
@@ -71,7 +70,6 @@ def embeddings(
             audio_speed=1.0,
             fmin=500,
             fmax=10000,
-            threads=4,
             batch_size=2,
         )
     """

@@ -27,8 +27,8 @@ def _search_ann_ip(
 ) -> list[SearchResult]:
     matches = db.ui.search(query_embedding, count=n_results)
     return [
-        SearchResult(window_id=int(window_id), sort_score=float(score))
-        for window_id, score in zip(matches.keys, matches.distances, strict=False)
+        SearchResult(window_id=int(window_id), sort_score=1.0 - float(distance))
+        for window_id, distance in zip(matches.keys, matches.distances, strict=False)
     ]
 
 
@@ -131,7 +131,7 @@ def get_search_results(
         )
 
     db_embeddings_count = db.count_embeddings()
-    n_results = min(n_results, db_embeddings_count - 1)
+    n_results = min(n_results, db_embeddings_count)
     if n_results <= 0:
         return []
 
