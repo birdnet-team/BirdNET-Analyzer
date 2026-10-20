@@ -5,6 +5,10 @@ that defaults to the newest version. A cache file fixes the version it was creat
 with, so loading one shows that version and disables the choice.
 """
 
+import os
+import re
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -93,9 +97,7 @@ def test_cache_model_version_reads_the_record_or_the_embeddings_width(tmp_path):
     assert train.cache_model_version(str(tmp_path / "missing.npz")) is None
 
 
-def test_the_base_choice_reaches_training(monkeypatch, tmp_path):
-    from types import SimpleNamespace
-
+def _start_training(monkeypatch, tmp_path, **overrides):
     from birdnet_analyzer.train import utils as train_utils
 
     seen = {}
@@ -110,42 +112,193 @@ def test_the_base_choice_reaches_training(monkeypatch, tmp_path):
     monkeypatch.setattr(train_utils, "train_model", fake_train_model)
 
     train.start_training(
-        data_dir=str(tmp_path),
-        test_data_dir=None,
-        crop_mode="center",
-        crop_overlap=0.0,
-        fmin=0,
-        fmax=15000,
-        output_dir=str(tmp_path),
-        classifier_name="cc",
-        model_save_mode="replace",
-        birdnet_version="2.4",
-        cache_mode="none",
-        cache_file=None,
-        cache_file_name="cache.npz",
-        autotune=False,
-        autotune_trials=1,
-        autotune_folds=2,
-        autotune_repeats=1,
-        epochs=1,
-        batch_size=1,
-        learning_rate=0.001,
-        focal_loss=False,
-        focal_loss_gamma=2.0,
-        focal_loss_alpha=0.25,
-        hidden_units=0,
-        dropout=0.0,
-        label_smoothing=False,
-        use_mixup=False,
-        upsampling_ratio=0.0,
-        upsampling_mode="repeat",
-        model_formats=["tflite"],
-        audio_speed=1.0,
-        threads=1,
-        progress=None,
+        **{
+            "data_dir": str(tmp_path),
+            "test_data_dir": None,
+            "crop_mode": "center",
+            "crop_overlap": 0.0,
+            "fmin": 0,
+            "fmax": 15000,
+            "output_dir": str(tmp_path),
+            "classifier_name": "cc",
+            "model_save_mode": "replace",
+            "birdnet_version": "3.0",
+            "cache_mode": "none",
+            "cache_file": None,
+            "cache_file_name": "cache.npz",
+            "autotune": False,
+            "autotune_trials": 1,
+            "autotune_folds": 2,
+            "autotune_repeats": 1,
+            "epochs": 1,
+            "batch_size": 1,
+            "learning_rate": 0.001,
+            "focal_loss": False,
+            "focal_loss_gamma": 2.0,
+            "focal_loss_alpha": 0.25,
+            "hidden_units": 0,
+            "dropout": 0.0,
+            "label_smoothing": False,
+            "use_mixup": False,
+            "upsampling_ratio": 0.0,
+            "upsampling_mode": "repeat",
+            "model_formats": ["tflite"],
+            "audio_speed": 1.0,
+            "threads": 1,
+            "progress": None,
+        }
+        | overrides
     )
 
+    return seen
+
+
+def test_the_base_choice_reaches_training(monkeypatch, tmp_path):
+    seen = _start_training(monkeypatch, tmp_path, birdnet_version="2.4")
+
     assert seen["birdnet"] == "2.4"
+
+
+@pytest.mark.parametrize(("slider", "speed"), [(-2, 0.5), (0, 1.0), (3, 3.0)])
+def test_the_speed_slider_reaches_training_as_a_factor(
+    monkeypatch, tmp_path, slider, speed
+):
+    seen = _start_training(monkeypatch, tmp_path, audio_speed=slider)
+
+    assert seen["audio_speed"] == speed
+
+
+def test_an_out_of_range_bandpass_is_rejected(monkeypatch, tmp_path):
+    message = loc.localize("validation-no-valid-frequency")
+
+    with pytest.raises(gr.Error, match=re.escape(message)):
+        _start_training(monkeypatch, tmp_path, fmin=-1)
+
+
+@pytest.mark.parametrize("picked", ["nothing", "a file"])
+def test_saving_a_cache_needs_a_directory(monkeypatch, tmp_path, picked):
+    cache_file = None
+
+    if picked == "a file":
+        cache_file = tmp_path / "train_cache.npz"
+        cache_file.touch()
+
+    message = loc.localize("validation-no-directory-selected")
+
+    with pytest.raises(gr.Error, match=re.escape(message)):
+        _start_training(
+            monkeypatch,
+            tmp_path,
+            cache_mode="save",
+            cache_file=cache_file and str(cache_file),
+        )
+
+
+@pytest.mark.parametrize("name", ["", "  "])
+def test_saving_a_cache_needs_a_file_name(monkeypatch, tmp_path, name):
+    message = loc.localize("validation-no-valid-cache-file-name")
+
+    with pytest.raises(gr.Error, match=re.escape(message)):
+        _start_training(
+            monkeypatch,
+            tmp_path,
+            cache_mode="save",
+            cache_file=str(tmp_path),
+            cache_file_name=name,
+        )
+
+
+@pytest.mark.parametrize("picked", ["nothing", "a missing file"])
+def test_training_from_a_cache_needs_an_existing_file(monkeypatch, tmp_path, picked):
+    cache_file = None if picked == "nothing" else str(tmp_path / "missing.npz")
+    message = loc.localize("validation-no-cache-file-selected")
+
+    with pytest.raises(gr.Error, match=re.escape(message)):
+        _start_training(monkeypatch, tmp_path, cache_mode="load", cache_file=cache_file)
+
+
+def test_a_saved_cache_lands_in_the_picked_directory(monkeypatch, tmp_path):
+    seen = _start_training(
+        monkeypatch,
+        tmp_path,
+        cache_mode="save",
+        cache_file=str(tmp_path),
+        cache_file_name="cache.npz",
+    )
+
+    assert seen["save_cache_to"] == os.path.join(str(tmp_path), "cache.npz")
+
+
+def _persisted(cls, label_key):
+    label = loc.localize(label_key)
+
+    return next(
+        c for c in gs.persisted_components() if isinstance(c, cls) and c.label == label
+    )
+
+
+def _fire(demo, trigger, values):
+    """Runs every handler of ``trigger``'s change event, merging their updates."""
+    updates = {}
+
+    for event in demo.fns.values():
+        if (trigger._id, "change") in event.targets:
+            result = event.fn(*(values.get(c) for c in event.inputs))
+            results = result if len(event.outputs) > 1 else (result,)
+
+            for output, update in zip(event.outputs, results, strict=True):
+                assert output not in updates, "two handlers write the same output"
+                updates[output] = update
+
+    return updates
+
+
+@pytest.mark.parametrize("cache", ["none", "load"])
+@pytest.mark.parametrize("crop", ["center", "segments"])
+def test_the_crop_overlap_follows_cache_and_crop_mode_whichever_changed(
+    appdir, cache, crop
+):
+    with gr.Blocks() as demo:
+        train.build_train_tab()
+    cache_mode = _radio("training-tab-cache-mode-radio-label")
+    crop_mode = _radio("training-tab-crop-mode-radio-label")
+    crop_overlap = _persisted(gr.Slider, "training-tab-crop-overlap-number-label")
+    expected = {
+        "visible": crop == "segments",
+        "interactive": crop == "segments" and cache != "load",
+    }
+
+    for trigger in (cache_mode, crop_mode):
+        update = _fire(demo, trigger, {cache_mode: cache, crop_mode: crop})[
+            crop_overlap
+        ]
+
+        assert {key: update.get(key) for key in expected} == expected
+
+
+def test_changing_the_cache_mode_forgets_the_picked_cache_location(appdir):
+    with gr.Blocks() as demo:
+        train.build_train_tab()
+    cache_mode = _radio("training-tab-cache-mode-radio-label")
+    pickers = {
+        getattr(event.fn, "__name__", ""): event.outputs for event in demo.fns.values()
+    }
+    picked = {
+        *pickers["select_cache_directory_and_update"][:2],
+        *pickers["on_cache_file_selection_click"][:3],
+    }
+
+    for mode in ("none", "load", "save"):
+        updates = _fire(demo, cache_mode, {cache_mode: mode})
+
+        for component in picked:
+            update = updates[component]
+
+            if isinstance(update, dict):
+                assert "value" in update, component
+                update = update["value"]
+
+            assert update in (None, "")
 
 
 def test_selecting_a_cache_shows_its_version(appdir, monkeypatch, tmp_path):

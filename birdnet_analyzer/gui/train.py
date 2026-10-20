@@ -117,9 +117,10 @@ def start_training(
         classifier_name: Name of the custom classifier.
         model_save_mode: Save mode for the model (replace or append).
         birdnet_version: The BirdNET version to train on.
-        cache_mode: Cache mode for training data (load, save, or None).
-        cache_file: Path to the cache file.
-        cache_file_name: Name of the cache file.
+        cache_mode: Cache mode for training data (none, load or save).
+        cache_file: The cache file to train from in "load" mode, or the directory to
+            write the cache to in "save" mode.
+        cache_file_name: Name of the cache file written in "save" mode.
         autotune: Whether to use hyperparameter autotuning.
         autotune_trials: Number of trials for autotuning.
         autotune_folds: Number of folds for autotuning.
@@ -179,8 +180,14 @@ def start_training(
             (0, epochs), desc=loc.localize("progress-build-classifier"), unit="epochs"
         )
 
-    if cache_mode == "load" and not os.path.isfile(cache_file):
+    if cache_mode == "load" and not (cache_file and os.path.isfile(cache_file)):
         raise gr.Error(loc.localize("validation-no-cache-file-selected"))
+
+    if cache_mode == "save" and not (cache_file and os.path.isdir(cache_file)):
+        raise gr.Error(loc.localize("validation-no-directory-selected"))
+
+    if cache_mode == "save" and not (cache_file_name or "").strip():
+        raise gr.Error(loc.localize("validation-no-valid-cache-file-name"))
 
     if model_save_mode == "append" and "detached" in model_formats:
         gr.Warning(loc.localize("training-tab-warning-detached-classifier-append"))
@@ -239,8 +246,8 @@ def start_training(
                 use_focal_loss=focal_loss,
                 focal_loss_gamma=max(0.0, float(focal_loss_gamma)),
                 focal_loss_alpha=max(0.0, min(1.0, float(focal_loss_alpha))),
-                fmin=max(0, min(15000, int(fmin))),
-                fmax=max(0, min(15000, int(fmax))),
+                fmin=int(fmin),
+                fmax=int(fmax),
                 model_save_mode=model_save_mode,
                 birdnet=birdnet_version,
                 save_cache_to=os.path.join(cache_file, cache_file_name)
@@ -254,9 +261,7 @@ def start_training(
                 on_epoch_end=epoch_progression,
                 on_trial_result=trial_progression,
                 on_data_load_end=data_load_progression,
-                audio_speed=max(0.1, 1.0 / (audio_speed * -1))
-                if audio_speed < 0
-                else max(1.0, float(audio_speed)),
+                audio_speed=gu.slider_to_value(audio_speed),
                 autotune=autotune,
                 autotune_trials=int(autotune_trials),
                 autotune_n_splits=int(autotune_folds),
@@ -603,8 +608,28 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
                     gr.update(interactive=value != "load"),
-                    gr.update(interactive=value != "load"),
                 )
+
+            def clear_cache_location():
+                return (
+                    None,
+                    "",
+                    gr.update(visible=False),
+                    "",
+                    gr.update(value=None, visible=False),
+                )
+
+            cache_mode.change(
+                clear_cache_location,
+                outputs=[
+                    cache_file_state,
+                    selected_cache_dir_textbox,
+                    cache_file_name,
+                    selected_cache_file_textbox,
+                    cache_file_input,
+                ],
+                show_progress="hidden",
+            )
 
         with (
             gr.Group(),
@@ -702,13 +727,20 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("training-tab-threads-number-info"),
                 )
 
-            def on_crop_select(new_crop_mode):
+            def on_crop_or_cache_mode_change(new_cache_mode, new_crop_mode):
+                visible = new_crop_mode in ("segments", "smart")
+
                 return gr.update(
-                    visible=new_crop_mode in ["segments", "smart"],
-                    interactive=new_crop_mode in ["segments", "smart"],
+                    visible=visible, interactive=visible and new_cache_mode != "load"
                 )
 
-            crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
+            gr.on(
+                [cache_mode.change, crop_mode.change],
+                on_crop_or_cache_mode_change,
+                inputs=[cache_mode, crop_mode],
+                outputs=crop_overlap,
+                show_progress="hidden",
+            )
 
             cache_mode.change(
                 on_cache_mode_change,
@@ -724,7 +756,6 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     fmax_number,
                     audio_speed_slider,
                     crop_mode,
-                    crop_overlap,
                     threads_number,
                     base_model_radio,
                 ],

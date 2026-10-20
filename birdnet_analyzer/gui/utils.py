@@ -1505,6 +1505,18 @@ def species_lists(
     }
 
 
+_PLOT_FORMATS = {
+    ".png": "PNG",
+    ".jpg": "JPEG",
+    ".jpeg": "JPEG",
+    ".webp": "WEBP",
+    ".bmp": "BMP",
+    ".gif": "GIF",
+    ".tif": "TIFF",
+    ".tiff": "TIFF",
+}
+
+
 def download_plot(plot, filename=""):
     import webview
     from PIL import Image
@@ -1521,17 +1533,21 @@ def download_plot(plot, filename=""):
         if isinstance(res, list | tuple):
             res: str = res[0]
 
-        file_ext = res.split(".", 1)[-1].upper()
+        file_ext = _PLOT_FORMATS.get(os.path.splitext(res)[1].lower())
 
         if file_ext == "WEBP":
             with open(res, "wb") as f:
                 f.write(imgdata)
         else:
-            if file_ext not in ["PNG", "JPEG"]:
+            if file_ext is None:
                 file_ext = "PNG"
                 res += ".png"
 
             img = Image.open(io.BytesIO(imgdata))
+
+            if file_ext != "PNG":
+                img = img.convert("RGB")
+
             img.save(res, file_ext)
 
 
@@ -1550,41 +1566,42 @@ def _get_network_shortcuts():
     try:
         # CSIDL_NETHOOD: folder containing network shortcuts
         network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)  # pyright: ignore[reportArgumentType]
-        shortcuts = []
-
-        for item in os.listdir(network_shortcuts):
-            item_path = os.path.join(network_shortcuts, item)
-
-            if os.path.isdir(item_path):
-                # network shortcuts are folders containing a target.lnk file
-                target_lnk = os.path.join(item_path, "target.lnk")
-
-                if os.path.exists(target_lnk):
-                    try:
-                        shell_link = pythoncom.CoCreateInstance(  # ty:ignore[unresolved-attribute]
-                            shell.CLSID_ShellLink,
-                            None,
-                            pythoncom.CLSCTX_INPROC_SERVER,  # ty:ignore[unresolved-attribute]
-                            shell.IID_IShellLink,
-                        )
-
-                        persist_file = shell_link.QueryInterface(
-                            pythoncom.IID_IPersistFile  # ty:ignore[unresolved-attribute]
-                        )
-
-                        persist_file.Load(target_lnk)
-
-                        path_buffer, _ = shell_link.GetPath(shell.SLGP_RAWPATH)
-
-                        shortcuts.append(path_buffer)
-                    except Exception as e:
-                        logger.exception(f"Error reading {target_lnk}: {e}")
-                        raise
-
-        return shortcuts
+        items = os.listdir(network_shortcuts)
     except Exception as e:
         utils.write_error_log(e)
         return []
+
+    shortcuts = []
+
+    for item in items:
+        item_path = os.path.join(network_shortcuts, item)
+
+        if os.path.isdir(item_path):
+            # network shortcuts are folders containing a target.lnk file
+            target_lnk = os.path.join(item_path, "target.lnk")
+
+            if os.path.exists(target_lnk):
+                try:
+                    shell_link = pythoncom.CoCreateInstance(  # ty:ignore[unresolved-attribute]
+                        shell.CLSID_ShellLink,
+                        None,
+                        pythoncom.CLSCTX_INPROC_SERVER,  # ty:ignore[unresolved-attribute]
+                        shell.IID_IShellLink,
+                    )
+
+                    persist_file = shell_link.QueryInterface(
+                        pythoncom.IID_IPersistFile  # ty:ignore[unresolved-attribute]
+                    )
+
+                    persist_file.Load(target_lnk)
+
+                    path_buffer, _ = shell_link.GetPath(shell.SLGP_RAWPATH)
+
+                    shortcuts.append(path_buffer)
+                except Exception as e:
+                    logger.exception(f"Error reading {target_lnk}: {e}")
+
+    return shortcuts
 
 
 def _get_win_drives():
