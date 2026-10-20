@@ -92,6 +92,19 @@ def test_picking_a_folder_without_a_database_is_rejected_and_left_as_is(
     assert list(folder.iterdir()) == []
 
 
+def test_picking_a_database_without_settings_is_rejected_and_closed(
+    appdir, monkeypatch, hoplite_database, hoplite_connections
+):
+    path = hoplite_database()
+    monkeypatch.setattr(gu, "select_folder", lambda *a, **k: path)
+    message = loc.localize("embeddings-search-db-selection-error")
+
+    with pytest.raises(gr.Error, match=re.escape(message)):
+        _handler("on_db_selection_click")()
+
+    assert hoplite_connections.still_open() == []
+
+
 def test_picking_a_database_shows_its_settings_and_closes_it(
     appdir, monkeypatch, hoplite_database, hoplite_connections
 ):
@@ -129,10 +142,13 @@ def test_the_query_spectrogram_uses_the_database_settings(
     assert hoplite_connections.still_open() == []
 
 
-def test_the_query_spectrogram_does_not_create_a_missing_database(appdir, tmp_path):
+def test_the_query_spectrogram_reports_a_missing_database_without_creating_it(
+    appdir, tmp_path
+):
     missing = tmp_path / "moved_db"
+    message = loc.localize("embeddings-search-db-selection-error")
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(gr.Error, match=re.escape(message)):
         _handler("update_query_spectrogram")("query.wav", str(missing), "center", 0.0)
 
     assert not missing.exists()
