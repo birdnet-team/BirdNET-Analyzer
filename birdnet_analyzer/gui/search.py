@@ -401,7 +401,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
             with open_database(folder) as db:
                 embedding_count = db.count_embeddings()
                 settings = db.get_metadata(SETTINGS_KEY)
-        except FileNotFoundError as e:
+        except (FileNotFoundError, KeyError) as e:
             raise gr.Error(loc.localize("embeddings-search-db-selection-error")) from e
 
         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
@@ -444,7 +444,13 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
         from birdnet_analyzer import audio, utils
 
         if audiofilepath and db_selection:
-            settings = read_database_settings(db_selection)
+            try:
+                settings = read_database_settings(db_selection)
+            except (FileNotFoundError, KeyError) as e:
+                raise gr.Error(
+                    loc.localize("embeddings-search-db-selection-error")
+                ) from e
+
             audio_speed: float = settings["AUDIO_SPEED"]
             fmin = settings["BANDPASS_FMIN"]
             fmax = settings["BANDPASS_FMAX"]
