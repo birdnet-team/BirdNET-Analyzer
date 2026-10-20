@@ -49,7 +49,7 @@ def _extract_segments(
         min_conf=min_conf,
         max_conf=max_conf,
         max_segments=num_seq,
-        audio_speed=audio_speed,
+        audio_speed=gu.slider_to_value(audio_speed),
         seg_length=seq_length,
         threads=threads,
         collection_mode=collection_mode,

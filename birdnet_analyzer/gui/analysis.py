@@ -117,11 +117,7 @@ def run_analysis(
     lat = lat if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
     lon = lon if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
     week = None if use_yearlong else week  # ty:ignore[invalid-assignment]
-    audio_speed = (
-        max(0.1, 1.0 / (audio_speed * -1))
-        if audio_speed < 0
-        else max(1.0, float(audio_speed))
-    )
+    audio_speed = gu.slider_to_value(audio_speed)
     on_update = partial(on_progress, progress=progress) if callable(progress) else None
 
     if selected_model == gu._CUSTOM_CLASSIFIER and custom_classifier_file is None:

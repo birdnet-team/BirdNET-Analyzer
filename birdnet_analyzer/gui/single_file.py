@@ -439,7 +439,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 file_location = gu.save_file_dialog(
                     state_key="single-file-table",
                     default_filename=cfg.OUTPUT_KALEIDOSCOPE_FILENAME,
-                    filetypes=("Kaleidoscope (*.txt)",),
+                    filetypes=("Kaleidoscope (*.csv)",),
                 )
 
                 if file_location:
