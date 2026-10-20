@@ -38,8 +38,8 @@ def segments(
             considered. Defaults to 0.25.
         max_conf (float, optional): Maximum confidence threshold for detections to be
             considered. Defaults to 1.0.
-        max_segments (int, optional): Maximum number of segments to extract per audio
-            file. Defaults to 100.
+        max_segments (int, optional): Maximum number of segments to extract per
+            species. Defaults to 100.
         audio_speed (float, optional): Speed factor for audio processing.
             Defaults to 1.0.
         seg_length (float, optional): Length of each audio segment in seconds.

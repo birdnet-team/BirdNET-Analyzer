@@ -125,17 +125,21 @@ def parse_folders(
                 if f.rsplit(".", 1)[
                     -1
                 ].lower() in cfg.ALLOWED_FILETYPES and not f.startswith("."):
-                    table_key = os.path.join(root.strip(apath), f.rsplit(".", 1)[0])
+                    table_key = os.path.join(
+                        os.path.relpath(root, apath), f.rsplit(".", 1)[0]
+                    )
                     data[table_key] = {"audio": os.path.join(root, f), "result": ""}
+
+        result_filetypes = {t.lower() for t in allowed_result_filetypes}
 
         for root, _, files in os.walk(rpath):
             for f in files:
                 if (
-                    f.rsplit(".", 1)[-1] in allowed_result_filetypes
+                    f.rsplit(".", 1)[-1].lower() in result_filetypes
                     and ".BirdNET." in f
                 ):
                     table_key = os.path.join(
-                        root.strip(rpath), f.split(".BirdNET.", 1)[0]
+                        os.path.relpath(root, rpath), f.split(".BirdNET.", 1)[0]
                     )
                     if table_key in data:
                         data[table_key]["result"] = os.path.join(root, f)
@@ -189,7 +193,9 @@ def parse_files(
 
     if is_combined_rfile:
         rfile = flist[0]["result"]
-        segments = _find_segments_from_combined(rfile, min_conf=min_conf)
+        segments = _find_segments_from_combined(
+            rfile, min_conf=min_conf, max_conf=max_conf
+        )
 
         for s in segments:
             if s["species"] not in species_segments:
@@ -201,7 +207,9 @@ def parse_files(
             afile = f["audio"]
             rfile = f["result"]
 
-            segments = _find_segments(afile, rfile, min_conf=min_conf)
+            segments = _find_segments(
+                afile, rfile, min_conf=min_conf, max_conf=max_conf
+            )
 
             for s in segments:
                 if s["species"] not in species_segments:

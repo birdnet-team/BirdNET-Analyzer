@@ -540,7 +540,8 @@ def embeddings_parser():
         "-i",
         "--input",
         dest="audio_input",
-        help="Path to input file or folder, relative to the audio root.",
+        required=True,
+        help="Path to input file or folder.",
     )
 
     parser.add_argument(
@@ -559,18 +560,21 @@ def search_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents
     )
 
-    parser.add_argument("-q", "--queryfile", help="Path to the query file.")
-    parser.add_argument("-o", "--output", help="Path to the output folder.")
+    parser.add_argument(
+        "-q", "--queryfile", required=True, help="Path to the query file."
+    )
+    parser.add_argument(
+        "-o", "--output", required=True, help="Path to the output folder."
+    )
     parser.add_argument(
         "--n_results", default=10, type=int, help="Number of results to return."
     )
 
-    # TODO: use choice argument.
     parser.add_argument(
         "--score_function",
         default="cosine",
         choices=["cosine", "euclidean", "dot"],
-        help="Scoring function to use. Choose 'cosine', 'euclidean' or 'dot'. Defaults to 'cosine'.",
+        help="Scoring function to use. Choose 'cosine', 'euclidean' or 'dot'.",
     )
     parser.add_argument(
         "--crop_mode",
@@ -581,7 +585,9 @@ def search_parser():
 
     parser.add_argument(
         "--audio_root",
-        help="Path to the root directory of audio files.",
+        required=True,
+        help="Folder that the audio paths in the database are relative to: the "
+        "parent of the input path the embeddings were extracted from.",
     )
 
     return parser
@@ -634,7 +640,7 @@ def segments_parser():
         "--collection_mode",
         default="random",
         choices=["random", "confidence", "balanced"],
-        help="Collection mode for selecting the segments. Can be 'random' or 'confidence'.",
+        help="Collection mode for selecting the segments. Can be 'random', 'confidence' or 'balanced'.",
     )
     parser.add_argument(
         "--n_bins",
