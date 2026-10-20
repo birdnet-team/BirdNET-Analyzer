@@ -329,9 +329,9 @@ def analyze(
                 "Additional columns": ", ".join(additional_columns)
                 if additional_columns
                 else "",
-                "Latitude": lat or "",
-                "Longitude": lon or "",
-                "Week": week or "",
+                "Latitude": "" if lat is None else lat,
+                "Longitude": "" if lon is None else lon,
+                "Week": "" if week is None else week,
                 "Species filter threshold": sf_thresh,
                 "Species list file": species_list_file or "",
                 "Locale": locale,
@@ -385,15 +385,15 @@ def _split_tables(
     sensitivity,
     species_list_file,
 ):
+    input_root = (
+        Path(os.path.abspath(audio_input_path)) if audio_input_path.is_dir() else None
+    )
+
     for input_file in df["input"].unique():
         df_file = df[df["input"] == input_file]
-        rpath = str(input_file).replace(str(audio_input_path), "")
-        rpath = (
-            (rpath[1:] if rpath[0] in ["/", "\\"] else rpath)
-            if rpath
-            else os.path.basename(input_file)
-        )
-        file_shorthand = rpath.rsplit(".", 1)[0]
+        rpath = Path(os.path.abspath(input_file))
+        rpath = rpath.relative_to(input_root) if input_root else Path(rpath.name)
+        file_shorthand = str(rpath.with_suffix(""))
 
         if "table" in rtypes:
             save_as_rtable(
@@ -561,6 +561,11 @@ def _merge_consecutive_segments(
     return merged_df.sort_values(by=["input", "start_time", "end_time", "species_name"])
 
 
+def _split_species_name(species_name: pd.Series) -> tuple[pd.Series, pd.Series]:
+    parts = species_name.str.split("_", n=1)
+    return parts.str[0], parts.str[-1]
+
+
 def save_as_rtable(
     df: pd.DataFrame,
     bandpass_fmin,
@@ -599,9 +604,7 @@ def save_as_rtable(
     )
     df["Low Freq (Hz)"] = [max(model_fmin, int(bandpass_fmin / audio_speed))] * n_rows
     df["File Offset (s)"] = df["start_time"]
-    df[["Scientific Name", "Common Name"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
-    )
+    df["Scientific Name"], df["Common Name"] = _split_species_name(df["species_name"])
     df["Species Code"] = df["species_name"].map(lambda x: codes.get(str(x), str(x)))
     df = df.rename(
         columns={
@@ -615,7 +618,7 @@ def save_as_rtable(
     acumulated_start_times = []
     accumulated_end_times = []
     accumulated_time = timestamp_dtype.type(0)
-    current_file = df["Begin Path"].iloc[0]
+    current_file = next(iter(files), None)
 
     for row in df.iterrows():
         file = row[1]["Begin Path"]
@@ -686,9 +689,7 @@ def save_as_csv(
             if col in additional_columns:
                 df[col] = possible_cols[col] * n_rows
 
-    df[["Scientific name", "Common name"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
-    )
+    df["Scientific name"], df["Common name"] = _split_species_name(df["species_name"])
 
     df = df.rename(
         columns={
@@ -715,25 +716,26 @@ def save_as_csv(
 
 
 def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
-    df = df.copy()
-    df["INDIR"] = df["input"].map(lambda x: str(Path(x).parent.parent).rstrip("/"))
-    df["FOLDER"] = df["input"].map(lambda x: Path(x).parent.name)
-    df["IN FILE"] = df["input"].map(lambda x: Path(x).name)
-    df["DURATION"] = df["end_time"] - df["start_time"]
-    df[["scientific_name", "TOP1MATCH"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
+    import pandas as pd
+
+    import birdnet_analyzer.config as cfg
+
+    paths = df["input"].map(Path)
+    _, common_names = _split_species_name(df["species_name"])
+    columns = (
+        paths.map(lambda p: str(p.parent.parent).rstrip("/")),
+        paths.map(lambda p: p.parent.name),
+        paths.map(lambda p: p.name),
+        df["start_time"],
+        df["end_time"] - df["start_time"],
+        common_names,
+        df["confidence"],
     )
 
-    df = df.rename(
-        columns={
-            "start_time": "OFFSET",
-            "TOP1DIST": "confidence",
-        }
-    )
-
-    df = df.drop(columns=["input", "species_name", "end_time", "scientific_name"])
     output.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output, index=False)
+    pd.DataFrame(dict(zip(cfg.KALEIDOSCOPE_COLUMNS, columns, strict=True))).to_csv(
+        output, index=False
+    )
 
 
 def save_as_audacity(df: pd.DataFrame, output: Path):
@@ -758,9 +760,7 @@ def save_as_parquet(
 ):
     df = df.copy()
     n_rows = df.shape[0]
-    df[["Scientific name", "Common name"]] = df["species_name"].str.split(
-        "_", n=1, expand=True
-    )
+    df["Scientific name"], df["Common name"] = _split_species_name(df["species_name"])
 
     df = df.rename(
         columns={

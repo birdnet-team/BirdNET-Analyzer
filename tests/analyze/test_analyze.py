@@ -1,17 +1,26 @@
 import csv
+import logging
 import os
 import platform
 import shutil
+import subprocess
 import tempfile
+from typing import get_args
 from unittest.mock import patch
 
 import birdnet
 import numpy as np
 import pandas as pd
 import pytest
+import soundfile as sf
 
-from birdnet_analyzer.analyze.core import analyze
+import birdnet_analyzer.config as cfg
+from birdnet_analyzer import logs, settings
+from birdnet_analyzer.analyze import cli as analyze_cli
+from birdnet_analyzer.analyze.core import _split_tables, analyze
+from birdnet_analyzer.analyze.resume import RunMetadata
 from birdnet_analyzer.cli import analyzer_parser
+from birdnet_analyzer.params import load_analysis_params
 
 
 @pytest.fixture
@@ -764,3 +773,187 @@ def test_reconcile_species_list_geo_collection_is_silent(caplog):
 
     assert matched == {"Turdus migratorius_American Robin"}
     assert caplog.text == ""
+
+
+def test_an_analysis_without_detections_writes_every_result_type(
+    setup_test_environment,
+):
+    env = setup_test_environment
+
+    analyze(
+        "birdnet_analyzer/example/soundscape.wav",
+        env["output_dir"],
+        min_conf=0.9999,
+        rtype=list(get_args(cfg.RESULT_TYPES)),
+    )
+
+    for filename in (
+        cfg.OUTPUT_RAVEN_FILENAME,
+        cfg.OUTPUT_CSV_FILENAME,
+        cfg.OUTPUT_KALEIDOSCOPE_FILENAME,
+        cfg.OUTPUT_AUDACITY_FILENAME,
+        cfg.OUTPUT_PARQUET_FILENAME,
+    ):
+        assert os.path.isfile(os.path.join(env["output_dir"], filename)), filename
+
+    assert pd.read_csv(os.path.join(env["output_dir"], cfg.OUTPUT_CSV_FILENAME)).empty
+
+
+def test_split_tables_of_a_relative_input_mirror_it_inside_the_output(
+    tmp_path, monkeypatch
+):
+    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    (tmp_path / "rel_in" / "sub").mkdir(parents=True)
+    sf.write(tmp_path / "rel_in" / "a.wav", sig[: 6 * rate], rate)
+    sf.write(tmp_path / "rel_in" / "sub" / "b.wav", sig[: 6 * rate], rate)
+    monkeypatch.chdir(tmp_path)
+
+    analyze("rel_in", "rel_out", min_conf=0, top_n=1, rtype="csv", split_tables=True)
+
+    assert sorted(
+        p.relative_to(tmp_path).as_posix()
+        for p in tmp_path.rglob("*.BirdNET.results.csv")
+    ) == ["rel_out/a.BirdNET.results.csv", "rel_out/sub/b.BirdNET.results.csv"]
+
+
+def test_split_tables_of_a_relative_file_land_in_the_output(tmp_path, monkeypatch):
+    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    (tmp_path / "rel_in").mkdir()
+    sf.write(tmp_path / "rel_in" / "a.wav", sig[: 6 * rate], rate)
+    monkeypatch.chdir(tmp_path)
+
+    analyze(
+        "rel_in/a.wav", "rel_out", min_conf=0, top_n=1, rtype="csv", split_tables=True
+    )
+
+    assert [
+        p.relative_to(tmp_path).as_posix()
+        for p in tmp_path.rglob("*.BirdNET.results.csv")
+    ] == ["rel_out/a.BirdNET.results.csv"]
+
+
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_a_location_at_zero_is_kept_in_the_params_file(
+    mock_run_inference, mock_run_geomodel, setup_test_environment
+):
+    env = setup_test_environment
+    mock_run_inference.return_value.to_dataframe.return_value = pd.DataFrame(
+        {
+            "input": ["a.wav"],
+            "start_time": [0.0],
+            "end_time": [3.0],
+            "species_name": ["Turdus migratorius_American Robin"],
+            "confidence": [0.5],
+        }
+    )
+
+    analyze(
+        "birdnet_analyzer/example/soundscape.wav",
+        env["output_dir"],
+        lat=0.0,
+        lon=0.0,
+        rtype="csv",
+        save_params=True,
+    )
+
+    kwargs = load_analysis_params(
+        os.path.join(env["output_dir"], cfg.ANALYSIS_PARAMS_FILENAME)
+    )
+    assert (kwargs.get("lat"), kwargs.get("lon")) == (0.0, 0.0)
+
+
+@pytest.mark.parametrize(
+    ("rtype", "expected_warnings"),
+    [
+        (
+            "table",
+            [
+                "The --additional_columns argument is only valid for CSV and parquet "
+                "output. It will be ignored."
+            ],
+        ),
+        ("csv", []),
+        ("parquet", []),
+    ],
+)
+def test_the_cli_warns_when_additional_columns_cannot_be_written(
+    tmp_path, monkeypatch, caplog, rtype, expected_warnings
+):
+    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "birdnet-analyze",
+            str(tmp_path),
+            "--rtype",
+            rtype,
+            "--additional_columns",
+            "lat",
+        ],
+    )
+
+    with patch.object(analyze_cli, "analyze") as mock_analyze:
+        try:
+            analyze_cli.main()
+        finally:
+            logs._remove_installed_handlers()
+
+    mock_analyze.assert_called_once()
+    assert [
+        r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
+    ] == expected_warnings
+
+
+def _link_directory(link, target):
+    if os.name == "nt":
+        subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+            check=True,
+            capture_output=True,
+        )
+    else:
+        link.symlink_to(target, target_is_directory=True)
+
+
+def test_split_tables_keep_files_reached_through_a_link_under_the_link(tmp_path):
+    (tmp_path / "in").mkdir()
+    (tmp_path / "outside").mkdir()
+    _link_directory(tmp_path / "in" / "linked", tmp_path / "outside")
+    detections = pd.DataFrame(
+        {
+            "input": [str(tmp_path / "in" / "linked" / "b.wav")],
+            "start_time": [0.0],
+            "end_time": [3.0],
+            "species_name": ["Turdus migratorius_American Robin"],
+            "confidence": [0.5],
+        }
+    )
+
+    _split_tables(
+        detections,
+        audio_input_path=tmp_path / "in",
+        output=tmp_path / "out",
+        bandpass_fmin=0,
+        bandpass_fmax=15000,
+        meta=RunMetadata(
+            model_path="model",
+            model_fmin=0,
+            model_fmax=15000,
+            model_sr=48000,
+            segment_duration_s=3.0,
+            hop_duration_s=3.0,
+        ),
+        audio_speed=1.0,
+        rtypes=["csv"],
+        additional_columns=None,
+        lat=None,
+        lon=None,
+        week=None,
+        overlap=0,
+        min_conf=0.25,
+        sensitivity=1.0,
+        species_list_file="",
+    )
+
+    assert (tmp_path / "out" / "linked" / "b.BirdNET.results.csv").is_file()

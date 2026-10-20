@@ -7,6 +7,7 @@ import pytest
 
 from birdnet_analyzer.cli import segments_parser
 from birdnet_analyzer.segments.core import segments
+from birdnet_analyzer.segments.utils import _find_segments, _find_segments_from_combined
 
 
 @pytest.fixture
@@ -140,3 +141,25 @@ def test_segments_cli_accepts_full_parser_surface(
     assert parse_files_kwargs["min_conf"] == 0.15
     assert parse_files_kwargs["max_conf"] == 0.9
     mock_extract_segments.assert_called_once()
+
+
+def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):
+    rfile = tmp_path / "BirdNET_Kaleidoscope.csv"
+    rfile.write_text(
+        "INDIR,FOLDER,IN FILE,OFFSET,DURATION,scientific_name,common_name,"
+        "confidence,lat,lon,week,overlap,sensitivity\n"
+        f"{tmp_path},site_a,x.wav,3.0,3.0,Turdus migratorius,American Robin,"
+        "0.8000,-1.0000,-1.0000,-1,0.0,1.0\n",
+        encoding="utf-8",
+    )
+    audio = os.path.join(str(tmp_path), "site_a", "x.wav")
+    expected = {
+        "audio": audio,
+        "start": 3.0,
+        "end": 6.0,
+        "species": "Turdus migratorius",
+        "confidence": 0.8,
+    }
+
+    assert _find_segments_from_combined(str(rfile)) == [expected]
+    assert _find_segments(audio, str(rfile)) == [expected]

@@ -56,6 +56,15 @@ ADDITIONAL_COLUMNS = Literal[
 ]
 OUTPUT_RAVEN_FILENAME: str = "BirdNET_SelectionTable.txt"
 OUTPUT_KALEIDOSCOPE_FILENAME: str = "BirdNET_Kaleidoscope.csv"
+KALEIDOSCOPE_COLUMNS: list[str] = [
+    "INDIR",
+    "FOLDER",
+    "IN FILE",
+    "OFFSET",
+    "DURATION",
+    "TOP1MATCH",
+    "TOP1DIST",
+]
 OUTPUT_CSV_FILENAME: str = "BirdNET_CombinedTable.csv"
 OUTPUT_AUDACITY_FILENAME: str = "BirdNET_AudacityLabels.txt"
 OUTPUT_PARQUET_FILENAME: str = "BirdNET_CombinedTable.parquet"
