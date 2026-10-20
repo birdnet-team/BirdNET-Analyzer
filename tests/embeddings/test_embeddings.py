@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from birdnet_analyzer.cli import embeddings_parser
-from birdnet_analyzer.embeddings.core import embeddings
+from birdnet_analyzer.embeddings.core import create_csv_output, embeddings
 
 
 def _make_empty_encoding_result():
@@ -203,3 +203,37 @@ def test_embeddings_cli_requires_input(capsys):
 
     assert exc.value.code == 2
     assert "the following arguments are required: -i/--input" in capsys.readouterr().err
+
+
+def test_a_settings_mismatch_closes_the_database(
+    hoplite_database, hoplite_connections, monkeypatch, tmp_path
+):
+    from birdnet_analyzer import model_utils
+
+    path = hoplite_database(
+        {"AUDIO_SPEED": 2.0, "BANDPASS_FMIN": 0, "BANDPASS_FMAX": 15000}
+    )
+    monkeypatch.setattr(
+        model_utils, "get_embeddings", lambda *a, **k: _make_empty_encoding_result()
+    )
+
+    with pytest.raises(ValueError, match="do not match"):
+        embeddings(str(tmp_path / "recordings"), path)
+
+    assert hoplite_connections.still_open() == []
+
+
+def test_a_failing_csv_export_closes_the_database(
+    hoplite_database, hoplite_connections, tmp_path
+):
+    with pytest.raises((IsADirectoryError, PermissionError)):
+        create_csv_output(str(tmp_path), hoplite_database())
+
+    assert hoplite_connections.still_open() == []
+
+
+def test_exporting_a_missing_database_creates_nothing(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        create_csv_output(str(tmp_path / "out.csv"), str(tmp_path / "typo"))
+
+    assert list(tmp_path.iterdir()) == []
