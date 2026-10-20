@@ -264,7 +264,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <p>Run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings</span></code> to extract feature embeddings instead of class predictions.
 Result file will contain timestamps and lists of float values representing the embedding for a particular 3-second segment.
 Embeddings can be used for clustering or similarity analysis. Here is an example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.embeddings<span class="w"> </span>example/<span class="w"> </span>--threads<span class="w"> </span><span class="m">4</span><span class="w"> </span>--batch_size<span class="w"> </span><span class="m">16</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.embeddings<span class="w"> </span>-i<span class="w"> </span>example/<span class="w"> </span>-db<span class="w"> </span>example_db/<span class="w"> </span>--batch_size<span class="w"> </span><span class="m">16</span>
 </pre></div>
 </div>
 <div class="highlight-default notranslate" id="birdnet_analyzer.embeddings"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">embeddings</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">-</span><span class="n">db</span> <span class="n">DATABASE</span> <span class="p">[</span><span class="o">--</span><span class="n">fmin</span> <span class="n">FMIN</span><span class="p">]</span>
@@ -272,8 +272,7 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
                                    <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">b</span> <span class="n">BATCH_SIZE</span><span class="p">]</span>
                                    <span class="p">[</span><span class="o">--</span><span class="n">n_workers</span> <span class="n">N_WORKERS</span><span class="p">]</span>
                                    <span class="p">[</span><span class="o">--</span><span class="n">n_producers</span> <span class="n">N_PRODUCERS</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span> <span class="o">|</span> <span class="o">--</span><span class="n">quiet</span><span class="p">]</span>
-                                   <span class="p">[</span><span class="o">-</span><span class="n">i</span> <span class="n">AUDIO_INPUT</span><span class="p">]</span>
-                                   <span class="p">[</span><span class="o">--</span><span class="n">file_output</span> <span class="n">FILE_OUTPUT</span><span class="p">]</span>
+                                   <span class="o">-</span><span class="n">i</span> <span class="n">AUDIO_INPUT</span> <span class="p">[</span><span class="o">--</span><span class="n">file_output</span> <span class="n">FILE_OUTPUT</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="birdnet_analyzer.embeddings-named-arguments">
@@ -316,7 +315,7 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
 <dd><p>Only show warnings and errors on the console.</p>
 </dd>
 <dt><kbd>-i, --input</kbd></dt>
-<dd><p>Path to input file or folder, relative to the audio root.</p>
+<dd><p>Path to input file or folder.</p>
 </dd>
 <dt><kbd>--file_output</kbd></dt>
 <dd><p>Saves all embeddings contained in the database in a csv file.</p>
@@ -388,7 +387,7 @@ This way, it might be easier to review results instead of loading hundreds of re
 </dd>
 <dt><kbd>--collection_mode</kbd></dt>
 <dd><p>Possible choices: random, confidence, balanced</p>
-<p>Collection mode for selecting the segments. Can be ‘random’ or ‘confidence’.</p>
+<p>Collection mode for selecting the segments. Can be ‘random’, ‘confidence’ or ‘balanced’.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'random'</span></code></p>
 </dd>
 <dt><kbd>--n_bins</kbd></dt>
