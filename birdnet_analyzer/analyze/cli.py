@@ -1,7 +1,10 @@
 import contextlib
+import logging
 
 from birdnet_analyzer import analyze
 from birdnet_analyzer.utils import runtime_error_handler
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_error_handler
@@ -26,12 +29,9 @@ def main():
         and args.additional_columns
         and ("csv" not in args.rtype and "parquet" not in args.rtype)
     ):
-        import warnings
-
-        warnings.warn(
-            "The --additional_columns argument is only valid for CSV output."
-            "It will be ignored.",
-            stacklevel=1,
+        logger.warning(
+            "The --additional_columns argument is only valid for CSV and parquet "
+            "output. It will be ignored."
         )
 
     if args.use_perch and args.classifier:

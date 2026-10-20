@@ -3,6 +3,7 @@
 Can be used to save the segments of the audio files for each detection.
 """
 
+import csv
 import logging
 import os
 
@@ -14,6 +15,17 @@ from birdnet_analyzer import audio, utils
 RNG = np.random.default_rng(cfg.RANDOM_SEED)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
+
+# As written by the 2.x releases.
+_LEGACY_KALEIDOSCOPE_COLUMNS = (
+    "INDIR",
+    "FOLDER",
+    "IN FILE",
+    "OFFSET",
+    "DURATION",
+    "scientific_name",
+    "confidence",
+)
 
 
 def _detect_rtype(line: str):
@@ -28,7 +40,7 @@ def _detect_rtype(line: str):
     if line.lower().startswith("selection"):
         return "table"
 
-    if line.lower().startswith("indir"):
+    if line.lower().startswith(cfg.KALEIDOSCOPE_COLUMNS[0].lower()):
         return "kaleidoscope"
 
     if line.lower().startswith("start (s)"):
@@ -50,11 +62,33 @@ def _get_header_mapping(line: str) -> dict:
     """
     rtype = _detect_rtype(line)
 
-    sep = "\t" if rtype in ("table", "audacity") else ","
-
-    cols = line.split(sep)
+    cols = line.split("\t") if rtype in ("table", "audacity") else _split_csv_line(line)
 
     return {col: i for i, col in enumerate(cols)}
+
+
+def _split_csv_line(line: str) -> list[str]:
+    return next(csv.reader([line]))
+
+
+def _parse_kaleidoscope_line(
+    line: str, header_mapping: dict
+) -> tuple[str, float, float, str, float]:
+    columns = (
+        cfg.KALEIDOSCOPE_COLUMNS
+        if set(cfg.KALEIDOSCOPE_COLUMNS) <= header_mapping.keys()
+        else _LEGACY_KALEIDOSCOPE_COLUMNS
+    )
+    d = _split_csv_line(line)
+    in_dir, folder, in_file, offset, duration, species, confidence = (
+        d[header_mapping[col]] for col in columns
+    )
+    afile = (
+        os.path.join(in_dir, folder, in_file).replace("/", os.sep).replace("\\", os.sep)
+    )
+    start = float(offset)
+
+    return afile, start, start + float(duration), species, float(confidence)
 
 
 def parse_folders(
@@ -271,22 +305,12 @@ def _find_segments_from_combined(
             )
 
         elif rtype == "kaleidoscope" and i > 0:
-            d = line.split(",")
-            start = float(d[header_mapping["OFFSET"]])
-            end = float(d[header_mapping["DURATION"]]) + start
-            species = d[header_mapping["scientific_name"]]
-            confidence = float(d[header_mapping["confidence"]])
-            in_dir = d[header_mapping["INDIR"]]
-            folder = d[header_mapping["FOLDER"]]
-            in_file = d[header_mapping["IN FILE"]]
-            afile = (
-                os.path.join(in_dir, folder, in_file)
-                .replace("/", os.sep)
-                .replace("\\", os.sep)
+            afile, start, end, species, confidence = _parse_kaleidoscope_line(
+                line, header_mapping
             )
 
         elif rtype == "csv" and i > 0:
-            d = line.split(",")
+            d = _split_csv_line(line)
             start = float(d[header_mapping["Start (s)"]])
             end = float(d[header_mapping["End (s)"]])
             species = d[header_mapping["Common name"]]
@@ -359,14 +383,12 @@ def _find_segments(
             confidence = float(d[-1])
 
         elif rtype == "kaleidoscope" and i > 0:
-            d = line.split(",")
-            start = float(d[header_mapping["OFFSET"]])
-            end = float(d[header_mapping["DURATION"]]) + start
-            species = d[header_mapping["scientific_name"]]
-            confidence = float(d[header_mapping["confidence"]])
+            _, start, end, species, confidence = _parse_kaleidoscope_line(
+                line, header_mapping
+            )
 
         elif rtype == "csv" and i > 0:
-            d = line.split(",")
+            d = _split_csv_line(line)
             start = float(d[header_mapping["Start (s)"]])
             end = float(d[header_mapping["End (s)"]])
             species = d[header_mapping["Common name"]]
