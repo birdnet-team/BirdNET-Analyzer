@@ -4,11 +4,8 @@ import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer.embeddings.core import (
-    get_or_create_database as get_embeddings_database,
-)
 from birdnet_analyzer.gui.state import TabState
-from birdnet_analyzer.search.core import get_database as get_search_database
+from birdnet_analyzer.search.core import open_database, read_database_settings
 
 PAGE_SIZE = 6
 
@@ -86,24 +83,21 @@ def run_search(
         max_samples, loc.localize("embeddings-search-max-samples-validation-message")
     )
 
-    db = get_search_database(db_path)
-    settings = db.get_metadata(SETTINGS_KEY)
-    settings["AUDIO_ROOT"] = audio_root
-    db.insert_metadata(SETTINGS_KEY, settings)
+    with open_database(db_path) as db:
+        settings = db.get_metadata(SETTINGS_KEY)
 
-    with gu.download_progress(progress):
-        results = get_search_results(
-            query_path,
-            db,
-            max_samples,
-            settings["AUDIO_SPEED"],
-            settings["BANDPASS_FMIN"],
-            settings["BANDPASS_FMAX"],
-            score_fn,
-            crop_mode,
-            crop_overlap,
-        )
-    db.db.close()  # Close the database connection to avoid having wal/shm files
+        with gu.download_progress(progress):
+            results = get_search_results(
+                query_path,
+                db,
+                max_samples,
+                settings["AUDIO_SPEED"],
+                settings["BANDPASS_FMIN"],
+                settings["BANDPASS_FMAX"],
+                score_fn,
+                crop_mode,
+                crop_overlap,
+            )
 
     chunks = [results[i : i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]
 
@@ -285,76 +279,74 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
 
                         with gr.Row():
                             if db_path is not None and len(results) > 0:
-                                db = get_search_database(db_path)
-                                settings = db.get_metadata(SETTINGS_KEY)
+                                with open_database(db_path) as db:
+                                    settings = db.get_metadata(SETTINGS_KEY)
 
-                                for i, r in enumerate(results[page]):
-                                    with gr.Column():
-                                        index = i + page * PAGE_SIZE
-                                        window = db.get_window(r.window_id)
-                                        recording = db.get_recording(
-                                            window.recording_id
-                                        )
-                                        file = os.path.join(
-                                            audio_root, recording.filename
-                                        )
-                                        offset = window.offsets[0]
-                                        duration = 3.0 * settings["AUDIO_SPEED"]
-                                        spec = utils.spectrogram_from_file(
-                                            file,
-                                            offset=offset,
-                                            duration=duration,
-                                            speed=settings["AUDIO_SPEED"],
-                                            fmin=settings["BANDPASS_FMIN"],
-                                            fmax=settings["BANDPASS_FMAX"],
-                                            fig_size=(6, 3),
-                                            **gu.spectrogram_settings(),
-                                        )
-                                        plot_audio_state = gr.State(
-                                            [
+                                    for i, r in enumerate(results[page]):
+                                        with gr.Column():
+                                            index = i + page * PAGE_SIZE
+                                            window = db.get_window(r.window_id)
+                                            recording = db.get_recording(
+                                                window.recording_id
+                                            )
+                                            file = os.path.join(
+                                                audio_root, recording.filename
+                                            )
+                                            offset = window.offsets[0]
+                                            duration = 3.0 * settings["AUDIO_SPEED"]
+                                            spec = utils.spectrogram_from_file(
                                                 file,
-                                                offset,
-                                                duration,
-                                                index,
-                                                r.sort_score,
-                                                settings["AUDIO_SPEED"],
-                                                settings["BANDPASS_FMIN"],
-                                                settings["BANDPASS_FMAX"],
-                                            ]
-                                        )
-                                        with gr.Row():
-                                            gr.Plot(
-                                                spec,
-                                                label=(
-                                                    f"{index + 1}_score: "
-                                                    f"{r.sort_score:.2f}"
-                                                ),
+                                                offset=offset,
+                                                duration=duration,
+                                                speed=settings["AUDIO_SPEED"],
+                                                fmin=settings["BANDPASS_FMIN"],
+                                                fmax=settings["BANDPASS_FMAX"],
+                                                fig_size=(6, 3),
+                                                **gu.spectrogram_settings(),
                                             )
+                                            plot_audio_state = gr.State(
+                                                [
+                                                    file,
+                                                    offset,
+                                                    duration,
+                                                    index,
+                                                    r.sort_score,
+                                                    settings["AUDIO_SPEED"],
+                                                    settings["BANDPASS_FMIN"],
+                                                    settings["BANDPASS_FMAX"],
+                                                ]
+                                            )
+                                            with gr.Row():
+                                                gr.Plot(
+                                                    spec,
+                                                    label=(
+                                                        f"{index + 1}_score: "
+                                                        f"{r.sort_score:.2f}"
+                                                    ),
+                                                )
 
-                                        with gr.Row():
-                                            play_btn = gr.Button("▶")
-                                            play_btn.click(
-                                                play_audio,
-                                                inputs=plot_audio_state,
-                                                outputs=hidden_audio,
-                                            )
-                                            checkbox = gr.Checkbox(
-                                                label=loc.localize(
-                                                    "embeddings-search-export-checkbox-label"
-                                                ),
-                                                value=(index in exports),
-                                            )
-                                            checkbox.change(
-                                                update_export_state,
-                                                inputs=[
-                                                    plot_audio_state,
-                                                    checkbox,
-                                                    export_state,
-                                                ],
-                                                outputs=export_state,
-                                            )
-                                # Close the connection to avoid leaving wal/shm files
-                                db.db.close()
+                                            with gr.Row():
+                                                play_btn = gr.Button("▶")
+                                                play_btn.click(
+                                                    play_audio,
+                                                    inputs=plot_audio_state,
+                                                    outputs=hidden_audio,
+                                                )
+                                                checkbox = gr.Checkbox(
+                                                    label=loc.localize(
+                                                        "embeddings-search-export-checkbox-label"
+                                                    ),
+                                                    value=(index in exports),
+                                                )
+                                                checkbox.change(
+                                                    update_export_state,
+                                                    inputs=[
+                                                        plot_audio_state,
+                                                        checkbox,
+                                                        export_state,
+                                                    ],
+                                                    outputs=export_state,
+                                                )
 
                         with gr.Row():
                             prev_btn = gr.Button(
@@ -405,20 +397,16 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                 gr.update(),
             )
 
-        if not os.path.exists(os.path.join(folder, "hoplite.sqlite")):
-            raise gr.Error(loc.localize("embeddings-search-db-selection-error"))
-
         try:
-            db = get_embeddings_database(folder)
-        except ValueError as e:
+            with open_database(folder) as db:
+                embedding_count = db.count_embeddings()
+                settings = db.get_metadata(SETTINGS_KEY)
+        except FileNotFoundError as e:
             raise gr.Error(loc.localize("embeddings-search-db-selection-error")) from e
 
-        embedding_count = db.count_embeddings()
-        settings = db.get_metadata(SETTINGS_KEY)
         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
         speed: float = settings["AUDIO_SPEED"]
         audio_root = settings["AUDIO_ROOT"]
-        db.db.close()
 
         return (
             folder,
@@ -456,12 +444,10 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
         from birdnet_analyzer import audio, utils
 
         if audiofilepath and db_selection:
-            db = get_embeddings_database(db_selection)
-            settings = db.get_metadata(SETTINGS_KEY)
+            settings = read_database_settings(db_selection)
             audio_speed: float = settings["AUDIO_SPEED"]
             fmin = settings["BANDPASS_FMIN"]
             fmax = settings["BANDPASS_FMAX"]
-            db.db.close()
 
             sig, rate = audio.open_audio_file(
                 audiofilepath,

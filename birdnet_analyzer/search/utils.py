@@ -45,12 +45,6 @@ def euclidean_scoring(data: np.ndarray, query: np.ndarray) -> float | np.ndarray
     return euclidean(data, query)
 
 
-def euclidean_scoring_inverse(
-    data: np.ndarray, query: np.ndarray
-) -> float | np.ndarray:
-    return -euclidean_scoring(data, query)
-
-
 def get_query_embedding(
     queryfile_path,
     crop_mode: CROP_MODES = "center",
@@ -122,9 +116,7 @@ def get_search_results(
     elif score_function == "dot":
         score_fn = np.dot
     elif score_function == "euclidean":
-        # TODO: this is a bit hacky since the search function expects the score to be
-        # high for similar embeddings
-        score_fn = euclidean_scoring_inverse
+        score_fn = euclidean_scoring
     else:
         raise ValueError(
             f"Invalid score function. Choose {', '.join(get_args(SCORE_FUNCTIONS))}."
@@ -135,45 +127,23 @@ def get_search_results(
     if n_results <= 0:
         return []
 
+    queries = np.asarray(query_embeddings, dtype=np.float32)
     usearch_metric_name = _get_usearch_metric_name(db)
     # ANN path is currently safe only for inner product scoring.
     use_ann = score_function == "dot" and usearch_metric_name == "IP"
 
-    scores_by_embedding_id: dict[int, list[float]] = {}
+    if use_ann:
+        # The mean of the dot products is the dot product with the mean query.
+        return _search_ann_ip(db, queries.mean(axis=0), n_results)
 
-    for embedding in query_embeddings:
-        if use_ann:
-            sorted_results = _search_ann_ip(db, embedding, n_results)
-        else:
-            results = brutalism.brute_search(
-                db,
-                embedding,
-                n_results,
-                score_fn,  # ty:ignore[invalid-argument-type]
-            )
-            sorted_results = results.search_results
+    # brute_search keeps the highest scores, so distances are negated for the scan.
+    sign = -1.0 if score_function == "euclidean" else 1.0
 
-        if not use_ann and score_function == "euclidean":
-            for result in sorted_results:
-                result.sort_score *= -1
+    def mean_score(data: np.ndarray, query: np.ndarray) -> np.ndarray:
+        data = data.astype(np.float32)
+        return sign * np.mean([score_fn(data, q) for q in query], axis=0)
 
-        for result in sorted_results:
-            if result.window_id not in scores_by_embedding_id:
-                scores_by_embedding_id[result.window_id] = []
-
-            scores_by_embedding_id[result.window_id].append(result.sort_score)
-
-    search_results: list[SearchResult] = []
-
-    for window_id, scores in scores_by_embedding_id.items():
-        search_results.append(
-            SearchResult(
-                window_id=window_id, sort_score=np.sum(scores) / len(query_embeddings)
-            )
-        )
-
-    reverse = score_function != "euclidean"
-
-    search_results.sort(key=lambda x: x.sort_score, reverse=reverse)
-
-    return search_results[0:n_results]
+    return [
+        SearchResult(window_id=int(r.window_id), sort_score=sign * float(r.sort_score))
+        for r in brutalism.brute_search(db, queries, n_results, mean_score)
+    ]
