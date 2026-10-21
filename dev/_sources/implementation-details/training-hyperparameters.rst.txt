@@ -36,7 +36,7 @@ Label Smoothing
 ---------------------
 
 Label smoothing is a technique used to prevent the model from becoming overconfident by adjusting the target labels.
-It subtracts a small value (alpha) from the correct label and distributes it among the other labels.
+It scales every label by (1 - alpha) for a small alpha (0.1) and spreads alpha evenly over all classes.
 
 Upsampling
 -------------------

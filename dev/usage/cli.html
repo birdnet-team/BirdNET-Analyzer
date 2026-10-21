@@ -643,8 +643,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'replace'</span></code></p>
 </dd>
 <dt><kbd>--save_cache_to</kbd></dt>
-<dd><p>Path to cache file.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">'train_cache.npz'</span></code></p>
+<dd><p>Path to save the extracted training data to, as a cache file that later runs can use as INPUT. No cache is written unless this is set.</p>
 </dd>
 <dt><kbd>--autotune, --no-autotune</kbd></dt>
 <dd><p>Whether to use automatic hyperparameter tuning (this will execute multiple training runs to search for optimal hyperparameters).</p>
@@ -659,7 +658,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--autotune_n_repeats</kbd></dt>
-<dd><p>Number of repetitions for each training run during hyperparameter tuning. If set to &gt;1, each training run will be executed multiple times and the average validation score across all repetitions will be used as the score for the training run. This can help to get more robust estimates of the validation scores for each training run, but it will also increase the runtime of the hyperparameter tuning process.</p>
+<dd><p>Number of repetitions for each training run during hyperparameter tuning. If set to &gt;1, each training run will be executed multiple times and the average validation score across all repetitions will be used as the score for the training run. This can help to get more robust estimates of the validation scores for each training run, but it will also increase the runtime of the hyperparameter tuning process. Only used when –autotune_n_splits is greater than 1.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--autotune_metric</kbd></dt>

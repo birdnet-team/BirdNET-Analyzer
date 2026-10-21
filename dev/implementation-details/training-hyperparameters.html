@@ -124,7 +124,7 @@ A high number of hidden units improves the model’s ability to learn complex pa
 <section id="label-smoothing">
 <h2>Label Smoothing<a class="headerlink" href="#label-smoothing" title="Link to this heading"></a></h2>
 <p>Label smoothing is a technique used to prevent the model from becoming overconfident by adjusting the target labels.
-It subtracts a small value (alpha) from the correct label and distributes it among the other labels.</p>
+It scales every label by (1 - alpha) for a small alpha (0.1) and spreads alpha evenly over all classes.</p>
 </section>
 <section id="upsampling">
 <h2>Upsampling<a class="headerlink" href="#upsampling" title="Link to this heading"></a></h2>
