@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import functools
 import json
 import logging
 import os
@@ -446,6 +447,34 @@ def build_linear_classifier(num_labels, input_size, hidden_units=0, dropout=0.0)
     return model
 
 
+class HardLabelAUC(keras.metrics.AUC):
+    """AUC on the hard labels: keras counts every non-zero label as a positive, which
+    makes all smoothed labels positives and a negative label (-1) one too."""
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true = keras.ops.cast(keras.ops.greater_equal(y_true, 0.5), self.dtype)
+
+        return super().update_state(y_true, y_pred, sample_weight)
+
+
+def _hiding_cuda_devices(train):
+    @functools.wraps(train)
+    def wrapper(*args, **kwargs):
+        previous = os.environ.get("CUDA_VISIBLE_DEVICES")
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+        try:
+            return train(*args, **kwargs)
+        finally:
+            if previous is None:
+                os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+            else:
+                os.environ["CUDA_VISIBLE_DEVICES"] = previous
+
+    return wrapper
+
+
+@_hiding_cuda_devices
 def train_linear_classifier(
     classifier: keras.Model,
     x_train: np.ndarray,
@@ -468,6 +497,8 @@ def train_linear_classifier(
     on_epoch_end=None,
     additional_callbacks=None,
     weight_decay=0.004,
+    monitor="val_loss",
+    monitor_mode: Literal["min", "max"] = "min",
 ):
     """Trains a custom classifier.
 
@@ -495,12 +526,14 @@ def train_linear_classifier(
         is_multi_label: If True, multi-label classification is used.
         is_binary_classification: If True, binary classification is used.
         on_epoch_end: Optional callback `function(epoch, logs)`.
+        monitor: The validation metric early stopping watches; the classifier keeps
+            the weights of its best epoch.
+        monitor_mode: "max" if a higher value of `monitor` is better, else "min".
 
     Returns:
-        (classifier, history)
+        (classifier, history), where `history.restored_epoch` is the epoch whose
+        weights the classifier keeps.
     """
-    setting_cache = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
     class FunctionCallback(keras.callbacks.Callback):
         def __init__(self, on_epoch_end=None) -> None:
@@ -545,17 +578,18 @@ def train_linear_classifier(
         y_train = label_smoothing(y_train)
 
     patience = min(10, max(5, int(epochs / 10)))
+    early_stopping = keras.callbacks.EarlyStopping(
+        monitor=monitor,
+        mode=monitor_mode,
+        patience=patience,
+        verbose=1,
+        min_delta=0.001,
+        restore_best_weights=True,
+    )
     callbacks = [
         *(additional_callbacks or []),
         FunctionCallback(on_epoch_end=on_epoch_end),
-        keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            mode="min",
-            patience=patience,
-            verbose=1,
-            min_delta=0.001,
-            restore_best_weights=True,
-        ),
+        early_stopping,
     ]
 
     warmup_epochs = min(5, int(epochs * 0.1))
@@ -583,14 +617,14 @@ def train_linear_classifier(
         ),
         loss=loss_function,
         metrics=[
-            keras.metrics.AUC(
+            HardLabelAUC(
                 curve="PR",
                 multi_label=is_multi_label,
                 name="AUPRC",
                 num_labels=y_train.shape[1] if is_multi_label else None,
                 from_logits=False,
             ),
-            keras.metrics.AUC(
+            HardLabelAUC(
                 curve="ROC",
                 multi_label=is_multi_label,
                 name="AUROC",
@@ -609,8 +643,7 @@ def train_linear_classifier(
         callbacks=callbacks,
         shuffle=True,
     )
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = setting_cache
+    history.restored_epoch = early_stopping.best_epoch
 
     return classifier, history
 

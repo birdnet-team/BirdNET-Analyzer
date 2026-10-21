@@ -188,6 +188,7 @@ def load_train_params(path: str) -> dict[str, Any]:
     parse("autotune_trials", _to_int, "Autotune trials")
     parse("autotune_n_splits", _to_int, "Autotune folds")
     parse("autotune_n_repeats", _to_int, "Autotune repeats")
+    parse("autotune_metric", str, "Autotune metric")
     parse("epochs", _to_int, "Epochs")
     parse("batch_size", _to_int, "Batch size", "Batchsize")
     parse("learning_rate", float, "Learning rate")

@@ -700,7 +700,7 @@ def train_parser():
     )
     parser.add_argument(
         "--test_data",
-        help="Path to test data folder. If not specified, a random validation split will be used.",
+        help="Path to test data folder. It is only used to evaluate the trained classifier; tuning and early stopping use the validation split of the training data.",
     )
     parser.add_argument(
         "--crop_mode",
@@ -727,7 +727,7 @@ def train_parser():
         "--val_split",
         type=float,
         default=0.2,
-        help="A small percentage of the training data that is not used for training, but for validation scores during training.",
+        help="A small percentage of the training data that is not used for training, but for validation scores and early stopping during training. Must be above 0.",
     )
     parser.add_argument(
         "--learning_rate",
@@ -823,7 +823,7 @@ def train_parser():
         "--autotune_n_splits",
         type=int,
         default=1,
-        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. Keep in mind that this will significantly increase the runtime of the hyperparameter tuning process.",
+        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred samples.",
     )
     parser.add_argument(
         "--autotune_n_repeats",
@@ -835,7 +835,7 @@ def train_parser():
         "--autotune_metric",
         default="val_AUPRC",
         choices=get_args(AUTOTUNE_METRICS),
-        help="Metric to optimize during hyperparameter tuning. This can be any metric that is returned by the training process and is included in the training history object. Common choices are 'val_loss', 'val_AUPRC' or 'val_AUROC'.",
+        help="Validation metric to optimize during hyperparameter tuning. Training also stops early on it and keeps the weights of its best epoch.",
     )
 
     return parser

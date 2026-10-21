@@ -33,11 +33,14 @@ def test_random_split_adds_negative_samples_only_once():
         ]
     )
 
-    x_train, _, x_val, _ = random_split(x, y, np.random.default_rng(42), val_ratio=0.5)
+    x_train, _, x_val, y_val = random_split(
+        x, y, np.random.default_rng(42), val_ratio=0.5
+    )
 
     assert len(x_train) + len(x_val) == len(x)
     assert len(np.unique(x_train)) == len(x_train)
     assert not np.intersect1d(x_train, x_val).size
+    assert not np.any(y_val == -1)
 
 
 def test_random_multilabel_split_keeps_negative_combinations_in_training():
@@ -166,6 +169,128 @@ def test_the_auc_metrics_score_the_classifiers_probabilities():
 
     assert scores["AUPRC"] == pytest.approx(average_precision_score(y, p), abs=0.005)
     assert scores["AUROC"] == pytest.approx(roc_auc_score(y, p), abs=0.005)
+
+
+def test_early_stopping_keeps_the_best_epoch_of_the_monitored_metric(monkeypatch):
+    import keras
+
+    stoppers = []
+
+    class RecordingEarlyStopping(keras.callbacks.EarlyStopping):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            stoppers.append(self)
+
+    monkeypatch.setattr(keras.callbacks, "EarlyStopping", RecordingEarlyStopping)
+    keras.utils.set_random_seed(0)
+    rng = np.random.default_rng(0)
+    y = np.repeat(np.eye(2, dtype="float32"), 100, axis=0)
+    x = (rng.normal(size=(200, 32)) + 0.5 * y[:, :1]).astype("float32")
+    train, val = np.r_[0:10, 100:110], np.r_[10:100, 110:200]
+
+    classifier, history = train_linear_classifier(
+        build_linear_classifier(2, 32, hidden_units=64),
+        x[train],
+        y[train],
+        x[val],
+        y[val],
+        epochs=40,
+        batch_size=4,
+        learning_rate=0.05,
+        val_split=0.0,
+        upsampling_ratio=0.0,
+        upsampling_mode="repeat",
+        train_with_mixup=False,
+        train_with_label_smoothing=False,
+        monitor="val_AUPRC",
+        monitor_mode="max",
+    )
+    scores = history.history["val_AUPRC"]
+    kept = classifier.evaluate(x[val], y[val], return_dict=True, verbose=0)["AUPRC"]
+
+    assert stoppers[-1].monitor == "val_AUPRC"
+    assert history.restored_epoch == stoppers[-1].best_epoch < len(scores) - 1
+    assert scores[history.restored_epoch] == max(scores)
+    assert kept == pytest.approx(scores[history.restored_epoch], abs=1e-6)
+    assert kept != pytest.approx(scores[-1], abs=1e-3)
+
+
+def _two_class_data():
+    rng = np.random.default_rng(0)
+    y = np.repeat(np.eye(2, dtype="float32"), 60, axis=0)
+    x = (rng.normal(size=(120, 8)) + 1.5 * y[:, :1]).astype("float32")
+
+    return x, y
+
+
+def _train(classifier, x, y, **kwargs):
+    return train_linear_classifier(
+        classifier,
+        x,
+        y,
+        np.array([]),
+        np.array([]),
+        epochs=2,
+        batch_size=16,
+        learning_rate=0.01,
+        val_split=0.2,
+        upsampling_ratio=0.0,
+        upsampling_mode="repeat",
+        train_with_mixup=False,
+        **kwargs,
+    )
+
+
+@pytest.mark.parametrize("before", ["0", None])
+def test_a_failed_training_restores_the_visible_cuda_devices(monkeypatch, before):
+    import os
+
+    if before is None:
+        monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    else:
+        monkeypatch.setenv("CUDA_VISIBLE_DEVICES", before)
+
+    classifier = build_linear_classifier(2, 8)
+    during = []
+
+    def fail(*args, **kwargs):
+        during.append(os.environ.get("CUDA_VISIBLE_DEVICES"))
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(classifier, "fit", fail)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        _train(classifier, *_two_class_data(), train_with_label_smoothing=False)
+
+    assert during == [""]
+    assert os.environ.get("CUDA_VISIBLE_DEVICES") == before
+
+
+def test_the_training_metrics_score_smoothed_labels_as_their_hard_labels():
+    import keras
+
+    keras.utils.set_random_seed(0)
+
+    _, history = _train(
+        build_linear_classifier(2, 8),
+        *_two_class_data(),
+        train_with_label_smoothing=True,
+    )
+
+    assert history.history["AUROC"][-1] > 0.5
+    assert history.history["AUPRC"][-1] < 1.0
+
+
+def test_the_auc_metrics_count_a_negative_label_as_a_negative():
+    from birdnet_analyzer.model import HardLabelAUC
+
+    y_pred = np.array([[0.8], [0.9], [0.1]], dtype="float32")
+    with_negative = HardLabelAUC(curve="ROC")
+    with_negative.update_state(np.array([[1], [-1], [0]], "float32"), y_pred)
+    with_zero = HardLabelAUC(curve="ROC")
+    with_zero.update_state(np.array([[1], [0], [0]], "float32"), y_pred)
+
+    assert float(with_negative.result()) == pytest.approx(float(with_zero.result()))
 
 
 def test_base_models_carry_the_library_constants():

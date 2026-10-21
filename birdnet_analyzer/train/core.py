@@ -60,8 +60,8 @@ def train(
             embeddings are the classifier's input, so the classifier only works with
             that version. A cache file keeps the version it was embedded with.
             Defaults to the newest version.
-        test_data (str, optional): Path to the test data directory. Defaults to None.
-                                   If not specified, a validation split will be used.
+        test_data (str, optional): Path to the test data directory, only used to
+                                   evaluate the trained classifier. Defaults to None.
         output (str, optional): Path to save the trained model.
                                 Defaults to "checkpoints/custom/Custom_Classifier".
         crop_mode (Literal["center", "first", "segments", "smart"], optional): Mode for
@@ -109,8 +109,9 @@ def train(
                                            hyperparameter tuning. Defaults to 1.
         autotune_n_splits (int, optional): Number of splits for cross-validation during
                                           hyperparameter tuning. Defaults to 1.
-        autotune_metric (Literal["val_AUPRC", "val_loss"], optional): Metric to optimize
-            during hyperparameter tuning. Defaults to "val_AUPRC".
+        autotune_metric (Literal["val_AUPRC", "val_AUROC"], optional): Metric to
+            optimize during hyperparameter tuning. Training also stops early on it and
+            keeps the weights of its best epoch. Defaults to "val_AUPRC".
         save_detached_classifier (bool, optional): Whether to additionally save a
             detached version of the trained classifier. Defaults to False.
     Returns:

@@ -118,6 +118,7 @@ def train_values(**overrides):
         "Autotune trials": 50,
         "Autotune folds": 5,
         "Autotune repeats": 1,
+        "Autotune metric": "val_AUROC",
         "Epochs": 100,
         "Batch size": 64,
         "Learning rate": 0.0005,
@@ -197,6 +198,7 @@ def test_train_params_are_read_back_as_train_arguments(tmp_path):
         "autotune_trials": 50,
         "autotune_n_splits": 5,
         "autotune_n_repeats": 1,
+        "autotune_metric": "val_AUROC",
         "epochs": 100,
         "batch_size": 64,
         "learning_rate": 0.0005,
@@ -348,6 +350,33 @@ def test_train_params_become_cli_defaults_that_explicit_arguments_override(tmp_p
 
     assert overridden.autotune is False
     assert overridden.epochs == 10
+
+
+def test_a_val_loss_metric_from_a_params_file_is_rejected_by_training(
+    tmp_path, monkeypatch
+):
+    from birdnet_analyzer.train import core
+    from birdnet_analyzer.train import utils as train_utils
+
+    file = tall_file(
+        tmp_path,
+        train_values(**{"Autotune metric": "val_loss"}),
+        name="MyClassifier.birdnet.train-params.csv",
+    )
+    parser = cli.train_parser()
+    cli.apply_params_file_defaults(
+        parser, params.load_train_params, argv=["--load_params", file]
+    )
+    kwargs = vars(parser.parse_args(["train_data"]))
+    kwargs.pop("load_params")
+
+    def load(*args, **kwargs):
+        pytest.fail("the training data was loaded")
+
+    monkeypatch.setattr(train_utils, "_load_training_data", load)
+
+    with pytest.raises(ValueError, match="val_loss"):
+        core.train(**kwargs)
 
 
 def test_an_unreadable_params_file_stops_the_cli(tmp_path, capsys):
