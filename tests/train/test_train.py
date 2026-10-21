@@ -1,11 +1,15 @@
+import inspect
 import os
 import shutil
 import tempfile
-from unittest.mock import patch
+from typing import get_args
+from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from birdnet_analyzer.cli import train_parser
+from birdnet_analyzer.config import UPSAMPLING_MODES
 from birdnet_analyzer.train.core import train
 
 
@@ -160,9 +164,8 @@ def test_autotune_uses_optuna(
     mock_save_linear,
     mock_save_raven,
     setup_test_environment,
+    monkeypatch,
 ):
-    import numpy as np
-
     mock_load.return_value = (
         np.zeros((5, 10), dtype="float32"),
         np.zeros((5, 3), dtype="float32"),
@@ -182,8 +185,8 @@ def test_autotune_uses_optuna(
     # create fake study object which records calls
     import sys
 
-    # make sure the `import optuna` in train_model doesn't raise ImportError
-    sys.modules.setdefault("optuna", mock_optuna)
+    monkeypatch.setitem(sys.modules, "optuna", mock_optuna)
+    monkeypatch.setitem(sys.modules, "optuna_integration.keras", MagicMock())
 
     dummy_study = type("S", (), {"enqueue_trial": lambda self, params: None})()
     calls = {}
@@ -242,3 +245,165 @@ def test_autotune_uses_optuna(
     # build_linear_classifier should be called at least once (during tuning)
     assert mock_build.called
     assert mock_train.called
+
+
+@patch("birdnet_analyzer.train.utils.train_model")
+def test_the_cli_writes_no_training_cache_unless_asked(mock_train_model, tmp_path):
+    kwargs = vars(train_parser().parse_args([str(tmp_path)]))
+    kwargs.pop("load_params")
+
+    train(**kwargs)
+
+    assert mock_train_model.call_args[1]["save_cache_to"] is None
+
+
+def test_the_upsampling_modes_type_lists_every_mode_the_cli_accepts():
+    action = next(a for a in train_parser()._actions if a.dest == "upsampling_mode")
+
+    assert set(get_args(UPSAMPLING_MODES)) == set(action.choices)
+
+
+def test_the_api_and_the_cli_default_to_the_same_number_of_autotune_folds():
+    api_default = inspect.signature(train).parameters["autotune_n_splits"].default
+
+    assert api_default == train_parser().get_default("autotune_n_splits")
+
+
+@pytest.mark.parametrize(
+    ("metric", "direction"),
+    [("val_loss", "minimize"), ("val_AUPRC", "maximize"), ("val_AUROC", "maximize")],
+)
+def test_the_autotune_direction_follows_the_metric(metric, direction):
+    from birdnet_analyzer.train.utils import _autotune_direction
+
+    assert _autotune_direction(metric) == direction
+
+
+@pytest.mark.parametrize(
+    ("metric", "best"), [("val_loss", 0.2), ("val_AUPRC", 0.9), ("val_AUROC", 0.9)]
+)
+def test_the_best_epoch_is_the_one_the_metric_favours(metric, best):
+    from birdnet_analyzer.train.utils import _best_epoch_score
+
+    assert _best_epoch_score([0.5, 0.2, 0.9, 0.4], metric) == best
+
+
+def _synthetic_training_data():
+    rng = np.random.default_rng(0)
+    y = np.zeros((40, 2), dtype="float32")
+    y[:20, 0] = 1
+    y[20:, 1] = 1
+    x = (rng.normal(size=(40, 8)) + 2 * y[:, :1]).astype("float32")
+
+    return x, y, np.array([]), np.array([]), ["a", "b"], False, False, "3.0"
+
+
+@pytest.fixture
+def synthetic_training_data(monkeypatch):
+    from birdnet_analyzer.train import utils as train_utils
+
+    monkeypatch.setattr(
+        train_utils, "_load_training_data", lambda *a, **k: _synthetic_training_data()
+    )
+
+
+def _autotune(monkeypatch, tmp_path, **kwargs):
+    """Runs a real two-epoch autotune; returns the pruning monitors and the study."""
+    import keras
+    import optuna
+    import optuna_integration.keras
+
+    from birdnet_analyzer.train.utils import train_model
+
+    monitors = []
+    studies = []
+
+    class RecordingPruningCallback(keras.callbacks.Callback):
+        def __init__(self, trial, monitor):
+            super().__init__()
+            monitors.append(monitor)
+
+    create_study = optuna.create_study
+
+    def recording_create_study(**study_kwargs):
+        studies.append(create_study(**study_kwargs))
+        return studies[-1]
+
+    monkeypatch.setattr(
+        optuna_integration.keras, "KerasPruningCallback", RecordingPruningCallback
+    )
+    monkeypatch.setattr(optuna, "create_study", recording_create_study)
+
+    train_model(
+        "unused",
+        output=str(tmp_path / "cc"),
+        epochs=2,
+        model_formats=[],
+        autotune=True,
+        **kwargs,
+    )
+
+    return monitors, studies[0]
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.parametrize(
+    ("metric", "direction"), [("val_loss", "MINIMIZE"), ("val_AUPRC", "MAXIMIZE")]
+)
+def test_autotune_prunes_and_optimises_the_tuned_metric(
+    monkeypatch, tmp_path, metric, direction
+):
+    import optuna
+
+    monitors, study = _autotune(
+        monkeypatch, tmp_path, autotune_trials=2, autotune_metric=metric
+    )
+
+    assert monitors
+    assert set(monitors) == {metric}
+    assert study.direction == optuna.study.StudyDirection[direction]
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+def test_the_first_autotune_trial_runs_the_given_weight_decay(monkeypatch, tmp_path):
+    _, study = _autotune(monkeypatch, tmp_path, autotune_trials=1, weight_decay=0.0005)
+
+    assert study.trials[0].params["weight_decay"] == 0.0005
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+def test_autotune_accepts_a_weight_decay_of_zero(monkeypatch, tmp_path):
+    _, study = _autotune(monkeypatch, tmp_path, autotune_trials=1, weight_decay=0.0)
+
+    assert study.trials[0].params["weight_decay"] > 0
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+def test_only_the_first_split_of_a_trial_reports_to_the_pruner(monkeypatch, tmp_path):
+    monitors, _ = _autotune(
+        monkeypatch, tmp_path, autotune_trials=1, autotune_n_splits=2
+    )
+
+    assert len(monitors) == 1
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.parametrize(
+    "failing", ["train_linear_classifier", "save_linear_classifier"]
+)
+def test_a_training_failure_reaches_the_caller_unchanged(
+    monkeypatch, tmp_path, failing
+):
+    from birdnet_analyzer.train import utils as train_utils
+
+    boom = RuntimeError("boom")
+
+    def fail(*args, **kwargs):
+        raise boom
+
+    monkeypatch.setattr(train_utils.model, failing, fail)
+
+    with pytest.raises(RuntimeError) as error:
+        train_utils.train_model("unused", output=str(tmp_path / "cc"), epochs=1)
+
+    assert error.value is boom

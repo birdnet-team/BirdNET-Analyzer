@@ -67,8 +67,8 @@ def label_smoothing(y: np.ndarray, alpha=0.1):
     """
     Applies label smoothing to the given labels.
     Label smoothing is a technique used to prevent the model from becoming overconfident
-    by adjusting the target labels. It subtracts a small value (alpha) from the correct
-    label and distributes it among the other labels.
+    by adjusting the target labels. It scales each label by (1 - alpha) and spreads
+    alpha evenly over all classes. Negative labels (-1) are left unchanged.
     Args:
         y (numpy.ndarray): Array of labels to be smoothed. The array should be of shape
             (num_labels,).
@@ -76,8 +76,8 @@ def label_smoothing(y: np.ndarray, alpha=0.1):
     Returns:
         numpy.ndarray: The smoothed labels.
     """
-    y[y > 0] -= alpha
-    y[y == 0] = alpha / y.shape[0]
+    smoothable = y >= 0
+    y[smoothable] = y[smoothable] * (1 - alpha) + alpha / y.shape[-1]
 
     return y
 
@@ -588,14 +588,14 @@ def train_linear_classifier(
                 multi_label=is_multi_label,
                 name="AUPRC",
                 num_labels=y_train.shape[1] if is_multi_label else None,
-                from_logits=True,
+                from_logits=False,
             ),
             keras.metrics.AUC(
                 curve="ROC",
                 multi_label=is_multi_label,
                 name="AUROC",
                 num_labels=y_train.shape[1] if is_multi_label else None,
-                from_logits=True,
+                from_logits=False,
             ),
         ],
     )
@@ -887,8 +887,8 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
         Focal loss value.
     """
     y_false = 1 - y_true
-    y_false_pred = 1 - y_pred
     y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
+    y_false_pred = 1 - y_pred
     cross_entropy = -y_true * tf.math.log(y_pred) - y_false * tf.math.log(y_false_pred)
     p_t = y_true * y_pred + y_false * y_false_pred
     focal_weight = tf.pow(1 - p_t, gamma)

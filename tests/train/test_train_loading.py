@@ -12,6 +12,7 @@ They intentionally avoid loading the BirdNET model: crop tests use a synthetic w
 the batched-encode test uses a fake session, so the suite stays fast.
 """
 
+import contextlib
 import os
 import tempfile
 from unittest.mock import patch
@@ -22,6 +23,7 @@ import soundfile as sf
 
 from birdnet_analyzer import model_utils
 from birdnet_analyzer.train.utils import (
+    _check_cache_destination,
     _load_from_cache,
     _load_training_data,
     _read_and_crop_file,
@@ -230,3 +232,121 @@ def test_loading_a_cache_returns_its_version_not_the_requested_one(tmp_path):
 
     *_, version = _load_training_data(path, model_version="3.0")
     assert version == "2.4"
+
+
+@pytest.mark.parametrize(
+    ("folders", "options", "key"),
+    [
+        (["a", "-a"], {}, "validation-no-negative-samples-in-binary-classification"),
+        (["a"], {}, "validation-non-event-samples-required-in-binary-classification"),
+        (
+            ["a,b"],
+            {"upsampling_ratio": 0.5, "upsampling_mode": "mean"},
+            "validation-only-repeat-upsampling-for-multi-label",
+        ),
+    ],
+)
+def test_invalid_training_folders_raise_a_localizable_value_error(
+    tmp_path, folders, options, key
+):
+    for folder in folders:
+        (tmp_path / folder).mkdir()
+
+    with pytest.raises(ValueError, match=key) as error:
+        _load_training_data(str(tmp_path), **options)
+
+    assert len(error.value.args) == 2
+    assert error.value.args[1] == key
+
+
+class _FakeAcousticModel:
+    def get_sample_rate(self):
+        return SR
+
+    @contextlib.contextmanager
+    def encode_session(self, **kwargs):
+        yield None
+
+
+@pytest.fixture
+def fake_encoder(monkeypatch):
+    """Embeds every segment as zeros without loading a BirdNET model."""
+    monkeypatch.setattr(
+        model_utils, "_load_acoustic_for_embeddings", lambda _: _FakeAcousticModel()
+    )
+    monkeypatch.setattr(
+        model_utils,
+        "encode_arrays_batched",
+        lambda _, signals: (
+            np.zeros((len(signals), 4), dtype="float32"),
+            np.ones(len(signals), dtype=bool),
+        ),
+    )
+
+
+def _write_wav(path):
+    path.parent.mkdir(parents=True)
+    sf.write(path, np.zeros(SR, dtype="float32"), SR)
+
+
+@pytest.mark.usefixtures("fake_encoder")
+def test_a_folder_of_spaced_labels_sets_each_label(tmp_path):
+    _write_wav(tmp_path / "a, b" / "x.wav")
+
+    _, y_train, _, _, labels, *_ = _load_training_data(str(tmp_path))
+
+    assert labels == ["a", "b"]
+    np.testing.assert_array_equal(y_train, [[1, 1]])
+
+
+@pytest.mark.usefixtures("fake_encoder")
+def test_a_failed_cache_save_aborts_loading(tmp_path, monkeypatch):
+    _write_wav(tmp_path / "data" / "a" / "x.wav")
+    _write_wav(tmp_path / "data" / "b" / "x.wav")
+
+    def fail(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(np, "savez", fail)
+
+    with pytest.raises(OSError, match="disk full"):
+        _load_training_data(
+            str(tmp_path / "data"), save_cache_to=str(tmp_path / "cache.npz")
+        )
+
+
+def test_an_unwritable_cache_destination_fails_before_the_model_loads(tmp_path):
+    for folder in ("a", "b"):
+        (tmp_path / "data" / folder).mkdir(parents=True)
+        (tmp_path / "data" / folder / "x.wav").touch()
+
+    blocker = tmp_path / "blocker"
+    blocker.touch()
+
+    with (
+        patch.object(model_utils, "_load_acoustic_for_embeddings") as mock_load,
+        pytest.raises(OSError, match="blocker"),
+    ):
+        _load_training_data(
+            str(tmp_path / "data"), save_cache_to=str(blocker / "cache.npz")
+        )
+
+    mock_load.assert_not_called()
+
+
+def test_checking_the_cache_destination_leaves_no_trace(tmp_path):
+    existing = tmp_path / "cache.npz"
+    existing.write_bytes(b"old cache")
+
+    _check_cache_destination(str(existing))
+    _check_cache_destination(str(tmp_path / "new" / "cache.npz"))
+
+    assert [p.name for p in tmp_path.iterdir()] == ["cache.npz"]
+    assert existing.read_bytes() == b"old cache"
+
+
+def test_a_directory_where_the_cache_would_go_is_reported_as_one(tmp_path):
+    (tmp_path / "cache.npz").mkdir()
+
+    with pytest.raises(IsADirectoryError, match=r"cache\.npz"):
+        _check_cache_destination(str(tmp_path / "cache"))

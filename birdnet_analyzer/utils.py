@@ -313,6 +313,10 @@ def list_subdirectories(path: str):
     return filter(lambda el: os.path.isdir(os.path.join(path, el)), os.listdir(path))
 
 
+def parse_folder_labels(folder: str) -> list[str]:
+    return [label for label in (part.strip() for part in folder.split(",")) if label]
+
+
 def load_codes() -> dict[str, str]:
     """Loads the eBird codes.
 

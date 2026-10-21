@@ -57,9 +57,7 @@ def select_subdirectories(state_key=None):
         labels = []
 
         for folder in subdirs:
-            labels_in_folder = folder.split(",")
-
-            for label in labels_in_folder:
+            for label in utils.parse_folder_labels(folder):
                 if label not in labels:
                     labels.append(label)
 
@@ -137,7 +135,7 @@ def start_training(
         label_smoothing: Whether to apply label smoothing for training.
         use_mixup: Whether to use mixup data augmentation.
         upsampling_ratio: Ratio for upsampling underrepresented classes.
-        upsampling_mode: Mode for upsampling (repeat, mean, smote).
+        upsampling_mode: Mode for upsampling (repeat, linear, mean, smote).
         model_formats: Formats to save the trained model (tflite, raven, detached).
         audio_speed: Speed factor for audio playback.
         threads: Number of parallel CPU threads for loading and decoding the training
@@ -186,7 +184,9 @@ def start_training(
     if cache_mode == "save" and not (cache_file and os.path.isdir(cache_file)):
         raise gr.Error(loc.localize("validation-no-directory-selected"))
 
-    if cache_mode == "save" and not (cache_file_name or "").strip():
+    cache_file_name = (cache_file_name or "").strip()
+
+    if cache_mode == "save" and not cache_file_name:
         raise gr.Error(loc.localize("validation-no-valid-cache-file-name"))
 
     if model_save_mode == "append" and "detached" in model_formats:
@@ -268,8 +268,10 @@ def start_training(
                 autotune_n_repeats=int(autotune_repeats),
             )
     except Exception as e:
-        if e.args and len(e.args) > 1:
-            message = loc.localize(e.args[1])
+        key = e.args[1] if len(e.args) > 1 else None
+
+        if isinstance(key, str) and key in loc.LANGUAGE_LOOKUP:
+            message = loc.localize(key)
 
             # Args beyond the localization key are payload for the message's
             # placeholders (e.g. the list of offending folders).
@@ -784,7 +786,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 autotune_folds = state.persist(
                     "autotune_folds_number",
                     gr.Number,
-                    value=5,
+                    value=1,
                     minimum=1,
                     label=loc.localize("training-tab-autotune-folds-number-label"),
                     info=loc.localize("training-tab-autotune-folds-number-info"),
@@ -794,9 +796,18 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     gr.Number,
                     value=1,
                     minimum=1,
+                    interactive=(autotune_folds.value or 1) > 1,
                     label=loc.localize("training-tab-autotune-repeats-number-label"),
                     info=loc.localize("training-tab-autotune-repeats-number-info"),
                 )
+
+            # Repeats only repeat a k-fold split.
+            autotune_folds.change(
+                lambda folds: gr.update(interactive=(folds or 1) > 1),
+                inputs=autotune_folds,
+                outputs=autotune_repeats,
+                show_progress="hidden",
+            )
 
         # The custom-parameters accordion stays visible while autotuning; every field
         # the tuner searches is disabled instead (its value is only a seed and gets

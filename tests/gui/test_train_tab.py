@@ -97,13 +97,17 @@ def test_cache_model_version_reads_the_record_or_the_embeddings_width(tmp_path):
     assert train.cache_model_version(str(tmp_path / "missing.npz")) is None
 
 
-def _start_training(monkeypatch, tmp_path, **overrides):
+def _start_training(monkeypatch, tmp_path, fail_with=None, **overrides):
     from birdnet_analyzer.train import utils as train_utils
 
     seen = {}
 
     def fake_train_model(**kwargs):
         seen.update(kwargs)
+
+        if fail_with:
+            raise fail_with
+
         history = SimpleNamespace(
             epoch=[0], history={"val_AUPRC": [0.5], "val_AUROC": [0.5]}
         )
@@ -229,6 +233,56 @@ def test_a_saved_cache_lands_in_the_picked_directory(monkeypatch, tmp_path):
     assert seen["save_cache_to"] == os.path.join(str(tmp_path), "cache.npz")
 
 
+def test_a_cache_file_name_is_used_without_surrounding_spaces(monkeypatch, tmp_path):
+    seen = _start_training(
+        monkeypatch,
+        tmp_path,
+        cache_mode="save",
+        cache_file=str(tmp_path),
+        cache_file_name="  cache.npz  ",
+    )
+
+    assert seen["save_cache_to"] == os.path.join(str(tmp_path), "cache.npz")
+
+
+def test_a_training_error_with_a_localization_key_is_shown_translated(
+    monkeypatch, tmp_path
+):
+    key = "validation-no-audio-files-in-training-folders"
+    error = ValueError("untranslated", key, "a, b")
+
+    with pytest.raises(gr.Error, match=re.escape(loc.localize(key).format("a, b"))):
+        _start_training(monkeypatch, tmp_path, fail_with=error)
+
+
+def test_any_other_training_error_is_shown_in_full(monkeypatch, tmp_path):
+    error = PermissionError(13, "Permission denied", "cc.tflite")
+
+    with pytest.raises(gr.Error, match=r"Errno 13.*cc\.tflite"):
+        _start_training(monkeypatch, tmp_path, fail_with=error)
+
+
+def test_folder_labels_are_listed_without_surrounding_spaces(monkeypatch, tmp_path):
+    (tmp_path / "a, b").mkdir()
+    (tmp_path / "b").mkdir()
+    monkeypatch.setattr(train.gu, "select_folder", lambda **_: str(tmp_path))
+
+    _, labels = train.select_subdirectories()
+
+    assert labels == [["a"], ["b"]]
+
+
+def test_the_autotune_folds_default_matches_the_cli(appdir):
+    from birdnet_analyzer.cli import train_parser
+
+    with gr.Blocks():
+        train.build_train_tab()
+
+    folds = _persisted(gr.Number, "training-tab-autotune-folds-number-label")
+
+    assert folds.value == train_parser().get_default("autotune_n_splits")
+
+
 def _persisted(cls, label_key):
     label = loc.localize(label_key)
 
@@ -274,6 +328,23 @@ def test_the_crop_overlap_follows_cache_and_crop_mode_whichever_changed(
         ]
 
         assert {key: update.get(key) for key in expected} == expected
+
+
+@pytest.mark.parametrize(("folds", "editable"), [(1, False), (3, True)])
+def test_the_autotune_repeats_are_editable_only_with_several_folds(
+    appdir, folds, editable
+):
+    settings.set_tab_setting("train", "autotune_folds_number", folds)
+
+    with gr.Blocks() as demo:
+        train.build_train_tab()
+    autotune_folds = _persisted(gr.Number, "training-tab-autotune-folds-number-label")
+    repeats = _persisted(gr.Number, "training-tab-autotune-repeats-number-label")
+
+    update = _fire(demo, autotune_folds, {autotune_folds: folds})[repeats]
+
+    assert repeats.interactive is editable
+    assert update["interactive"] is editable
 
 
 def test_changing_the_cache_mode_forgets_the_picked_cache_location(appdir):

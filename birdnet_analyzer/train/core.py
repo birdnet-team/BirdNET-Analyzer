@@ -47,7 +47,7 @@ def train(
     autotune: bool = False,
     autotune_trials: int = 50,
     autotune_n_repeats: int = 1,
-    autotune_n_splits: int = 3,
+    autotune_n_splits: int = 1,
     autotune_metric: AUTOTUNE_METRICS = "val_AUPRC",
     birdnet: ACOUSTIC_MODEL_VERSIONS = DEFAULT_ACOUSTIC_MODEL_VERSION,  # ty:ignore[invalid-parameter-default]
 ):
@@ -87,8 +87,8 @@ def train(
                                 Defaults to False.
         upsampling_ratio (float, optional): Ratio for upsampling underrepresented
                                             classes. Defaults to 0.0.
-        upsampling_mode (Literal["repeat", "mean", "smote"], optional): Mode for
-            upsampling. Defaults to "repeat".
+        upsampling_mode (Literal["repeat", "linear", "mean", "smote"], optional):
+            Mode for upsampling. Defaults to "repeat".
         model_formats (list[Literal["tflite", "raven", "detached"]] | str, optional):
             One or more formats to save the trained model. Defaults to "tflite".
         model_save_mode (Literal["replace", "append"], optional): Save mode for the
@@ -108,7 +108,7 @@ def train(
         autotune_n_repeats (int, optional): Number of times to repeat each trial during
                                            hyperparameter tuning. Defaults to 1.
         autotune_n_splits (int, optional): Number of splits for cross-validation during
-                                          hyperparameter tuning. Defaults to 3.
+                                          hyperparameter tuning. Defaults to 1.
         autotune_metric (Literal["val_AUPRC", "val_loss"], optional): Metric to optimize
             during hyperparameter tuning. Defaults to "val_AUPRC".
         save_detached_classifier (bool, optional): Whether to additionally save a

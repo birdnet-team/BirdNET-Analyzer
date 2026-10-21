@@ -6,10 +6,12 @@ Can be used to train a custom classifier with new training data.
 from __future__ import annotations
 
 import csv
+import errno
 import logging
 import os
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import tqdm
@@ -181,6 +183,28 @@ def _check_input_folders(audio_input: str, train_folders: list[str]):
         )
 
 
+def _check_cache_destination(path: str):
+    """Fail before the data is embedded if the cache file cannot be written."""
+    if not path.endswith(".npz"):
+        path += ".npz"  # as np.savez does
+
+    if os.path.isdir(path):
+        raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), path)
+
+    directory = os.path.dirname(os.path.abspath(path))
+
+    while not os.path.isdir(directory) and os.path.dirname(directory) != directory:
+        if os.path.exists(directory):
+            raise NotADirectoryError(
+                errno.ENOTDIR, os.strerror(errno.ENOTDIR), directory
+            )
+
+        directory = os.path.dirname(directory)
+
+    with tempfile.TemporaryFile(dir=directory):
+        pass
+
+
 def _load_training_data(
     audio_input: str,
     test_data: str | None = None,
@@ -236,13 +260,9 @@ def _load_training_data(
     labels: list[str] = []
 
     for folder in train_folders:
-        labels_in_folder = folder.split(",")
-
-        for label in labels_in_folder:
-            cln_label = label.strip()
-
-            if cln_label not in labels:
-                labels.append(cln_label)
+        for label in utils.parse_folder_labels(folder):
+            if label not in labels:
+                labels.append(label)
 
     labels = sorted(labels)
     valid_labels = [
@@ -255,28 +275,26 @@ def _load_training_data(
 
     if is_binary:
         if any(f for f in train_folders if f.startswith("-")):
-            raise Exception(
+            raise ValueError(
                 "Negative labels can't be used with binary classification",
                 "validation-no-negative-samples-in-binary-classification",
             )
         if not any(f for f in train_folders if f.lower() in NON_EVENT_CLASSES):
-            raise Exception(
+            raise ValueError(
                 "Non-event samples are required for binary classification",
                 "validation-non-event-samples-required-in-binary-classification",
             )
 
-    if is_binary and is_multi_label:
-        raise Exception(
-            "Error: Binary classification and multi-label not possible at the same time"
-        )
-
     if is_multi_label and upsampling_ratio > 0 and upsampling_mode != "repeat":
-        raise Exception(
+        raise ValueError(
             "Only repeat-upsampling is available for multi-label",
             "validation-only-repeat-upsampling-for-multi-label",
         )
 
     _check_input_folders(audio_input, train_folders)
+
+    if save_cache_to:
+        _check_cache_destination(save_cache_to)
 
     x_train, y_train, x_test, y_test = [], [], [], []
     # Fail here rather than at export time, after the data has been embedded.
@@ -326,9 +344,8 @@ def _load_training_data(
                     continue
 
                 label_vector = np.zeros((len(valid_labels),), dtype="float32")
-                folder_labels = folder.split(",")
 
-                for label in folder_labels:
+                for label in utils.parse_folder_labels(folder):
                     if label.lower() not in NON_EVENT_CLASSES and not label.startswith(
                         "-"
                     ):
@@ -438,7 +455,8 @@ def _load_training_data(
                 model_version=model_version,
             )
         except Exception as e:
-            logger.warning(f"\t...error saving cache: {e}")
+            logger.error(f"\t...error saving cache: {e}")
+            raise
 
     return (
         x_train,
@@ -450,6 +468,16 @@ def _load_training_data(
         is_multi_label,
         model_version,
     )
+
+
+def _autotune_direction(metric: str) -> Literal["minimize", "maximize"]:
+    return "minimize" if metric.endswith("loss") else "maximize"
+
+
+def _best_epoch_score(scores: list[float], metric: str) -> float:
+    best = np.argmin if _autotune_direction(metric) == "minimize" else np.argmax
+
+    return scores[best(scores)]
 
 
 def train_model(
@@ -553,12 +581,13 @@ def train_model(
 
         import keras
         import optuna
+        from optuna_integration.keras import KerasPruningCallback
 
         if on_trial_result:
             on_trial_result(0)
 
         study = optuna.create_study(
-            direction=optuna.study.StudyDirection.MAXIMIZE,
+            direction=_autotune_direction(autotune_metric),
             study_name="birdnet_analyzer",
             sampler=optuna.samplers.TPESampler(multivariate=True, seed=42),
             pruner=optuna.pruners.MedianPruner(n_warmup_steps=3, interval_steps=1),
@@ -633,14 +662,16 @@ def train_model(
                             0.0,
                         )
 
-            for x_train, y_train, x_val, y_val, val_percentage in generate_splits(
-                x_train_full,
-                y_train_full,
-                x_val_full,
-                y_val_full,
-                val_split,
-                autotune_n_splits,
-                autotune_n_repeats,
+            for split, (x_train, y_train, x_val, y_val, val_percentage) in enumerate(
+                generate_splits(
+                    x_train_full,
+                    y_train_full,
+                    x_val_full,
+                    y_val_full,
+                    val_split,
+                    autotune_n_splits,
+                    autotune_n_repeats,
+                )
             ):
                 bs = trial.suggest_categorical("batch_size", [8, 16, 32, 64, 128])
                 lr = trial.suggest_float("learning_rate", 1e-4, 1e-1, log=True)
@@ -670,11 +701,10 @@ def train_model(
                 else:
                     fg, fa = focal_loss_gamma, focal_loss_alpha
 
-                # For k-Folds this will only really work for the first fold
-                # But makes sense if the trial produces "nan"
-                additional_callbacks = [
-                    optuna.integration.KerasPruningCallback(trial, "val_loss")
-                ]
+                # The pruner's steps are epochs, which every split would report again.
+                additional_callbacks = (
+                    [KerasPruningCallback(trial, autotune_metric)] if split == 0 else []
+                )
                 classifier = model.build_linear_classifier(
                     y_train.shape[1],
                     x_train.shape[1],
@@ -703,11 +733,9 @@ def train_model(
                     additional_callbacks=additional_callbacks,
                     weight_decay=wd,
                 )
-                best_score = history.history[autotune_metric][
-                    np.argmax(history.history[autotune_metric])
-                ]
-
-                histories.append(best_score)
+                histories.append(
+                    _best_epoch_score(history.history[autotune_metric], autotune_metric)
+                )
                 keras.backend.clear_session()
                 del classifier
                 del history
@@ -720,21 +748,25 @@ def train_model(
 
         # enqueue the defaults as first trial so that the passed default
         # hyperparameters are evaluated even if tuning is skipped
-        study.enqueue_trial(
-            {
-                "hidden_units": hidden_units,
-                "dropout": dropout,
-                "batch_size": batch_size,
-                "learning_rate": learning_rate,
-                "upsampling_ratio": upsampling_ratio,
-                "upsampling_mode": upsampling_mode,
-                "mixup": mixup,
-                "label_smoothing": label_smoothing,
-                "focal_loss": use_focal_loss,
-                "focal_loss_gamma": focal_loss_gamma,
-                "focal_loss_alpha": focal_loss_alpha,
-            }
-        )
+        defaults = {
+            "hidden_units": hidden_units,
+            "dropout": dropout,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "upsampling_ratio": upsampling_ratio,
+            "upsampling_mode": upsampling_mode,
+            "mixup": mixup,
+            "label_smoothing": label_smoothing,
+            "focal_loss": use_focal_loss,
+            "focal_loss_gamma": focal_loss_gamma,
+            "focal_loss_alpha": focal_loss_alpha,
+        }
+
+        # The log-scale search cannot take a weight decay of zero.
+        if weight_decay > 0:
+            defaults["weight_decay"] = weight_decay
+
+        study.enqueue_trial(defaults)
 
         try:
             study.optimize(objective, n_trials=autotune_trials)
@@ -799,64 +831,59 @@ def train_model(
         )
         e.args = (e.message,)
         raise e
-    except Exception as e:
-        raise Exception("Error training model") from e
 
-    try:
-        # Remove activation from last layer before saving
-        classifier.pop()
-        formats = [model_formats] if isinstance(model_formats, str) else model_formats
-        classifier_path = output.removesuffix(".tflite")
+    # Remove activation from last layer before saving
+    classifier.pop()
+    formats = [model_formats] if isinstance(model_formats, str) else model_formats
+    classifier_path = output.removesuffix(".tflite")
 
-        # The settings the classifier was trained with, saved next to it both as a
-        # record and so the GUI can load them again. When autotune ran, the values
-        # are the tuned ones.
-        utils.save_params_file(
-            classifier_path + TRAIN_PARAMS_SUFFIX,
-            {
-                "Classifier name": os.path.basename(classifier_path),
-                "Model formats": ", ".join(formats),
-                "Model save mode": model_save_mode,
-                "Bandpass filter minimum": fmin,
-                "Bandpass filter maximum": fmax,
-                "Audio speed": audio_speed,
-                "Crop mode": crop_mode,
-                "Crop overlap": overlap,
-                "Autotune": autotune,
-                "Autotune trials": autotune_trials,
-                "Autotune folds": autotune_n_splits,
-                "Autotune repeats": autotune_n_repeats,
-                "Epochs": epochs,
-                "Batch size": batch_size,
-                "Learning rate": learning_rate,
-                "Hidden units": hidden_units,
-                "Dropout": dropout,
-                "Weight decay": weight_decay,
-                "Use label smoothing": label_smoothing,
-                "Use mixup": mixup,
-                "Use focal loss": use_focal_loss,
-                "Focal loss gamma": focal_loss_gamma,
-                "Focal loss alpha": focal_loss_alpha,
-                "Upsampling mode": upsampling_mode,
-                "Upsampling ratio": upsampling_ratio,
-                "BirdNET model version": version,
-            },
+    # The settings the classifier was trained with, saved next to it both as a
+    # record and so the GUI can load them again. When autotune ran, the values
+    # are the tuned ones.
+    utils.save_params_file(
+        classifier_path + TRAIN_PARAMS_SUFFIX,
+        {
+            "Classifier name": os.path.basename(classifier_path),
+            "Model formats": ", ".join(formats),
+            "Model save mode": model_save_mode,
+            "Bandpass filter minimum": fmin,
+            "Bandpass filter maximum": fmax,
+            "Audio speed": audio_speed,
+            "Crop mode": crop_mode,
+            "Crop overlap": overlap,
+            "Autotune": autotune,
+            "Autotune trials": autotune_trials,
+            "Autotune folds": autotune_n_splits,
+            "Autotune repeats": autotune_n_repeats,
+            "Epochs": epochs,
+            "Batch size": batch_size,
+            "Learning rate": learning_rate,
+            "Hidden units": hidden_units,
+            "Dropout": dropout,
+            "Weight decay": weight_decay,
+            "Use label smoothing": label_smoothing,
+            "Use mixup": mixup,
+            "Use focal loss": use_focal_loss,
+            "Focal loss gamma": focal_loss_gamma,
+            "Focal loss alpha": focal_loss_alpha,
+            "Upsampling mode": upsampling_mode,
+            "Upsampling ratio": upsampling_ratio,
+            "BirdNET model version": version,
+        },
+    )
+
+    if "tflite" in formats:
+        model.save_linear_classifier(
+            classifier, output, labels, mode=model_save_mode, version=version
         )
-
-        if "tflite" in formats:
-            model.save_linear_classifier(
-                classifier, output, labels, mode=model_save_mode, version=version
-            )
-        if "raven" in formats:
-            model.save_raven_model(
-                classifier, output, labels, mode=model_save_mode, version=version
-            )
-        if "detached" in formats:
-            model.save_detached_classifier(
-                classifier, output, labels=labels, version=version
-            )
-    except Exception as e:
-        raise Exception("Error saving model") from e
+    if "raven" in formats:
+        model.save_raven_model(
+            classifier, output, labels, mode=model_save_mode, version=version
+        )
+    if "detached" in formats:
+        model.save_detached_classifier(
+            classifier, output, labels=labels, version=version
+        )
 
     save_sample_counts(labels, y_train_full, output)
 
