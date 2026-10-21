@@ -804,7 +804,8 @@ def train_parser():
         help="Model save mode. 'replace' will overwrite the original classification layer and 'append' will combine the original classification layer with the new one.",
     )
     parser.add_argument(
-        "--save_cache_to", default="train_cache.npz", help="Path to cache file."
+        "--save_cache_to",
+        help="Path to save the extracted training data to, as a cache file that later runs can use as INPUT. No cache is written unless this is set.",
     )
     parser.add_argument(
         "--autotune",
@@ -828,7 +829,7 @@ def train_parser():
         "--autotune_n_repeats",
         type=int,
         default=1,
-        help="Number of repetitions for each training run during hyperparameter tuning. If set to >1, each training run will be executed multiple times and the average validation score across all repetitions will be used as the score for the training run. This can help to get more robust estimates of the validation scores for each training run, but it will also increase the runtime of the hyperparameter tuning process.",
+        help="Number of repetitions for each training run during hyperparameter tuning. If set to >1, each training run will be executed multiple times and the average validation score across all repetitions will be used as the score for the training run. This can help to get more robust estimates of the validation scores for each training run, but it will also increase the runtime of the hyperparameter tuning process. Only used when --autotune_n_splits is greater than 1.",
     )
     parser.add_argument(
         "--autotune_metric",
