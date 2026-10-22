@@ -296,13 +296,15 @@ def sigmoid_args():
     return p
 
 
-def overlap_args(help_string="Overlap of prediction segments. Values in [0.0, 2.9]."):
+def overlap_args(
+    help_string="Overlap of prediction segments. Values in [0.0, 2.9].", maximum=2.9
+):
     """Argument parser for the overlap of prediction segments."""
     p = argparse.ArgumentParser(add_help=False)
 
     p.add_argument(
         "--overlap",
-        type=lambda a: max(0.0, min(4.9, float(a))),
+        type=lambda a: max(0.0, min(maximum, float(a))),
         default=0.0,
         help=help_string,
     )
@@ -439,7 +441,11 @@ def analyzer_parser():
         bandpass_args(),
         species_args(),
         sigmoid_args(),
-        overlap_args(),
+        overlap_args(
+            help_string="Overlap of prediction segments. Values in [0.0, 2.9], or "
+            "[0.0, 4.9] with --use_perch.",
+            maximum=4.9,
+        ),
         audio_speed_args(),
         min_conf_args(),
         locale_args(),
@@ -683,7 +689,7 @@ def train_parser():
             threads_args(),
             bs_args(32),
             overlap_args(
-                help_string="Overlap of training data segments in seconds if crop_mode is 'segments'."
+                help_string="Overlap of training data segments in seconds if crop_mode is 'segments'. Values in [0.0, 2.9]."
             ),
             load_params_args("training run", "*.birdnet.train-params.csv"),
             verbosity_args(),

@@ -260,7 +260,7 @@ def _run_single_file_tab(monkeypatch, report):
         audio_speed=1.0,
         fmin=0,
         fmax=15000,
-        species_list_choice=gu._ALL_SPECIES,
+        species_list_choice=gu.ALL_SPECIES,
         species_list_file=None,
         lat=-1,
         lon=-1,

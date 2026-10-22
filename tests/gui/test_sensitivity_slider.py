@@ -32,7 +32,7 @@ def appdir(monkeypatch, tmp_path):
 def perch_offered(monkeypatch):
     """macOS drops Perch from the choices, and a persisted choice that is not
     offered falls back to the default model."""
-    choices = [*gu.model_choices(), gu._USE_PERCH]
+    choices = [*gu.model_choices(), gu.USE_PERCH]
     monkeypatch.setattr(gu, "model_choices", lambda: list(dict.fromkeys(choices)))
 
 
@@ -53,52 +53,58 @@ def build():
 
 def test_slider_disabled_for_perch_and_restored_for_birdnet(appdir):
     settings.set_tab_setting("multi", "sensitivity_slider", 1.25)
-    settings.set_tab_setting("multi", "model_selection_radio", gu._USE_BIRDNET_2_4)
+    settings.set_tab_setting("multi", "model_selection_radio", gu.USE_BIRDNET_2_4)
 
     slider, on_model_change = build()
     assert slider.interactive
     assert slider.value == 1.25
 
-    to_3_0, *_ = on_model_change(gu._USE_BIRDNET_3_0, gu._ALL_SPECIES)
+    to_3_0, *_ = on_model_change(gu.USE_BIRDNET_3_0, gu.ALL_SPECIES, 0.0, "en_us")
     assert to_3_0["interactive"] is True
     assert to_3_0["value"] == 1.25
 
-    to_perch, *_ = on_model_change(gu._USE_PERCH, gu._ALL_SPECIES)
+    to_perch, *_ = on_model_change(gu.USE_PERCH, gu.ALL_SPECIES, 0.0, "en_us")
     assert to_perch["interactive"] is False
     assert to_perch["value"] == 1.0
 
-    to_custom, *_ = on_model_change(gu._CUSTOM_CLASSIFIER, gu._ALL_SPECIES)
+    to_custom, *_ = on_model_change(gu.CUSTOM_CLASSIFIER, gu.ALL_SPECIES, 0.0, "en_us")
     assert to_custom["interactive"] is True
     assert to_custom["value"] == 1.25, "the user's sensitivity comes back"
 
 
 def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir, perch_offered):
     settings.set_tab_setting("multi", "sensitivity_slider", 1.25)
-    settings.set_tab_setting("multi", "model_selection_radio", gu._USE_PERCH)
+    settings.set_tab_setting("multi", "model_selection_radio", gu.USE_PERCH)
 
     slider, _ = build()
     assert not slider.interactive
     assert slider.value == 1.0
 
 
-def test_programmatic_value_on_disabled_slider_snaps_back_to_1_0(appdir, perch_offered):
-    settings.set_tab_setting("multi", "model_selection_radio", gu._USE_PERCH)
+@pytest.mark.parametrize(
+    ("model", "shown"),
+    [
+        (gu.USE_PERCH, gr.update(interactive=False, value=1.0)),
+        (gu.USE_BIRDNET_3_0, gr.update(interactive=True, value=1.3)),
+        (gu.CUSTOM_CLASSIFIER, gr.update(interactive=True, value=1.3)),
+    ],
+)
+def test_a_preset_shows_its_sensitivity_only_where_the_model_takes_one(
+    appdir, perch_offered, model, shown
+):
+    settings.set_tab_setting("multi", "model_selection_radio", gu.USE_PERCH)
+    state = gs.TabState("multi")
 
-    with gr.Blocks() as demo:
-        sample, _, _ = gu.sample_species_model_settings(gs.TabState("multi"))
-    slider = sample["sensitivity_slider"]
-    on_slider_change = next(
-        event.fn
-        for event in demo.fns.values()
-        if event.targets
-        and event.targets[0] == (slider._id, "change")
-        and slider in event.outputs
+    with gr.Blocks():
+        sample, _, _ = gu.sample_species_model_settings(state)
+    current = {component: component.value for component in state.fitter_inputs()}
+
+    updates, _ = state.updates_for(
+        {"model_selection_radio": model, "sensitivity_slider": 1.3}, current
     )
 
-    assert on_slider_change(1.3, gu._USE_PERCH) == gr.update(value=1.0)
-    assert on_slider_change(1.0, gu._USE_PERCH) == gr.update()
-    assert on_slider_change(1.3, gu._USE_BIRDNET_3_0) == gr.update()
-    assert on_slider_change(1.3, gu._CUSTOM_CLASSIFIER) == gr.update()
+    shown_by_component = dict(zip(state.components(), updates, strict=True))
+    assert shown_by_component[sample["sensitivity_slider"]] == shown
 
 
 def test_an_unusable_classifier_is_not_selected(appdir, monkeypatch):

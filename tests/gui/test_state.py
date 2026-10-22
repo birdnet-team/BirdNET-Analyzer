@@ -1,4 +1,5 @@
 import json
+import threading
 
 import pytest
 
@@ -45,6 +46,34 @@ def test_tab_settings_do_not_touch_the_dialog_directories(state_file):
 
     assert settings.get_tab_settings("train") == {}
     assert settings.get_state("train-data-dir") == "/tmp/train"
+
+
+def test_simultaneous_reads_and_writes_keep_every_value(state_file):
+    settings.set_state("train-data-dir", "/tmp/train")
+    keys = [f"key_{i}" for i in range(8)]
+    readers = 4
+
+    for round_ in range(20):
+        barrier = threading.Barrier(len(keys) + readers)
+
+        def write(key, round_=round_, barrier=barrier):
+            barrier.wait()
+            settings.set_tab_setting("multi", key, round_)
+
+        def read(barrier=barrier):
+            barrier.wait()
+            for _ in range(10):
+                settings.get_tab_settings("multi")
+
+        threads = [threading.Thread(target=write, args=(key,)) for key in keys]
+        threads += [threading.Thread(target=read) for _ in range(readers)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert settings.get_tab_settings("multi") == dict.fromkeys(keys, round_)
+        assert settings.get_state("train-data-dir") == "/tmp/train"
 
 
 def test_a_corrupted_state_file_falls_back_to_the_defaults(state_file, tmp_path):
@@ -133,6 +162,27 @@ def test_a_component_is_built_with_the_value_of_the_last_session(state_file):
 
     assert restored.value == 0.75
     assert default.value == 1.0
+
+
+@pytest.mark.parametrize(
+    ("persisted", "expected"),
+    [
+        ({"sensitivity_slider": 1.3}, 1.3),
+        ({"sensitivity_slider": 1.7}, 1.0),  # above the slider's maximum
+        ({}, 1.0),
+    ],
+)
+def test_the_persisted_value_is_reread_and_validated(state_file, persisted, expected):
+    tab = gs.TabState("multi")
+
+    with gr.Blocks():
+        tab.persist(
+            "sensitivity_slider", gr.Slider, minimum=0.5, maximum=1.5, value=1.0
+        )
+
+    settings.update_tab_settings("multi", persisted)
+
+    assert tab.persisted_value("sensitivity_slider") == expected
 
 
 def test_editing_a_component_persists_its_value(state_file):

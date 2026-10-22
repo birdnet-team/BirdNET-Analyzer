@@ -100,27 +100,27 @@ def run_analysis(
     import birdnet_analyzer.gui.localization as loc
     from birdnet_analyzer.analyze import analyze
 
-    if species_list_choice == gu._CUSTOM_SPECIES:
+    if species_list_choice == gu.CUSTOM_SPECIES:
         gu.validate(
             species_list_file, loc.localize("validation-no-species-list-selected")
         )
 
     locale = locale.lower()  # ty:ignore[invalid-assignment]
     custom_classifier = (
-        custom_classifier_file if selected_model == gu._CUSTOM_CLASSIFIER else None
+        custom_classifier_file if selected_model == gu.CUSTOM_CLASSIFIER else None
     )
-    use_perch = selected_model == gu._USE_PERCH
+    use_perch = selected_model == gu.USE_PERCH
     # Only a BirdNET model choice uses this: Perch ignores it and a custom classifier
     # carries its own version in its file.
     birdnet_version = gu.birdnet_version(selected_model)
-    slist = species_list_file if species_list_choice == gu._CUSTOM_SPECIES else None
-    lat = lat if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
-    lon = lon if species_list_choice == gu._PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
+    slist = species_list_file if species_list_choice == gu.CUSTOM_SPECIES else None
+    lat = lat if species_list_choice == gu.PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
+    lon = lon if species_list_choice == gu.PREDICT_SPECIES else None  # ty:ignore[invalid-assignment]
     week = None if use_yearlong else week  # ty:ignore[invalid-assignment]
     audio_speed = gu.slider_to_value(audio_speed)
     on_update = partial(on_progress, progress=progress) if callable(progress) else None
 
-    if selected_model == gu._CUSTOM_CLASSIFIER and custom_classifier_file is None:
+    if selected_model == gu.CUSTOM_CLASSIFIER and custom_classifier_file is None:
         raise gr.Error(loc.localize("validation-no-custom-classifier-selected"))
 
     if progress is not None:
