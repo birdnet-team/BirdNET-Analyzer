@@ -186,7 +186,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
 </dd>
 <dt><kbd>--overlap</kbd></dt>
-<dd><p>Overlap of prediction segments. Values in [0.0, 2.9].</p>
+<dd><p>Overlap of prediction segments. Values in [0.0, 2.9], or [0.0, 4.9] with –use_perch.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
 </dd>
 <dt><kbd>--audio_speed</kbd></dt>
@@ -554,7 +554,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">32</span></code></p>
 </dd>
 <dt><kbd>--overlap</kbd></dt>
-<dd><p>Overlap of training data segments in seconds if crop_mode is ‘segments’.</p>
+<dd><p>Overlap of training data segments in seconds if crop_mode is ‘segments’. Values in [0.0, 2.9].</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
 </dd>
 <dt><kbd>--load_params</kbd></dt>
