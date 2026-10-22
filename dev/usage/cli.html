@@ -461,7 +461,7 @@ This also works for non-bird species, as long as you have a dataset of labeled a
 <li><p>It can be helpful to include a non-event class. If you name a folder ‘Noise’, ‘Background’, ‘Other’ or ‘Silence’, it will be treated as a non-event class.</p></li>
 <li><p>Run the training script with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">birdnet_analyzer.train</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">training</span> <span class="pre">data</span> <span class="pre">folder&gt;</span> <span class="pre">-o</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">trained</span> <span class="pre">classifier</span> <span class="pre">model</span> <span class="pre">output&gt;</span></code>.</p></li>
 </ol>
-<p><strong>The script saves the trained classifier model based on the best validation loss achieved during training. This ensures that the model saved is optimized for performance according to the chosen metric.</strong></p>
+<p><strong>Training stops early once the validation score (``–autotune_metric``, AUPRC by default) stops improving, and the saved classifier keeps the weights of its best epoch.</strong></p>
 <p>After training, you can use the custom trained classifier with the <code class="docutils literal notranslate"><span class="pre">--classifier</span></code> argument of the <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.analyze</span></code> script.
 If you want to use the custom classifier in Raven, make sure to set <code class="docutils literal notranslate"><span class="pre">--model_formats</span> <span class="pre">raven</span></code>.</p>
 <div class="admonition note">
@@ -518,7 +518,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
                               <span class="p">[</span><span class="o">--</span><span class="n">autotune_trials</span> <span class="n">AUTOTUNE_TRIALS</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">autotune_n_splits</span> <span class="n">AUTOTUNE_N_SPLITS</span><span class="p">]</span>
                               <span class="p">[</span><span class="o">--</span><span class="n">autotune_n_repeats</span> <span class="n">AUTOTUNE_N_REPEATS</span><span class="p">]</span>
-                              <span class="p">[</span><span class="o">--</span><span class="n">autotune_metric</span> <span class="p">{</span><span class="n">val_loss</span><span class="p">,</span><span class="n">val_AUPRC</span><span class="p">,</span><span class="n">val_AUROC</span><span class="p">}]</span>
+                              <span class="p">[</span><span class="o">--</span><span class="n">autotune_metric</span> <span class="p">{</span><span class="n">val_AUPRC</span><span class="p">,</span><span class="n">val_AUROC</span><span class="p">}]</span>
                               <span class="n">INPUT</span>
 </pre></div>
 </div>
@@ -567,7 +567,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <dd><p>Only show warnings and errors on the console.</p>
 </dd>
 <dt><kbd>--test_data</kbd></dt>
-<dd><p>Path to test data folder. If not specified, a random validation split will be used.</p>
+<dd><p>Path to test data folder. It is only used to evaluate the trained classifier; tuning and early stopping use the validation split of the training data.</p>
 </dd>
 <dt><kbd>--crop_mode</kbd></dt>
 <dd><p>Possible choices: center, first, segments, smart</p>
@@ -588,7 +588,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
 </dd>
 <dt><kbd>--val_split</kbd></dt>
-<dd><p>A small percentage of the training data that is not used for training, but for validation scores during training.</p>
+<dd><p>A small percentage of the training data that is not used for training, but for validation scores and early stopping during training. Must be above 0.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.2</span></code></p>
 </dd>
 <dt><kbd>--learning_rate</kbd></dt>
@@ -654,7 +654,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
 </dd>
 <dt><kbd>--autotune_n_splits</kbd></dt>
-<dd><p>Number of folds for cross-validation during hyperparameter tuning. If set to &gt;1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. Keep in mind that this will significantly increase the runtime of the hyperparameter tuning process.</p>
+<dd><p>Number of folds for cross-validation during hyperparameter tuning. If set to &gt;1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred samples.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--autotune_n_repeats</kbd></dt>
@@ -662,8 +662,8 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--autotune_metric</kbd></dt>
-<dd><p>Possible choices: val_loss, val_AUPRC, val_AUROC</p>
-<p>Metric to optimize during hyperparameter tuning. This can be any metric that is returned by the training process and is included in the training history object. Common choices are ‘val_loss’, ‘val_AUPRC’ or ‘val_AUROC’.</p>
+<dd><p>Possible choices: val_AUPRC, val_AUROC</p>
+<p>Validation metric to optimize during hyperparameter tuning. Training also stops early on it and keeps the weights of its best epoch.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'val_AUPRC'</span></code></p>
 </dd>
 </dl>

@@ -164,7 +164,11 @@ You can choose between BirdNET 3.0 (the default) and BirdNET 2.4 with the “Bas
 If you don’t have experience with training machine learning models, we recommend using the autotune feature.
 This will run multiple training runs (aka trials) with different hyperparameter settings and select the best performing settings based on the validation data.
 The parameters used for training the final classifier will be saved alongside the resulting classifier.
-When using autotune you can specify the number of trials as well as the number of executions per trial.</p>
+When using autotune you can specify the number of trials, the number of folds and the number of repeats.</p>
+<p>Each trial is scored on the validation split of the training data. With more than one fold, each trial is trained once per fold instead and scored by the mean over the folds.
+That makes the scores steadier, but multiplies the tuning time by roughly the number of folds.
+Folds are mainly worth it for small datasets of a few hundred samples, where the validation split holds only a handful of examples per class.
+From about 1,000 samples on, keep 1 fold and spend the time on more trials instead. Repeats run the folds again on a new split and cost as much time again.</p>
 <p>If you want to adjust the hyperparameters manually, we have a more detailed documentation available <a class="reference internal" href="../implementation-details/training-hyperparameters.html"><span class="doc">here</span></a>.</p>
 </section>
 <section id="audio-settings">
@@ -190,7 +194,8 @@ In later training runs you can then choose “load” as the “training data ca
 <section id="using-test-data">
 <h3>3.5 Using test data<a class="headerlink" href="#using-test-data" title="Link to this heading"></a></h3>
 <p>You can provide a separate dataset for testing your custom classifier after training is finished.
-The test data should be structured in the same way as the training data, with each class having its own folder.</p>
+The test data should be structured in the same way as the training data, with each class having its own folder.
+It is only used for this evaluation: autotune and early stopping always validate on the training data, so the test results stay an independent estimate.</p>
 <p>Precision, Recall, F1-Score, AUPRC and AUROC will be calculated for the test data.
 The metrics will be calculated for each class as well as a macro-average across all classes.
 Threshold based metrics will be calculated with the default threshold of 0.5 as well as an optimal threshold.</p>
