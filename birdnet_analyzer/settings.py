@@ -43,6 +43,8 @@ GUI_SETTINGS_PATH = str(APPDIR / "gui-settings.json")
 LANG_DIR = str(Path(SCRIPT_DIR) / "lang")
 STATE_SETTINGS_PATH = str(APPDIR / "state.json")
 TAB_SETTINGS_KEY = "tab-settings"
+# Gradio runs event handlers on several threads at once.
+_STATE_LOCK = threading.RLock()
 
 MODEL_DIR_SETTING_KEY = "model-directory"
 MODEL_DIR_ENV_VAR = "BIRDNET_APP_DATA"
@@ -315,23 +317,24 @@ def get_state_dict() -> dict:
         dict: The state dictionary loaded from the JSON file, or an empty dictionary if
         the file does not exist or an error occurs.
     """
-    try:
-        with open(STATE_SETTINGS_PATH, encoding="utf-8") as f:
-            state = json.load(f)
-
-        return state if isinstance(state, dict) else {}
-    except FileNotFoundError:
+    with _STATE_LOCK:
         try:
-            _ensure_appdir_exists()
-            _write_state_dict({})
-            return {}
+            with open(STATE_SETTINGS_PATH, encoding="utf-8") as f:
+                state = json.load(f)
+
+            return state if isinstance(state, dict) else {}
+        except FileNotFoundError:
+            try:
+                _ensure_appdir_exists()
+                _write_state_dict({})
+                return {}
+            except Exception as e:
+                write_error_log(e)
+                return {}
         except Exception as e:
+            # A corrupted state file must never keep the GUI from starting.
             write_error_log(e)
             return {}
-    except Exception as e:
-        # A corrupted state file must never keep the GUI from starting.
-        write_error_log(e)
-        return {}
 
 
 def _write_state_dict(state: dict) -> None:
@@ -345,7 +348,8 @@ def _write_state_dict(state: dict) -> None:
         state (dict): The complete state dictionary to persist.
     """
     _ensure_appdir_exists()
-    tmp_path = f"{STATE_SETTINGS_PATH}.tmp"
+    # One per process, so another running instance cannot swap in a half-written one.
+    tmp_path = f"{STATE_SETTINGS_PATH}.{os.getpid()}.tmp"
 
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=4)
@@ -377,10 +381,11 @@ def set_state(key: str, value: str):
         value (str): The value to associate with the key in the state dictionary.
     """
     try:
-        state = get_state_dict()
-        state[key] = value
+        with _STATE_LOCK:
+            state = get_state_dict()
+            state[key] = value
 
-        _write_state_dict(state)
+            _write_state_dict(state)
     except Exception as e:
         write_error_log(e)
 
@@ -432,20 +437,21 @@ def update_tab_settings(tab: str, values: dict):
         return
 
     try:
-        state = get_state_dict()
-        tab_settings = state.get(TAB_SETTINGS_KEY)
+        with _STATE_LOCK:
+            state = get_state_dict()
+            tab_settings = state.get(TAB_SETTINGS_KEY)
 
-        if not isinstance(tab_settings, dict):
-            tab_settings = state[TAB_SETTINGS_KEY] = {}
+            if not isinstance(tab_settings, dict):
+                tab_settings = state[TAB_SETTINGS_KEY] = {}
 
-        current = tab_settings.get(tab)
+            current = tab_settings.get(tab)
 
-        if not isinstance(current, dict):
-            current = tab_settings[tab] = {}
+            if not isinstance(current, dict):
+                current = tab_settings[tab] = {}
 
-        current.update(values)
+            current.update(values)
 
-        _write_state_dict(state)
+            _write_state_dict(state)
     except Exception as e:
         write_error_log(e)
 
@@ -457,10 +463,11 @@ def reset_tab_settings():
     The directories remembered for the file dialogs are kept.
     """
     try:
-        state = get_state_dict()
+        with _STATE_LOCK:
+            state = get_state_dict()
 
-        if state.pop(TAB_SETTINGS_KEY, None) is not None:
-            _write_state_dict(state)
+            if state.pop(TAB_SETTINGS_KEY, None) is not None:
+                _write_state_dict(state)
     except Exception as e:
         write_error_log(e)
 

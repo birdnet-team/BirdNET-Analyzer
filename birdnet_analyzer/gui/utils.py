@@ -30,17 +30,17 @@ loc.load_local_state()
 
 logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-_CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
-_PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
-_CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
-_ALL_SPECIES = loc.localize("species-list-radio-option-all")
-_USE_PERCH = loc.localize("species-list-radio-option-use-perch")
+CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
+PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
+CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
+ALL_SPECIES = loc.localize("species-list-radio-option-all")
+USE_PERCH = loc.localize("species-list-radio-option-use-perch")
 # BirdNET acoustic model choices. Not localized: the version number is the label.
-_USE_BIRDNET_2_4 = "BirdNET 2.4"
-_USE_BIRDNET_3_0 = "BirdNET 3.0"
+USE_BIRDNET_2_4 = "BirdNET 2.4"
+USE_BIRDNET_3_0 = "BirdNET 3.0"
 _BIRDNET_MODEL_VERSIONS: dict[str, str] = {
-    _USE_BIRDNET_2_4: "2.4",
-    _USE_BIRDNET_3_0: "3.0",
+    USE_BIRDNET_2_4: "2.4",
+    USE_BIRDNET_3_0: "3.0",
 }
 
 _WINDOW: "webview.Window | None" = None
@@ -97,7 +97,18 @@ def model_supports_sensitivity(model_choice: str) -> bool:
     """Whether the sensitivity slider applies to the selected model choice."""
     from birdnet_analyzer.model_utils import supports_sensitivity
 
-    return supports_sensitivity("perch" if model_choice == _USE_PERCH else "birdnet")
+    return supports_sensitivity("perch" if model_choice == USE_PERCH else "birdnet")
+
+
+def _species_choices(is_perch: bool) -> list[str]:
+    if is_perch:
+        return [ALL_SPECIES, CUSTOM_SPECIES]
+
+    return [ALL_SPECIES, CUSTOM_SPECIES, PREDICT_SPECIES]
+
+
+def _max_overlap(is_perch: bool) -> float:
+    return 4.9 if is_perch else 2.9
 
 
 def model_languages(model_choice: str) -> list[str]:
@@ -746,8 +757,8 @@ def birdnet_model_choices() -> list[tuple[str, str]]:
     return [
         (label, version)
         for label, version in (
-            (_USE_BIRDNET_3_0, "3.0"),
-            (_USE_BIRDNET_2_4, "2.4"),
+            (USE_BIRDNET_3_0, "3.0"),
+            (USE_BIRDNET_2_4, "2.4"),
         )
         if version in available
     ]
@@ -757,10 +768,10 @@ def model_choices():
     """Returns the models that can be selected on the current platform."""
     birdnet_models = [label for label, _ in birdnet_model_choices()]
 
-    values = [*birdnet_models, _CUSTOM_CLASSIFIER, _USE_PERCH]
+    values = [*birdnet_models, CUSTOM_CLASSIFIER, USE_PERCH]
 
     if platform.system() == "Darwin":
-        values.remove(_USE_PERCH)  # TODO: Remove when tf 2.21+ is available on macOS
+        values.remove(USE_PERCH)  # TODO: Remove when tf 2.21+ is available on macOS
 
     return values
 
@@ -769,7 +780,7 @@ def default_model():
     """The model selected by default: the newest available BirdNET acoustic model."""
     choices = model_choices()
 
-    return _USE_BIRDNET_3_0 if _USE_BIRDNET_3_0 in choices else choices[0]
+    return USE_BIRDNET_3_0 if USE_BIRDNET_3_0 in choices else choices[0]
 
 
 def sample_species_model_settings(state: TabState, opened=True):
@@ -778,7 +789,7 @@ def sample_species_model_settings(state: TabState, opened=True):
     model_choice = state.get(
         "model_selection_radio", default_model(), choices=model_choices()
     )
-    is_perch = model_choice == _USE_PERCH
+    is_perch = model_choice == USE_PERCH
 
     sample_settings = sample_sliders(
         state,
@@ -789,68 +800,70 @@ def sample_species_model_settings(state: TabState, opened=True):
     species_settings = species_lists(state, opened=opened, is_perch=is_perch)
     model_settings = model_selection(state, opened=opened)
 
-    def on_species_list_change(value, species_choice):
-        is_perch = value == _USE_PERCH
-        choices = (
-            [_CUSTOM_SPECIES, _ALL_SPECIES]
-            if is_perch
-            else [_CUSTOM_SPECIES, _PREDICT_SPECIES, _ALL_SPECIES]
-        )
+    def on_model_change(value, species_choice, overlap, current_locale):
+        is_perch = value == USE_PERCH
+        choices = _species_choices(is_perch)
+        max_overlap = _max_overlap(is_perch)
+        shown = {
+            "overlap_slider": overlap,
+            "species_list_radio": species_choice,
+            "locale_dropdown": current_locale,
+        }
+        fitted = dict(shown, overlap_slider=min(overlap, max_overlap))
 
-        # Slider release persists the value; read it live, the state snapshot is stale.
+        # Keep the current species selection (e.g. the one a preset was just
+        # applied with) as long as the new model offers it.
+        if species_choice not in choices:
+            fitted["species_list_radio"] = ALL_SPECIES
+
         if model_supports_sensitivity(value):
-            persisted = settings.get_tab_settings(state.tab).get("sensitivity_slider")
-            restored = (
-                min(1.5, max(0.5, float(persisted)))
-                if isinstance(persisted, (int, float))
-                else 1.0
+            sensitivity_update = gr.update(
+                interactive=True, value=state.persisted_value("sensitivity_slider")
             )
-            sensitivity_update = gr.update(interactive=True, value=restored)
         else:
             sensitivity_update = gr.update(interactive=False, value=1.0)
 
+        if is_birdnet_model(value):
+            # Re-scope the locale dropdown to this model's languages, keeping the
+            # current locale only if the new version still offers it (else English).
+            languages = model_languages(value)
+
+            if current_locale not in languages:
+                fitted["locale_dropdown"] = MODEL_LANGUAGE_EN_US
+
+            locale_update = gr.update(
+                visible=True, choices=languages, value=fitted["locale_dropdown"]
+            )
+        else:
+            # Perch / custom classifier don't use the locale; just hide it and leave
+            # its value alone so switching back keeps the user's language.
+            locale_update = gr.update(visible=False, choices=cfg.ALL_MODEL_LANGUAGES)
+
+        state.remember({key: v for key, v in fitted.items() if v != shown[key]})
+
         return (
             sensitivity_update,
-            gr.update(maximum=4.9 if is_perch else 2.9),
-            # Keep the current species selection (e.g. the one a preset was just
-            # applied with) as long as the new model offers it.
-            gr.update(
-                choices=choices,
-                value=species_choice if species_choice in choices else _ALL_SPECIES,
-            ),
+            gr.update(maximum=max_overlap, value=fitted["overlap_slider"]),
+            gr.update(choices=choices, value=fitted["species_list_radio"]),
+            locale_update,
         )
 
+    inputs = [
+        model_settings["model_selection_radio"],
+        species_settings["species_list_radio"],
+        sample_settings["overlap_slider"],
+        model_settings["locale_dropdown"],
+    ]
+    outputs = [
+        sample_settings["sensitivity_slider"],
+        sample_settings["overlap_slider"],
+        species_settings["species_list_radio"],
+        model_settings["locale_dropdown"],
+    ]
     model_settings["model_selection_radio"].change(
-        on_species_list_change,
-        inputs=[
-            model_settings["model_selection_radio"],
-            species_settings["species_list_radio"],
-        ],
-        outputs=[
-            sample_settings["sensitivity_slider"],
-            sample_settings["overlap_slider"],
-            species_settings["species_list_radio"],
-        ],
-        show_progress="hidden",
+        on_model_change, inputs=inputs, outputs=outputs, show_progress="hidden"
     )
-
-    def keep_disabled_slider_at_default(sensitivity, model_choice):
-        # A preset or params file can set the slider while the model stays Perch,
-        # which fires no model change to reset it.
-        if model_supports_sensitivity(model_choice) or sensitivity == 1.0:
-            return gr.update()
-
-        return gr.update(value=1.0)
-
-    sample_settings["sensitivity_slider"].change(
-        keep_disabled_slider_at_default,
-        inputs=[
-            sample_settings["sensitivity_slider"],
-            model_settings["model_selection_radio"],
-        ],
-        outputs=sample_settings["sensitivity_slider"],
-        show_progress="hidden",
-    )
+    state.add_fitter(on_model_change, inputs, outputs)
 
     def warn_unmatched_species(file, model_choice, locale):
         """Heads-up when a chosen custom list has species the selected model lacks.
@@ -975,8 +988,9 @@ def sample_sliders(
                 overlap_slider = state.persist(
                     "overlap_slider",
                     gr.Slider,
+                    accepts={"maximum": _max_overlap(is_perch=True)},
                     minimum=0,
-                    maximum=4.9 if is_perch else 2.9,
+                    maximum=_max_overlap(is_perch),
                     value=0.0,
                     step=0.1,
                     label=loc.localize("inference-settings-overlap-slider-label"),
@@ -1047,7 +1061,12 @@ def bandpass_settings(state: TabState):
     return fmin_number, fmax_number
 
 
-def locale(state: TabState, languages: list[str], visible=True):
+def locale(
+    state: TabState,
+    languages: list[str],
+    visible=True,
+    accepts: list[str] | None = None,
+):
     """Creates the gradio elements for locale selection
 
     Args:
@@ -1058,6 +1077,8 @@ def locale(state: TabState, languages: list[str], visible=True):
             so pass the union when the dropdown is hidden (see ``model_selection``) to
             avoid discarding a still-valid saved locale.
         visible: If True the dropdown is shown on init.
+        accepts: The wider set of locales a preset may set, if the choices depend on
+            another setting of the tab.
 
     Returns:
         The dropdown element.
@@ -1065,6 +1086,7 @@ def locale(state: TabState, languages: list[str], visible=True):
     return state.persist(
         "locale_dropdown",
         gr.Dropdown,
+        accepts={"choices": accepts} if accepts else None,
         choices=languages,
         value=cast("str", MODEL_LANGUAGE_EN_US),
         visible=visible,
@@ -1248,13 +1270,13 @@ def show_species_choice(choice: str, file_input):
             Column update,
         ]
     """
-    if choice == _CUSTOM_SPECIES:
+    if choice == CUSTOM_SPECIES:
         return [
             gr.update(visible=False),
             gr.update(visible=True),
             gr.update(visible=bool(file_input)),
         ]
-    if choice == _PREDICT_SPECIES:
+    if choice == PREDICT_SPECIES:
         return [
             gr.update(visible=True),
             gr.update(visible=False),
@@ -1285,7 +1307,7 @@ def model_selection(state: TabState, opened=True):
             selected_model = model_selection_radio.value
 
             with gr.Column(
-                visible=selected_model == _CUSTOM_CLASSIFIER
+                visible=selected_model == CUSTOM_CLASSIFIER
             ) as custom_classifier_selector:
                 classifier_selection_button = gr.Button(
                     loc.localize(
@@ -1350,6 +1372,7 @@ def model_selection(state: TabState, opened=True):
             state,
             model_languages(selected_model) if show_locale else cfg.ALL_MODEL_LANGUAGES,
             visible=show_locale,
+            accepts=cfg.ALL_MODEL_LANGUAGES,
         )
 
         species_list_df = gr.List(
@@ -1366,40 +1389,16 @@ def model_selection(state: TabState, opened=True):
         show_progress="hidden",
     )
 
-    def on_model_selection_change(choice: str, cc_state, current_locale):
-        if is_birdnet_model(choice):
-            # Re-scope the locale dropdown to this model's languages, keeping the
-            # current locale only if the new version still offers it (else English).
-            languages = model_languages(choice)
-            locale_update = gr.update(
-                visible=True,
-                choices=languages,
-                value=current_locale
-                if current_locale in languages
-                else MODEL_LANGUAGE_EN_US,
-            )
-        else:
-            # Perch / custom classifier don't use the locale; just hide it and leave
-            # its choices and value alone so switching back keeps the user's language.
-            locale_update = gr.update(visible=False)
+    def on_model_selection_change(choice: str, cc_state):
+        if choice == CUSTOM_CLASSIFIER:
+            return gr.update(visible=True), gr.update(visible=cc_state is not None)
 
-        if choice == _CUSTOM_CLASSIFIER:
-            return (
-                gr.update(visible=True),
-                gr.update(visible=cc_state is not None),
-                locale_update,
-            )
-
-        return (
-            gr.update(visible=False),
-            gr.update(visible=False),
-            locale_update,
-        )
+        return gr.update(visible=False), gr.update(visible=False)
 
     model_selection_radio.change(
         on_model_selection_change,
-        inputs=[model_selection_radio, selected_classifier_state, locale_settings],
-        outputs=[custom_classifier_selector, species_list_df, locale_settings],
+        inputs=[model_selection_radio, selected_classifier_state],
+        outputs=[custom_classifier_selector, species_list_df],
         show_progress="hidden",
     )
 
@@ -1428,17 +1427,12 @@ def species_lists(
         gr.Accordion(loc.localize("species-list-accordion-label"), open=opened),
     ):
         with gr.Row():
-            values = (
-                [_CUSTOM_SPECIES, _ALL_SPECIES]
-                if is_perch
-                else [_ALL_SPECIES, _CUSTOM_SPECIES, _PREDICT_SPECIES]
-            )
-
             species_list_radio = state.persist(
                 "species_list_radio",
                 gr.Radio,
-                choices=values,
-                value=_ALL_SPECIES,
+                accepts={"choices": _species_choices(is_perch=False)},
+                choices=_species_choices(is_perch),
+                value=ALL_SPECIES,
                 label=loc.localize("species-list-radio-label"),
                 info=loc.localize("species-list-radio-info"),
                 elem_classes="d-block",
@@ -1446,7 +1440,7 @@ def species_lists(
             selected_species_list = species_list_radio.value
 
             with gr.Column(
-                visible=selected_species_list == _PREDICT_SPECIES
+                visible=selected_species_list == PREDICT_SPECIES
             ) as position_row:
                 (
                     lat_number,
@@ -1459,7 +1453,7 @@ def species_lists(
 
             species_file_input = gr.File(
                 file_types=[".txt"],
-                visible=selected_species_list == _CUSTOM_SPECIES,
+                visible=selected_species_list == CUSTOM_SPECIES,
                 show_label=False,
             )
 
