@@ -11,7 +11,7 @@ import logging
 import os
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, NamedTuple, get_args
 
 import numpy as np
 import tqdm
@@ -23,6 +23,7 @@ from birdnet_analyzer.config import (
     AUTOTUNE_METRICS,
     DEFAULT_ACOUSTIC_MODEL_VERSION,
     NON_EVENT_CLASSES,
+    RANDOM_SEED,
     TRAIN_PARAMS_SUFFIX,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
@@ -232,8 +233,7 @@ def _load_training_data(
     Args:
         audio_input: Path to the training data directory or path to a cache file
                      ("train_cache.npz" for example).
-        test_data: Path to the test data directory. Defaults to None. If not specified,
-                   a validation split will be used.
+        test_data: Path to the test data directory. Defaults to None.
         upsampling_ratio: Ratio for upsampling underrepresented classes.
                           Defaults to 0.0.
         progress_callback: A callback function for monitoring progress during data
@@ -470,14 +470,129 @@ def _load_training_data(
     )
 
 
-def _autotune_direction(metric: str) -> Literal["minimize", "maximize"]:
-    return "minimize" if metric.endswith("loss") else "maximize"
+class _FloatRange(NamedTuple):
+    low: float
+    high: float
+    step: float | None = None
+    log: bool = False
 
 
-def _best_epoch_score(scores: list[float], metric: str) -> float:
-    best = np.argmin if _autotune_direction(metric) == "minimize" else np.argmax
+def _search_space(is_multi_label: bool) -> dict[str, list | _FloatRange]:
+    return {
+        "hidden_units": [0, 128, 256, 512, 1024, 2048],
+        "dropout": [0.0, 0.25, 0.33, 0.5, 0.75, 0.9],
+        "batch_size": [8, 16, 32, 64, 128],
+        "learning_rate": _FloatRange(1e-4, 1e-1, log=True),
+        "upsampling_ratio": _FloatRange(0.0, 1.0, step=0.25),
+        "upsampling_mode": ["repeat"]
+        if is_multi_label
+        else ["repeat", "mean", "linear"],
+        "weight_decay": _FloatRange(1e-6, 1e-2, log=True),
+        "mixup": [True, False],
+        "label_smoothing": [True, False],
+        "focal_loss": [True, False],
+        "focal_loss_gamma": _FloatRange(0.5, 4.0, step=0.5),
+        "focal_loss_alpha": _FloatRange(0.1, 0.9, step=0.05),
+    }
 
-    return scores[best(scores)]
+
+def _suggest(trial, space: dict[str, list | _FloatRange]) -> dict:
+    return {
+        name: trial.suggest_categorical(name, choices)
+        if isinstance(choices, list)
+        else trial.suggest_float(
+            name, choices.low, choices.high, step=choices.step, log=choices.log
+        )
+        for name, choices in space.items()
+    }
+
+
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _snap_to_search_space(defaults: dict, space: dict[str, list | _FloatRange]) -> dict:
+    """Moves the defaults onto the search space, as optuna requires of a seed trial.
+
+    Numbers go to the nearest value the search allows; any other value that is not a
+    choice is left out, so the sampler picks it.
+    """
+    snapped = {}
+
+    for name, value in defaults.items():
+        choices = space[name]
+
+        if isinstance(choices, _FloatRange):
+            new = min(max(value, choices.low), choices.high)
+
+            if choices.step:
+                steps = round((new - choices.low) / choices.step)
+                new = round(choices.low + steps * choices.step, 10)
+        elif value in choices:
+            new = value
+        elif _is_number(value) and all(map(_is_number, choices)):
+            new = min(choices, key=lambda choice: abs(choice - value))
+        else:
+            logger.info(
+                "Autotune: %s=%r is not in the search space, the search picks it.",
+                name,
+                value,
+            )
+            continue
+
+        if new != value:
+            logger.info(
+                "Autotune: starting with %s=%r, the nearest searched value to %r.",
+                name,
+                new,
+                value,
+            )
+
+        snapped[name] = new
+
+    return snapped
+
+
+def _stratification_labels(
+    y: np.ndarray, is_binary: bool, is_multi_label: bool
+) -> np.ndarray:
+    if is_binary:
+        return (y[:, 0] > 0).astype(int)
+
+    if is_multi_label:
+        return np.sum(y > 0, axis=1)
+
+    num_classes = y.shape[1]
+    no_positive = np.where(np.any(y < 0, axis=1), num_classes + 1, num_classes)
+
+    return np.where(np.any(y > 0, axis=1), np.argmax(y, axis=1), no_positive)
+
+
+def _kfold_splits(
+    y: np.ndarray, n_splits: int, n_repeats: int, is_binary: bool, is_multi_label: bool
+) -> Generator[tuple[np.ndarray, np.ndarray], None, None]:
+    """Yields the training and validation row indices of each fold."""
+    negative = np.any(y < 0, axis=1)
+    candidates = np.flatnonzero(~negative)
+    folds = RepeatedStratifiedKFold(
+        n_splits=n_splits, n_repeats=n_repeats, random_state=RANDOM_SEED
+    )
+    strata = _stratification_labels(y[candidates], is_binary, is_multi_label)
+
+    for train_idx, val_idx in folds.split(candidates, strata):
+        yield (
+            np.concatenate([candidates[train_idx], np.flatnonzero(negative)]),
+            candidates[val_idx],
+        )
+
+
+def _without_negative_rows(x: np.ndarray, y: np.ndarray):
+    if len(y) == 0:
+        return x, y
+
+    keep = ~np.any(y < 0, axis=1)
+
+    return x[keep], y[keep]
 
 
 def train_model(
@@ -534,12 +649,26 @@ def train_model(
     Returns:
         A keras `History` object, whose `history` property contains all the metrics.
     """
+    if autotune_metric not in get_args(AUTOTUNE_METRICS):
+        raise ValueError(
+            f"Unsupported autotune metric {autotune_metric!r}, use one of "
+            f"{', '.join(get_args(AUTOTUNE_METRICS))}."
+        )
+
+    if autotune and autotune_trials < 1:
+        raise ValueError("Autotune needs at least one trial.")
+
+    if val_split <= 0:
+        raise ValueError(
+            "The validation split must be above 0: early stopping validates on it, "
+            "while test data only evaluates the trained classifier."
+        )
 
     (
         x_train_full,
         y_train_full,
-        x_val_full,
-        y_val_full,
+        x_test,
+        y_test,
         labels,
         is_binary,
         is_multi_label,
@@ -573,8 +702,8 @@ def train_model(
         f"...Done. Loaded {x_train_full.shape[0]} training samples "
         f"and {y_train_full.shape[1]} labels."
     )
-    if len(x_val_full) > 0:
-        logger.info(f"...Loaded {x_val_full.shape[0]} test samples.")
+    if len(x_test) > 0:
+        logger.info(f"...Loaded {x_test.shape[0]} test samples.")
 
     if autotune:
         import gc
@@ -587,167 +716,91 @@ def train_model(
             on_trial_result(0)
 
         study = optuna.create_study(
-            direction=_autotune_direction(autotune_metric),
+            direction="maximize",
             study_name="birdnet_analyzer",
             sampler=optuna.samplers.TPESampler(multivariate=True, seed=42),
             pruner=optuna.pruners.MedianPruner(n_warmup_steps=3, interval_steps=1),
         )
-
-        def objective(trial: optuna.trial.Trial):
-            histories: list[float] = []
-            h_units = trial.suggest_categorical(
-                "hidden_units", [0, 128, 256, 512, 1024, 2048]
-            )
-            dr = trial.suggest_categorical("dropout", [0.0, 0.25, 0.33, 0.5, 0.75, 0.9])
-            upsampling_choices = (
-                ["repeat"] if is_multi_label else ["repeat", "mean", "linear"]
-            )
-
-            # For multi-label, stratify on the count of active labels per sample.
-            # TODO: Is this the best way to do stratification for multi-label data?
-            if is_multi_label:
-                stratify_labels = np.sum(y_train_full > 0, axis=1)
-            else:
-                stratify_labels = np.argmax(y_train_full, axis=1)
-
-            def generate_splits(
-                x_train: np.ndarray,
-                y_train: np.ndarray,
-                x_test: np.ndarray,
-                y_test: np.ndarray,
-                val_split: float,
-                autotune_n_splits: int,
-                autotune_n_repeats: int,
-            ) -> Generator[
-                tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float], None, None
-            ]:
-                if x_test.size > 0:
-                    splits = [
-                        (
-                            np.arange(len(x_train)),
-                            np.arange(len(x_test)),
-                        )
-                    ]
-                    for train_idx, val_idx in splits:
-                        yield (
-                            x_train[train_idx],
-                            y_train[train_idx],
-                            x_test[val_idx],
-                            y_test[val_idx],
-                            0.0,
-                        )
-                elif autotune_n_splits == 1:
-                    splits = [(np.arange(len(x_train)),)]
-                    for train_idx in splits:
-                        yield (
-                            x_train[train_idx],
-                            y_train[train_idx],
-                            np.array([]),
-                            np.array([]),
-                            val_split,
-                        )
-                else:
-                    skf = RepeatedStratifiedKFold(
-                        n_splits=autotune_n_splits,
-                        n_repeats=autotune_n_repeats,
-                        random_state=42,  # TODO: use same state
-                    )
-
-                    for train_idx, val_idx in skf.split(x_train, stratify_labels):
-                        yield (
-                            x_train[train_idx],
-                            y_train[train_idx],
-                            x_train[val_idx],
-                            y_train[val_idx],
-                            0.0,
-                        )
-
-            for split, (x_train, y_train, x_val, y_val, val_percentage) in enumerate(
-                generate_splits(
-                    x_train_full,
+        space = _search_space(is_multi_label)
+        folds = (
+            list(
+                _kfold_splits(
                     y_train_full,
-                    x_val_full,
-                    y_val_full,
-                    val_split,
                     autotune_n_splits,
                     autotune_n_repeats,
+                    is_binary,
+                    is_multi_label,
                 )
-            ):
-                bs = trial.suggest_categorical("batch_size", [8, 16, 32, 64, 128])
-                lr = trial.suggest_float("learning_rate", 1e-4, 1e-1, log=True)
-                up_ratio = trial.suggest_float("upsampling_ratio", 0.0, 1.0, step=0.25)
-                up_mode_suggested = trial.suggest_categorical(
-                    "upsampling_mode", upsampling_choices
-                )
+            )
+            if autotune_n_splits > 1
+            else [(slice(None), None)]
+        )
 
-                if up_ratio > 0:
-                    up_mode = up_mode_suggested
-                else:
-                    up_mode = upsampling_mode
+        def objective(trial: optuna.trial.Trial):
+            params = _suggest(trial, space)
+            scores: list[float] = []
+            up_mode = (
+                params["upsampling_mode"]
+                if params["upsampling_ratio"] > 0
+                else upsampling_mode
+            )
+            fg, fa = (
+                (params["focal_loss_gamma"], params["focal_loss_alpha"])
+                if params["focal_loss"]
+                else (focal_loss_gamma, focal_loss_alpha)
+            )
 
-                wd = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
-                mix = trial.suggest_categorical("mixup", [True, False])
-                ls = trial.suggest_categorical("label_smoothing", [True, False])
-                focal = trial.suggest_categorical("focal_loss", [True, False])
-                fg_suggested = trial.suggest_float(
-                    "focal_loss_gamma", 0.5, 4.0, step=0.5
-                )
-                fa_suggested = trial.suggest_float(
-                    "focal_loss_alpha", 0.1, 0.9, step=0.05
-                )
-
-                if focal:
-                    fg, fa = fg_suggested, fa_suggested
-                else:
-                    fg, fa = focal_loss_gamma, focal_loss_alpha
-
+            for split, (train_idx, val_idx) in enumerate(folds):
                 # The pruner's steps are epochs, which every split would report again.
                 additional_callbacks = (
                     [KerasPruningCallback(trial, autotune_metric)] if split == 0 else []
                 )
+                history = None
                 classifier = model.build_linear_classifier(
-                    y_train.shape[1],
-                    x_train.shape[1],
-                    h_units,
-                    dr,
+                    y_train_full.shape[1],
+                    x_train_full.shape[1],
+                    params["hidden_units"],
+                    params["dropout"],
                 )
-                classifier, history = model.train_linear_classifier(
-                    classifier,
-                    x_train,
-                    y_train,
-                    x_val,
-                    y_val,
-                    epochs=epochs,
-                    batch_size=bs,
-                    learning_rate=lr,
-                    val_split=val_percentage,
-                    upsampling_ratio=up_ratio,
-                    upsampling_mode=up_mode,
-                    train_with_mixup=mix,
-                    train_with_label_smoothing=ls,
-                    train_with_focal_loss=focal,
-                    focal_loss_gamma=fg,
-                    focal_loss_alpha=fa,
-                    is_binary_classification=is_binary,
-                    is_multi_label=is_multi_label,
-                    additional_callbacks=additional_callbacks,
-                    weight_decay=wd,
-                )
-                histories.append(
-                    _best_epoch_score(history.history[autotune_metric], autotune_metric)
-                )
-                keras.backend.clear_session()
-                del classifier
-                del history
-                gc.collect()
+
+                try:
+                    classifier, history = model.train_linear_classifier(
+                        classifier,
+                        x_train_full[train_idx],
+                        y_train_full[train_idx],
+                        np.array([]) if val_idx is None else x_train_full[val_idx],
+                        np.array([]) if val_idx is None else y_train_full[val_idx],
+                        epochs=epochs,
+                        batch_size=params["batch_size"],
+                        learning_rate=params["learning_rate"],
+                        val_split=val_split if val_idx is None else 0.0,
+                        upsampling_ratio=params["upsampling_ratio"],
+                        upsampling_mode=up_mode,
+                        train_with_mixup=params["mixup"],
+                        train_with_label_smoothing=params["label_smoothing"],
+                        train_with_focal_loss=params["focal_loss"],
+                        focal_loss_gamma=fg,
+                        focal_loss_alpha=fa,
+                        is_binary_classification=is_binary,
+                        is_multi_label=is_multi_label,
+                        additional_callbacks=additional_callbacks,
+                        weight_decay=params["weight_decay"],
+                        monitor=autotune_metric,
+                        monitor_mode="max",
+                    )
+                    scores.append(
+                        history.history[autotune_metric][history.restored_epoch]
+                    )
+                finally:
+                    del classifier, history
+                    keras.backend.clear_session()
+                    gc.collect()
 
             if callable(on_trial_result):
                 on_trial_result(trial.number + 1)
 
-            return float(np.mean(histories))
+            return float(np.mean(scores))
 
-        # enqueue the defaults as first trial so that the passed default
-        # hyperparameters are evaluated even if tuning is skipped
         defaults = {
             "hidden_units": hidden_units,
             "dropout": dropout,
@@ -755,6 +808,7 @@ def train_model(
             "learning_rate": learning_rate,
             "upsampling_ratio": upsampling_ratio,
             "upsampling_mode": upsampling_mode,
+            "weight_decay": weight_decay,
             "mixup": mixup,
             "label_smoothing": label_smoothing,
             "focal_loss": use_focal_loss,
@@ -762,11 +816,7 @@ def train_model(
             "focal_loss_alpha": focal_loss_alpha,
         }
 
-        # The log-scale search cannot take a weight decay of zero.
-        if weight_decay > 0:
-            defaults["weight_decay"] = weight_decay
-
-        study.enqueue_trial(defaults)
+        study.enqueue_trial(_snap_to_search_space(defaults, space))
 
         try:
             study.optimize(objective, n_trials=autotune_trials)
@@ -806,12 +856,12 @@ def train_model(
             classifier,
             x_train_full,
             y_train_full,
-            x_val_full,
-            y_val_full,
+            np.array([]),
+            np.array([]),
             epochs=epochs,
             batch_size=batch_size,
             learning_rate=learning_rate,
-            val_split=val_split if len(x_val_full) == 0 else 0.0,
+            val_split=val_split,
             upsampling_ratio=upsampling_ratio,
             upsampling_mode=upsampling_mode,
             train_with_mixup=mixup,
@@ -823,6 +873,8 @@ def train_model(
             is_binary_classification=is_binary,
             is_multi_label=is_multi_label,
             weight_decay=weight_decay,
+            monitor=autotune_metric,
+            monitor_mode="max",
         )
     except model.get_empty_class_exception() as e:
         e.message = (
@@ -855,6 +907,7 @@ def train_model(
             "Autotune trials": autotune_trials,
             "Autotune folds": autotune_n_splits,
             "Autotune repeats": autotune_n_repeats,
+            "Autotune metric": autotune_metric,
             "Epochs": epochs,
             "Batch size": batch_size,
             "Learning rate": learning_rate,
@@ -889,8 +942,8 @@ def train_model(
 
     metrics = None
 
-    if len(x_val_full) > 0:
-        metrics = evaluate_model(classifier, x_val_full, y_val_full, labels)
+    if len(x_test) > 0:
+        metrics = evaluate_model(classifier, x_test, y_test, labels)
 
         if metrics:
             import csv
@@ -1023,6 +1076,8 @@ def evaluate_model(classifier, x_test, y_test, labels, threshold=None):
         recall_score,
         roc_auc_score,
     )
+
+    x_test, y_test = _without_negative_rows(x_test, y_test)
 
     if len(x_test) == 0:
         return {}
