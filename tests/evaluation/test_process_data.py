@@ -5,8 +5,13 @@ without a matching annotation, recording names containing dots, and empty classe
 dragging down the aggregate score.
 """
 
+import logging
+import sys
+
+import numpy as np
 import pytest
 
+from birdnet_analyzer import evaluation, logs, utils
 from birdnet_analyzer.evaluation import process_data
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 
@@ -29,8 +34,9 @@ def _dirs(tmp_path):
     return ann, pred
 
 
-def test_unmatched_prediction_file_dropped_by_default(tmp_path):
+def test_unmatched_prediction_file_dropped_by_default(tmp_path, caplog):
     """A recording with predictions but no annotation is dropped, not scored."""
+    caplog.set_level(logging.WARNING, logger=DataProcessor.__module__)
     ann, pred = _dirs(tmp_path)
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
@@ -51,10 +57,13 @@ def test_unmatched_prediction_file_dropped_by_default(tmp_path):
     assert result.predictions.shape[0] == 10
     # rec2's predictions are not counted as false positives.
     assert result.metrics_df.loc["Precision", "Overall"] == 1.0
+    assert "rec2" in caplog.text
+    assert "dropped" in caplog.text
 
 
-def test_unmatched_prediction_file_scored_as_empty_when_opted_in(tmp_path):
+def test_unmatched_prediction_file_scored_as_empty_when_opted_in(tmp_path, caplog):
     """Opting in keeps unmatched recordings and scores their predictions as FPs."""
+    caplog.set_level(logging.WARNING, logger=DataProcessor.__module__)
     ann, pred = _dirs(tmp_path)
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
@@ -75,6 +84,8 @@ def test_unmatched_prediction_file_scored_as_empty_when_opted_in(tmp_path):
     assert result.predictions.shape[0] == 20
     # rec2's two predictions become false positives -> precision 1 / (1 + 2).
     assert result.metrics_df.loc["Precision", "Overall"] == 1 / 3
+    assert "rec2" in caplog.text
+    assert "false positive" in caplog.text
 
 
 def test_dotted_recording_names_do_not_collide(tmp_path):
@@ -223,3 +234,132 @@ def test_raven_annotation_matches_birdnet_prediction_table(tmp_path):
     assert result.empty_classes == ()
     assert result.metrics_df.loc["Precision", "gibbon.female"] == 1.0
     assert result.metrics_df.loc["Recall", "noise"] == 0.0
+
+
+def test_samples_take_the_max_confidence_of_overlapping_predictions(tmp_path):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "A"], [4.0, 4.3, "B"]])
+    _write_table(
+        pred / "rec1.txt",
+        PRED_HEADER,
+        [[0, 9, "Z", 0.99], [1, 4, "A", 0.9], [0, 3, "A", 0.4], [6, 9, "B", 0.2]],
+    )
+
+    processor = DataProcessor(
+        prediction_directory_path=str(pred),
+        annotation_directory_path=str(ann),
+        sample_duration=3,
+        min_overlap=0.5,
+        recording_duration=9,
+    )
+    processor.classes = ("A", "B")
+    processor.process_data()
+
+    samples = processor.samples_df
+    assert list(samples.columns) == [
+        "filename",
+        "sample_index",
+        "start_time",
+        "end_time",
+        "A_confidence",
+        "A_annotation",
+        "B_confidence",
+        "B_annotation",
+    ]
+    assert samples["filename"].tolist() == ["rec1"] * 3
+    assert samples["A_confidence"].tolist() == [0.9, 0.9, 0.0]
+    assert samples["B_confidence"].tolist() == [0.0, 0.0, 0.2]
+    assert samples["A_annotation"].tolist() == [1, 0, 0]
+    assert samples["B_annotation"].tolist() == [0, 1, 0]
+    assert "Z_confidence" not in samples.columns
+    assert samples["A_confidence"].dtype == np.float64
+    assert samples["A_annotation"].dtype == np.int64
+
+
+def test_samples_are_ordered_by_recording_name(tmp_path):
+    ann, pred = _dirs(tmp_path)
+    names = [f"rec_{letter}" for letter in "hcfadgbe"]
+    _write_table(
+        ann / "all.txt", [*ANN_HEADER, "Recording"], [[0, 3, "X", n] for n in names]
+    )
+    _write_table(
+        pred / "all.txt",
+        [*PRED_HEADER, "Recording"],
+        [[0, 3, "X", 0.9, n] for n in names],
+    )
+
+    processor = DataProcessor(
+        prediction_directory_path=str(pred),
+        annotation_directory_path=str(ann),
+        recording_duration=3,
+    )
+
+    assert processor.samples_df["filename"].tolist() == sorted(names)
+
+
+def test_predictions_without_the_confidence_column_are_rejected(tmp_path):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+
+    with pytest.raises(KeyError, match="Score"):
+        DataProcessor(
+            prediction_directory_path=str(pred),
+            annotation_directory_path=str(ann),
+            recording_duration=3,
+            columns_predictions={
+                **DataProcessor.DEFAULT_COLUMNS_PREDICTIONS,
+                "Confidence": "Score",
+            },
+        )
+
+
+def test_annotation_only_recording_is_kept_without_recording_duration(
+    tmp_path, caplog
+):
+    caplog.set_level(logging.WARNING, logger=DataProcessor.__module__)
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+    _write_table(ann / "rec2.txt", ANN_HEADER, [[3, 6, "X"]])
+    _write_table(pred / "rec2.txt", PRED_HEADER, [])
+
+    processor = DataProcessor(
+        prediction_directory_path=str(pred), annotation_directory_path=str(ann)
+    )
+
+    rec2 = processor.samples_df[processor.samples_df["filename"] == "rec2"]
+    assert rec2["X_annotation"].tolist() == [0, 1]
+    assert rec2["X_confidence"].tolist() == [0.0, 0.0]
+    assert "rec2" in caplog.text
+    assert "false negative" in caplog.text
+
+
+def test_cli_writes_uncaught_errors_to_the_error_log(tmp_path, monkeypatch):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
+    _write_table(pred / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
+    logged = []
+    monkeypatch.setattr(utils, "write_error_log", logged.append)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "birdnet-evaluate",
+            "--annotation_path",
+            str(ann),
+            "--prediction_path",
+            str(pred),
+            "--recording_duration",
+            "3",
+        ],
+    )
+
+    try:
+        with pytest.raises(KeyError, match="Confidence"):
+            evaluation.main()
+    finally:
+        logs._remove_installed_handlers()
+
+    assert len(logged) == 1
+    assert isinstance(logged[0], KeyError)

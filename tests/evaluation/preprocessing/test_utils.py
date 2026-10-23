@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -287,6 +289,29 @@ def test_read_and_concatenate_files_multiple_txt(tmp_path):
     )
 
     pd.testing.assert_frame_equal(result_df, expected_df)
+
+
+def test_read_and_concatenate_files_skips_header_only_tables(tmp_path):
+    df1 = pd.DataFrame({"A": [1, 2], "B": [3.5, 4.5]})
+    df1.to_csv(tmp_path / "file1.txt", sep="\t", index=False)
+    df1.iloc[:0].to_csv(tmp_path / "file2.txt", sep="\t", index=False)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result_df = read_and_concatenate_files_in_directory(str(tmp_path))
+
+    pd.testing.assert_frame_equal(result_df, df1.assign(source_file="file1.txt"))
+
+
+def test_read_and_concatenate_files_all_header_only_keeps_columns(tmp_path):
+    pd.DataFrame({"A": [], "B": []}).to_csv(
+        tmp_path / "file1.txt", sep="\t", index=False
+    )
+
+    result_df = read_and_concatenate_files_in_directory(str(tmp_path))
+
+    assert list(result_df.columns) == ["A", "B", "source_file"]
+    assert result_df.empty
 
 
 def test_read_and_concatenate_files_no_txt(tmp_path):

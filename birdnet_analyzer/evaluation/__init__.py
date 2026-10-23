@@ -19,6 +19,7 @@ from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     PerformanceAssessor,
 )
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
+from birdnet_analyzer.utils import runtime_error_handler
 
 if typing.TYPE_CHECKING:
     import numpy as np
@@ -197,6 +198,7 @@ def _threshold_arg(value: str) -> float:
     return number
 
 
+@runtime_error_handler
 def main():
     """
     Entry point for the script. Parses command-line arguments and orchestrates the
@@ -205,9 +207,6 @@ def main():
     import matplotlib.pyplot as plt
 
     from birdnet_analyzer.cli import verbosity_args
-    from birdnet_analyzer.logs import setup_logging
-
-    setup_logging()
 
     parser = argparse.ArgumentParser(
         description="Performance Assessor Core Script", parents=[verbosity_args()]

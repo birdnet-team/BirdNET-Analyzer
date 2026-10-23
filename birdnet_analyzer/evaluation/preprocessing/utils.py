@@ -120,6 +120,8 @@ def read_and_concatenate_files_in_directory(directory_path: str) -> pd.DataFrame
 
             df_list.append(df)
 
-    if df_list:
-        return pd.concat(df_list, ignore_index=True)
-    return pd.DataFrame()
+    if not df_list:
+        return pd.DataFrame()
+
+    non_empty = [df for df in df_list if not df.empty]
+    return pd.concat(non_empty or df_list[:1], ignore_index=True)
