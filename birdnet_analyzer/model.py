@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 tf.get_logger().setLevel("ERROR")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 EMPTY_CLASS_EXCEPTION_REF = None
 
 

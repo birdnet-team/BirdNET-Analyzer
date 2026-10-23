@@ -176,6 +176,19 @@ def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):
     assert _find_segments(audio, str(rfile)) == [expected]
 
 
+def test_kaleidoscope_rows_with_an_empty_indir_are_anchored_at_the_root(tmp_path):
+    rfile = tmp_path / "BirdNET_Kaleidoscope.csv"
+    rfile.write_text(
+        "INDIR,FOLDER,IN FILE,OFFSET,DURATION,TOP1MATCH,TOP1DIST\n"
+        ",audio,x.wav,3.0,3.0,American Robin,0.8\n",
+        encoding="utf-8",
+    )
+
+    assert [s["audio"] for s in _find_segments_from_combined(str(rfile))] == [
+        os.path.join(os.sep, "audio", "x.wav")
+    ]
+
+
 @pytest.mark.parametrize(
     ("audio_dir", "results_dir"),
     [

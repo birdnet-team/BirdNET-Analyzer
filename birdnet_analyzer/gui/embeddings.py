@@ -8,8 +8,6 @@ import birdnet_analyzer.gui.utils as gu
 from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.search.core import read_database_settings
 
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-
 
 def run_embeddings_with_tqdm_tracking(
     input_path,

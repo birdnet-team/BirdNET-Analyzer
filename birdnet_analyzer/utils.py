@@ -2,13 +2,12 @@
 
 import itertools
 import os
+from functools import cache
 from pathlib import Path
 
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
 from birdnet_analyzer.logs import setup_logging
 from birdnet_analyzer.settings import write_error_log
-
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def runtime_error_handler(f):
@@ -317,6 +316,7 @@ def parse_folder_labels(folder: str) -> list[str]:
     return [label for label in (part.strip() for part in folder.split(",")) if label]
 
 
+@cache
 def load_codes() -> dict[str, str]:
     """Loads the eBird codes.
 
@@ -325,7 +325,7 @@ def load_codes() -> dict[str, str]:
     """
     import json
 
-    with open(os.path.join(SCRIPT_DIR, CODES_FILE), encoding="utf-8") as cfile:
+    with open(CODES_FILE, encoding="utf-8") as cfile:
         return json.load(cfile)
 
 

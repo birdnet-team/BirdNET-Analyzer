@@ -389,8 +389,7 @@ def _split_tables(
         Path(os.path.abspath(audio_input_path)) if audio_input_path.is_dir() else None
     )
 
-    for input_file in df["input"].unique():
-        df_file = df[df["input"] == input_file]
+    for input_file, df_file in df.groupby("input", sort=False, observed=True):
         rpath = Path(os.path.abspath(input_file))
         rpath = rpath.relative_to(input_root) if input_root else Path(rpath.name)
         file_shorthand = str(rpath.with_suffix(""))
@@ -615,22 +614,16 @@ def save_as_rtable(
         },
     )
     timestamp_dtype = df["Begin Time (s)"].dtype
-    acumulated_start_times = []
-    accumulated_end_times = []
-    accumulated_time = timestamp_dtype.type(0)
-    current_file = next(iter(files), None)
+    file_offsets = {}
+    offset = timestamp_dtype.type(0)
 
-    for row in df.iterrows():
-        file = row[1]["Begin Path"]
+    for file in files:
+        file_offsets[file] = offset
+        offset += timestamp_dtype.type(file_infos[file]["duration"])
 
-        if file != current_file:
-            accumulated_time += timestamp_dtype.type(
-                file_infos[current_file]["duration"]
-            )  # type: ignore
-            current_file = file
-
-        acumulated_start_times.append(row[1]["Begin Time (s)"] + accumulated_time)
-        accumulated_end_times.append(row[1]["End Time (s)"] + accumulated_time)
+    offsets = df["Begin Path"].astype(object).map(file_offsets)
+    df["Begin Time (s)"] = df["Begin Time (s)"] + offsets
+    df["End Time (s)"] = df["End Time (s)"] + offsets
 
     cols = [
         "Selection",
@@ -649,8 +642,6 @@ def save_as_rtable(
     ]
 
     df = df[cols]
-    df["Begin Time (s)"] = acumulated_start_times
-    df["End Time (s)"] = accumulated_end_times
 
     outfile.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(outfile, sep="\t", index=False)
@@ -723,7 +714,7 @@ def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
     paths = df["input"].map(Path)
     _, common_names = _split_species_name(df["species_name"])
     columns = (
-        paths.map(lambda p: str(p.parent.parent).rstrip("/")),
+        paths.map(lambda p: str(p.parent.parent)),
         paths.map(lambda p: p.parent.name),
         paths.map(lambda p: p.name),
         df["start_time"],
