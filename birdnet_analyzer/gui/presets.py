@@ -61,22 +61,26 @@ class PresetControls:
                     choices=settings.list_presets(tab),
                     value=None,
                     label=loc.localize("presets-dropdown-label"),
-                    scale=4,
+                    scale=20,
                 )
                 self.load_button = gr.Button(
-                    loc.localize("presets-load-button-label"), variant="primary"
+                    loc.localize("presets-load-button-label"),
+                    variant="primary",
+                    scale=5,
                 )
                 self.delete_button = gr.Button(
-                    loc.localize("presets-delete-button-label")
+                    loc.localize("presets-delete-button-label"), scale=5
                 )
 
             with gr.Row(equal_height=True):
                 self.name_textbox = gr.Textbox(
                     label=loc.localize("presets-name-textbox-label"),
                     max_lines=1,
-                    scale=5.2,  # type: ignore
+                    scale=26,
                 )
-                self.save_button = gr.Button(loc.localize("presets-save-button-label"))
+                self.save_button = gr.Button(
+                    loc.localize("presets-save-button-label"), scale=5
+                )
 
             if params_loader is not None:
                 self.load_params_file_button = gr.Button(params_button_label)

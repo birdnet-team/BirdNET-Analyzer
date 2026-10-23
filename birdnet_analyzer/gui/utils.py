@@ -1,5 +1,6 @@
 # ruff: noqa: PLW0603
 import base64
+import functools
 import io
 import logging
 import multiprocessing
@@ -187,6 +188,9 @@ def spectrogram_settings() -> dict:
 def gui_runtime_error_handler(f):
     """Wrap ``f`` so any exception is logged and re-raised as a ``gr.Error``.
 
+    A ``gr.Error`` raised by ``f`` itself keeps its message. Every error stays on
+    screen until the user closes it.
+
     Args:
         f: The callable to wrap.
 
@@ -197,9 +201,14 @@ def gui_runtime_error_handler(f):
         gr.Error: If ``f`` raises.
     """
 
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
             return f(*args, **kwargs)
+        except gr.Error as e:
+            utils.write_error_log(e)
+            e.duration = None
+            raise
         except Exception as e:
             utils.write_error_log(e)
             raise gr.Error(message=str(e), duration=None) from e
@@ -496,13 +505,8 @@ def build_settings():
     with gr.Tab(loc.localize("settings-tab-title")) as settings_tab:
         with gr.Group():
             with gr.Row():
-                options = [
-                    lang.rsplit(".", 1)[0]
-                    for lang in os.listdir(settings.LANG_DIR)
-                    if lang.endswith(".json")
-                ]
                 languages_dropdown = gr.Dropdown(
-                    options,
+                    loc.available_languages(),
                     value=loc.TARGET_LANGUAGE,
                     label=loc.localize("settings-tab-language-dropdown-label"),
                     info=loc.localize("settings-tab-language-dropdown-info"),

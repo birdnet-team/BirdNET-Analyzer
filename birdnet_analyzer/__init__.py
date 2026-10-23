@@ -4,6 +4,10 @@ import warnings
 
 from birdnet_analyzer.settings import apply_model_directory
 
+# Library convention: emit records but leave the configuration to the host
+# application. The shipped CLI and GUI configure handlers via logs.setup_logging().
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 # Before anything can import birdnet: it resolves its model directory from
 # BIRDNET_APP_DATA once, at import time.
 apply_model_directory()
@@ -21,7 +25,3 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["WRAPT_DISABLE_EXTENSIONS"] = "true"
 
 warnings.filterwarnings("ignore")
-
-# Library convention: emit records but leave the configuration to the host
-# application. The shipped CLI and GUI configure handlers via logs.setup_logging().
-logging.getLogger(__name__).addHandler(logging.NullHandler())

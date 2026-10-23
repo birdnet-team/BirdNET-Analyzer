@@ -7,8 +7,10 @@ of them sneaks back onto the import or Blocks-build path.
 """
 
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -64,20 +66,34 @@ with gr.Blocks():
 
 after_build = [m for m in {FORBIDDEN_AFTER_BUILD!r} if m in sys.modules]
 
-print(json.dumps({{"on_import": on_import, "after_build": after_build}}))
+from birdnet_analyzer import settings
+
+print(
+    json.dumps(
+        {{
+            "on_import": on_import,
+            "after_build": after_build,
+            "appdir": str(settings.APPDIR),
+        }}
+    )
+)
 """
 
 
-def test_startup_path_stays_free_of_heavy_imports():
+def test_startup_path_stays_free_of_heavy_imports(tmp_path):
+    env = {**os.environ, "HOME": str(tmp_path), "USERPROFILE": str(tmp_path)}
     result = subprocess.run(
         [sys.executable, "-c", PROBE],
         capture_output=True,
         text=True,
+        env=env,
         timeout=110,
         check=False,
     )
     assert result.returncode == 0, result.stderr
     loaded = json.loads(result.stdout.splitlines()[-1])
+
+    assert Path(loaded["appdir"]).is_relative_to(tmp_path)
 
     assert loaded["on_import"] == [], (
         f"Heavy modules imported by the tab modules: {loaded['on_import']}. "

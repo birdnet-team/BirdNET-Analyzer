@@ -76,11 +76,7 @@ def default_model_directory() -> Path:
 
 def _stored_model_directory() -> str | None:
     """The model directory from gui-settings.json, without creating anything."""
-    try:
-        with open(GUI_SETTINGS_PATH, encoding="utf-8") as f:
-            value = json.load(f).get(MODEL_DIR_SETTING_KEY)
-    except (OSError, json.JSONDecodeError):
-        return None
+    value = _read_json(GUI_SETTINGS_PATH).get(MODEL_DIR_SETTING_KEY)
 
     return value if isinstance(value, str) and value.strip() else None
 
@@ -305,56 +301,77 @@ if OUTPUT_DIVERTED:
     sys.stderr = sys.stdout = _RotatingLogFile(Path(LOG_FILE), MAX_LOG_SIZE)
 
 
-def get_state_dict() -> dict:
-    """
-    Retrieves the state dictionary from a JSON file specified by STATE_SETTINGS_PATH.
+def _read_json(path: str, *, before_write: bool = False) -> dict:
+    """Reads the JSON object stored in a file.
 
-    If the file does not exist, it creates an empty JSON file and returns an empty
-    dictionary. If any other exception occurs during file operations, it logs the error
-    and returns an empty dictionary.
+    Args:
+        path (str): The file to read.
+        before_write (bool): Raise the OSError of a file that exists but cannot be
+            read, instead of returning an empty dictionary that would replace it.
 
     Returns:
-        dict: The state dictionary loaded from the JSON file, or an empty dictionary if
-        the file does not exist or an error occurs.
+        dict: The object, or an empty dictionary if the file is missing, unreadable,
+        corrupted or holds something else. Everything but a missing file is logged.
     """
     with _STATE_LOCK:
         try:
-            with open(STATE_SETTINGS_PATH, encoding="utf-8") as f:
-                state = json.load(f)
-
-            return state if isinstance(state, dict) else {}
+            with open(path, encoding="utf-8-sig") as f:
+                data = json.load(f)
         except FileNotFoundError:
-            try:
-                _ensure_appdir_exists()
-                _write_state_dict({})
-                return {}
-            except Exception as e:
-                write_error_log(e)
-                return {}
+            return {}
         except Exception as e:
-            # A corrupted state file must never keep the GUI from starting.
+            if before_write and isinstance(e, OSError):
+                raise
+
+            # A corrupted settings file must never keep the GUI from starting.
+            e.add_note(path)
             write_error_log(e)
             return {}
 
+    if isinstance(data, dict):
+        return data
+
+    write_error_log(ValueError(f"{path} does not hold a JSON object."))
+
+    return {}
+
+
+def _write_json_atomic(path: str, data: dict) -> None:
+    """Writes a dictionary to a JSON file.
+
+    Writes to a temporary file first and replaces the file with it, so an interrupted
+    write (e.g. the app being closed mid-write) cannot leave a corrupted file behind.
+    """
+    with _STATE_LOCK:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        # One per process, so another instance cannot swap in a half-written one.
+        tmp_path = f"{path}.{os.getpid()}.tmp"
+
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+
+            os.replace(tmp_path, path)
+        except BaseException:
+            with suppress(OSError):
+                os.remove(tmp_path)
+
+            raise
+
+
+def get_state_dict() -> dict:
+    """
+    Retrieves the state dictionary from the JSON file specified by STATE_SETTINGS_PATH.
+
+    Returns:
+        dict: The state dictionary, or an empty dictionary if the file is missing or
+        cannot be read.
+    """
+    return _read_json(STATE_SETTINGS_PATH)
+
 
 def _write_state_dict(state: dict) -> None:
-    """Writes the state dictionary to disk.
-
-    Writes to a temporary file first and replaces the state file with it, so an
-    interrupted write (e.g. the app being closed mid-write) cannot leave a corrupted
-    state file behind.
-
-    Args:
-        state (dict): The complete state dictionary to persist.
-    """
-    _ensure_appdir_exists()
-    # One per process, so another running instance cannot swap in a half-written one.
-    tmp_path = f"{STATE_SETTINGS_PATH}.{os.getpid()}.tmp"
-
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=4)
-
-    os.replace(tmp_path, STATE_SETTINGS_PATH)
+    _write_json_atomic(STATE_SETTINGS_PATH, state)
 
 
 def get_state(key: str, default=None) -> str:
@@ -382,7 +399,7 @@ def set_state(key: str, value: str):
     """
     try:
         with _STATE_LOCK:
-            state = get_state_dict()
+            state = _read_json(STATE_SETTINGS_PATH, before_write=True)
             state[key] = value
 
             _write_state_dict(state)
@@ -438,7 +455,7 @@ def update_tab_settings(tab: str, values: dict):
 
     try:
         with _STATE_LOCK:
-            state = get_state_dict()
+            state = _read_json(STATE_SETTINGS_PATH, before_write=True)
             tab_settings = state.get(TAB_SETTINGS_KEY)
 
             if not isinstance(tab_settings, dict):
@@ -464,7 +481,7 @@ def reset_tab_settings():
     """
     try:
         with _STATE_LOCK:
-            state = get_state_dict()
+            state = _read_json(STATE_SETTINGS_PATH, before_write=True)
 
             if state.pop(TAB_SETTINGS_KEY, None) is not None:
                 _write_state_dict(state)
@@ -574,66 +591,34 @@ def delete_preset(tab: str, name: str) -> None:
         _preset_file(tab, name).unlink(missing_ok=True)
 
 
-def ensure_settings_file():
-    """
-    Ensures that the settings file exists at the specified path. If the file does not
-    exist, it creates a new settings file with default settings.
-
-    If the file creation fails, the error is logged.
-    """
-    if not os.path.exists(GUI_SETTINGS_PATH):
-        try:
-            _ensure_appdir_exists()
-            with open(GUI_SETTINGS_PATH, "w", encoding="utf-8") as f:
-                settings = {"language-id": FALLBACK_LANGUAGE, "theme": "light"}
-                f.write(json.dumps(settings, indent=4))
-        except Exception as e:
-            write_error_log(e)
-
-
 def get_setting(key, default=None):
     """
     Retrieves the value associated with the given key from the settings file.
 
     Args:
         key (str): The key to look up in the settings file.
-        default: The value to return if the key is not found. Defaults to None.
+        default: The value to return if the key is not found or the settings file
+            cannot be read. Defaults to None.
 
     Returns:
         str: The value associated with the key if found, otherwise the default value.
     """
-    ensure_settings_file()
-
-    try:
-        with open(GUI_SETTINGS_PATH, encoding="utf-8") as f:
-            settings_dict: dict = json.load(f)
-
-            return settings_dict.get(key, default)
-    except FileNotFoundError:
-        return default
+    return _read_json(GUI_SETTINGS_PATH).get(key, default)
 
 
 def set_setting(key, value):
-    ensure_settings_file()
-    settings_dict = {}
+    with _STATE_LOCK:
+        settings_dict = _read_json(GUI_SETTINGS_PATH, before_write=True)
+        settings_dict[key] = value
 
-    try:
-        with open(GUI_SETTINGS_PATH, "r+", encoding="utf-8") as f:
-            settings_dict = json.load(f)
-            settings_dict[key] = value
-            f.seek(0)
-            json.dump(settings_dict, f, indent=4)
-            f.truncate()
-
-    except FileNotFoundError:
-        pass
+        _write_json_atomic(GUI_SETTINGS_PATH, settings_dict)
 
 
 def theme():
     options = ("light", "dark")
-    current_time = get_setting("theme", "light")
+    current_theme = get_setting("theme", "light")
 
-    return current_time if current_time in options else "light"
+    return current_theme if current_theme in options else "light"
 
 
 def write_error_log(ex: Exception):
