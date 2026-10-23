@@ -7,8 +7,8 @@ data, aligns them with sampled time intervals, and generates tensors for further
 training or evaluation.
 """
 
+import logging
 import os
-import warnings
 from collections.abc import Sequence
 from typing import ClassVar
 
@@ -20,6 +20,16 @@ from birdnet_analyzer.evaluation.preprocessing.utils import (
     extract_recording_filename_from_filename,
     read_and_concatenate_files_in_directory,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _by_recording(table: pd.DataFrame) -> dict:
+    return dict(list(table.groupby("recording_filename", sort=False)))
+
+
+def _is_sorted(values: np.ndarray) -> bool:
+    return bool(np.all(values[1:] >= values[:-1]))
 
 
 class DataProcessor:
@@ -207,6 +217,7 @@ class DataProcessor:
 
         Raises:
             ValueError: If file reading fails or data preparation encounters issues.
+            KeyError: If the predictions have rows but no confidence column.
         """
 
         self.unmatched_prediction_files = set()
@@ -243,10 +254,9 @@ class DataProcessor:
             if not self.prediction_file_name.startswith(
                 os.path.splitext(self.annotation_file_name)[0]
             ):
-                warnings.warn(
+                logger.warning(
                     "Prediction file name and annotation file name do not fully match, "
-                    "but proceeding anyway.",
-                    stacklevel=2,
+                    "but proceeding anyway."
                 )
 
             prediction_file = os.path.join(
@@ -275,6 +285,13 @@ class DataProcessor:
                     class_col_pred
                 ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
 
+        confidence_col = self.get_column_name("Confidence", prediction=True)
+        if (
+            not self.predictions_df.empty
+            and self.predictions_df[confidence_col].isna().all()
+        ):
+            raise ValueError(f"Confidence column {confidence_col!r} has no values.")
+
         # Reconcile the two recording sets. A recording that only has predictions has no
         # ground truth, so its predictions cannot be scored. By default those recordings
         # are dropped; only when the caller opts in (exhaustive annotations) are they
@@ -298,23 +315,32 @@ class DataProcessor:
             if self.unmatched_prediction_files:
                 names = ", ".join(sorted(map(str, self.unmatched_prediction_files)))
                 if self.score_unannotated_as_empty:
-                    warnings.warn(
-                        f"Prediction files without matching annotation file: {names}. "
-                        "Their annotations are assumed empty, so every prediction on "
-                        "them counts as a false positive.",
-                        stacklevel=2,
+                    logger.warning(
+                        "Prediction files without matching annotation file: %s. Their "
+                        "annotations are assumed empty, so every prediction on them "
+                        "counts as a false positive.",
+                        names,
                     )
                 else:
-                    warnings.warn(
-                        f"Prediction files without matching annotation file: {names}. "
-                        "These recordings are dropped and not scored.",
-                        stacklevel=2,
+                    logger.warning(
+                        "Prediction files without matching annotation file: %s. These "
+                        "recordings are dropped and not scored.",
+                        names,
                     )
                     self.predictions_df = self.predictions_df[
                         self.predictions_df["recording_filename"].isin(
                             annotation_recordings
                         )
                     ]
+
+            unpredicted_recordings = annotation_recordings - prediction_recordings
+            if unpredicted_recordings:
+                logger.warning(
+                    "Annotation files without matching prediction file: %s. Their "
+                    "predictions are assumed empty, so every annotation on them counts "
+                    "as a false negative.",
+                    ", ".join(sorted(map(str, unpredicted_recordings))),
+                )
 
         class_col_pred = self.get_column_name("Class", prediction=True)
         class_col_annot = self.get_column_name("Class", prediction=False)
@@ -360,28 +386,25 @@ class DataProcessor:
         Processes the loaded data, aligns predictions and annotations with sample
         intervals, and updates the samples DataFrame.
 
-        This method iterates through all recording filenames, processes each recording,
-        and aggregates the results into the `samples_df` attribute.
+        Every recording found in either table is processed once, in sorted order, and
+        the per-recording results are concatenated into the `samples_df` attribute.
         """
-        self.samples_df = pd.DataFrame()
+        predictions = _by_recording(self.predictions_df)
+        annotations = _by_recording(self.annotations_df)
+        no_predictions = self.predictions_df.iloc[:0]
+        no_annotations = self.annotations_df.iloc[:0]
 
-        recording_filenames = set(
-            self.predictions_df["recording_filename"].unique()
-        ).union(set(self.annotations_df["recording_filename"].unique()))
-
-        for recording_filename in recording_filenames:
-            pred_df = self.predictions_df[
-                self.predictions_df["recording_filename"] == recording_filename
-            ]
-            annot_df = self.annotations_df[
-                self.annotations_df["recording_filename"] == recording_filename
-            ]
-
-            samples_df = self.process_recording(recording_filename, pred_df, annot_df)
-
-            self.samples_df = pd.concat(
-                [self.samples_df, samples_df], ignore_index=True
+        frames = [
+            self.process_recording(
+                recording,
+                predictions.get(recording, no_predictions),
+                annotations.get(recording, no_annotations),
             )
+            for recording in sorted(predictions.keys() | annotations.keys(), key=str)
+        ]
+        self.samples_df = (
+            pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        )
 
     def process_recording(
         self, recording_filename: str, pred_df: pd.DataFrame, annot_df: pd.DataFrame
@@ -471,9 +494,11 @@ class DataProcessor:
                 if end_time_col_annot in annot_df.columns
                 else 0.0
             )
-            duration = max(max_end_pred, max_end_annot)
+            duration = max(
+                filter(pd.notna, (max_end_pred, max_end_annot)), default=0.0
+            )
 
-            if pd.isna(duration) or duration < 0:
+            if duration < 0:
                 duration = 0.0
 
         return duration
@@ -507,19 +532,14 @@ class DataProcessor:
 
         samples = {
             "filename": recording_filename,
-            "sample_index": [],
-            "start_time": [],
-            "end_time": [],
+            "sample_index": np.arange(len(intervals)),
+            "start_time": intervals,
+            "end_time": np.minimum(intervals + self.sample_duration, file_duration),
         }
 
-        for idx, start in enumerate(intervals):
-            samples["sample_index"].append(idx)
-            samples["start_time"].append(start)
-            samples["end_time"].append(min(start + self.sample_duration, file_duration))
-
         for label in self.classes:
-            samples[f"{label}_confidence"] = [0.0] * len(samples["sample_index"])
-            samples[f"{label}_annotation"] = [0] * len(samples["sample_index"])
+            samples[f"{label}_confidence"] = np.zeros(len(intervals))
+            samples[f"{label}_annotation"] = np.zeros(len(intervals), dtype=np.int64)
 
         return pd.DataFrame(samples)
 
@@ -545,31 +565,26 @@ class DataProcessor:
             pred_df (pd.DataFrame): DataFrame containing prediction information.
             samples_df (pd.DataFrame): DataFrame of samples to be updated with
                 confidence scores.
+
+        Raises:
+            KeyError: If `pred_df` has rows but no confidence column.
         """
-        class_col = self.get_column_name("Class", prediction=True)
-        start_time_col = self.get_column_name("Start Time", prediction=True)
-        end_time_col = self.get_column_name("End Time", prediction=True)
+        if pred_df.empty:
+            return
+
+        sample_rows, class_cols, event_rows = self._overlapping_pairs(
+            pred_df, samples_df, prediction=True
+        )
         confidence_col = self.get_column_name("Confidence", prediction=True)
+        confidence = pred_df[confidence_col].to_numpy()[event_rows].astype(float)
+        if sample_rows.size == 0:
+            return
 
-        for _, row in pred_df.iterrows():
-            class_name = row[class_col]
-            if class_name not in self.classes:
-                continue
-
-            begin_time = row[start_time_col]
-            end_time = row[end_time_col]
-            confidence = row.get(confidence_col, 0.0)
-
-            sample_indices = samples_df[
-                (samples_df["start_time"] <= end_time - self.min_overlap)
-                & (samples_df["end_time"] >= begin_time + self.min_overlap)
-            ].index
-
-            for i in sample_indices:
-                current_confidence = samples_df.loc[i, f"{class_name}_confidence"]
-                samples_df.loc[i, f"{class_name}_confidence"] = max(
-                    current_confidence, confidence
-                )
+        hit_classes, hit_cols = np.unique(class_cols, return_inverse=True)
+        columns = [f"{self.classes[cls]}_confidence" for cls in hit_classes]
+        block = samples_df[columns].to_numpy(dtype=float, copy=True)
+        np.fmax.at(block, (sample_rows, hit_cols), confidence)
+        samples_df[columns] = block
 
     def update_samples_with_annotations(
         self, annot_df: pd.DataFrame, samples_df: pd.DataFrame
@@ -586,25 +601,75 @@ class DataProcessor:
             samples_df (pd.DataFrame): DataFrame of samples to be updated with
                 annotations.
         """
-        class_col = self.get_column_name("Class", prediction=False)
-        start_time_col = self.get_column_name("Start Time", prediction=False)
-        end_time_col = self.get_column_name("End Time", prediction=False)
+        if annot_df.empty:
+            return
 
-        for _, row in annot_df.iterrows():
-            class_name = row[class_col]
-            if class_name not in self.classes:
-                continue
+        sample_rows, class_cols, _ = self._overlapping_pairs(
+            annot_df, samples_df, prediction=False
+        )
+        if sample_rows.size == 0:
+            return
 
-            begin_time = row[start_time_col]
-            end_time = row[end_time_col]
+        hit_classes, hit_cols = np.unique(class_cols, return_inverse=True)
+        columns = [f"{self.classes[cls]}_annotation" for cls in hit_classes]
+        block = samples_df[columns].to_numpy(copy=True)
+        block[sample_rows, hit_cols] = 1
+        samples_df[columns] = block
 
-            sample_indices = samples_df[
-                (samples_df["start_time"] <= end_time - self.min_overlap)
-                & (samples_df["end_time"] >= begin_time + self.min_overlap)
-            ].index
+    def _overlapping_pairs(
+        self, events: pd.DataFrame, samples_df: pd.DataFrame, prediction: bool
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Pairs every event of a known class with each sample it overlaps.
 
-            for i in sample_indices:
-                samples_df.loc[i, f"{class_name}_annotation"] = 1
+        On a grid of consecutive samples the samples an event overlaps form one index
+        range, found with two binary searches; irregular sample intervals fall back to
+        comparing every event with every sample.
+
+        Returns:
+            Three equally long arrays: the sample positions, the class positions (into
+            `self.classes`) and the event positions (into `events`) of the pairs.
+        """
+        class_col = self.get_column_name("Class", prediction=prediction)
+        start_time_col = self.get_column_name("Start Time", prediction=prediction)
+        end_time_col = self.get_column_name("End Time", prediction=prediction)
+
+        class_cols = pd.Index(self.classes).get_indexer(events[class_col])
+        known = np.flatnonzero(class_cols >= 0)
+        if known.size == 0:
+            return known, known, known
+
+        latest_start = (
+            events[end_time_col].to_numpy()[known].astype(float) - self.min_overlap
+        )
+        earliest_end = (
+            events[start_time_col].to_numpy()[known].astype(float) + self.min_overlap
+        )
+        start_time = samples_df["start_time"].to_numpy(dtype=float)
+        end_time = samples_df["end_time"].to_numpy(dtype=float)
+
+        order = np.argsort(start_time, kind="stable")
+        if _is_sorted(end_time[order]):
+            first = np.searchsorted(end_time[order], earliest_end, side="left")
+            stop = np.searchsorted(start_time[order], latest_start, side="right")
+            counts = np.where(
+                np.isnan(latest_start) | np.isnan(earliest_end),
+                0,
+                np.maximum(stop - first, 0),
+            )
+            pair = np.repeat(np.arange(known.size), counts)
+            offsets = np.arange(counts.sum()) - np.repeat(
+                np.cumsum(counts) - counts, counts
+            )
+            sample_rows = order[np.repeat(first, counts) + offsets]
+        else:
+            hit = (start_time <= latest_start[:, None]) & (
+                end_time >= earliest_end[:, None]
+            )
+            pair, sample_rows = np.nonzero(hit)
+
+        event_rows = known[pair]
+        return sample_rows, class_cols[event_rows], event_rows
 
     def create_tensors(self) -> None:
         """

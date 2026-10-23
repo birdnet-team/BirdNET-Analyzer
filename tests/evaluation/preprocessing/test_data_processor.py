@@ -1,3 +1,5 @@
+import logging
+import tracemalloc
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -338,6 +340,7 @@ class TestDataProcessorLoadData:
                 "Class": ["A", "B"],
                 "Start Time": [0, 1],
                 "End Time": [1, 2],
+                "Confidence": [0.9, 0.8],
                 "source_file": ["file1.txt", "file2.txt"],
             }
         )
@@ -381,6 +384,7 @@ class TestDataProcessorLoadData:
                 "Class": ["A", "B"],
                 "Start Time": [0, 1],
                 "End Time": [1, 2],
+                "Confidence": [0.9, 0.8],
             }
         )
         mock_annotations_df = pd.DataFrame(
@@ -527,13 +531,14 @@ class TestDataProcessorLoadData:
         assert dp.annotations_df.empty
 
     @patch("pandas.read_csv")
-    def test_load_data_filenames_do_not_match(self, mock_read_csv):
+    def test_load_data_filenames_do_not_match(self, mock_read_csv, caplog):
         """Test load_data with mismatched filenames."""
         mock_predictions_df = pd.DataFrame(
             {
                 "Class": ["A"],
                 "Start Time": [0],
                 "End Time": [1],
+                "Confidence": [0.9],
             }
         )
         mock_annotations_df = pd.DataFrame(
@@ -545,7 +550,7 @@ class TestDataProcessorLoadData:
         )
         mock_read_csv.side_effect = [mock_predictions_df, mock_annotations_df]
 
-        with pytest.warns(UserWarning, match="do not fully match"):
+        with caplog.at_level(logging.WARNING, logger=DataProcessor.__module__):
             DataProcessor(
                 prediction_directory_path="dummy_pred_path",
                 prediction_file_name="prediction_file.txt",
@@ -562,6 +567,108 @@ class TestDataProcessorLoadData:
                     "End Time": "End Time",
                 },
                 recording_duration=10,
+            )
+
+        assert "do not fully match" in caplog.text
+
+    @patch.object(DataProcessor, "process_data")
+    @patch(
+        "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+    )
+    def test_load_data_rejects_missing_confidence_before_binning(
+        self, mock_read_concat, mock_process_data
+    ):
+        mock_read_concat.return_value = pd.DataFrame(
+            {
+                "Class": ["A"],
+                "Start Time": [0],
+                "End Time": [1],
+                "source_file": ["file.txt"],
+            }
+        )
+
+        with pytest.raises(KeyError, match="Confidence"):
+            DataProcessor(
+                prediction_directory_path="dummy_pred_path",
+                annotation_directory_path="dummy_annot_path",
+            )
+
+        mock_process_data.assert_not_called()
+
+    @patch(
+        "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+    )
+    def test_load_data_rejects_missing_confidence_of_unannotated_predictions(
+        self, mock_read_concat
+    ):
+        mock_read_concat.side_effect = [
+            pd.DataFrame(
+                {
+                    "Class": ["A"],
+                    "Start Time": [0],
+                    "End Time": [1],
+                    "source_file": ["rec2.txt"],
+                }
+            ),
+            pd.DataFrame(
+                {
+                    "Class": ["A"],
+                    "Start Time": [0],
+                    "End Time": [1],
+                    "source_file": ["rec1.txt"],
+                }
+            ),
+        ]
+
+        with pytest.raises(KeyError, match="Confidence"):
+            DataProcessor(
+                prediction_directory_path="dummy_pred_path",
+                annotation_directory_path="dummy_annot_path",
+                recording_duration=10,
+            )
+
+    @patch(
+        "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+    )
+    def test_load_data_accepts_partially_missing_confidence(self, mock_read_concat):
+        mock_read_concat.return_value = pd.DataFrame(
+            {
+                "Class": ["A", "B"],
+                "Start Time": [0, 1],
+                "End Time": [1, 2],
+                "Confidence": [None, 0.5],
+                "source_file": ["file.txt", "file.txt"],
+            }
+        )
+
+        dp = DataProcessor(
+            prediction_directory_path="dummy_pred_path",
+            annotation_directory_path="dummy_annot_path",
+            recording_duration=10,
+        )
+
+        assert dp.samples_df["B_confidence"].max() == 0.5
+
+    @patch(
+        "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
+    )
+    def test_load_data_rejects_confidence_column_without_values(
+        self, mock_read_concat
+    ):
+        mock_read_concat.return_value = pd.DataFrame(
+            {
+                "Class": ["A", "B"],
+                "Start Time": [0, 1],
+                "End Time": [1, 2],
+                "Confidence": [None, None],
+                "source_file": ["file.txt", "file.txt"],
+            }
+        )
+
+        with pytest.raises(ValueError, match="no values"):
+            DataProcessor(
+                prediction_directory_path="dummy_pred_path",
+                annotation_directory_path="dummy_annot_path",
             )
 
     @patch(
@@ -602,6 +709,7 @@ class TestDataProcessorLoadData:
                 "Class": ["A"],
                 "Start Time": [0],
                 "End Time": [1],
+                "Confidence": [0.9],
                 "source_file": ["file.txt"],
             }
         )
@@ -633,6 +741,7 @@ class TestDataProcessorLoadData:
                 "Class": ["A", "B", "C"],
                 "Start Time": [0, 1, 2],
                 "End Time": [1, 2, 3],
+                "Confidence": [0.9, 0.8, 0.7],
                 "source_file": ["file1.txt", "file2.txt", "file3.txt"],
             }
         )
@@ -679,6 +788,7 @@ class TestDataProcessorLoadData:
                 "Class": ["A", "B", "C"],
                 "Start Time": [0, 1, 2],
                 "End Time": [1, 2, 3],
+                "Confidence": [0.9, 0.8, 0.7],
                 "source_file": ["file1.txt", "file2.txt", "file3.txt"],
             }
         )
@@ -1370,7 +1480,12 @@ class TestDataProcessorProcessRecording:
     def test_valid_predictions_and_annotations(self):
         """Test with valid predictions and annotations."""
         pred_df = pd.DataFrame(
-            {"Class": ["A", "B"], "Start Time": [0, 5], "End Time": [5, 10]}
+            {
+                "Class": ["A", "B"],
+                "Start Time": [0, 5],
+                "End Time": [5, 10],
+                "Confidence": [0.9, 0.8],
+            }
         )
         annot_df = pd.DataFrame(
             {"Class": ["A", "C"], "Start Time": [2, 7], "End Time": [7, 12]}
@@ -1397,14 +1512,11 @@ class TestDataProcessorProcessRecording:
         )
 
     def test_only_predictions_present(self):
-        """Test with only predictions present."""
+        """Predictions without a confidence column are an error, not 0.0."""
         pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [0], "End Time": [5]})
         annot_df = pd.DataFrame()
-        samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
-        assert (
-            samples_df["A_confidence"].iloc[0] == 0.0
-        )  # Default confidence since 'Confidence' column missing
-        assert samples_df["A_annotation"].iloc[0] == 0  # No annotations
+        with pytest.raises(KeyError, match="Confidence"):
+            self.dp.process_recording("rec1", pred_df, annot_df)
 
     def test_only_annotations_present(self):
         """Test with only annotations present."""
@@ -1416,17 +1528,21 @@ class TestDataProcessorProcessRecording:
 
     def test_no_overlap_between_pred_and_annot(self):
         """Test with predictions and annotations having no overlap."""
-        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [0], "End Time": [5]})
+        pred_df = pd.DataFrame(
+            {"Class": ["A"], "Start Time": [0], "End Time": [5], "Confidence": [0.9]}
+        )
         annot_df = pd.DataFrame({"Class": ["A"], "Start Time": [10], "End Time": [15]})
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
-        assert samples_df["A_confidence"].iloc[0] == 0.0  # Default confidence
+        assert samples_df["A_confidence"].iloc[0] == 0.9
         assert samples_df["A_annotation"].iloc[0] == 0  # No overlap in first sample
         assert samples_df["A_annotation"].iloc[1] == 0  # No overlap in second sample
         assert samples_df["A_annotation"].iloc[2] == 1  # Overlap in third sample
 
     def test_invalid_times_in_predictions(self):
         """Test with invalid times in predictions."""
-        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [-5], "End Time": [-1]})
+        pred_df = pd.DataFrame(
+            {"Class": ["A"], "Start Time": [-5], "End Time": [-1], "Confidence": [0.9]}
+        )
         annot_df = pd.DataFrame()
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         assert not samples_df.empty
@@ -1443,7 +1559,9 @@ class TestDataProcessorProcessRecording:
         """Test with custom sample_duration and min_overlap."""
         self.dp.sample_duration = 3
         self.dp.min_overlap = 0.1
-        pred_df = pd.DataFrame({"Class": ["A"], "Start Time": [1], "End Time": [2]})
+        pred_df = pd.DataFrame(
+            {"Class": ["A"], "Start Time": [1], "End Time": [2], "Confidence": [0.9]}
+        )
         annot_df = pd.DataFrame(
             {"Class": ["A"], "Start Time": [1.5], "End Time": [2.5]}
         )
@@ -1452,7 +1570,9 @@ class TestDataProcessorProcessRecording:
 
     def test_classes_not_in_self_classes(self):
         """Test with classes not in self.classes."""
-        pred_df = pd.DataFrame({"Class": ["D"], "Start Time": [0], "End Time": [5]})
+        pred_df = pd.DataFrame(
+            {"Class": ["D"], "Start Time": [0], "End Time": [5], "Confidence": [0.9]}
+        )
         annot_df = pd.DataFrame({"Class": ["D"], "Start Time": [0], "End Time": [5]})
         samples_df = self.dp.process_recording("rec1", pred_df, annot_df)
         # Since 'D' is not in self.classes, it should be skipped
@@ -1542,6 +1662,13 @@ class TestDetermineFileDuration:
         """Test when 'Duration' columns are missing, use max of 'End Time'."""
         self.dp.recording_duration = None
         pred_df = pd.DataFrame({"Start Time": [10], "End Time": [80]})
+        annot_df = pd.DataFrame({"Start Time": [20], "End Time": [100]})
+        duration = self.dp.determine_file_duration(pred_df, annot_df)
+        assert duration == 100.0
+
+    def test_end_time_from_one_side_only(self):
+        self.dp.recording_duration = None
+        pred_df = pd.DataFrame({"Start Time": [], "End Time": []})
         annot_df = pd.DataFrame({"Start Time": [20], "End Time": [100]})
         duration = self.dp.determine_file_duration(pred_df, annot_df)
         assert duration == 100.0
@@ -1673,6 +1800,12 @@ class TestInitializeSamples:
             col in samples_df.columns
             for col in ["A_confidence", "B_confidence", "A_annotation", "B_annotation"]
         )
+
+    def test_column_dtypes(self):
+        samples_df = self.dp.initialize_samples("rec1", 10)
+        assert samples_df["sample_index"].dtype == np.int64
+        assert samples_df["A_confidence"].dtype == np.float64
+        assert samples_df["A_annotation"].dtype == np.int64
 
     def test_empty_recording_filename(self):
         """Test when recording_filename is an empty string."""
@@ -1809,8 +1942,129 @@ class TestUpdateSamplesWithPredictions:
                 # 'Confidence' missing
             }
         )
+        with pytest.raises(KeyError, match="Confidence"):
+            self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+
+    def test_nan_confidence_is_ignored(self):
+        pred_df = pd.DataFrame(
+            {
+                "Class": ["A", "A", "B"],
+                "Start Time": [1, 1, 1],
+                "End Time": [4, 4, 4],
+                "Confidence": [np.nan, 0.6, np.nan],
+            }
+        )
         self.dp.update_samples_with_predictions(pred_df, self.samples_df)
-        assert self.samples_df.loc[0, "A_confidence"] == 0.0  # Default confidence
+        assert self.samples_df.loc[0, "A_confidence"] == 0.6
+        assert self.samples_df.loc[0, "B_confidence"] == 0.0
+
+    def test_sample_aligned_prediction_with_full_min_overlap(self):
+        self.dp.min_overlap = 5
+        pred_df = pd.DataFrame(
+            {"Class": ["A"], "Start Time": [0], "End Time": [5], "Confidence": [0.7]}
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert self.samples_df["A_confidence"].tolist() == [0.7, 0.0, 0.0]
+
+    def test_unsorted_samples_df(self):
+        self.samples_df = self.samples_df.iloc[::-1].reset_index(drop=True)
+        pred_df = pd.DataFrame(
+            {"Class": ["A"], "Start Time": [1], "End Time": [4], "Confidence": [0.6]}
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert self.samples_df.set_index("start_time")["A_confidence"].to_dict() == {
+            10: 0.0,
+            5: 0.0,
+            0: 0.6,
+        }
+
+    def test_unknown_class_with_empty_samples_df(self):
+        pred_df = pd.DataFrame(
+            {"Class": ["D"], "Start Time": [0], "End Time": [5], "Confidence": [0.9]}
+        )
+        samples_df = pd.DataFrame()
+        self.dp.update_samples_with_predictions(pred_df, samples_df)
+        assert samples_df.empty
+
+    def test_unknown_class_row_with_unparseable_times_is_skipped(self):
+        pred_df = pd.DataFrame(
+            {
+                "Class": ["D", "A"],
+                "Start Time": ["n/a", 1],
+                "End Time": ["n/a", 4],
+                "Confidence": [0.9, 0.6],
+            }
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert self.samples_df["A_confidence"].tolist() == [0.6, 0.0, 0.0]
+
+    def test_nested_sample_intervals(self):
+        self.samples_df["start_time"] = [0, 2, 4]
+        self.samples_df["end_time"] = [9, 7, 5]
+        pred_df = pd.DataFrame(
+            {
+                "Class": ["A", "B"],
+                "Start Time": [0, 6],
+                "End Time": [3, 8],
+                "Confidence": [0.8, 0.4],
+            }
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert self.samples_df["A_confidence"].tolist() == [0.8, 0.8, 0.0]
+        assert self.samples_df["B_confidence"].tolist() == [0.4, 0.4, 0.0]
+
+    def test_prediction_for_the_last_class_only(self):
+        pred_df = pd.DataFrame(
+            {"Class": ["C"], "Start Time": [6], "End Time": [9], "Confidence": [0.3]}
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert self.samples_df["C_confidence"].tolist() == [0.0, 0.3, 0.0]
+        assert (self.samples_df[["A_confidence", "B_confidence"]] == 0.0).all().all()
+
+    def test_columns_of_classes_without_hits_are_untouched(self):
+        self.samples_df["B_confidence"] = self.samples_df["B_confidence"].astype(
+            np.float32
+        )
+        pred_df = pd.DataFrame(
+            {"Class": ["A"], "Start Time": [1], "End Time": [4], "Confidence": [0.6]}
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert self.samples_df["A_confidence"].tolist() == [0.6, 0.0, 0.0]
+        assert self.samples_df["B_confidence"].dtype == np.float32
+
+    def test_long_recording_with_many_predictions_stays_small_in_memory(self):
+        self.dp.sample_duration = 3
+        samples_df = self.dp.initialize_samples("rec1", 86_400)
+        rng = np.random.default_rng(0)
+        start = rng.integers(0, 86_400 // 3, 5_000) * 3.0
+        pred_df = pd.DataFrame(
+            {
+                "Class": "A",
+                "Start Time": start,
+                "End Time": start + 3,
+                "Confidence": rng.random(5_000),
+            }
+        )
+
+        tracemalloc.start()
+        self.dp.update_samples_with_predictions(pred_df, samples_df)
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        assert peak < 50_000_000
+        assert (samples_df["A_confidence"] > 0).sum() == len(np.unique(start))
+
+    def test_prediction_with_nan_time_is_ignored(self):
+        pred_df = pd.DataFrame(
+            {
+                "Class": ["A", "A"],
+                "Start Time": [1, np.nan],
+                "End Time": [np.nan, 4],
+                "Confidence": [0.9, 0.9],
+            }
+        )
+        self.dp.update_samples_with_predictions(pred_df, self.samples_df)
+        assert (self.samples_df["A_confidence"] == 0.0).all()
 
     def test_predictions_with_negative_times(self):
         """Test predictions with negative times."""
@@ -1957,6 +2211,13 @@ class TestUpdateSamplesWithAnnotations:
         self.dp.update_samples_with_annotations(annot_df, self.samples_df)
         assert self.samples_df.loc[0, "A_annotation"] == 1
         assert self.samples_df.loc[1, "A_annotation"] == 1
+
+    def test_missing_columns_of_classes_without_hits_are_tolerated(self):
+        samples_df = self.samples_df.drop(columns=["C_annotation"])
+        annot_df = pd.DataFrame({"Class": ["B"], "Start Time": [6], "End Time": [9]})
+        self.dp.update_samples_with_annotations(annot_df, samples_df)
+        assert samples_df["B_annotation"].tolist() == [0, 1, 0]
+        assert samples_df["A_annotation"].tolist() == [0, 0, 0]
 
     def test_annotations_classes_not_in_self_classes(self):
         """Test annotations with classes not in self.classes."""
