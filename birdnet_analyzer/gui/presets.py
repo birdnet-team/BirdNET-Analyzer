@@ -145,6 +145,7 @@ class PresetControls:
 
             return updates
 
+        @gu.gui_runtime_error_handler
         def on_save(name, *values):
             name = (name or "").strip()
 
@@ -164,13 +165,13 @@ class PresetControls:
             try:
                 settings.save_preset(self.tab, name, preset)
             except OSError as e:
-                settings.write_error_log(e)
                 raise gr.Error(loc.localize("presets-save-failed-error")) from e
 
             gr.Info(loc.localize("presets-saved-info"))
 
             return gr.update(choices=settings.list_presets(self.tab), value=name)
 
+        @gu.gui_runtime_error_handler
         def on_load(name, *current):
             if not name:
                 gr.Warning(loc.localize("presets-none-selected-warning"))
@@ -186,6 +187,7 @@ class PresetControls:
 
             return updates
 
+        @gu.gui_runtime_error_handler
         def on_delete(name):
             if not name:
                 gr.Warning(loc.localize("presets-none-selected-warning"))
@@ -217,6 +219,7 @@ class PresetControls:
 
         if self.load_params_file_button is not None:
 
+            @gu.gui_runtime_error_handler
             def on_load_params_file(*current):
                 file = gu.select_file(
                     ("CSV (*.csv)",), state_key=f"{self.tab}-params-file"
@@ -280,8 +283,8 @@ def _file_updates(species_file, classifier_file, skipped: list[str]) -> list:
 def _load_params_file(loader, path: str, error_key: str) -> dict[str, Any]:
     try:
         return loader(path)
-    except ValueError as e:
-        raise gr.Error(loc.localize(error_key)) from e
+    except ValueError:
+        raise gr.Error(loc.localize(error_key)) from None
 
 
 def _rename(kwargs: dict[str, Any], mapping: dict[str, str]) -> dict[str, Any]:

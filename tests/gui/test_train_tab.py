@@ -19,6 +19,7 @@ import birdnet_analyzer.gui.localization as loc  # noqa: E402
 from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import train  # noqa: E402
+from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
 
 @pytest.fixture
@@ -90,10 +91,13 @@ def test_cache_model_version_reads_the_record_or_the_embeddings_width(tmp_path):
     np.savez(unrecorded, x_train=np.zeros((3, 1024), np.float32))
     unknown = tmp_path / "unknown.npz"
     np.savez(unknown, x_train=np.zeros((1, 512)))
+    foreign = tmp_path / "foreign.npz"
+    np.savez(foreign, labels=np.zeros(3))
 
     assert train.cache_model_version(str(recorded)) == "3.0"
     assert train.cache_model_version(str(unrecorded)) == "2.4"
     assert train.cache_model_version(str(unknown)) is None
+    assert train.cache_model_version(str(foreign)) is None
     assert train.cache_model_version(str(tmp_path / "missing.npz")) is None
 
 
@@ -250,16 +254,24 @@ def test_a_training_error_with_a_localization_key_is_shown_translated(
 ):
     key = "validation-no-audio-files-in-training-folders"
     error = ValueError("untranslated", key, "a, b")
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
     with pytest.raises(gr.Error, match=re.escape(loc.localize(key).format("a, b"))):
         _start_training(monkeypatch, tmp_path, fail_with=error)
 
+    assert logged == []
+
 
 def test_any_other_training_error_is_shown_in_full(monkeypatch, tmp_path):
     error = PermissionError(13, "Permission denied", "cc.tflite")
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
     with pytest.raises(gr.Error, match=r"Errno 13.*cc\.tflite"):
         _start_training(monkeypatch, tmp_path, fail_with=error)
+
+    assert len(logged) == 1
 
 
 def test_folder_labels_are_listed_without_surrounding_spaces(monkeypatch, tmp_path):
@@ -373,8 +385,6 @@ def test_changing_the_cache_mode_forgets_the_picked_cache_location(appdir):
 
 
 def test_selecting_a_cache_shows_its_version(appdir, monkeypatch, tmp_path):
-    from birdnet_analyzer.gui import utils as gu
-
     cache = tmp_path / "cache.npz"
     np.savez(cache, x_train=np.zeros((1, 1024)), model_version="2.4")
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: str(cache))
@@ -392,3 +402,41 @@ def test_selecting_a_cache_shows_its_version(appdir, monkeypatch, tmp_path):
 
     *_, update = on_select()
     assert update == gr.update(value="2.4")
+
+
+def test_a_failing_folder_listing_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+    monkeypatch.setattr(gu, "select_folder", lambda **_: str(tmp_path))
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(train.utils, "list_subdirectories", fail)
+    with gr.Blocks() as demo:
+        train.build_train_tab()
+    select = next(
+        event.fn
+        for event in demo.fns.values()
+        if getattr(event.fn, "__name__", "") == "selection_fn"
+    )
+
+    with pytest.raises(gr.Error, match="disk"):
+        select()
+
+    assert len(logged) == 1
+
+
+def test_cache_model_version_lets_an_unexpected_error_through(tmp_path, monkeypatch):
+    from birdnet_analyzer import base_models
+
+    cache = tmp_path / "cache.npz"
+    np.savez(cache, x_train=np.zeros((1, 1024)))
+
+    def fail(width):
+        raise TypeError("bug")
+
+    monkeypatch.setattr(base_models, "version_for_embeddings_dim", fail)
+
+    with pytest.raises(TypeError, match="bug"):
+        train.cache_model_version(str(cache))

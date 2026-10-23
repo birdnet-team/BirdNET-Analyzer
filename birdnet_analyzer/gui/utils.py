@@ -188,8 +188,10 @@ def spectrogram_settings() -> dict:
 def gui_runtime_error_handler(f):
     """Wrap ``f`` so any exception is logged and re-raised as a ``gr.Error``.
 
-    A ``gr.Error`` raised by ``f`` itself keeps its message. Every error stays on
-    screen until the user closes it.
+    A ``gr.Error`` raised by ``f`` itself keeps its message and reaches the error log
+    only when it wraps another exception (``raise gr.Error(...) from e``); a message
+    raised on its own is a validation result and is logged at INFO. Every error stays
+    on screen until the user closes it.
 
     Args:
         f: The callable to wrap.
@@ -206,12 +208,16 @@ def gui_runtime_error_handler(f):
         try:
             return f(*args, **kwargs)
         except gr.Error as e:
-            utils.write_error_log(e)
+            if e.__cause__ is not None:
+                utils.write_error_log(e)
+            else:
+                logger.info(e.message)
+
             e.duration = None
             raise
         except Exception as e:
             utils.write_error_log(e)
-            raise gr.Error(message=str(e), duration=None) from e
+            raise gr.Error(message=str(e) or repr(e), duration=None) from e
 
     return wrapper
 
@@ -690,6 +696,7 @@ def build_settings():
                         loc.localize("settings-tab-reset-button-label"),
                     )
 
+                @gui_runtime_error_handler
                 def on_reset_click():
                     updates = gs.reset_to_defaults()
                     gr.Info(loc.localize("settings-tab-reset-info"))
@@ -722,16 +729,19 @@ def build_settings():
             buttons=["copy"],
         )
 
+        @gui_runtime_error_handler
         def on_language_change(value):
             loc.set_language(value)
             gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
 
+        @gui_runtime_error_handler
         def on_theme_change(value):
             prev_theme = settings.theme()
             if prev_theme != value:
                 settings.set_setting("theme", value)
                 _WINDOW.load_url(_URL.rstrip("/") + f"?__theme={value}")  # type: ignore
 
+        @gui_runtime_error_handler
         def on_tab_select(value: gr.SelectData):
             if value.selected and os.path.exists(settings.ERROR_LOG_FILE):
                 with open(settings.ERROR_LOG_FILE, mode="rb") as f:
@@ -894,6 +904,7 @@ def sample_species_model_settings(state: TabState, opened=True):
             requested = [s for s in utils.read_lines(file, trim=True) if s]
             _, unmatched = model_utils.match_species_to_model(requested, model_species)
         except Exception:
+            logger.debug("Species list could not be matched", exc_info=True)
             return
 
         if unmatched:
@@ -1326,6 +1337,7 @@ def model_selection(state: TabState, opened=True):
                 )
                 selected_classifier_state = gr.State()
 
+                @gui_runtime_error_handler
                 def on_custom_classifier_selection_click():
                     from birdnet_analyzer.model_utils import classifier_version
 
@@ -1476,6 +1488,7 @@ def species_lists(
         show_progress="hidden",
     )
 
+    @gui_runtime_error_handler
     def on_species_file_change(file):
         if not file:
             return gr.update(value=[], visible=False)

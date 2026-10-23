@@ -243,6 +243,22 @@ def test_saving_under_an_invalid_name_shows_an_error(appdir):
     assert settings.list_presets("multi") == []
 
 
+def test_a_failing_delete_is_logged_and_shown(appdir, monkeypatch):
+    _, controls, demo = build_tab()
+    logged = []
+    monkeypatch.setattr(utils, "write_error_log", logged.append)
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(settings, "delete_preset", fail)
+
+    with pytest.raises(gr.Error, match="disk"):
+        find_click_handler(demo, controls.delete_button)("Project A")
+
+    assert len(logged) == 1
+
+
 def test_loading_without_a_selection_changes_nothing(appdir):
     _, controls, demo = build_tab()
 

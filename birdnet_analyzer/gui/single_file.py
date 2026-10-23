@@ -255,6 +255,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             visible=False,
         )
 
+        @gu.gui_runtime_error_handler
         def select_and_load_audio_file(generate_spectrogram=False):
             """Use webview dialog to select audio file and load it."""
             from birdnet_analyzer import audio
@@ -267,39 +268,37 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             )
 
             if file_path:
-                try:
-                    data, sr = audio.open_audio_file(file_path)
+                data, sr = audio.open_audio_file(file_path)
 
-                    spectrogram = (
-                        gr.update(
-                            visible=True,
-                            value=utils.spectrogram_from_file(
-                                file_path,
-                                fig_size=(20, 4),
-                                fig_num=MATPLOTLIB_FIGURE_NUM,
-                                **gu.spectrogram_settings(),
-                            ),
+                if generate_spectrogram:
+                    try:
+                        figure = utils.spectrogram_from_file(
+                            file_path,
+                            fig_size=(20, 4),
+                            fig_num=MATPLOTLIB_FIGURE_NUM,
+                            **gu.spectrogram_settings(),
                         )
-                        if generate_spectrogram
-                        else gr.update(visible=False)
-                    )
+                    except Exception as e:
+                        raise gr.Error(
+                            loc.localize("single-tab-generate-spectrogram-error")
+                        ) from e
 
-                    return (
-                        file_path,
-                        file_path,
-                        gr.update(
-                            visible=True,
-                            value=(sr, data),
-                            label=os.path.basename(file_path),
-                        ),
-                        gr.update(visible=generate_spectrogram),
-                        spectrogram,
-                        gr.update(interactive=True),
-                    )
-                except Exception as e:
-                    raise gr.Error(
-                        loc.localize("single-tab-generate-spectrogram-error")
-                    ) from e
+                    spectrogram = gr.update(visible=True, value=figure)
+                else:
+                    spectrogram = gr.update(visible=False)
+
+                return (
+                    file_path,
+                    file_path,
+                    gr.update(
+                        visible=True,
+                        value=(sr, data),
+                        label=os.path.basename(file_path),
+                    ),
+                    gr.update(visible=generate_spectrogram),
+                    spectrogram,
+                    gr.update(interactive=True),
+                )
 
             return (
                 gr.update(),
@@ -310,6 +309,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 gr.update(interactive=False),
             )
 
+        @gu.gui_runtime_error_handler
         def try_generate_spectrogram(audio_path, generate_spectrogram):
             if audio_path and generate_spectrogram:
                 try:
@@ -386,6 +386,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                     "with numeric values."
                 ) from e
 
+        @gu.gui_runtime_error_handler
         def get_selected_audio(evt: gr.SelectData, audio_path):
             from birdnet_analyzer import audio
 
@@ -401,6 +402,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
             return gr.update()
 
+        @gu.gui_runtime_error_handler
         def download_rtable(prediction_state):
             if prediction_state:
                 file_location = gu.save_file_dialog(
@@ -420,6 +422,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                         Path(file_location),
                     )
 
+        @gu.gui_runtime_error_handler
         def download_csv(prediction_state):
             if prediction_state:
                 file_location = gu.save_file_dialog(
@@ -434,6 +437,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                         Path(file_location),
                     )
 
+        @gu.gui_runtime_error_handler
         def download_kaleidoscope(prediction_state):
             if prediction_state:
                 file_location = gu.save_file_dialog(

@@ -12,6 +12,7 @@ gr = pytest.importorskip("gradio")
 
 from PIL import Image  # noqa: E402
 
+from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
 
@@ -135,7 +136,9 @@ def test_the_error_handler_keeps_the_handlers_signature():
     assert [fn.tracks_progress for fn in demo.fns.values()] == [True]
 
 
-def test_a_gr_error_from_the_handler_keeps_its_message_and_stays_open(monkeypatch):
+def test_a_gr_error_from_the_handler_keeps_its_message_and_stays_open(
+    monkeypatch, caplog
+):
     error = gr.Error("x")
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
@@ -143,13 +146,34 @@ def test_a_gr_error_from_the_handler_keeps_its_message_and_stays_open(monkeypatc
     def handler():
         raise error
 
-    with pytest.raises(gr.Error) as raised:
+    with (
+        caplog.at_level(logging.INFO, logger=gu.logger.name),
+        pytest.raises(gr.Error) as raised,
+    ):
         gu.gui_runtime_error_handler(handler)()
 
     assert raised.value is error
     assert raised.value.message == "x"
     assert raised.value.duration is None
-    assert logged == [error]
+    assert logged == []
+    assert [(r.levelno, r.message) for r in caplog.records] == [(logging.INFO, "x")]
+
+
+def test_a_gr_error_wrapping_a_failure_is_logged_with_it(monkeypatch):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    def handler():
+        try:
+            raise OSError("disk")
+        except OSError as e:
+            raise gr.Error("step") from e
+
+    with pytest.raises(gr.Error) as raised:
+        gu.gui_runtime_error_handler(handler)()
+
+    assert raised.value.message == "step"
+    assert logged == [raised.value]
 
 
 def test_any_other_error_reaches_the_user_as_a_gr_error(monkeypatch):
@@ -167,3 +191,105 @@ def test_any_other_error_reaches_the_user_as_a_gr_error(monkeypatch):
     assert raised.value.duration is None
     assert raised.value.__cause__ is error
     assert logged == [error]
+
+
+def test_an_error_without_a_message_is_shown_by_its_repr(monkeypatch):
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+
+    def handler():
+        raise EOFError
+
+    with pytest.raises(gr.Error) as raised:
+        gu.gui_runtime_error_handler(handler)()
+
+    assert raised.value.message == "EOFError()"
+
+
+def _settings_handler(name, monkeypatch):
+    monkeypatch.setattr(gs, "_PERSISTED", [])
+
+    with gr.Blocks() as demo:
+        gu.build_settings()
+
+    return next(
+        event.fn
+        for event in demo.fns.values()
+        if getattr(event.fn, "__name__", "") == name
+    )
+
+
+@pytest.mark.parametrize(
+    ("handler", "value"), [("on_theme_change", "dark"), ("on_language_change", "de")]
+)
+def test_a_failed_settings_write_is_logged_and_shown(monkeypatch, handler, value):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(gu.settings, "set_setting", fail)
+
+    with pytest.raises(gr.Error, match="disk"):
+        _settings_handler(handler, monkeypatch)(value)
+
+    assert len(logged) == 1
+
+
+def test_a_failing_species_match_is_logged_at_debug_and_swallowed(
+    monkeypatch, caplog, tmp_path
+):
+    from birdnet_analyzer import model_utils
+
+    species_file = tmp_path / "species.txt"
+    species_file.write_text("Turdus merula_Common Blackbird\n")
+    monkeypatch.setattr(model_utils, "acoustic_model_downloaded", lambda version: True)
+    monkeypatch.setattr(
+        model_utils, "acoustic_species_list", lambda version, locale: ["a"]
+    )
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("matcher bug")
+
+    monkeypatch.setattr(model_utils, "match_species_to_model", fail)
+    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
+    monkeypatch.setattr(gs, "_PERSISTED", [])
+
+    with gr.Blocks() as demo:
+        gu.sample_species_model_settings(gs.TabState("single"))
+    warn = next(
+        event.fn
+        for event in demo.fns.values()
+        if getattr(event.fn, "__name__", "") == "warn_unmatched_species"
+    )
+
+    with caplog.at_level(logging.DEBUG, logger=gu.logger.name):
+        assert warn(str(species_file), gu.USE_BIRDNET_3_0, "en_us") is None
+
+    debug = [r for r in caplog.records if r.levelno == logging.DEBUG and r.exc_info]
+    assert [str(r.exc_info[1]) for r in debug] == ["matcher bug"]
+
+
+def test_an_unreadable_species_list_is_logged_and_shown(monkeypatch):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(gu.utils, "read_lines", fail)
+    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
+    monkeypatch.setattr(gs, "_PERSISTED", [])
+
+    with gr.Blocks() as demo:
+        gu.sample_species_model_settings(gs.TabState("single"))
+    on_species_file_change = next(
+        event.fn
+        for event in demo.fns.values()
+        if getattr(event.fn, "__name__", "") == "on_species_file_change"
+    )
+
+    with pytest.raises(gr.Error, match="disk"):
+        on_species_file_change("species.txt")
+
+    assert len(logged) == 1

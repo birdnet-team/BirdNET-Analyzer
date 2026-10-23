@@ -181,3 +181,19 @@ def test_picking_an_existing_database_shows_and_locks_its_settings(
     assert fmin == gr.update(value=500, interactive=False)
     assert fmax == gr.update(value=8000, interactive=False)
     assert hoplite_connections.still_open() == []
+
+
+def test_a_failing_database_read_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+    monkeypatch.setattr(gu, "select_directory", lambda *a, **k: str(tmp_path))
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(gui_embeddings, "read_database_settings", fail)
+
+    with pytest.raises(gr.Error, match="disk"):
+        _select_db_directory_handler()(None)
+
+    assert len(logged) == 1

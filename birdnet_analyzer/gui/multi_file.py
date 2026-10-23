@@ -148,6 +148,7 @@ def pause_batch_analysis():
     return gr.update(interactive=False)
 
 
+@gu.gui_runtime_error_handler
 def refresh_resume_status(input_dir, output_dir):
     """Show paused progress for the effective output directory, if any.
 
@@ -224,6 +225,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         preview_limit = 100
 
+        @gu.gui_runtime_error_handler
         def select_directory_on_empty():
             folder = gu.select_folder(state_key="batch-analysis-data-dir")
 
@@ -299,6 +301,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 elem_classes="path-textbox",
             )
 
+        @gu.gui_runtime_error_handler
         def select_directory_wrapper():
             folder = gu.select_folder(state_key="batch-analysis-output-dir")
             return (folder, folder) if folder else (gr.update(), gr.update())

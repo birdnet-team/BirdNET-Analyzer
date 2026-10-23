@@ -39,7 +39,7 @@ def cache_model_version(path: str) -> str | None:
             shape, _, _ = read_header(member)
 
         return version_for_embeddings_dim(shape[1])
-    except Exception:
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
         return None
 
 
@@ -278,7 +278,7 @@ def start_training(
             if len(e.args) > 2:
                 message = message.format(*e.args[2:])
 
-            raise gr.Error(message) from e
+            raise gr.Error(message) from None
 
         raise gr.Error(f"{e}") from e
 
@@ -355,6 +355,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
         )
 
         def select_directory(state_key):
+            @gu.gui_runtime_error_handler
             def selection_fn():
                 result = select_subdirectories(state_key=state_key)
 
@@ -444,6 +445,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                 interactive=True,
             )
 
+        @gu.gui_runtime_error_handler
         def select_classifier_directory_and_update_tb():
             dir_name = gu.select_folder(state_key="train-output-dir")
 
@@ -522,6 +524,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                         info=loc.localize("training-tab-cache-file-name-textbox-info"),
                     )
 
+                @gu.gui_runtime_error_handler
                 def select_cache_directory_and_update():
                     dir_name = gu.select_folder(
                         state_key="train-data-cache-file-output"
@@ -568,6 +571,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     file_types=[".npz"], visible=False, interactive=False
                 )
 
+                @gu.gui_runtime_error_handler
                 def on_cache_file_selection_click():
                     file = gu.select_file(
                         ("NPZ file (*.npz)",), state_key="train_data_cache_file"

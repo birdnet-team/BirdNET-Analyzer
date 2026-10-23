@@ -94,6 +94,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         "Duration",
     ]
 
+    @gu.gui_runtime_error_handler
     def download_class_mapping_template():
         try:
             template_mapping = {
@@ -116,11 +117,11 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
                 gr.Info(loc.localize("eval-tab-info-mapping-template-saved"))
         except Exception as e:
-            logger.error(f"Error saving mapping template: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-saving-mapping-template')} {e}"
             ) from e
 
+    @gu.gui_runtime_error_handler
     def download_results_table(
         pa: PerformanceAssessor, predictions, labels, class_wise_value, averaging_value
     ):
@@ -152,11 +153,11 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
                 gr.Info(loc.localize("eval-tab-info-results-table-saved"))
         except Exception as e:
-            logger.error(f"Error saving results table: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-saving-results-table')} {e}"
             ) from e
 
+    @gu.gui_runtime_error_handler
     def download_data_table(
         processor_state: ProcessorState, recording_duration_value: str
     ):
@@ -272,13 +273,11 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 score_unannotated_as_empty=score_unannotated_value,
             )
         except KeyError as e:
-            logger.error(f"Column missing in files: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-missing-col')}: {e}. "
                 f"{loc.localize('eval-tab-error-missing-col-info')}"
             ) from e
         except Exception as e:
-            logger.error(f"Error initializing processor: {e}", exc_info=e)
             raise gr.Error(
                 f"{loc.localize('eval-tab-error-init-processor')}: {e}"
             ) from e
@@ -332,6 +331,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             ]
 
         def get_selection_func(state_key, on_select, column_labels):
+            @gu.gui_runtime_error_handler
             def select_directory(current_files, current_dir):
                 folder = gu.select_folder(state_key=state_key)
 
@@ -708,6 +708,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             fn=download_data_table, inputs=[processor_state, recording_duration]
         )
 
+        @gu.gui_runtime_error_handler
         def download_plot_guarded(plot, plot_name):
             if plot is None:
                 raise gr.Error(
@@ -727,6 +728,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         # ------------------------------------------------------------------
         # Building / refreshing the processor and the class/recording choices
         # ------------------------------------------------------------------
+        @gu.gui_runtime_error_handler
         def refresh_processor(
             annotation_dir,
             prediction_dir,
@@ -937,6 +939,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
             return "\n\n".join(lines)
 
+        @gu.gui_runtime_error_handler
         def calculate_metrics(
             proc_state: ProcessorState,
             threshold_value,
@@ -988,7 +991,6 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             except gr.Error:
                 raise
             except Exception as e:
-                logger.error(f"Error processing data: {e}", exc_info=e)
                 raise gr.Error(
                     f"{loc.localize('eval-tab-error-during-processing')}: {e}"
                 ) from e
