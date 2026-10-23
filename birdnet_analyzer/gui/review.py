@@ -295,12 +295,13 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
 
             return update_dict
 
+        @gu.gui_runtime_error_handler
         def next_review(next_review_state: dict, target_dir: str | None = None):
             try:
                 current_file = next_review_state["files"][0]
-            except IndexError as e:
+            except IndexError:
                 if next_review_state["input_directory"]:
-                    raise gr.Error(loc.localize("review-tab-no-files-error")) from e
+                    raise gr.Error(loc.localize("review-tab-no-files-error")) from None
 
                 return {review_state: next_review_state}
 
@@ -329,12 +330,14 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
 
             return update_values(next_review_state)
 
+        @gu.gui_runtime_error_handler
         def select_subdir(new_value: str, next_review_state: dict):
             if new_value != next_review_state["current_species"]:
                 return update_review(next_review_state, selected_species=new_value)
 
             return {review_state: next_review_state}
 
+        @gu.gui_runtime_error_handler
         def start_review(next_review_state):
             dir_name = gu.select_folder(state_key="review-input-dir")
 
@@ -445,6 +448,7 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
 
             return update_dict
 
+        @gu.gui_runtime_error_handler
         def undo_review(next_review_state):
             if next_review_state["history"]:
                 last_file, last_dir = next_review_state["history"].pop()
@@ -504,15 +508,20 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
             regression_dl_btn,
         ]
 
+        @gu.gui_runtime_error_handler
+        def download_plot(plot, filename):
+            if plot is not None:
+                gu.download_plot(plot, filename)
+
         spectrogram_dl_btn.click(
-            partial(gu.download_plot, filename="spectrogram"),
+            download_plot,
+            inputs=[spectrogram_image, gr.State("spectrogram")],
             show_progress="hidden",
-            inputs=spectrogram_image,
         )
         regression_dl_btn.click(
-            partial(gu.download_plot, filename="regression"),
+            download_plot,
+            inputs=[species_regression_plot, gr.State("regression")],
             show_progress="hidden",
-            inputs=species_regression_plot,
         )
 
         species_dropdown.change(

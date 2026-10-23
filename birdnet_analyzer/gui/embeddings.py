@@ -110,6 +110,7 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
             title=loc.localize("embeddings-tab-info-title"),
         )
 
+        @gu.gui_runtime_error_handler
         def select_directory_to_state_and_tb(current, state_key=None):
             path = (
                 gu.select_directory(collect_files=False, state_key=state_key)
@@ -234,6 +235,7 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
 
             fmin_number, fmax_number = gu.bandpass_settings(state)
 
+        @gu.gui_runtime_error_handler
         def select_directory_and_update_tb(current_state):
             dir_name: str = gu.select_directory(
                 state_key="embeddings-db-dir", collect_files=False
@@ -286,6 +288,7 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
             show_progress="hidden",
         )
 
+        @gu.gui_runtime_error_handler
         def select_file_output_directory_and_update_tb(current):
             file_location = gu.save_file_dialog(
                 state_key="embeddings-file-output",

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 gr = pytest.importorskip("gradio")
@@ -22,11 +24,25 @@ def _handler(name):
     with gr.Blocks() as demo:
         review.build_review_tab()
 
-    return next(
-        event.fn
-        for event in demo.fns.values()
-        if getattr(event.fn, "__name__", "") == name
-    )
+    for event in demo.fns.values():
+        fn = getattr(event.fn, "func", event.fn)
+        if getattr(fn, "__name__", "") == name:
+            return fn
+
+    raise LookupError(name)
+
+
+def _review_state(directory, files):
+    return {
+        "input_directory": str(directory),
+        "species_list": [],
+        "current_species": "",
+        "files": files,
+        review.POSITIVE_LABEL_DIR: [],
+        review.NEGATIVE_LABEL_DIR: [],
+        "skipped": [],
+        "history": [],
+    }
 
 
 def test_out_of_range_confidences_are_left_out_of_the_regression(
@@ -52,18 +68,7 @@ def test_out_of_range_confidences_are_left_out_of_the_regression(
 
     monkeypatch.setattr(linear_model, "LogisticRegression", RecordingRegression)
     monkeypatch.setattr(gu, "select_folder", lambda *a, **k: str(folder))
-    empty = {
-        "input_directory": "",
-        "species_list": [],
-        "current_species": "",
-        "files": [],
-        review.POSITIVE_LABEL_DIR: [],
-        review.NEGATIVE_LABEL_DIR: [],
-        "skipped": [],
-        "history": [],
-    }
-
-    updates = _handler("start_review")(empty)
+    updates = _handler("start_review")(_review_state("", []))
 
     label = loc.localize("review-tab-regression-plot-label")
     plot = next(
@@ -77,3 +82,46 @@ def test_out_of_range_confidences_are_left_out_of_the_regression(
 
     assert points == pytest.approx(expected)
     assert fitted == [expected]
+
+
+def test_a_failed_move_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+    clip = tmp_path / "0.900_a.wav"
+    clip.touch()
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(os, "rename", fail)
+
+    with pytest.raises(gr.Error, match="disk"):
+        _handler("next_review")(
+            _review_state(tmp_path, [str(clip)]), target_dir=review.POSITIVE_LABEL_DIR
+        )
+
+    assert len(logged) == 1
+
+
+def test_running_out_of_files_is_reported_as_is(appdir, monkeypatch, tmp_path):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    with pytest.raises(gr.Error) as raised:
+        _handler("next_review")(_review_state(tmp_path, []))
+
+    assert raised.value.message == loc.localize("review-tab-no-files-error")
+    assert logged == []
+
+
+def test_the_download_buttons_skip_an_empty_plot(appdir, monkeypatch):
+    downloads = []
+    monkeypatch.setattr(gu, "download_plot", lambda *args: downloads.append(args))
+    download = _handler("download_plot")
+
+    assert download(None, "spectrogram") is None
+    assert downloads == []
+
+    download("plot", "regression")
+
+    assert downloads == [("plot", "regression")]

@@ -153,3 +153,37 @@ def test_calculating_without_a_metric_is_rejected(demo):
 
     with pytest.raises(gr.Error, match=re.escape(message)):
         _call(event, {event.inputs[0]: _processor_state()})
+
+
+def test_a_failed_data_table_export_is_logged_with_its_step(
+    demo, monkeypatch, tmp_path
+):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+    monkeypatch.setattr(gu, "save_file_dialog", lambda **k: str(tmp_path / "data.csv"))
+    state = _processor_state()
+
+    def fail():
+        raise OSError("disk")
+
+    state.processor.get_sample_data = fail
+
+    with pytest.raises(gr.Error) as raised:
+        _event(demo, "download_data_table").fn(state, None)
+
+    assert raised.value.message.startswith(
+        loc.localize("eval-tab-error-saving-data-table")
+    )
+    assert "disk" in raised.value.message
+    assert len(logged) == 1
+
+
+def test_exporting_before_calculating_is_reported_as_is(demo, monkeypatch):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    with pytest.raises(gr.Error) as raised:
+        _event(demo, "download_results_table").fn(None, None, None, False, "macro")
+
+    assert raised.value.message == loc.localize("eval-tab-error-calc-metrics-first")
+    assert logged == []

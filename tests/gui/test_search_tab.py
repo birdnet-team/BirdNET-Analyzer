@@ -84,12 +84,15 @@ def test_picking_a_folder_without_a_database_is_rejected_and_left_as_is(
     folder = tmp_path / "recordings"
     folder.mkdir()
     monkeypatch.setattr(gu, "select_folder", lambda *a, **k: str(folder))
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
     message = loc.localize("embeddings-search-db-selection-error")
 
     with pytest.raises(gr.Error, match=re.escape(message)):
         _handler("on_db_selection_click")()
 
     assert list(folder.iterdir()) == []
+    assert logged == []
 
 
 def test_picking_a_database_without_settings_is_rejected_and_closed(
@@ -168,7 +171,23 @@ def test_rendering_results_closes_the_database_when_drawing_fails(
     monkeypatch.setattr(utils, "spectrogram_from_file", fail)
     render_results = _handler("render_results")
 
-    with gr.Blocks(), pytest.raises(RuntimeError, match="drawing failed"):
+    with gr.Blocks(), pytest.raises(gr.Error, match="drawing failed"):
         render_results([[SearchResult(window_id, 0.5)]], 0, path, {}, str(tmp_path))
 
     assert hoplite_connections.still_open() == []
+
+
+def test_a_failing_export_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+    monkeypatch.setattr(gu, "select_folder", lambda *a, **k: str(tmp_path))
+
+    def fail(*args, **kwargs):
+        raise OSError("disk")
+
+    monkeypatch.setattr(audio, "open_audio_file", fail)
+
+    with pytest.raises(gr.Error, match="disk"):
+        _handler("run_export")({0: ["clip.wav", 0.0, 3.0, 0, 0.5, 1.0, 0, 15000]})
+
+    assert len(logged) == 1

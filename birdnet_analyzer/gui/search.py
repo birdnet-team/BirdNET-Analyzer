@@ -10,6 +10,7 @@ from birdnet_analyzer.search.core import open_database, read_database_settings
 PAGE_SIZE = 6
 
 
+@gu.gui_runtime_error_handler
 def play_audio(audio_infos):
     from birdnet_analyzer import audio
 
@@ -25,6 +26,7 @@ def play_audio(audio_infos):
     return sr, arr
 
 
+@gu.gui_runtime_error_handler
 def run_export(export_state: dict):
     from birdnet_analyzer import audio
 
@@ -274,6 +276,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                             db_selection_tb.change,
                         ],
                     )
+                    @gu.gui_runtime_error_handler
                     def render_results(results, page, db_path, exports, audio_root):
                         from birdnet_analyzer import utils
 
@@ -381,6 +384,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
                     interactive=False,
                 )
 
+    @gu.gui_runtime_error_handler
     def on_db_selection_click():
         folder = gu.select_folder(state_key="embeddings_search_db")
 
@@ -401,8 +405,10 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
             with open_database(folder) as db:
                 embedding_count = db.count_embeddings()
                 settings = db.get_metadata(SETTINGS_KEY)
-        except (FileNotFoundError, KeyError) as e:
-            raise gr.Error(loc.localize("embeddings-search-db-selection-error")) from e
+        except (FileNotFoundError, KeyError):
+            raise gr.Error(
+                loc.localize("embeddings-search-db-selection-error")
+            ) from None
 
         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
         speed: float = settings["AUDIO_SPEED"]
@@ -420,11 +426,13 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
             "",  # TODO @mamau: warum überhaupt hier?
         )
 
+    @gu.gui_runtime_error_handler
     def on_audio_root_selection_click():
         folder = gu.select_folder(state_key="embeddings_search_audio_root")
 
         return folder or gr.update()
 
+    @gu.gui_runtime_error_handler
     def select_query_sample():
         file = gu.select_file(state_key="query_sample")
         return file or gr.update()
@@ -438,6 +446,7 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
 
     crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
 
+    @gu.gui_runtime_error_handler
     def update_query_spectrogram(audiofilepath, db_selection, crop_mode, crop_overlap):
         import numpy as np
 
@@ -446,10 +455,10 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
         if audiofilepath and db_selection:
             try:
                 settings = read_database_settings(db_selection)
-            except (FileNotFoundError, KeyError) as e:
+            except (FileNotFoundError, KeyError):
                 raise gr.Error(
                     loc.localize("embeddings-search-db-selection-error")
-                ) from e
+                ) from None
 
             audio_speed: float = settings["AUDIO_SPEED"]
             fmin = settings["BANDPASS_FMIN"]

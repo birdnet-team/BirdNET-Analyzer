@@ -75,6 +75,7 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
             info=loc.localize("species-tab-filename-textbox-label"),
         )
 
+        @gu.gui_runtime_error_handler
         def select_directory_and_update_tb(name_tb):
             dir_name = gu.select_folder(state_key="species-output-dir")
 
