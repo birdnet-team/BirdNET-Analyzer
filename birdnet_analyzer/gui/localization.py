@@ -1,6 +1,7 @@
 # ruff: noqa: PLW0603
 import json
 import logging
+from pathlib import Path
 
 from birdnet_analyzer import settings
 
@@ -17,38 +18,34 @@ def load_local_state():
     global LANGUAGE_LOOKUP
     global TARGET_LANGUAGE
 
-    settings.ensure_settings_file()
+    TARGET_LANGUAGE = settings.get_setting("language-id", settings.FALLBACK_LANGUAGE)
 
     try:
-        with open(settings.GUI_SETTINGS_PATH, encoding="utf-8") as f:
-            settings_data = json.load(f)
-
-            if "language-id" in settings_data:
-                TARGET_LANGUAGE = settings_data["language-id"]
-    except FileNotFoundError:
+        LANGUAGE_LOOKUP = _read_language_file(TARGET_LANGUAGE)
+    except (OSError, ValueError):
         logger.warning(
-            "gui-settings.json not found. Using fallback language "
-            f"{settings.FALLBACK_LANGUAGE}."
-        )
-
-    try:
-        with open(f"{settings.LANG_DIR}/{TARGET_LANGUAGE}.json", encoding="utf-8") as f:
-            LANGUAGE_LOOKUP = json.load(f)
-    except FileNotFoundError:
-        logger.warning(
-            f"Language file for {TARGET_LANGUAGE} not found in {settings.LANG_DIR}. "
+            f"No usable language file for {TARGET_LANGUAGE} in {settings.LANG_DIR}. "
             f"Using fallback language {settings.FALLBACK_LANGUAGE}."
         )
+        TARGET_LANGUAGE = settings.FALLBACK_LANGUAGE
+        LANGUAGE_LOOKUP = _read_language_file(TARGET_LANGUAGE)
 
     if TARGET_LANGUAGE != settings.FALLBACK_LANGUAGE:
-        with open(
-            f"{settings.LANG_DIR}/{settings.FALLBACK_LANGUAGE}.json", encoding="utf-8"
-        ) as f:
-            fallback: dict = json.load(f)
+        fallback = _read_language_file(settings.FALLBACK_LANGUAGE)
+        LANGUAGE_LOOKUP = fallback | LANGUAGE_LOOKUP
 
-        for key, value in fallback.items():
-            if key not in LANGUAGE_LOOKUP:
-                LANGUAGE_LOOKUP[key] = value
+
+def available_languages() -> list[str]:
+    """The ids of the languages the GUI has a language file for, sorted."""
+    return sorted(file.stem for file in Path(settings.LANG_DIR).glob("*.json"))
+
+
+def _read_language_file(language: str) -> dict:
+    if language not in available_languages():
+        raise ValueError(f"Unknown language {language!r}")
+
+    with open(f"{settings.LANG_DIR}/{language}.json", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def localize(key: str) -> str:

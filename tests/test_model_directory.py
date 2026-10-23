@@ -119,10 +119,11 @@ def test_probe_flags_a_readonly_directory_by_content(clean, monkeypatch):
     assert settings.probe_model_directory(populated) == "readonly"
 
 
-def test_resolver_runs_at_package_import(clean):
-    # A fresh interpreter with a redirected home applies the stored setting during
-    # `import birdnet_analyzer`, so it takes effect for every entry point before
-    # birdnet can be imported.
+def import_with_gui_settings(clean, content: str) -> subprocess.CompletedProcess:
+    """Imports birdnet_analyzer in a fresh interpreter with a redirected home.
+
+    Prints the model directory the import applied.
+    """
     home = clean / "home"
     appdir = home / (
         "AppData/Roaming/BirdNET-Analyzer-GUI"
@@ -134,17 +135,14 @@ def test_resolver_runs_at_package_import(clean):
         )
     )
     appdir.mkdir(parents=True)
-    target = clean / "import-time-target"
-    (appdir / "gui-settings.json").write_text(
-        json.dumps({settings.MODEL_DIR_SETTING_KEY: str(target)}), encoding="utf-8"
-    )
+    (appdir / "gui-settings.json").write_text(content, encoding="utf-8")
 
     env = dict(os.environ)
     env.pop(settings.MODEL_DIR_ENV_VAR, None)
     env["USERPROFILE"] = str(home)
     env["HOME"] = str(home)
 
-    result = subprocess.run(
+    return subprocess.run(
         [
             sys.executable,
             "-c",
@@ -158,8 +156,26 @@ def test_resolver_runs_at_package_import(clean):
         check=False,
     )
 
+
+def test_resolver_runs_at_package_import(clean):
+    # The stored setting is applied during `import birdnet_analyzer`, so it takes
+    # effect for every entry point before birdnet can be imported.
+    target = clean / "import-time-target"
+
+    result = import_with_gui_settings(
+        clean, json.dumps({settings.MODEL_DIR_SETTING_KEY: str(target)})
+    )
+
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == str(target)
+
+
+def test_a_corrupted_settings_file_is_ignored_quietly_at_package_import(clean):
+    result = import_with_gui_settings(clean, "{not json")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
+    assert "JSONDecodeError" not in result.stderr
 
 
 def test_env_provenance_flag(clean, monkeypatch):

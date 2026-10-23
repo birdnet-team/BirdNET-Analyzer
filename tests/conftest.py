@@ -11,6 +11,20 @@ if "BIRDNET_APP_DATA" not in os.environ:
     os.environ["BIRDNET_APP_DATA"] = str(get_app_data_path() / "birdnet")
 
 
+@pytest.fixture(autouse=True)
+def isolated_appdir(monkeypatch, tmp_path_factory):
+    """Points the GUI settings, state and error log at a directory of the test."""
+    from birdnet_analyzer import settings
+
+    appdir = tmp_path_factory.mktemp("appdir")
+    monkeypatch.setattr(settings, "APPDIR", appdir)
+    monkeypatch.setattr(
+        settings, "GUI_SETTINGS_PATH", str(appdir / "gui-settings.json")
+    )
+    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(appdir / "state.json"))
+    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(appdir / "error_log.txt"))
+
+
 @pytest.fixture
 def hoplite_database(tmp_path):
     """A factory that builds an empty hoplite database in ``tmp_path``.

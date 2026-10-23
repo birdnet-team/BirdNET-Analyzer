@@ -1,4 +1,5 @@
 import base64
+import inspect
 import io
 import logging
 import os
@@ -117,3 +118,52 @@ def test_one_unreadable_network_shortcut_does_not_hide_the_others(
 
     assert unhandled == []
     assert [r.message for r in caplog.records if "unreadable" in r.message]
+
+
+def test_the_error_handler_keeps_the_handlers_signature():
+    def handler(path: str, progress=gr.Progress()):
+        return path
+
+    decorated = gu.gui_runtime_error_handler(handler)
+
+    assert inspect.signature(decorated) == inspect.signature(handler)
+    assert decorated.__wrapped__ is handler
+
+    with gr.Blocks() as demo:
+        gr.Button().click(decorated, gr.Textbox(), gr.Textbox())
+
+    assert [fn.tracks_progress for fn in demo.fns.values()] == [True]
+
+
+def test_a_gr_error_from_the_handler_keeps_its_message_and_stays_open(monkeypatch):
+    error = gr.Error("x")
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    def handler():
+        raise error
+
+    with pytest.raises(gr.Error) as raised:
+        gu.gui_runtime_error_handler(handler)()
+
+    assert raised.value is error
+    assert raised.value.message == "x"
+    assert raised.value.duration is None
+    assert logged == [error]
+
+
+def test_any_other_error_reaches_the_user_as_a_gr_error(monkeypatch):
+    error = ValueError("y")
+    logged = []
+    monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
+
+    def handler():
+        raise error
+
+    with pytest.raises(gr.Error) as raised:
+        gu.gui_runtime_error_handler(handler)()
+
+    assert raised.value.message == "y"
+    assert raised.value.duration is None
+    assert raised.value.__cause__ is error
+    assert logged == [error]
