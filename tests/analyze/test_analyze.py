@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import os
 import platform
@@ -17,10 +18,19 @@ import soundfile as sf
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import logs, settings
 from birdnet_analyzer.analyze import cli as analyze_cli
-from birdnet_analyzer.analyze.core import _split_tables, analyze
+from birdnet_analyzer.analyze.core import (
+    _split_tables,
+    analyze,
+    save_as_audacity,
+    save_as_csv,
+    save_as_kaleidoscope,
+    save_as_parquet,
+    save_as_rtable,
+)
 from birdnet_analyzer.analyze.resume import RunMetadata
 from birdnet_analyzer.cli import analyzer_parser
 from birdnet_analyzer.params import load_analysis_params
+from birdnet_analyzer.utils import load_codes
 
 
 @pytest.fixture
@@ -726,9 +736,7 @@ def test_reconcile_legacy_example_list_file_against_real_3_0_model(tmp_path):
     model_species = birdnet.load("acoustic", "3.0", "onnx", lang="en_us").species_list
 
     slist = tmp_path / "species_list.txt"
-    slist.write_text(
-        "\n".join(_LEGACY_EXAMPLE_SPECIES_LIST) + "\n", encoding="utf-8"
-    )
+    slist.write_text("\n".join(_LEGACY_EXAMPLE_SPECIES_LIST) + "\n", encoding="utf-8")
 
     # strict=True raises (listing any unmatched) if a legacy label fails to reconcile,
     # so a clean return proves every entry mapped onto a current model label.
@@ -916,6 +924,34 @@ def _link_directory(link, target):
         link.symlink_to(target, target_is_directory=True)
 
 
+def _split(detections, audio_input_path, output, rtypes):
+    _split_tables(
+        detections,
+        audio_input_path=audio_input_path,
+        output=output,
+        bandpass_fmin=0,
+        bandpass_fmax=15000,
+        meta=RunMetadata(
+            model_path="model",
+            model_fmin=0,
+            model_fmax=15000,
+            model_sr=48000,
+            segment_duration_s=3.0,
+            hop_duration_s=3.0,
+        ),
+        audio_speed=1.0,
+        rtypes=rtypes,
+        additional_columns=None,
+        lat=None,
+        lon=None,
+        week=None,
+        overlap=0,
+        min_conf=0.25,
+        sensitivity=1.0,
+        species_list_file="",
+    )
+
+
 def test_split_tables_keep_files_reached_through_a_link_under_the_link(tmp_path):
     (tmp_path / "in").mkdir()
     (tmp_path / "outside").mkdir()
@@ -930,30 +966,95 @@ def test_split_tables_keep_files_reached_through_a_link_under_the_link(tmp_path)
         }
     )
 
-    _split_tables(
-        detections,
-        audio_input_path=tmp_path / "in",
-        output=tmp_path / "out",
-        bandpass_fmin=0,
-        bandpass_fmax=15000,
-        meta=RunMetadata(
-            model_path="model",
-            model_fmin=0,
-            model_fmax=15000,
-            model_sr=48000,
-            segment_duration_s=3.0,
-            hop_duration_s=3.0,
-        ),
-        audio_speed=1.0,
-        rtypes=["csv"],
-        additional_columns=None,
-        lat=None,
-        lon=None,
-        week=None,
-        overlap=0,
-        min_conf=0.25,
-        sensitivity=1.0,
-        species_list_file="",
-    )
+    _split(detections, tmp_path / "in", tmp_path / "out", ["csv"])
 
     assert (tmp_path / "out" / "linked" / "b.BirdNET.results.csv").is_file()
+
+
+def _detections_in_three_files(input_dir):
+    files = [input_dir / "a.wav", input_dir / "b.wav", input_dir / "sub" / "c.wav"]
+    for afile in files:
+        afile.parent.mkdir(parents=True, exist_ok=True)
+        sf.write(afile, np.zeros(6 * 48000, dtype="float32"), 48000)
+    a, b, c = (str(afile) for afile in files)
+
+    return pd.DataFrame(
+        {
+            "input": [a, a, b, c, c],
+            "start_time": np.array([0, 3, 0, 0, 3], dtype="float32"),
+            "end_time": np.array([3, 6, 3, 3, 6], dtype="float32"),
+            "species_name": [
+                "Turdus migratorius_American Robin",
+                "Cardinalis cardinalis_Northern Cardinal",
+                "Turdus migratorius_American Robin",
+                "Turdus migratorius_American Robin",
+                "Cardinalis cardinalis_Northern Cardinal",
+            ],
+            "confidence": np.array([0.5, 0.75, 0.875, 0.5, 0.25], dtype="float32"),
+        }
+    )
+
+
+def test_split_tables_write_each_file_what_its_writer_writes(tmp_path):
+    detections = _detections_in_three_files(tmp_path / "in")
+    writers = {
+        "selection.table.txt": lambda df, out: save_as_rtable(
+            df, 0, 15000, 0, 15000, 1.0, out
+        ),
+        "results.csv": save_as_csv,
+        "results.kaleidoscope.csv": save_as_kaleidoscope,
+        "results.txt": save_as_audacity,
+        "results.parquet": save_as_parquet,
+    }
+
+    _split(
+        detections, tmp_path / "in", tmp_path / "out", list(get_args(cfg.RESULT_TYPES))
+    )
+
+    written = sorted(
+        p.relative_to(tmp_path / "out").as_posix()
+        for p in (tmp_path / "out").rglob("*.BirdNET.*")
+    )
+    assert written == [
+        f"{stem}.BirdNET.{suffix}"
+        for stem in ("a", "b", "sub/c")
+        for suffix in sorted(writers)
+    ]
+    for name in written:
+        stem, suffix = name.split(".BirdNET.")
+        afile = str(tmp_path / "in" / f"{stem}.wav")
+        expected = tmp_path / "expected" / name
+
+        writers[suffix](detections[detections["input"] == afile], expected)
+
+        assert (tmp_path / "out" / name).read_bytes() == expected.read_bytes(), name
+
+
+def test_a_split_run_parses_the_species_codes_once(tmp_path, monkeypatch):
+    detections = _detections_in_three_files(tmp_path / "in")
+    parsed = []
+    original = json.load
+
+    def counting_load(fp, *args, **kwargs):
+        parsed.append(fp.name)
+        return original(fp, *args, **kwargs)
+
+    monkeypatch.setattr(json, "load", counting_load)
+    load_codes.cache_clear()
+
+    _split(detections, tmp_path / "in", tmp_path / "out", ["table"])
+
+    assert parsed == [cfg.CODES_FILE]
+
+
+def test_split_tables_write_nothing_for_an_unused_input_category(tmp_path):
+    detections = _detections_in_three_files(tmp_path / "in")
+    categories = [*detections["input"].unique(), str(tmp_path / "in" / "unused.wav")]
+    detections = detections.astype({"input": pd.CategoricalDtype(categories)})
+
+    _split(detections, tmp_path / "in", tmp_path / "out", ["csv"])
+
+    assert sorted(
+        p.relative_to(tmp_path / "out").as_posix()
+        for p in (tmp_path / "out").rglob("*.csv")
+    ) == ["a.BirdNET.results.csv", "b.BirdNET.results.csv", "sub/c.BirdNET.results.csv"]

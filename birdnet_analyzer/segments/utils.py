@@ -13,7 +13,6 @@ import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, utils
 
 RNG = np.random.default_rng(cfg.RANDOM_SEED)
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 logger = logging.getLogger(__name__)
 
 # As written by the 2.x releases.
@@ -84,7 +83,9 @@ def _parse_kaleidoscope_line(
         d[header_mapping[col]] for col in columns
     )
     afile = (
-        os.path.join(in_dir, folder, in_file).replace("/", os.sep).replace("\\", os.sep)
+        os.path.join(in_dir or os.sep, folder, in_file)
+        .replace("/", os.sep)
+        .replace("\\", os.sep)
     )
     start = float(offset)
 

@@ -1,7 +1,9 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
+import soundfile as sf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer.analyze.core import (
@@ -40,6 +42,11 @@ def _detections(rows=()) -> pd.DataFrame:
 
 def _save_as_rtable(df: pd.DataFrame, output: Path):
     save_as_rtable(df, 0, 15000, 0, 15000, 1.0, output)
+
+
+def _wav(path: Path, seconds: float) -> str:
+    sf.write(path, np.zeros(int(seconds * 48000), dtype="float32"), 48000)
+    return str(path)
 
 
 def _read(path: Path) -> pd.DataFrame:
@@ -157,3 +164,73 @@ def test_segments_read_fields_containing_commas(tmp_path, write, filename):
     assert [s["species"] for s in _find_segments(afile, str(result))] == [
         "Whales, Dolphins and Porpoises"
     ]
+
+
+def test_raven_times_are_offset_by_the_durations_of_the_preceding_files(tmp_path):
+    b, a, c = (
+        _wav(tmp_path / f"{name}.wav", seconds)
+        for name, seconds in (("b", 6), ("a", 9.1), ("c", 12))
+    )
+    rows = [
+        (b, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+        (b, 3.0, 6.0, "Turdus migratorius_American Robin", 0.5),
+        (a, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+        (c, 3.0, 6.0, "Turdus migratorius_American Robin", 0.5),
+    ]
+    output = tmp_path / cfg.OUTPUT_RAVEN_FILENAME
+
+    _save_as_rtable(_detections(rows), output)
+
+    table = _read(output)
+    assert table["Begin Time (s)"].tolist() == [0.0, 3.0, 6.0, 18.1]
+    assert table["End Time (s)"].tolist() == [3.0, 6.0, 9.0, 21.1]
+    assert table["File Offset (s)"].tolist() == [0.0, 3.0, 0.0, 3.0]
+
+
+def test_raven_table_accepts_a_categorical_input_column(tmp_path):
+    a = _wav(tmp_path / "a.wav", 6)
+    b = _wav(tmp_path / "b.wav", 9)
+    rows = [
+        (a, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+        (a, 3.0, 6.0, "Turdus migratorius_American Robin", 0.5),
+        (b, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+    ]
+    output = tmp_path / cfg.OUTPUT_RAVEN_FILENAME
+
+    _save_as_rtable(_detections(rows).astype({"input": "category"}), output)
+
+    table = _read(output)
+    assert table["Begin Path"].tolist() == [a, a, b]
+    assert table["Begin Time (s)"].tolist() == [0.0, 3.0, 6.0]
+
+
+def test_raven_times_of_a_file_share_one_offset_wherever_its_rows_are(tmp_path):
+    a = _wav(tmp_path / "a.wav", 6)
+    b = _wav(tmp_path / "b.wav", 9)
+    rows = [
+        (a, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+        (b, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+        (a, 3.0, 6.0, "Turdus migratorius_American Robin", 0.5),
+    ]
+    output = tmp_path / cfg.OUTPUT_RAVEN_FILENAME
+
+    _save_as_rtable(_detections(rows), output)
+
+    table = _read(output)
+    assert table["Begin Time (s)"].tolist() == [0.0, 6.0, 3.0]
+    assert table["End Time (s)"].tolist() == [3.0, 9.0, 6.0]
+
+
+def test_kaleidoscope_indir_of_a_file_below_the_root_is_the_root(tmp_path):
+    afile = str(Path(tmp_path.anchor, "audio", "x.wav"))
+    result = tmp_path / cfg.OUTPUT_KALEIDOSCOPE_FILENAME
+
+    save_as_kaleidoscope(
+        _detections([(afile, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5)]),
+        result,
+    )
+
+    assert pd.read_csv(result, keep_default_na=False)["INDIR"].tolist() == [
+        tmp_path.anchor
+    ]
+    assert [s["audio"] for s in _find_segments_from_combined(str(result))] == [afile]

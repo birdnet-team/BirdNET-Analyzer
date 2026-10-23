@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -14,9 +13,6 @@ if TYPE_CHECKING:
     from birdnet.globals import MODEL_LANGUAGES
 
     from birdnet_analyzer.config import ADDITIONAL_COLUMNS, RESULT_TYPES
-
-
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def on_progress(update: AcousticProgressStats, progress: gr.Progress):

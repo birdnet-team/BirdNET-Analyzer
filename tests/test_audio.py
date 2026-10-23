@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 import soundfile as sf
@@ -39,3 +42,20 @@ def test_open_audio_file_speed_with_non_native_rate(tmp_path):
 
     assert rate == 48000
     assert len(sig) == pytest.approx(24000, abs=2)
+
+
+def test_importing_the_module_leaves_the_signal_libraries_unloaded():
+    probe = (
+        "import sys, birdnet_analyzer.audio;"
+        "print([m for m in ('librosa', 'scipy.signal') if m in sys.modules])"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=110,
+    )
+
+    assert result.stdout.strip() == "[]"
