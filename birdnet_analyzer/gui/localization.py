@@ -5,9 +5,24 @@ from pathlib import Path
 
 from birdnet_analyzer import settings
 
-LANGUAGE_LOOKUP = {}
-TARGET_LANGUAGE = settings.FALLBACK_LANGUAGE
 logger = logging.getLogger(__name__)
+
+
+def available_languages() -> list[str]:
+    """The ids of the languages the GUI has a language file for, sorted."""
+    return sorted(file.stem for file in Path(settings.LANG_DIR).glob("*.json"))
+
+
+def _read_language_file(language: str) -> dict:
+    if language not in available_languages():
+        raise ValueError(f"Unknown language {language!r}")
+
+    with open(f"{settings.LANG_DIR}/{language}.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
+TARGET_LANGUAGE = settings.FALLBACK_LANGUAGE
+LANGUAGE_LOOKUP = _read_language_file(TARGET_LANGUAGE)
 
 
 def load_local_state():
@@ -33,19 +48,6 @@ def load_local_state():
     if TARGET_LANGUAGE != settings.FALLBACK_LANGUAGE:
         fallback = _read_language_file(settings.FALLBACK_LANGUAGE)
         LANGUAGE_LOOKUP = fallback | LANGUAGE_LOOKUP
-
-
-def available_languages() -> list[str]:
-    """The ids of the languages the GUI has a language file for, sorted."""
-    return sorted(file.stem for file in Path(settings.LANG_DIR).glob("*.json"))
-
-
-def _read_language_file(language: str) -> dict:
-    if language not in available_languages():
-        raise ValueError(f"Unknown language {language!r}")
-
-    with open(f"{settings.LANG_DIR}/{language}.json", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def localize(key: str) -> str:
