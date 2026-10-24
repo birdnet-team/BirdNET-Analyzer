@@ -56,14 +56,16 @@ deleting that directory is how you test a first-run experience.
 
 ## Conventions that are easy to get wrong
 
-- **The GUI test environment has no pywebview and no plotly** — `gui-tests` installs
-  gradio, both others are `gui`-only. So no GUI module may import `webview` or
-  `plotly` at module import time: `gui/utils.py` imports `webview` inside the dialog
-  functions and `open_window` only, and its `_WINDOW` annotation is a string under
-  `TYPE_CHECKING`. The tests import `gui.utils` unstubbed on purpose. A test that
-  builds species-list controls must stub `gu.plot_map_scatter_mapbox` (it draws a
-  plotly map). A local venv with the `gui` extra hides both problems, so run GUI
-  tests once with `webview`/`plotly` made unimportable before pushing.
+- **The GUI test environment has no pywebview, no plotly and no pywin32** —
+  `gui-tests` installs gradio only, the others are `gui`-only, and pywin32 is
+  imported in one place, inside `_get_network_shortcuts`. So no GUI module may
+  import `webview` or `plotly` at module import time: `gui/utils.py` imports
+  `webview` inside the dialog functions and `open_window` only, and its `_WINDOW`
+  annotation is a string under `TYPE_CHECKING`. The tests import `gui.utils`
+  unstubbed on purpose. A test that builds species-list controls must stub
+  `gu.plot_map_scatter_mapbox` (it draws a plotly map). A local venv with the `gui`
+  extra hides these problems, so run GUI tests once with `webview`, `plotly`,
+  `pythoncom` and `win32com` made unimportable before pushing.
 - **Localization is all-or-nothing.** `lang/*.json` holds one file per language. A
   new UI string has to be added to *every* file with a real translation — not the
   English text copied over. Write them with a json load/dump round-trip

@@ -146,6 +146,7 @@ def test_the_window_is_built_without_a_warning(monkeypatch, gui_main):
         raise WindowBuilt
 
     monkeypatch.setitem(sys.modules, "webview", SimpleNamespace())
+    monkeypatch.setattr(gu, "_get_network_shortcuts", list)
     monkeypatch.setattr(gr.Blocks, "launch", launch_instead)
 
     with warnings.catch_warnings(record=True) as caught:
