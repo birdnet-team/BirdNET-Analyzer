@@ -1,6 +1,4 @@
-import importlib
 import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -51,18 +49,3 @@ def test_an_unknown_language_falls_back_to_the_default_strings(appdir, language)
 
     assert loc.TARGET_LANGUAGE == settings.FALLBACK_LANGUAGE
     assert fallback_lookup() == loc.LANGUAGE_LOOKUP
-
-
-def test_the_gui_starts_despite_a_corrupted_settings_file(appdir, monkeypatch):
-    pytest.importorskip("gradio")
-    import birdnet_analyzer.gui
-    import birdnet_analyzer.gui.utils as gu
-
-    (appdir / "gui-settings.json").write_text("{not json", encoding="utf-8")
-    monkeypatch.delitem(sys.modules, gu.__name__)
-    monkeypatch.setattr(birdnet_analyzer.gui, "utils", gu)
-
-    fresh = importlib.import_module(gu.__name__)
-
-    assert fresh is not gu
-    assert loc.TARGET_LANGUAGE == settings.FALLBACK_LANGUAGE

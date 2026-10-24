@@ -8,7 +8,6 @@ import os
 import platform
 import sys
 import threading
-import warnings
 from collections.abc import Callable
 from contextlib import contextmanager, suppress
 from html import escape
@@ -26,16 +25,16 @@ from birdnet_analyzer.gui.state import TabState
 if TYPE_CHECKING:
     import webview
 
-warnings.filterwarnings("ignore")
-loc.load_local_state()
-
 logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-CUSTOM_SPECIES = loc.localize("species-list-radio-option-custom-list")
-PREDICT_SPECIES = loc.localize("species-list-radio-option-predict-list")
-CUSTOM_CLASSIFIER = loc.localize("species-list-radio-option-custom-classifier")
-ALL_SPECIES = loc.localize("species-list-radio-option-all")
-USE_PERCH = loc.localize("species-list-radio-option-use-perch")
+# Localized on access, so they follow the language gui.main loads.
+_LOCALIZED_LABELS = {
+    "CUSTOM_SPECIES": "species-list-radio-option-custom-list",
+    "PREDICT_SPECIES": "species-list-radio-option-predict-list",
+    "CUSTOM_CLASSIFIER": "species-list-radio-option-custom-classifier",
+    "ALL_SPECIES": "species-list-radio-option-all",
+    "USE_PERCH": "species-list-radio-option-use-perch",
+}
 # BirdNET acoustic model choices. Not localized: the version number is the label.
 USE_BIRDNET_2_4 = "BirdNET 2.4"
 USE_BIRDNET_3_0 = "BirdNET 3.0"
@@ -84,6 +83,17 @@ _SPECTROGRAM_DEFAULTS = {
 }
 
 
+def _label(name: str) -> str:
+    return loc.localize(_LOCALIZED_LABELS[name])
+
+
+def __getattr__(name: str) -> str:
+    if name in _LOCALIZED_LABELS:
+        return _label(name)
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def is_birdnet_model(model_choice: str) -> bool:
     """Whether the selected model is an official BirdNET acoustic model."""
     return model_choice in _BIRDNET_MODEL_VERSIONS
@@ -98,14 +108,16 @@ def model_supports_sensitivity(model_choice: str) -> bool:
     """Whether the sensitivity slider applies to the selected model choice."""
     from birdnet_analyzer.model_utils import supports_sensitivity
 
-    return supports_sensitivity("perch" if model_choice == USE_PERCH else "birdnet")
+    return supports_sensitivity(
+        "perch" if model_choice == _label("USE_PERCH") else "birdnet"
+    )
 
 
 def _species_choices(is_perch: bool) -> list[str]:
     if is_perch:
-        return [ALL_SPECIES, CUSTOM_SPECIES]
+        return [_label("ALL_SPECIES"), _label("CUSTOM_SPECIES")]
 
-    return [ALL_SPECIES, CUSTOM_SPECIES, PREDICT_SPECIES]
+    return [_label("ALL_SPECIES"), _label("CUSTOM_SPECIES"), _label("PREDICT_SPECIES")]
 
 
 def _max_overlap(is_perch: bool) -> float:
@@ -782,10 +794,11 @@ def model_choices():
     """Returns the models that can be selected on the current platform."""
     birdnet_models = [label for label, _ in birdnet_model_choices()]
 
-    values = [*birdnet_models, CUSTOM_CLASSIFIER, USE_PERCH]
+    values = [*birdnet_models, _label("CUSTOM_CLASSIFIER"), _label("USE_PERCH")]
 
     if platform.system() == "Darwin":
-        values.remove(USE_PERCH)  # TODO: Remove when tf 2.21+ is available on macOS
+        # TODO: Remove when tf 2.21+ is available on macOS
+        values.remove(_label("USE_PERCH"))
 
     return values
 
@@ -803,7 +816,7 @@ def sample_species_model_settings(state: TabState, opened=True):
     model_choice = state.get(
         "model_selection_radio", default_model(), choices=model_choices()
     )
-    is_perch = model_choice == USE_PERCH
+    is_perch = model_choice == _label("USE_PERCH")
 
     sample_settings = sample_sliders(
         state,
@@ -815,7 +828,7 @@ def sample_species_model_settings(state: TabState, opened=True):
     model_settings = model_selection(state, opened=opened)
 
     def on_model_change(value, species_choice, overlap, current_locale):
-        is_perch = value == USE_PERCH
+        is_perch = value == _label("USE_PERCH")
         choices = _species_choices(is_perch)
         max_overlap = _max_overlap(is_perch)
         shown = {
@@ -828,7 +841,7 @@ def sample_species_model_settings(state: TabState, opened=True):
         # Keep the current species selection (e.g. the one a preset was just
         # applied with) as long as the new model offers it.
         if species_choice not in choices:
-            fitted["species_list_radio"] = ALL_SPECIES
+            fitted["species_list_radio"] = _label("ALL_SPECIES")
 
         if model_supports_sensitivity(value):
             sensitivity_update = gr.update(
@@ -1285,13 +1298,13 @@ def show_species_choice(choice: str, file_input):
             Column update,
         ]
     """
-    if choice == CUSTOM_SPECIES:
+    if choice == _label("CUSTOM_SPECIES"):
         return [
             gr.update(visible=False),
             gr.update(visible=True),
             gr.update(visible=bool(file_input)),
         ]
-    if choice == PREDICT_SPECIES:
+    if choice == _label("PREDICT_SPECIES"):
         return [
             gr.update(visible=True),
             gr.update(visible=False),
@@ -1322,7 +1335,7 @@ def model_selection(state: TabState, opened=True):
             selected_model = model_selection_radio.value
 
             with gr.Column(
-                visible=selected_model == CUSTOM_CLASSIFIER
+                visible=selected_model == _label("CUSTOM_CLASSIFIER")
             ) as custom_classifier_selector:
                 classifier_selection_button = gr.Button(
                     loc.localize(
@@ -1406,7 +1419,7 @@ def model_selection(state: TabState, opened=True):
     )
 
     def on_model_selection_change(choice: str, cc_state):
-        if choice == CUSTOM_CLASSIFIER:
+        if choice == _label("CUSTOM_CLASSIFIER"):
             return gr.update(visible=True), gr.update(visible=cc_state is not None)
 
         return gr.update(visible=False), gr.update(visible=False)
@@ -1448,7 +1461,7 @@ def species_lists(
                 gr.Radio,
                 accepts={"choices": _species_choices(is_perch=False)},
                 choices=_species_choices(is_perch),
-                value=ALL_SPECIES,
+                value=_label("ALL_SPECIES"),
                 label=loc.localize("species-list-radio-label"),
                 info=loc.localize("species-list-radio-info"),
                 elem_classes="d-block",
@@ -1456,7 +1469,7 @@ def species_lists(
             selected_species_list = species_list_radio.value
 
             with gr.Column(
-                visible=selected_species_list == PREDICT_SPECIES
+                visible=selected_species_list == _label("PREDICT_SPECIES")
             ) as position_row:
                 (
                     lat_number,
@@ -1469,7 +1482,7 @@ def species_lists(
 
             species_file_input = gr.File(
                 file_types=[".txt"],
-                visible=selected_species_list == CUSTOM_SPECIES,
+                visible=selected_species_list == _label("CUSTOM_SPECIES"),
                 show_label=False,
             )
 
@@ -1731,10 +1744,7 @@ def open_window(
     multiprocessing.freeze_support()
 
     with (
-        gr.Blocks(
-            theme=gr.themes.Default(),
-            analytics_enabled=False,
-        ) as demo,
+        gr.Blocks(analytics_enabled=False) as demo,
     ):
         build_header()
 

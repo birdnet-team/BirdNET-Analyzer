@@ -17,11 +17,24 @@ from birdnet_analyzer.gui.state import TabState
 
 MATPLOTLIB_FIGURE_NUM = "single-file-tab-spectrogram-plot"
 MAX_TABLE_ROWS = 50
-HEADER_START_LBL = loc.localize("single-tab-output-header-start")
-HEADER_END_LBL = loc.localize("single-tab-output-header-end")
-HEADER_SCI_NAME_LBL = loc.localize("single-tab-output-header-sci-name")
-HEADER_COMMON_NAME_LBL = loc.localize("single-tab-output-header-common-name")
-HEADER_CONFIDENCE_LBL = loc.localize("single-tab-output-header-confidence")
+_HEADER_LABELS = {
+    "HEADER_START_LBL": "single-tab-output-header-start",
+    "HEADER_END_LBL": "single-tab-output-header-end",
+    "HEADER_SCI_NAME_LBL": "single-tab-output-header-sci-name",
+    "HEADER_COMMON_NAME_LBL": "single-tab-output-header-common-name",
+    "HEADER_CONFIDENCE_LBL": "single-tab-output-header-confidence",
+}
+
+
+def _header_labels() -> list[str]:
+    return [loc.localize(key) for key in _HEADER_LABELS.values()]
+
+
+def __getattr__(name: str) -> str:
+    if name in _HEADER_LABELS:
+        return loc.localize(_HEADER_LABELS[name])
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 @gu.gui_runtime_error_handler
@@ -109,41 +122,40 @@ def run_single_file_analysis(
         )
 
     n_rows = table.shape[0]
+    start_lbl, end_lbl, sci_name_lbl, common_name_lbl, confidence_lbl = _header_labels()
 
     if n_rows > 0:
         split_species = table["species_name"].str.split("_", n=1, expand=True)
-        table[HEADER_SCI_NAME_LBL] = split_species[0]
-        table[HEADER_COMMON_NAME_LBL] = (
+        table[sci_name_lbl] = split_species[0]
+        table[common_name_lbl] = (
             split_species[1] if len(split_species.columns) > 1 else ""
         )
     else:
-        table[HEADER_SCI_NAME_LBL] = []
-        table[HEADER_COMMON_NAME_LBL] = []
+        table[sci_name_lbl] = []
+        table[common_name_lbl] = []
 
     table[" "] = ["▶"] * n_rows
     table.rename(
         columns={
-            "start_time": HEADER_START_LBL,
-            "end_time": HEADER_END_LBL,
-            "confidence": HEADER_CONFIDENCE_LBL,
+            "start_time": start_lbl,
+            "end_time": end_lbl,
+            "confidence": confidence_lbl,
         },
         inplace=True,
     )
-    table[HEADER_START_LBL] = table[HEADER_START_LBL].apply(convert_to_time_str)
-    table[HEADER_END_LBL] = table[HEADER_END_LBL].apply(convert_to_time_str)
+    table[start_lbl] = table[start_lbl].apply(convert_to_time_str)
+    table[end_lbl] = table[end_lbl].apply(convert_to_time_str)
     table = table[
         [
             " ",
-            HEADER_START_LBL,
-            HEADER_END_LBL,
-            HEADER_SCI_NAME_LBL,
-            HEADER_COMMON_NAME_LBL,
-            HEADER_CONFIDENCE_LBL,
+            start_lbl,
+            end_lbl,
+            sci_name_lbl,
+            common_name_lbl,
+            confidence_lbl,
         ]
     ]
-    table[HEADER_CONFIDENCE_LBL] = table[HEADER_CONFIDENCE_LBL].apply(
-        lambda x: f"{x:0.3f}"
-    )
+    table[confidence_lbl] = table[confidence_lbl].apply(lambda x: f"{x:0.3f}")
 
     return (
         table,
@@ -241,14 +253,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
 
         output_dataframe = gr.Dataframe(
             type="pandas",
-            headers=[
-                " ",
-                HEADER_START_LBL,
-                HEADER_END_LBL,
-                HEADER_SCI_NAME_LBL,
-                HEADER_COMMON_NAME_LBL,
-                HEADER_CONFIDENCE_LBL,
-            ],
+            headers=[" ", *_header_labels()],
             elem_id="single-file-output",
             interactive=False,
             buttons=[],

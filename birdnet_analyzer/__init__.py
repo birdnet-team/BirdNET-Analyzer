@@ -1,6 +1,4 @@
 import logging
-import os
-import warnings
 
 from birdnet_analyzer.settings import apply_model_directory
 
@@ -21,7 +19,3 @@ from birdnet_analyzer.train import train  # noqa: E402
 
 __version__ = "2.4.0"
 __all__ = ["analyze", "embeddings", "search", "segments", "species", "train"]
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["WRAPT_DISABLE_EXTENSIONS"] = "true"
-
-warnings.filterwarnings("ignore")
