@@ -2,14 +2,12 @@ import inspect
 import os
 import shutil
 import tempfile
-from typing import get_args
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
 from birdnet_analyzer.cli import train_parser
-from birdnet_analyzer.config import UPSAMPLING_MODES
 from birdnet_analyzer.train.core import train
 
 
@@ -256,12 +254,6 @@ def test_the_cli_writes_no_training_cache_unless_asked(mock_train_model, tmp_pat
     train(**kwargs)
 
     assert mock_train_model.call_args[1]["save_cache_to"] is None
-
-
-def test_the_upsampling_modes_type_lists_every_mode_the_cli_accepts():
-    action = next(a for a in train_parser()._actions if a.dest == "upsampling_mode")
-
-    assert set(get_args(UPSAMPLING_MODES)) == set(action.choices)
 
 
 def test_the_api_and_the_cli_default_to_the_same_number_of_autotune_folds():

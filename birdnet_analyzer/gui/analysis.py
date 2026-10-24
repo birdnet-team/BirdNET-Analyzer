@@ -16,9 +16,6 @@ if TYPE_CHECKING:
 
 
 def on_progress(update: AcousticProgressStats, progress: gr.Progress):
-    if progress is None:
-        return
-
     if update.processed_segments and update.total_segments:
         progress(
             (update.processed_segments, update.total_segments),
@@ -65,35 +62,50 @@ def run_analysis(
     """Starts the analysis.
 
     Args:
-        input_path: Either a file or directory.
-        output_path: The output path for the result, if None the input_path is used
+        input_path: The audio file of the single file tab. If set, the predictions
+            are only returned, no result files are written.
+        output_path: The output folder; if None, the folder of the input.
+        use_top_n: Whether to keep the ``top_n`` highest-scoring detections per
+            segment instead of those above ``confidence``.
+        top_n: The number of detections kept per segment with ``use_top_n``.
         confidence: The selected minimum confidence.
         sensitivity: The selected sensitivity.
         overlap: The selected segment overlap.
         merge_consecutive: The number of consecutive segments to merge into one.
-        audio_speed: The selected audio speed.
+        audio_speed: The value of the audio speed slider.
         fmin: The selected minimum bandpass frequency.
         fmax: The selected maximum bandpass frequency.
         species_list_choice: The choice for the species list.
-        species_list_file: The selected custom species list file.
-        lat: The selected latitude.
-        lon: The selected longitude.
+        species_list_file: The species list file, used with the custom species list
+            choice.
+        lat: The latitude, used with the predicted species list choice.
+        lon: The longitude, used with the predicted species list choice.
         week: The selected week of the year.
         use_yearlong: Use yearlong instead of week.
         sf_thresh: The threshold for the predicted species list.
-        custom_classifier_file: Custom classifier to be used.
-        output_type: The type of result to be generated.
+        selected_model: The model choice: a BirdNET version, Perch or the custom
+            classifier.
+        custom_classifier_file: The classifier file, used with the custom classifier
+            choice.
+        output_types: The result type(s) to write.
         additional_columns: Additional columns to be added to the result.
-        output_filename: The filename for the combined output.
         locale: The translation to be used.
         batch_size: The number of samples in a batch.
-        n_producers: The number of producer threads to be used.
-        n_workers: The number of worker threads to be used.
-        input_dir: The input directory.
+        input_dir: The folder of the multi file tab, analyzed instead of
+            ``input_path``.
+        save_params: Whether to write the parameters file next to the results.
+        n_producers: The number of producer processes.
+        n_workers: The number of worker processes.
         progress: The gradio progress bar.
         split_tables: Whether to split the output into separate tables per input file.
+            Defaults to False.
+
+    Returns:
+        The predictions returned by the analysis.
+
+    Raises:
+        gr.Error: If the custom species list or custom classifier choice has no file.
     """
-    import birdnet_analyzer.gui.localization as loc
     from birdnet_analyzer.analyze import analyze
 
     if species_list_choice == gu.CUSTOM_SPECIES:

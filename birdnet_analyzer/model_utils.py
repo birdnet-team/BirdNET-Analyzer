@@ -109,7 +109,8 @@ def _reconcile_species_list(
     For a user file, species the model does not know are reported - skipped with a
     warning, or raised when ``strict`` - because the user expects every entry to
     count. A geo-derived collection is broader than the acoustic model on purpose (it
-    can include non-birds), so its unmatched species are filtered out silently.
+    can include non-birds), so its unmatched species are filtered out silently, unless
+    none match: then a warning is logged.
     """
     from pathlib import Path
 
@@ -126,6 +127,12 @@ def _reconcile_species_list(
         requested = species_list
 
     matched, unmatched = match_species_to_model(requested, model_species)
+
+    if not is_user_file and not matched:
+        logger.warning(
+            "The location or species list names no species of the model, so the "
+            "analysis is not filtered by species."
+        )
 
     if is_user_file and unmatched:
         listing = "\n  ".join(sorted(unmatched))

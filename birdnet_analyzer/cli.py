@@ -12,9 +12,15 @@ from birdnet.globals import (
 from birdnet_analyzer.config import (
     ALL_MODEL_LANGUAGES,
     AUTOTUNE_METRICS,
+    CROP_MODES,
     DEFAULT_ACOUSTIC_MODEL_VERSION,
     GEO_MODEL_LANGUAGES,
+    RESULT_TYPES,
+    SAMPLE_CROP_MODES,
+    SCORE_FUNCTIONS,
     TRAINED_MODEL_OUTPUT_FORMATS,
+    TRAINED_MODEL_SAVE_MODES,
+    UPSAMPLING_MODES,
 )
 from birdnet_analyzer.logs import setup_logging
 
@@ -467,9 +473,9 @@ def analyzer_parser():
     parser.add_argument(
         "--rtype",
         default={"table"},
-        choices=["table", "audacity", "kaleidoscope", "csv", "parquet"],
+        choices=get_args(RESULT_TYPES),
         nargs="+",
-        help="Specifies output format. Values in `['table', 'audacity',  'kaleidoscope', 'csv', 'parquet']`.",
+        help="Specifies output format.",
         action=UniqueSetAction,
     )
     parser.add_argument(
@@ -482,7 +488,7 @@ def analyzer_parser():
     parser.add_argument(
         "-c",
         "--classifier",
-        help="Path to custom trained classifier. If set, --lat, --lon and --locale are ignored.",
+        help="Path to custom trained classifier. Its species names come from its labels file, so --locale is ignored. --lat and --lon keep only its species that the geo model predicts there, or, with a warning, all of them if it predicts none.",
     )
     parser.add_argument(
         "--cc_species_list",
@@ -491,7 +497,7 @@ def analyzer_parser():
     parser.add_argument(
         "--top_n",
         type=lambda a: max(1, int(a)),
-        help="Saves only the top N predictions for each segment independent of their score. Threshold will be ignored.",
+        help="Saves at most the top N predictions for each segment. --min_conf still applies.",
     )
     parser.add_argument(
         "--merge_consecutive",
@@ -579,14 +585,14 @@ def search_parser():
     parser.add_argument(
         "--score_function",
         default="cosine",
-        choices=["cosine", "euclidean", "dot"],
-        help="Scoring function to use. Choose 'cosine', 'euclidean' or 'dot'.",
+        choices=get_args(SCORE_FUNCTIONS),
+        help="Scoring function to use.",
     )
     parser.add_argument(
         "--crop_mode",
         default="center",
-        choices=["center", "first", "segments"],
-        help="Crop mode for the query sample. Can be 'center', 'first' or 'segments'.",
+        choices=get_args(CROP_MODES),
+        help="Crop mode for the query sample.",
     )
 
     parser.add_argument(
@@ -659,12 +665,12 @@ def segments_parser():
 
 
 def species_parser():
-    """Build the argument parser for retrieving a species list for a location."""
+    """Build the argument parser for retrieving a species list."""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[
             species_list_args(),
-            # The species list comes from the geo model, so only its languages apply.
+            # The geo model's languages, which the default acoustic model shares.
             locale_args(languages=GEO_MODEL_LANGUAGES),
             verbosity_args(),
         ],
@@ -711,8 +717,8 @@ def train_parser():
     parser.add_argument(
         "--crop_mode",
         default="center",
-        choices=["center", "first", "segments", "smart"],
-        help="Crop mode for training data. Can be 'center', 'first', 'segments' or 'smart'.",
+        choices=get_args(SAMPLE_CROP_MODES),
+        help="Crop mode for training data.",
     )
     parser.add_argument(
         "--birdnet",
@@ -793,7 +799,7 @@ def train_parser():
     parser.add_argument(
         "--upsampling_mode",
         default="repeat",
-        choices=["repeat", "linear", "mean", "smote"],
+        choices=get_args(UPSAMPLING_MODES),
         help="Upsampling mode.",
     )
     parser.add_argument(
@@ -801,12 +807,12 @@ def train_parser():
         nargs="+",
         default=["tflite"],
         choices=get_args(TRAINED_MODEL_OUTPUT_FORMATS),
-        help="Model output format(s). One or more of 'tflite', 'raven', 'detached'.",
+        help="Model output format(s).",
     )
     parser.add_argument(
         "--model_save_mode",
         default="replace",
-        choices=["replace", "append"],
+        choices=get_args(TRAINED_MODEL_SAVE_MODES),
         help="Model save mode. 'replace' will overwrite the original classification layer and 'append' will combine the original classification layer with the new one.",
     )
     parser.add_argument(

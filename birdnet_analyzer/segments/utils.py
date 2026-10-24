@@ -187,7 +187,7 @@ def parse_files(
             {"audio": "path/to/audio1.wav", "result": "path/to/result1.csv"},
             {"audio": "path/to/audio2.wav", "result": "path/to/result2.csv"}
         ]
-        segments = parseFiles(flist, max_segments=50)
+        segments = parse_files(flist, max_segments=50)
     """
     species_segments: dict[str, list] = {}
     is_combined_rfile = len(flist) == 1 and flist[0].get("isCombinedFile", False)

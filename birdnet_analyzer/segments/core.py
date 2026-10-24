@@ -52,18 +52,18 @@ def segments(
             confidence: Collects the segments with highest confidence.
             balanced: Collects segments with a balanced distribution of confidence
             levels.
+            Defaults to "random".
         n_bins (int, optional): Number of bins for confidence distribution when using
-        the "balanced" collection mode.
+            the "balanced" collection mode. Defaults to 10.
+        on_update (Callable[[tuple[int, int]], None] | None, optional): Called with
+            ``(i, n_files)`` as the audio files are processed. Defaults to None.
 
     Returns:
-        list[tuple[str, bool]]: A list of tuples containing the path to the extracted
-        segment and a boolean indicating whether the extraction was successful.
+        list[tuple[str, bool]]: A list of tuples containing the path to an audio file
+        and a boolean indicating whether its segments were extracted successfully.
     Notes:
         - The function uses multiprocessing for parallel processing if `threads` is
         greater than 1.
-        - On Windows, due to the lack of `fork()` support, configuration items are
-        passed to each process explicitly.
-        - It is recommended to use this function on Linux for better performance.
     """
     import concurrent.futures
 
