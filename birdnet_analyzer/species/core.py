@@ -17,37 +17,47 @@ def species(
     locale: MODEL_LANGUAGES = "en_us",
 ):
     """
-    Retrieves and processes species data based on the provided parameters.
+    Writes a species list file, one label per line.
     Args:
-        output (str): The output directory or file path where the results will be
-                      stored.
-        lat (float | None, optional): Latitude of the location for species filtering.
-                                      Defaults to None (no filtering by location).
-        lon (float | None, optional): Longitude of the location for species filtering.
-                                      Defaults to None (no filtering by location).
-        week (int | None, optional): Week of the year for species filtering.
-                                     Defaults to None (no filtering by time).
-        sf_thresh (float, optional): Species frequency threshold for filtering.
-                                     Defaults to 0.03.
-        locale (MODEL_LANGUAGES, optional): Locale for species names.
+        output (str): Path of the list file, or a folder to write "species_list.txt"
+                      into.
+        lat (float | None, optional): Latitude of the location. Together with
+                                      ``lon``, the list holds the species the geo
+                                      model predicts there; with neither, every
+                                      species of the default acoustic model.
+                                      Defaults to None.
+        lon (float | None, optional): Longitude of the location. Defaults to None.
+        week (int | None, optional): Week of the year (1-48) for the geo model,
+                                     ignored without a location. Defaults to None,
+                                     the year-round list.
+        sf_thresh (float, optional): Minimum occurrence frequency of a species in the
+                                     geo model's prediction, ignored without a
+                                     location. Defaults to 0.03.
+        locale (MODEL_LANGUAGES, optional): Language of the species names.
                                             Defaults to "en_us".
     Raises:
-        FileNotFoundError: If the required model files are not found.
-        ValueError: If invalid parameters are provided.
+        ValueError: If only one of ``lat`` and ``lon`` is given, or ``lat``, ``lon``
+            or ``week`` is out of range.
     Notes:
-        This function ensures that the required model files exist before processing.
-        It delegates the main processing to the `run` function
-        from `birdnet_analyzer.species.utils`.
+        The geo model, or without a location the acoustic model, is downloaded on
+        first use.
     """
-    from birdnet_analyzer.species.utils import get_species_list
+    if lat is None and lon is None:
+        from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
+        from birdnet_analyzer.model_utils import acoustic_species_list
 
-    species_list = get_species_list(
-        lat=-1 if lat is None else lat,
-        lon=-1 if lon is None else lon,
-        week=week,
-        threshold=sf_thresh,
-        lang=locale,
-    )
+        species_list = acoustic_species_list(DEFAULT_ACOUSTIC_MODEL_VERSION, locale)
+    elif lat is None or lon is None:
+        raise ValueError(
+            "Set both lat and lon for the species list of a location, or neither for "
+            "every species of the model."
+        )
+    else:
+        from birdnet_analyzer.species.utils import get_species_list
+
+        species_list = get_species_list(
+            lat=lat, lon=lon, week=week, threshold=sf_thresh, lang=locale
+        )
 
     if os.path.isdir(output):
         output = os.path.join(output, "species_list.txt")

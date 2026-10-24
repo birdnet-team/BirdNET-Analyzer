@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from birdnet_analyzer.cli import species_parser
+from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
 from birdnet_analyzer.species.core import species
 
 
@@ -24,22 +25,52 @@ def setup_test_environment():
     shutil.rmtree(test_dir)
 
 
-@patch("birdnet_analyzer.species.utils.get_species_list")
-def test_species_cli(mock_get_species_list, setup_test_environment):
+@pytest.mark.parametrize(
+    ("locale_args", "locale"), [([], "en_us"), (["--locale", "de"], "de")]
+)
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.acoustic_species_list")
+def test_species_cli(
+    mock_acoustic_species_list,
+    mock_run_geomodel,
+    locale_args,
+    locale,
+    setup_test_environment,
+):
     env = setup_test_environment
 
-    mock_get_species_list.return_value = ["Species1", "Species2"]
+    mock_acoustic_species_list.return_value = ["Species1", "Species2"]
 
     parser = species_parser()
-    args = parser.parse_args([env["output_dir"]])
-    kwargs = vars(args)
-    kwargs.pop("sortby", None)
+    args = parser.parse_args([*locale_args, env["output_dir"]])
 
-    species(**kwargs)
+    species(**vars(args))
 
-    mock_get_species_list.assert_called_once_with(
-        lat=-1, lon=-1, week=None, threshold=0.03, lang="en_us"
+    mock_run_geomodel.assert_not_called()
+    mock_acoustic_species_list.assert_called_once_with(
+        DEFAULT_ACOUSTIC_MODEL_VERSION, locale
     )
+
+    with open(
+        os.path.join(env["output_dir"], "species_list.txt"), encoding="utf-8"
+    ) as f:
+        assert f.read().splitlines() == ["Species1", "Species2"]
+
+
+@pytest.mark.parametrize("coordinate", [{"lat": 50.83}, {"lon": 12.92}])
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.acoustic_species_list")
+def test_species_rejects_a_single_coordinate(
+    mock_acoustic_species_list, mock_run_geomodel, coordinate, setup_test_environment
+):
+    env = setup_test_environment
+
+    with pytest.raises(ValueError, match="both lat and lon"):
+        species(env["output_dir"], **coordinate)
+
+    mock_run_geomodel.assert_not_called()
+    mock_acoustic_species_list.assert_not_called()
+    assert not os.listdir(env["output_dir"])
 
 
 @patch("birdnet_analyzer.species.utils.get_species_list")

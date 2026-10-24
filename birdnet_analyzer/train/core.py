@@ -66,7 +66,8 @@ def train(
                                 Defaults to "checkpoints/custom/Custom_Classifier".
         crop_mode (Literal["center", "first", "segments", "smart"], optional): Mode for
             cropping audio samples. Defaults to "center".
-        overlap (float, optional): Overlap ratio for audio segments. Defaults to 0.0.
+        overlap (float, optional): Overlap of the segments in seconds for the
+            "segments" and "smart" crop modes. Defaults to 0.0.
         epochs (int, optional): Number of training epochs. Defaults to 50.
         batch_size (int, optional): Batch size for training. Defaults to 32.
         val_split (float, optional): Fraction of data to use for validation.
@@ -90,7 +91,8 @@ def train(
         upsampling_mode (Literal["repeat", "linear", "mean", "smote"], optional):
             Mode for upsampling. Defaults to "repeat".
         model_formats (list[Literal["tflite", "raven", "detached"]] | str, optional):
-            One or more formats to save the trained model. Defaults to "tflite".
+            One or more formats to save the trained model; "detached" is the
+            classifier alone, taking embeddings. Defaults to "tflite".
         model_save_mode (Literal["replace", "append"], optional): Save mode for the
             model. Defaults to "replace".
         save_cache_to (str | None, optional): Path to save the cache file.
@@ -112,8 +114,6 @@ def train(
         autotune_metric (Literal["val_AUPRC", "val_AUROC"], optional): Metric to
             optimize during hyperparameter tuning. Training also stops early on it and
             keeps the weights of its best epoch. Defaults to "val_AUPRC".
-        save_detached_classifier (bool, optional): Whether to additionally save a
-            detached version of the trained classifier. Defaults to False.
     Returns:
         None
     """

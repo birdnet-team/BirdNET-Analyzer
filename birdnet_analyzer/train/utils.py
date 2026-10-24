@@ -636,18 +636,61 @@ def train_model(
     """Trains a custom classifier.
 
     Args:
+        audio_input: Training data folder, whose subfolder names are the labels, or a
+            cache file.
+        output: Path of the trained classifier. Defaults to
+            "checkpoints/custom/Custom_Classifier".
+        test_data: Test data folder, only used to evaluate the trained classifier.
+            Defaults to None.
+        crop_mode: "center", "first", "segments" or "smart". Defaults to "center".
+        overlap: Overlap of the segments in seconds for the "segments" and "smart"
+            crop modes. Defaults to 0.0.
+        epochs: Maximum number of epochs. Defaults to 50.
+        batch_size: Training batch size. Defaults to 32.
+        val_split: Fraction of the training data used for validation, above 0.
+            Defaults to 0.2.
+        learning_rate: Learning rate. Defaults to 0.0001.
+        weight_decay: AdamW weight decay. Defaults to 0.004.
+        use_focal_loss: Whether to use focal loss. Defaults to False.
+        focal_loss_gamma: Focal loss gamma. Defaults to 2.0.
+        focal_loss_alpha: Focal loss alpha. Defaults to 0.25.
+        hidden_units: Hidden units; above 0 the classifier has two layers.
+            Defaults to 0.
+        dropout: Dropout rate. Defaults to 0.0.
+        label_smoothing: Whether to use label smoothing. Defaults to False.
+        mixup: Whether to use mixup. Defaults to False.
+        upsampling_ratio: Ratio for upsampling minority classes. Defaults to 0.0.
+        upsampling_mode: "repeat", "linear", "mean" or "smote". Defaults to "repeat".
+        model_formats: One or more of "tflite", "raven" and "detached" (the
+            classifier alone, taking embeddings). Defaults to "tflite".
+        model_save_mode: "replace" the base model's classes or "append" to them.
+            Defaults to "replace".
+        save_cache_to: Path of a cache file to save the training data to.
+            Defaults to None.
+        threads: Number of threads decoding the training audio. Defaults to 1.
+        fmin: Lower bandpass frequency in Hz. Defaults to 0.0.
+        fmax: Upper bandpass frequency in Hz. Defaults to 15000.0.
+        audio_speed: Speed factor applied to the audio. Defaults to 1.0.
+        autotune: Whether to tune the hyperparameters first. Defaults to False.
+        autotune_trials: Number of tuning trials. Defaults to 50.
+        autotune_n_splits: Cross-validation folds per trial; 1 uses the validation
+            split. Defaults to 1.
+        autotune_n_repeats: Repetitions of the folds per trial. Defaults to 1.
+        autotune_metric: "val_AUPRC" or "val_AUROC", optimized by the tuning and the
+            early stopping. Defaults to "val_AUPRC".
         birdnet: The BirdNET version to train on. Its embeddings are the classifier's
             input, so the classifier only works with that version. A cache file keeps
-            the version it was embedded with.
-        on_epoch_end: A callback function that takes two arguments `epoch`, `logs`.
-        on_trial_result: A callback function for hyperparameter tuning.
-        on_data_load_end: A callback function for data loading progress.
-        autotune_directory: Directory for autotune results.
-        save_detached_classifier: Whether to additionally save a detached version of
-            the trained classifier.
+            the version it was embedded with. Defaults to the newest version.
+        on_epoch_end: Called with ``(epoch, logs)`` after each epoch of the final
+            training. Defaults to None.
+        on_trial_result: Called with the number of finished tuning trials, 0 before
+            the first. Defaults to None.
+        on_data_load_end: Called with ``(files_done, files_total, folder)`` for each
+            loaded file of a training or test data folder. Defaults to None.
 
     Returns:
-        A keras `History` object, whose `history` property contains all the metrics.
+        A tuple ``(history, metrics)``: the keras ``History`` of the final training,
+        and a dict of metrics on ``test_data``, or None without test data.
     """
     if autotune_metric not in get_args(AUTOTUNE_METRICS):
         raise ValueError(

@@ -543,6 +543,64 @@ def test_analyze_without_location_passes_no_species_list(
     assert call_kwargs["custom_species_list"] is None
 
 
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_takes_no_show_progress_argument(
+    mock_run_inference, setup_test_environment
+):
+    env = setup_test_environment
+    mock_run_inference.return_value = object()
+
+    with pytest.raises(TypeError, match="show_progress"):
+        analyze(
+            env["input_dir"], env["output_dir"], show_progress=True, _return_only=True
+        )
+
+
+@pytest.mark.parametrize("coordinate", [{"lat": 50.83}, {"lon": 12.92}])
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_rejects_a_single_coordinate(
+    mock_run_inference, mock_run_geomodel, coordinate, setup_test_environment
+):
+    env = setup_test_environment
+
+    with pytest.raises(ValueError, match="both lat and lon"):
+        analyze(env["input_dir"], env["output_dir"], _return_only=True, **coordinate)
+
+    mock_run_geomodel.assert_not_called()
+    mock_run_inference.assert_not_called()
+
+
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_rejects_perch_with_a_custom_classifier(
+    mock_run_inference, setup_test_environment
+):
+    env = setup_test_environment
+
+    with pytest.raises(ValueError, match="Perch"):
+        analyze(
+            env["input_dir"],
+            env["output_dir"],
+            model="perch",
+            classifier="classifier.tflite",
+            _return_only=True,
+        )
+
+    mock_run_inference.assert_not_called()
+
+
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_analyze_runs_perch_without_a_custom_classifier(
+    mock_run_inference, setup_test_environment
+):
+    env = setup_test_environment
+    mock_run_inference.return_value = object()
+
+    analyze(env["input_dir"], env["output_dir"], model="perch", _return_only=True)
+
+    assert mock_run_inference.call_args.kwargs["model"] == "perch"
+
+
 def test_match_species_to_model_joins_on_scientific_name():
     """Requested species map onto a model's labels by scientific name; unknowns are
     reported as unmatched."""
@@ -656,18 +714,27 @@ def test_reconcile_species_list_strict_raises(tmp_path):
         )
 
 
-def test_reconcile_species_list_all_unmatched_raises_even_without_strict(tmp_path):
+def test_reconcile_species_list_all_unmatched_raises_even_without_strict(
+    tmp_path, caplog
+):
     """A user list where nothing reconciles must error, not return an empty set: the
     library reads an empty custom list as 'no filter' and would analyze every species,
     the opposite of the user's intent - so this is an error even in the default mode."""
+    import logging
+
     from birdnet_analyzer.model_utils import _reconcile_species_list
 
     slist = tmp_path / "species_list.txt"
     slist.write_text("Foo bar_Not A Bird\nBaz qux_Also Not\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="None of the 2 species"):
+    with (
+        caplog.at_level(logging.WARNING),
+        pytest.raises(ValueError, match="None of the 2 species"),
+    ):
         _reconcile_species_list(
             str(slist), ["Turdus migratorius_American Robin"], strict=False
         )
+
+    assert "not filtered" not in caplog.text
 
 
 # The BirdNET example species list as it was before the 3.0 taxonomy update - a
@@ -781,6 +848,23 @@ def test_reconcile_species_list_geo_collection_is_silent(caplog):
 
     assert matched == {"Turdus migratorius_American Robin"}
     assert caplog.text == ""
+
+
+@pytest.mark.parametrize("requested", [{"Pekania pennanti_Fisher"}, set()])
+def test_reconcile_species_list_warns_when_a_collection_matches_nothing(
+    requested, caplog
+):
+    import logging
+
+    from birdnet_analyzer.model_utils import _reconcile_species_list
+
+    with caplog.at_level(logging.WARNING):
+        matched = _reconcile_species_list(
+            requested, ["Turdus migratorius_American Robin"], strict=False
+        )
+
+    assert matched == set()
+    assert "not filtered" in caplog.text
 
 
 def test_an_analysis_without_detections_writes_every_result_type(
@@ -911,6 +995,19 @@ def test_the_cli_warns_when_additional_columns_cannot_be_written(
     assert [
         r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
     ] == expected_warnings
+
+
+def test_the_cli_writes_the_parameters_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
+    monkeypatch.setattr("sys.argv", ["birdnet-analyze", str(tmp_path)])
+
+    with patch.object(analyze_cli, "analyze") as mock_analyze:
+        try:
+            analyze_cli.main()
+        finally:
+            logs._remove_installed_handlers()
+
+    assert mock_analyze.call_args.kwargs.get("save_params") is True
 
 
 def _link_directory(link, target):

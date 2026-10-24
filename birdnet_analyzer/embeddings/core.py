@@ -40,7 +40,8 @@ def embeddings(
     Args:
         audio_input (str): Path to the input audio file or directory containing audio
             files.
-        database (str): Path to the database where embeddings will be stored.
+        database (str): Path to the database where embeddings will be stored. It is
+            created if it does not exist.
         overlap (float, optional): Overlap between consecutive audio segments in
             seconds. Defaults to 0.0.
         audio_speed (float, optional): Speed factor for audio processing.
@@ -53,15 +54,16 @@ def embeddings(
             batch. Defaults to 1.
         file_output (str | None, optional): Path to save the output embeddings. If None,
             embeddings are not saved to a file. Defaults to None.
-        n_workers (int | None, optional): Number of worker threads to use for
-            processing. Defaults to None.
-        n_producers (int, optional): Number of producer threads to use for processing.
-            Defaults to 1.
+        n_workers (int | None, optional): Number of worker processes to use for
+            processing. Defaults to None, one per physical CPU core.
+        n_producers (int, optional): Number of producer processes to use for
+            processing. Defaults to 1.
         on_update (Callable[[AcousticProgressStats], None] | None, optional): Callback
             function to report progress updates. Defaults to None.
     Raises:
-        FileNotFoundError: If the input path or database path does not exist.
-        ValueError: If any of the parameters are invalid.
+        ValueError: If ``audio_input`` does not exist or holds no supported audio
+            file, or if the database was created with a different ``fmin``, ``fmax``,
+            ``audio_speed`` or parent folder of ``audio_input``.
     Example:
         embeddings(
             "path/to/audio",

@@ -741,10 +741,12 @@ def save_raven_model(
         labels (list[str]): A list of labels associated with the classifier.
         mode (str, optional): The mode for saving the model. Can be either "replace" or
             "append". Defaults to "replace".
-        version: The BirdNET version the classifier was trained on.
-
-    Raises:
-        ValueError: If the mode is not "replace" or "append".
+        sig_fmin (int, optional): Lowest frequency in Hz written for every class to
+            "classes/classes.csv". Defaults to 0.
+        sig_fmax (int, optional): Highest frequency in Hz written for every class to
+            "classes/classes.csv". Defaults to 15000.
+        version: The BirdNET version the classifier was trained on. Defaults to the
+            newest version.
 
     Returns:
         None

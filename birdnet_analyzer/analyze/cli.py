@@ -43,4 +43,4 @@ def main():
     analyze_args.pop("use_perch")  # handled via model param
     analyze_args.pop("load_params")  # already applied as defaults
 
-    analyze(**analyze_args)
+    analyze(**analyze_args, save_params=True)

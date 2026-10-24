@@ -49,70 +49,96 @@ def analyze(
     split_tables: bool = False,
     strict_species_list: bool = False,
     save_params: bool = False,
-    show_progress: bool = False,
     _return_only=False,
 ):
     """
     Analyzes audio files for bird species detection using the BirdNET-Analyzer.
     Args:
-        audio_input (str): Path to the input directory or file containing audio data.
-        output (str | None, optional): Path to the output directory for results.
-            Defaults to None.
-        min_conf (float, optional): Minimum confidence threshold for detections.
+        audio_input (str): Path to an audio file, or to a folder that is searched
+            recursively for audio files.
+        output (str | None, optional): Folder for the result files. Defaults to None,
+            which is the folder of an input file or the input folder itself.
+        model (str, optional): "birdnet" or "perch". Defaults to "birdnet".
+        birdnet (Literal["2.4", "3.0"], optional): BirdNET version used when
+            ``model`` is "birdnet". Defaults to "3.0".
+        min_conf (float, optional): Minimum confidence of a detection, in [0, 1).
             Defaults to 0.25.
-        classifier (str | None, optional): Path to a custom classifier file.
+        classifier (str | None, optional): Path to a custom classifier (.tflite),
+            loaded instead of the BirdNET model; its BirdNET version is read from the
+            file. Cannot be combined with ``model`` "perch". Defaults to None.
+        cc_species_list (str | None, optional): Labels file of ``classifier``.
+            Defaults to None, which is the classifier path with ".tflite" replaced
+            by "_Labels.txt".
+        lat (float | None, optional): Latitude of the recording location. Together
+            with ``lon``, the detections are limited to the species the geo model
+            predicts there. Defaults to None.
+        lon (float | None, optional): Longitude of the recording location.
             Defaults to None.
-        lat (float | None, optional): Latitude for location-based filtering.
-            Defaults to None.
-        lon (float | None, optional): Longitude for location-based filtering.
-            Defaults to None.
-        week (int, optional): Week of the year for seasonal filtering. Defaults to -1.
-        slist (str | None, optional): Path to a species list file for filtering.
-            Defaults to None.
+        week (int | None, optional): Week of the year (1-48) for the geo model.
+            Defaults to None, the year-round list.
+        slist (str | Path | Collection[str] | None, optional): Species to limit the
+            detections to: a species list file, a folder holding "species_list.txt",
+            or the labels themselves. Defaults to None.
         sensitivity (float, optional): Sensitivity of the detection algorithm;
             applies to every BirdNET model and custom classifier, ignored (with a
             warning) for Perch. Defaults to 1.0.
-        overlap (float, optional): Overlap between analysis windows in seconds.
+        overlap (float, optional): Overlap of consecutive segments in seconds.
             Defaults to 0.
-        fmin (int, optional): Minimum frequency for analysis in Hz. Defaults to 0.
-        fmax (int, optional): Maximum frequency for analysis in Hz. Defaults to 15000.
-        audio_speed (float, optional): Speed factor for audio playback during analysis.
-            Defaults to 1.0.
-        batch_size (int, optional): Batch size for processing. Defaults to 1.
-        rtype (Literal["table", "audacity", "kaleidoscope", "csv", "parquet"] |
-        List[Literal["table", "audacity", "kaleidoscope", "csv", "parquet"]], optional):
-            Output format(s) for results. Defaults to "table".
-        sf_thresh (float, optional): Threshold for species filtering. Defaults to 0.03.
-        top_n (int | None, optional): Limit the number of top detections per file.
-            Defaults to None.
-        merge_consecutive (int, optional): Merge consecutive detections within this time
-            window in seconds. Defaults to 1.
-        threads (int, optional): Number of CPU threads to use for analysis.
-            Defaults to 8.
-        locale (str, optional): Locale for species names and output. Defaults to "en".
-        additional_columns (list[str] | None, optional): Additional columns to include
-            in the output. Defaults to None.
-        use_perch (bool, optional): Whether to use the Perch model for analysis.
-            Defaults to False.
-        split_tables (bool, optional): Whether to split output tables by input files.
-            Defaults to False.
+        fmin (int, optional): Lower bandpass frequency in Hz. Defaults to 0.
+        fmax (int, optional): Upper bandpass frequency in Hz. Defaults to 15000.
+        audio_speed (float, optional): Speed factor applied to the audio before the
+            analysis. Defaults to 1.0.
+        batch_size (int, optional): Segments per inference batch; a classifier
+            trained on BirdNET 3.0 always takes 1. Defaults to 1.
+        n_workers (int | None, optional): Number of inference worker processes.
+            Defaults to None, one per physical CPU core.
+        n_producers (int, optional): Number of processes reading the audio files.
+            Defaults to 1.
+        rtype (str | list[str], optional): Result file format(s): "table" (Raven
+            selection table), "audacity", "kaleidoscope", "csv" or "parquet".
+            Defaults to "table".
+        sf_thresh (float, optional): Minimum occurrence frequency of a species in the
+            geo model's prediction. Defaults to 0.03.
+        top_n (int | None, optional): Keep at most this many detections per segment,
+            the highest-scoring ones; ``min_conf`` still applies. Defaults to None.
+        merge_consecutive (int, optional): Maximum number of consecutive detections
+            of a species merged into one; 0 or 1 disables merging. Defaults to 1.
+        locale (str, optional): Language of the species names of a BirdNET model;
+            one its version lacks falls back to "en_us" with a warning.
+            Defaults to "en_us".
+        additional_columns (list[str] | None, optional): Extra columns of the "csv"
+            and "parquet" results, any of "lat", "lon", "week", "overlap",
+            "sensitivity", "min_conf", "species_list" and "model". Defaults to None.
+        on_update (Callable[[AcousticProgressStats], None] | None, optional): Called
+            with the progress of the inference. Defaults to None.
+        split_tables (bool, optional): Write the results of each input file to files
+            of their own. Defaults to False.
         strict_species_list (bool, optional): If True, raise when a species in ``slist``
             is not in the model. If False (default), such species are matched to the
             model by scientific/common name where possible and any that remain unknown
-            are skipped with a warning. Only affects a user-provided ``slist``.
+            are skipped with a warning. Only affects an ``slist`` file.
+        save_params (bool, optional): Write the parameters to
+            "birdnet.analyze-params.csv" in ``output``. Defaults to False.
+        _return_only (bool, optional): Only return the predictions, without writing
+            result files or a resume journal. Defaults to False.
     Returns:
-        None
+        The predictions, a birdnet ``AcousticFilePredictionResult``. A resumed run
+        returns those of the files it analyzed, or None if none were left.
     Raises:
-        ValueError: If input path is invalid or required parameters are missing.
+        ValueError: If only one of ``lat`` and ``lon`` is given, they are combined
+            with ``slist``, ``classifier`` is combined with ``model`` "perch",
+            ``lat``, ``lon``, ``week`` or ``min_conf`` is out of range, ``model`` is
+            unknown, ``audio_input`` does not exist or holds no supported audio file,
+            or none of the species in an ``slist`` file (with
+            ``strict_species_list``, not all of them) are in the model.
+        FileNotFoundError: If the ``slist`` file or ``classifier`` does not exist.
+        RuntimeError: If the resume state in ``output`` is incomplete, or the
+            analysis is cancelled or one of its processes dies.
     Notes:
-        - The function ensures the BirdNET model is available before analysis.
-        - Analysis parameters are saved to a file in the output directory.
-        - Directory analyses are resumable: per-file results are journaled to
-          ``<output>/.birdnet-resume/`` as they complete, an interrupted run
-          picks up where it left off (if the analysis parameters match), and
-          the journal is removed after outputs are written. When resuming a
-          run that had already completed every file, no new inference happens
-          and ``None`` is returned instead of a prediction result.
+        Directory analyses are resumable: per-file results are journaled to
+        ``<output>/.birdnet-resume/`` as they complete, an interrupted run picks up
+        where it left off (if the analysis parameters match), and the journal is
+        removed after the outputs are written.
     """
     import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
@@ -123,6 +149,14 @@ def analyze(
         validate_min_conf,
     )
     from birdnet_analyzer.utils import save_params_file
+
+    if classifier and model == "perch":
+        raise ValueError("Select either Perch or a custom classifier, not both.")
+
+    if (lat is None) != (lon is None):
+        raise ValueError(
+            "Set both lat and lon to limit the species to a location, or neither."
+        )
 
     # Settled before the params file, result columns and resume fingerprint see it.
     sensitivity = effective_sensitivity(sensitivity, model)
