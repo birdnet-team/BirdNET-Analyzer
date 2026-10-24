@@ -21,7 +21,7 @@ birdnet_analyzer.analyze
 
    .. code:: bash
 
-      python3 -m birdnet_analyzer.analyze example/ --slist example/ --min_conf 0.5 --threads 4
+      python3 -m birdnet_analyzer.analyze example/ --slist example/ --min_conf 0.5 --n_workers 4
 
       python3 -m birdnet_analyzer.analyze example/ --lat 42.5 --lon -76.45 --week 4 --sensitivity 1.0
 
@@ -84,7 +84,7 @@ birdnet_analyzer.train
    All you need is a dataset of labeled audio files, organized in folders by species (we use folder names as labels).
    This also works for non-bird species, as long as you have a dataset of labeled audio files.
    
-   Audio files will be resampled to the sample rate of the base model (48 kHz for BirdNET 2.4, 32 kHz for BirdNET 3.0) and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).
+   Audio files will be resampled to the sample rate of the base model (48 kHz for BirdNET 2.4, 32 kHz for BirdNET 3.0) and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with zeros if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).
 
    The classifier is trained on the embeddings of one BirdNET version, chosen with ``--birdnet`` (3.0 by default), and only works with that version.
    
@@ -112,7 +112,7 @@ birdnet_analyzer.train
       python -m birdnet_analyzer.analyze example/ --classifier checkpoints/custom/Custom_Classifier.tflite
 
    .. note::
-      Setting a custom classifier will also set the new labels file. Due to these custom labels, the location filter and locale will be disabled.
+      Setting a custom classifier will also set the new labels file. The species names come from that file, so ``--locale`` has no effect. A location (``--lat``/``--lon``) keeps only the classifier's species that the geo model predicts there, or, with a warning, all of them if it predicts none.
    
    **Negative samples**
 

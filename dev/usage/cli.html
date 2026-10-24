@@ -103,7 +103,7 @@ You need to set paths for the audio file and selection table output. Here is an 
 </pre></div>
 </div>
 <p>Here are two example commands to run this BirdNET version:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--slist<span class="w"> </span>example/<span class="w"> </span>--min_conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--threads<span class="w"> </span><span class="m">4</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--slist<span class="w"> </span>example/<span class="w"> </span>--min_conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--n_workers<span class="w"> </span><span class="m">4</span>
 
 python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--lat<span class="w"> </span><span class="m">42</span>.5<span class="w"> </span>--lon<span class="w"> </span>-76.45<span class="w"> </span>--week<span class="w"> </span><span class="m">4</span><span class="w"> </span>--sensitivity<span class="w"> </span><span class="m">1</span>.0
 </pre></div>
@@ -224,7 +224,7 @@ match the interrupted run, otherwise the analysis starts over; see
 </dd>
 <dt><kbd>--rtype</kbd></dt>
 <dd><p>Possible choices: table, audacity, kaleidoscope, csv, parquet</p>
-<p>Specifies output format. Values in <cite>[‘table’, ‘audacity’,  ‘kaleidoscope’, ‘csv’, ‘parquet’]</cite>.</p>
+<p>Specifies output format.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">{'table'}</span></code></p>
 </dd>
 <dt><kbd>--additional_columns</kbd></dt>
@@ -232,13 +232,13 @@ match the interrupted run, otherwise the analysis starts over; see
 <p>Additional columns to include in the output, only applied to the csv and parquet output formats.</p>
 </dd>
 <dt><kbd>-c, --classifier</kbd></dt>
-<dd><p>Path to custom trained classifier. If set, –lat, –lon and –locale are ignored.</p>
+<dd><p>Path to custom trained classifier. Its species names come from its labels file, so –locale is ignored. –lat and –lon keep only its species that the geo model predicts there, or, with a warning, all of them if it predicts none.</p>
 </dd>
 <dt><kbd>--cc_species_list</kbd></dt>
 <dd><p>Path to custom species list file for the custom classifier. The default search path is &lt;custom_classifier_without_extension&gt;_Labels.txt in the same directory.</p>
 </dd>
 <dt><kbd>--top_n</kbd></dt>
-<dd><p>Saves only the top N predictions for each segment independent of their score. Threshold will be ignored.</p>
+<dd><p>Saves at most the top N predictions for each segment. –min_conf still applies.</p>
 </dd>
 <dt><kbd>--merge_consecutive</kbd></dt>
 <dd><p>Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. We use the mean of the top 3 scores from all consecutive detections for merging.</p>
@@ -452,7 +452,7 @@ This is useful if you want to detect species that are not included in the defaul
 You can also use this to train a classifier for a specific location or season.</p>
 <p>All you need is a dataset of labeled audio files, organized in folders by species (we use folder names as labels).
 This also works for non-bird species, as long as you have a dataset of labeled audio files.</p>
-<p>Audio files will be resampled to the sample rate of the base model (48 kHz for BirdNET 2.4, 32 kHz for BirdNET 3.0) and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with random noise if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).</p>
+<p>Audio files will be resampled to the sample rate of the base model (48 kHz for BirdNET 2.4, 32 kHz for BirdNET 3.0) and converted into 3-second segments (we support different crop segmentation modes for files longer than 3 seconds; we pad with zeros if the file is shorter). We recommend using at least 100 audio files per species (although training also works with less data).</p>
 <p>The classifier is trained on the embeddings of one BirdNET version, chosen with <code class="docutils literal notranslate"><span class="pre">--birdnet</span></code> (3.0 by default), and only works with that version.</p>
 <p>You can download a sample training data set <a class="reference external" href="https://drive.google.com/file/d/16hgka5aJ4U69ane9RQn_quVmgjVY2AY5/edit">here</a>.</p>
 <ol class="arabic simple">
@@ -476,7 +476,7 @@ python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Setting a custom classifier will also set the new labels file. Due to these custom labels, the location filter and locale will be disabled.</p>
+<p>Setting a custom classifier will also set the new labels file. The species names come from that file, so <code class="docutils literal notranslate"><span class="pre">--locale</span></code> has no effect. A location (<code class="docutils literal notranslate"><span class="pre">--lat</span></code>/<code class="docutils literal notranslate"><span class="pre">--lon</span></code>) keeps only the classifier’s species that the geo model predicts there, or, with a warning, all of them if it predicts none.</p>
 </div>
 <p><strong>Negative samples</strong></p>
 <p>You can include negative samples for classes by prefixing the folder names with a ‘-’ (e.g., <code class="docutils literal notranslate"><span class="pre">-Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee</span></code>).
@@ -571,7 +571,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 </dd>
 <dt><kbd>--crop_mode</kbd></dt>
 <dd><p>Possible choices: center, first, segments, smart</p>
-<p>Crop mode for training data. Can be ‘center’, ‘first’, ‘segments’ or ‘smart’.</p>
+<p>Crop mode for training data.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'center'</span></code></p>
 </dd>
 <dt><kbd>--birdnet</kbd></dt>
@@ -634,7 +634,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 </dd>
 <dt><kbd>--model_formats</kbd></dt>
 <dd><p>Possible choices: tflite, raven, detached</p>
-<p>Model output format(s). One or more of ‘tflite’, ‘raven’, ‘detached’.</p>
+<p>Model output format(s).</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">['tflite']</span></code></p>
 </dd>
 <dt><kbd>--model_save_mode</kbd></dt>
