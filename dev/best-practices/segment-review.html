@@ -111,7 +111,7 @@ You can also listen to an AI-generated summary of this guide in the audio player
 To obtain batch analysis result tables, run the analysis via the GUI or the <a class="reference internal" href="../usage/cli.html#cli-docs"><span class="std std-ref">command line</span></a>, which automatically generates the result files.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>The output format “audacity” is not supported for the segments tool since it is missing certain columns. Use “table”, “kaleidoscope”, or “csv” formats instead.</p>
+<p>Audacity labels name no audio file, so the segments tool reads them only as the per-file results of an analysis with <code class="docutils literal notranslate"><span class="pre">--split_tables</span></code>, not the combined <code class="docutils literal notranslate"><span class="pre">BirdNET_AudacityLabels.txt</span></code>. Use “table”, “kaleidoscope”, or “csv” formats for combined results.</p>
 </div>
 </section>
 <section id="using-the-segments-tool-in-the-gui-or-command-line">

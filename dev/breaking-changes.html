@@ -282,8 +282,8 @@ combined files only with <code class="docutils literal notranslate"><span class=
 <p><strong>Consequence.</strong> Scripts that expect a <code class="docutils literal notranslate"><span class="pre">&lt;audio</span> <span class="pre">name&gt;.BirdNET.selection.table.txt</span></code>
 (or another per-file result) next to each recording find nothing.</p>
 <p><strong>What to do.</strong> Pass <code class="docutils literal notranslate"><span class="pre">--split_tables</span></code> for one result file per audio file, which
-replaces the combined files. Unlike v2.4.0, it writes no file for an audio file without
-detections.</p>
+replaces the combined files. As in v2.4.0, an audio file without detections still gets
+its files, which hold only the header.</p>
 </section>
 <section id="result-and-parameters-file-formats">
 <h2><a class="toc-backref" href="#id10" role="doc-backlink">Result and parameters file formats</a><a class="headerlink" href="#result-and-parameters-file-formats" title="Link to this heading"></a></h2>
@@ -291,7 +291,9 @@ detections.</p>
 <ul class="simple">
 <li><p>Raven selection tables add a <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">Name</span></code> column and order the columns
 differently. They have no <code class="docutils literal notranslate"><span class="pre">nocall</span></code> row for a file without detections, and no
-<code class="docutils literal notranslate"><span class="pre">BirdNET_SelectionTable.list.txt</span></code> is written.</p></li>
+<code class="docutils literal notranslate"><span class="pre">BirdNET_SelectionTable.list.txt</span></code> is written. As before, the times of a combined
+table run on across all analysed files in path order, including those without
+detections.</p></li>
 <li><p>Audacity labels read <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">name_Common</span> <span class="pre">name</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">name,</span> <span class="pre">Common</span> <span class="pre">name</span></code>.</p></li>
 <li><p>The analysis parameters are written to <code class="docutils literal notranslate"><span class="pre">birdnet.analyze-params.csv</span></code> instead of
