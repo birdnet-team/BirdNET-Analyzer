@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from math import isclose
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -525,6 +524,7 @@ def _merge_consecutive_segments(
         confidence averaged when available. Raises ValueError when required columns
         are missing or time columns are non-numeric.
     """
+    import numpy as np
     import pandas as pd
 
     if merge_consecutive <= 1:
@@ -553,57 +553,45 @@ def _merge_consecutive_segments(
     df_sorted = df.sort_values(
         by=["input", "species_name", "start_time", "end_time"]
     ).reset_index(drop=True)
-    merged_records = []
-    i = 0
+    inputs = df_sorted["input"].to_numpy()
+    species = df_sorted["species_name"].to_numpy()
+    start = df_sorted["start_time"].to_numpy(dtype="float64")
+    end = df_sorted["end_time"].to_numpy(dtype="float64")
 
-    while i < len(df_sorted):
-        window = [df_sorted.iloc[i]]
+    rows = np.arange(len(df_sorted))
+    run_break = np.ones(len(df_sorted), dtype=bool)
+    run_break[1:] = ~(
+        (inputs[1:] == inputs[:-1])
+        & (species[1:] == species[:-1])
+        & (np.abs(start[1:] - end[:-1]) <= hop_size)
+    )
+    run_start = np.maximum.accumulate(np.where(run_break, rows, 0))
+    firsts = np.flatnonzero((rows - run_start) % merge_consecutive == 0)
+    lasts = np.append(firsts[1:], len(df_sorted)) - 1
 
-        while len(window) < merge_consecutive:
-            next_idx = i + len(window)
-            if next_idx >= len(df_sorted):
-                break
+    merged_df = df_sorted.iloc[firsts].reset_index(drop=True)
+    merged_df["end_time"] = df_sorted["end_time"].to_numpy()[lasts]
 
-            prev_row = window[-1]
-            candidate_row = df_sorted.iloc[next_idx]
+    if "confidence" in df.columns:
+        confidences = df_sorted["confidence"].to_numpy(dtype="float64").tolist()
+        windows = np.flatnonzero(lasts > firsts)
+        # Keep the built-in sum: the result must round exactly as it does.
+        means = [
+            sum(confidences[first : last + 1]) / (last + 1 - first)
+            for first, last in zip(
+                firsts[windows].tolist(), lasts[windows].tolist(), strict=True
+            )
+        ]
+        merged_df.loc[windows, "confidence"] = pd.array(
+            means, dtype=merged_df["confidence"].dtype
+        )
 
-            if (
-                candidate_row["input"] == prev_row["input"]
-                and candidate_row["species_name"] == prev_row["species_name"]
-                and isclose(
-                    float(candidate_row["start_time"]),
-                    float(prev_row["end_time"]),
-                    abs_tol=hop_size,
-                )
-            ):
-                window.append(candidate_row)
-            else:
-                break
-
-        # Merge whatever consecutive rows we collected (1 up to merge_consecutive).
-        if len(window) > 1:
-            merged_row = window[0].copy()
-            merged_row["start_time"] = window[0]["start_time"]
-            merged_row["end_time"] = window[-1]["end_time"]
-
-            if "confidence" in df.columns:
-                confidences = [float(row["confidence"]) for row in window]
-                avg_confidence = sum(confidences) / len(confidences)
-                confidence_type = type(window[0]["confidence"])
-
-                try:
-                    merged_row["confidence"] = confidence_type(avg_confidence)
-                except (TypeError, ValueError):
-                    merged_row["confidence"] = avg_confidence
-
-            merged_records.append(merged_row.to_dict())
-        else:
-            merged_records.append(window[0].to_dict())
-
-        i += len(window)
-
-    merged_df = pd.DataFrame.from_records(merged_records, columns=df.columns)
-    return merged_df.sort_values(by=["input", "start_time", "end_time", "species_name"])
+    # Native dtypes (float64, int64): the writers' number formatting depends on them.
+    return (
+        merged_df.astype(object)
+        .infer_objects()
+        .sort_values(by=["input", "start_time", "end_time", "species_name"])
+    )
 
 
 def _split_species_name(species_name: pd.Series) -> tuple[pd.Series, pd.Series]:
