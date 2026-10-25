@@ -199,8 +199,8 @@ combined files only with ``--combine_results``.
 (or another per-file result) next to each recording find nothing.
 
 **What to do.** Pass ``--split_tables`` for one result file per audio file, which
-replaces the combined files. Unlike v2.4.0, it writes no file for an audio file without
-detections.
+replaces the combined files. As in v2.4.0, an audio file without detections still gets
+its files, which hold only the header.
 
 
 Result and parameters file formats
@@ -210,7 +210,9 @@ Result and parameters file formats
 
 * Raven selection tables add a ``Scientific Name`` column and order the columns
   differently. They have no ``nocall`` row for a file without detections, and no
-  ``BirdNET_SelectionTable.list.txt`` is written.
+  ``BirdNET_SelectionTable.list.txt`` is written. As before, the times of a combined
+  table run on across all analysed files in path order, including those without
+  detections.
 * Audacity labels read ``Scientific name_Common name`` instead of
   ``Scientific name, Common name``.
 * The analysis parameters are written to ``birdnet.analyze-params.csv`` instead of

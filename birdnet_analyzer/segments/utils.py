@@ -6,6 +6,8 @@ Can be used to save the segments of the audio files for each detection.
 import csv
 import logging
 import os
+import re
+from collections import defaultdict
 
 import numpy as np
 
@@ -14,6 +16,8 @@ from birdnet_analyzer import audio, utils
 
 RNG = np.random.default_rng(cfg.RANDOM_SEED)
 logger = logging.getLogger(__name__)
+
+_RESULT_INFIX = re.compile(r"\.BirdNET\.", re.IGNORECASE)
 
 # As written by the 2.x releases.
 _LEGACY_KALEIDOSCOPE_COLUMNS = (
@@ -92,6 +96,118 @@ def _parse_kaleidoscope_line(
     return afile, start, start + float(duration), species, float(confidence)
 
 
+def _native_path(path: str) -> str:
+    return path.replace("/", os.sep).replace("\\", os.sep)
+
+
+def _parse_table_line(
+    line: str, header_mapping: dict, combined: bool
+) -> tuple[str, float, float, str, float]:
+    d = line.split("\t")
+    start = float(d[header_mapping["Begin Time (s)"]])
+    end = float(d[header_mapping["End Time (s)"]])
+    afile = ""
+
+    if combined:
+        file_offset = float(d[header_mapping["File Offset (s)"]])
+        start, end = file_offset, file_offset + (end - start)
+        afile = _native_path(d[header_mapping["Begin Path"]])
+
+    return (
+        afile,
+        start,
+        end,
+        d[header_mapping["Common Name"]],
+        float(d[header_mapping["Confidence"]]),
+    )
+
+
+def _parse_csv_line(
+    line: str, header_mapping: dict, combined: bool
+) -> tuple[str, float, float, str, float]:
+    d = _split_csv_line(line)
+    afile = _native_path(d[header_mapping["File"]]) if combined else ""
+
+    return (
+        afile,
+        float(d[header_mapping["Start (s)"]]),
+        float(d[header_mapping["End (s)"]]),
+        d[header_mapping["Common name"]],
+        float(d[header_mapping["Confidence"]]),
+    )
+
+
+def _parse_audacity_line(
+    line: str, header_mapping: dict, combined: bool
+) -> tuple[str, float, float, str, float]:
+    d = line.split("\t")
+    # "Scientific_Common" as written since 3.0, "Scientific, Common" before.
+    separator = "_" if "_" in d[2] else ", "
+
+    return "", float(d[0]), float(d[1]), d[2].split(separator, 1)[-1], float(d[-1])
+
+
+_LINE_PARSERS = {
+    "table": _parse_table_line,
+    "csv": _parse_csv_line,
+    "kaleidoscope": lambda line, header_mapping, combined: _parse_kaleidoscope_line(
+        line, header_mapping
+    ),
+    "audacity": _parse_audacity_line,
+}
+
+
+def _read_detections(rfile: str, afile: str | None = None) -> list[dict] | None:
+    """Reads the detections of a result file, one dict per data row.
+
+    Without ``afile``, ``rfile`` is a combined table whose rows name their audio
+    files.
+
+    Returns:
+        The detections, or None for an empty per-file result: the Audacity labels of
+        an audio file without detections.
+
+    Raises:
+        ValueError: If ``rfile`` is an Audacity file but ``afile`` is not given; its
+            rows name no audio file.
+    """
+    lines = [line for line in utils.read_lines(rfile) if line.strip()]
+    combined = afile is None
+
+    if not lines:
+        if not combined:
+            return None
+
+        logger.warning(f"Skipping the empty result file {rfile}.")
+        return []
+
+    rtype = _detect_rtype(lines[0])
+
+    if rtype != "audacity":
+        header_mapping, rows = _get_header_mapping(lines[0]), lines[1:]
+    elif combined:
+        raise ValueError("Audacity files are not supported for combined results.")
+    else:
+        header_mapping, rows = {}, lines
+
+    parse = _LINE_PARSERS[rtype]
+    detections = []
+
+    for line in rows:
+        path, start, end, species, confidence = parse(line, header_mapping, combined)
+        detections.append(
+            {
+                "audio": path if combined else afile,
+                "start": start,
+                "end": end,
+                "species": species,
+                "confidence": confidence,
+            }
+        )
+
+    return detections
+
+
 def parse_folders(
     apath: str, rpath: str, allowed_result_filetypes: tuple[str, ...] = ("txt", "csv")
 ) -> list[dict]:
@@ -126,8 +242,8 @@ def parse_folders(
                 if f.rsplit(".", 1)[
                     -1
                 ].lower() in cfg.ALLOWED_FILETYPES and not f.startswith("."):
-                    table_key = os.path.join(
-                        os.path.relpath(root, apath), f.rsplit(".", 1)[0]
+                    table_key = os.path.normcase(
+                        os.path.join(os.path.relpath(root, apath), f.rsplit(".", 1)[0])
                     )
                     data[table_key] = {"audio": os.path.join(root, f), "result": ""}
 
@@ -135,12 +251,11 @@ def parse_folders(
 
         for root, _, files in os.walk(rpath):
             for f in files:
-                if (
-                    f.rsplit(".", 1)[-1].lower() in result_filetypes
-                    and ".BirdNET." in f
-                ):
-                    table_key = os.path.join(
-                        os.path.relpath(root, rpath), f.split(".BirdNET.", 1)[0]
+                stem, *suffix = _RESULT_INFIX.split(f, maxsplit=1)
+
+                if f.rsplit(".", 1)[-1].lower() in result_filetypes and suffix:
+                    table_key = os.path.normcase(
+                        os.path.join(os.path.relpath(root, rpath), stem)
                     )
                     if table_key in data:
                         data[table_key]["result"] = os.path.join(root, f)
@@ -189,34 +304,24 @@ def parse_files(
         ]
         segments = parse_files(flist, max_segments=50)
     """
-    species_segments: dict[str, list] = {}
-    is_combined_rfile = len(flist) == 1 and flist[0].get("isCombinedFile", False)
+    species_segments: dict[str, list] = defaultdict(list)
 
-    if is_combined_rfile:
-        rfile = flist[0]["result"]
-        segments = _find_segments_from_combined(
-            rfile, min_conf=min_conf, max_conf=max_conf
-        )
-
-        for s in segments:
-            if s["species"] not in species_segments:
-                species_segments[s["species"]] = []
-
-            species_segments[s["species"]].append(s)
+    if len(flist) == 1 and flist[0].get("isCombinedFile", False):
+        files = [(None, flist[0]["result"])]
     else:
-        for f in flist:
-            afile = f["audio"]
-            rfile = f["result"]
+        files = [(f["audio"], f["result"]) for f in flist]
 
-            segments = _find_segments(
-                afile, rfile, min_conf=min_conf, max_conf=max_conf
-            )
+    n_empty = 0
 
-            for s in segments:
-                if s["species"] not in species_segments:
-                    species_segments[s["species"]] = []
+    for afile, rfile in files:
+        found = _find_segments(afile, rfile, min_conf=min_conf, max_conf=max_conf)
 
-                species_segments[s["species"]].append(s)
+        if found is None:
+            n_empty += 1
+            continue
+
+        for s in found:
+            species_segments[s["species"]].append(s)
 
     for s in species_segments:
         if collection_mode == "random":
@@ -226,16 +331,17 @@ def parse_files(
             species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
             species_segments[s] = species_segments[s][:max_segments]
         elif collection_mode == "balanced":
-            bin_thresholds = np.linspace(min_conf, max_conf, num=n_bins)
+            bin_edges = np.linspace(min_conf, max_conf, num=n_bins + 1)
             max_segments_per_bin = max_segments // n_bins
             segments_by_bin: list[list] = [[] for _ in range(n_bins)]
 
             confidences = np.array([seg["confidence"] for seg in species_segments[s]])
-            bin_indices = np.digitize(confidences, bin_thresholds, right=False)
+            bin_indices = np.clip(
+                np.digitize(confidences, bin_edges) - 1, 0, n_bins - 1
+            )
 
-            for seg, bin_idx in zip(species_segments[s], bin_indices, strict=False):
-                if bin_idx < n_bins:
-                    segments_by_bin[bin_idx].append(seg)
+            for seg, bin_idx in zip(species_segments[s], bin_indices, strict=True):
+                segments_by_bin[bin_idx].append(seg)
 
             species_segments[s] = []
 
@@ -257,101 +363,21 @@ def parse_files(
             segments[seg["audio"]].append(seg)
             seg_cnt += 1
 
+    if n_empty:
+        logger.info(f"Found {n_empty} empty result files, which hold no detections.")
+
     logger.info(f"Found {seg_cnt} segments in {len(segments)} audio files.")
 
     return [tuple(e) for e in segments.items()]
 
 
-def _find_segments_from_combined(
-    rfile: str, min_conf: float = 0.25, max_conf: float = 1.0
-) -> list[dict]:
-    """Extracts the segments from a combined results file
-
-    Args:
-        rfile (str): Path to the result file.
-
-    Returns:
-        list[dict]: A list of dicts in the form of
-        {
-            "audio": afile,
-            "start": start,
-            "end": end,
-            "species": species,
-            "confidence": confidence
-        }
-    """
-    segments: list[dict] = []
-
-    lines = utils.read_lines(rfile)
-
-    rtype = _detect_rtype(lines[0])
-
-    if rtype == "audacity":
-        raise Exception("Audacity files are not supported for combined results.")
-
-    header_mapping = _get_header_mapping(lines[0])
-
-    confidence = 0
-    start = end = 0.0
-    species = ""
-    afile = ""
-
-    for i, line in enumerate(lines):
-        if rtype == "table" and i > 0:
-            d = line.split("\t")
-            file_offset = float(d[header_mapping["File Offset (s)"]])
-            start = file_offset
-            end = file_offset + (
-                float(d[header_mapping["End Time (s)"]])
-                - float(d[header_mapping["Begin Time (s)"]])
-            )
-            species = d[header_mapping["Common Name"]]
-            confidence = float(d[header_mapping["Confidence"]])
-            afile = (
-                d[header_mapping["Begin Path"]]
-                .replace("/", os.sep)
-                .replace("\\", os.sep)
-            )
-
-        elif rtype == "kaleidoscope" and i > 0:
-            afile, start, end, species, confidence = _parse_kaleidoscope_line(
-                line, header_mapping
-            )
-
-        elif rtype == "csv" and i > 0:
-            d = _split_csv_line(line)
-            start = float(d[header_mapping["Start (s)"]])
-            end = float(d[header_mapping["End (s)"]])
-            species = d[header_mapping["Common name"]]
-            confidence = float(d[header_mapping["Confidence"]])
-            afile = d[header_mapping["File"]].replace("/", os.sep).replace("\\", os.sep)
-
-        if (
-            confidence >= min_conf
-            and confidence <= max_conf
-            and species.lower() != "nocall"
-            and afile
-        ):
-            segments.append(
-                {
-                    "audio": afile,
-                    "start": start,
-                    "end": end,
-                    "species": species,
-                    "confidence": confidence,
-                }
-            )
-
-    return segments
-
-
 def _find_segments(
-    afile: str, rfile: str, min_conf: float = 0.25, max_conf: float = 1.0
-) -> list[dict]:
-    """Extracts the segments for an audio file from the results file
+    afile: str | None, rfile: str, min_conf: float = 0.25, max_conf: float = 1.0
+) -> list[dict] | None:
+    """Extracts the segments of a result file within the confidence range.
 
     Args:
-        afile: Path to the audio file.
+        afile: Path to the audio file, or None for a combined result file.
         rfile: Path to the result file.
 
     Returns:
@@ -363,62 +389,20 @@ def _find_segments(
             "species": species,
             "confidence": confidence
         }
+        or None for an empty per-file result.
     """
-    segments: list[dict] = []
+    detections = _read_detections(rfile, afile)
 
-    lines = utils.read_lines(rfile)
+    if detections is None:
+        return None
 
-    rtype = _detect_rtype(lines[0])
-
-    header_mapping = _get_header_mapping(lines[0])
-
-    confidence = 0
-    start = end = 0.0
-    species = ""
-
-    for i, line in enumerate(lines):
-        if rtype == "table" and i > 0:
-            d = line.split("\t")
-            start = float(d[header_mapping["Begin Time (s)"]])
-            end = float(d[header_mapping["End Time (s)"]])
-            species = d[header_mapping["Common Name"]]
-            confidence = float(d[header_mapping["Confidence"]])
-
-        elif rtype == "audacity":
-            d = line.split("\t")
-            start = float(d[0])
-            end = float(d[1])
-            species = d[2].split(", ")[1]
-            confidence = float(d[-1])
-
-        elif rtype == "kaleidoscope" and i > 0:
-            _, start, end, species, confidence = _parse_kaleidoscope_line(
-                line, header_mapping
-            )
-
-        elif rtype == "csv" and i > 0:
-            d = _split_csv_line(line)
-            start = float(d[header_mapping["Start (s)"]])
-            end = float(d[header_mapping["End (s)"]])
-            species = d[header_mapping["Common name"]]
-            confidence = float(d[header_mapping["Confidence"]])
-
-        if (
-            confidence >= min_conf
-            and confidence <= max_conf
-            and species.lower() != "nocall"
-        ):
-            segments.append(
-                {
-                    "audio": afile,
-                    "start": start,
-                    "end": end,
-                    "species": species,
-                    "confidence": confidence,
-                }
-            )
-
-    return segments
+    return [
+        s
+        for s in detections
+        if min_conf <= s["confidence"] <= max_conf
+        and s["species"].lower() != "nocall"
+        and s["audio"]
+    ]
 
 
 def extract_segments(

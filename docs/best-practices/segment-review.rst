@@ -22,7 +22,7 @@ To obtain batch analysis result tables, run the analysis via the GUI or the :ref
 
 .. warning::
 
-    The output format "audacity" is not supported for the segments tool since it is missing certain columns. Use "table", "kaleidoscope", or "csv" formats instead.
+    Audacity labels name no audio file, so the segments tool reads them only as the per-file results of an analysis with ``--split_tables``, not the combined ``BirdNET_AudacityLabels.txt``. Use "table", "kaleidoscope", or "csv" formats for combined results.
 
 Using the "Segments" Tool in the GUI or Command Line
 -----------------------------------------------------

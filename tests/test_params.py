@@ -163,6 +163,16 @@ def test_the_values_are_returned_exactly_as_the_analysis_ran_with_them(tmp_path)
     assert kwargs["min_conf"] == 0
 
 
+def test_an_empty_selection_is_read_back_as_one(tmp_path):
+    file = tall_file(
+        tmp_path, analysis_values(**{"Result type(s)": "", "Additional columns": ""})
+    )
+
+    kwargs = params.load_analysis_params(file)
+
+    assert (kwargs["rtype"], kwargs["additional_columns"]) == ([], [])
+
+
 def test_files_of_an_analysis_are_read_back(tmp_path):
     file = tall_file(
         tmp_path,

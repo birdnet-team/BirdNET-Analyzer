@@ -466,24 +466,26 @@ def analyzer_parser():
         parents=parents,
     )
 
-    class UniqueSetAction(argparse.Action):
+    class UniqueListAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
-            setattr(namespace, self.dest, {v.lower() for v in values})
+            setattr(
+                namespace, self.dest, list(dict.fromkeys(v.lower() for v in values))
+            )
 
     parser.add_argument(
         "--rtype",
-        default={"table"},
+        default=["table"],
         choices=get_args(RESULT_TYPES),
         nargs="+",
         help="Specifies output format.",
-        action=UniqueSetAction,
+        action=UniqueListAction,
     )
     parser.add_argument(
         "--additional_columns",
         choices=POSSIBLE_ADDITIONAL_COLUMNS,
         nargs="+",
         help="Additional columns to include in the output, only applied to the csv and parquet output formats.",
-        action=UniqueSetAction,
+        action=UniqueListAction,
     )
     parser.add_argument(
         "-c",

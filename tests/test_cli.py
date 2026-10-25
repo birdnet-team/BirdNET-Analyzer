@@ -40,3 +40,23 @@ def test_the_cli_choices_are_the_values_of_their_config_type(parser, dest, value
     action = next(action for action in parser()._actions if action.dest == dest)
 
     assert set(action.choices) == set(get_args(values))
+
+
+def test_result_types_and_additional_columns_keep_their_order_without_repeats():
+    args = cli.analyzer_parser().parse_args(
+        [
+            "recordings",
+            "--rtype",
+            "parquet",
+            "table",
+            "parquet",
+            "--additional_columns",
+            "week",
+            "lat",
+            "model",
+            "lat",
+        ]
+    )
+
+    assert args.rtype == ["parquet", "table"]
+    assert args.additional_columns == ["week", "lat", "model"]

@@ -1,8 +1,9 @@
 """Correctness and benchmark tests for the np.digitize-based confidence-bin
 assignment in birdnet_analyzer.segments.utils.parse_files.
 
-The reference implementation below is the exact original nested-loop code
-that was replaced, kept here so the tests remain self-contained.
+The reference implementation below states the same binning rule as nested loops:
+n_bins equal bins over [min_conf, max_conf], the last one closed, confidences
+outside the range in the nearest bin.
 """
 
 import timeit
@@ -26,30 +27,21 @@ def _assign_balanced_bins_ref(
     max_segments: int,
     rng: np.random.Generator,
 ) -> list[dict]:
-    """Original O(n x m) implementation extracted verbatim from parse_files."""
-    confidence_bins = []
-    bin_thresholds = np.linspace(min_conf, max_conf, num=n_bins)
-
-    for i in range(len(bin_thresholds)):
-        if i == 0:
-            confidence_bins.append((0, bin_thresholds[i]))
-        else:
-            confidence_bins.append((bin_thresholds[i - 1], bin_thresholds[i]))
-
-    max_segments_per_bin = max_segments // len(confidence_bins)
-    segments_by_bin = {confidence_bin: [] for confidence_bin in confidence_bins}
+    """The binning rule as O(n x m) loops."""
+    bin_edges = np.linspace(min_conf, max_conf, num=n_bins + 1)
+    max_segments_per_bin = max_segments // n_bins
+    segments_by_bin: list[list] = [[] for _ in range(n_bins)]
 
     segments.sort(key=lambda x: x["confidence"], reverse=True)
 
     for seg in segments:
-        for confidence_bin in confidence_bins:
-            if seg["confidence"] >= confidence_bin[1]:
-                continue
-            if seg["confidence"] >= confidence_bin[0]:
-                segments_by_bin[confidence_bin].append(seg)
+        for i in range(n_bins):
+            if seg["confidence"] < bin_edges[i + 1] or i == n_bins - 1:
+                segments_by_bin[i].append(seg)
+                break
 
     result = []
-    for bin_segs in segments_by_bin.values():
+    for bin_segs in segments_by_bin:
         if len(bin_segs) > max_segments_per_bin:
             rng.shuffle(bin_segs)
             result.extend(bin_segs[:max_segments_per_bin])
@@ -68,16 +60,15 @@ def _assign_balanced_bins_new(
     rng: np.random.Generator,
 ) -> list[dict]:
     """New np.digitize implementation extracted verbatim from parse_files."""
-    bin_thresholds = np.linspace(min_conf, max_conf, num=n_bins)
+    bin_edges = np.linspace(min_conf, max_conf, num=n_bins + 1)
     max_segments_per_bin = max_segments // n_bins
     segments_by_bin: list[list] = [[] for _ in range(n_bins)]
 
     confidences = np.array([seg["confidence"] for seg in segments])
-    bin_indices = np.digitize(confidences, bin_thresholds, right=False)
+    bin_indices = np.clip(np.digitize(confidences, bin_edges) - 1, 0, n_bins - 1)
 
-    for seg, bin_idx in zip(segments, bin_indices, strict=False):
-        if bin_idx < n_bins:
-            segments_by_bin[bin_idx].append(seg)
+    for seg, bin_idx in zip(segments, bin_indices, strict=True):
+        segments_by_bin[bin_idx].append(seg)
 
     result = []
     for bin_segs in segments_by_bin:
@@ -91,33 +82,26 @@ def _assign_balanced_bins_new(
 
 
 def _get_bin_contents(segments, min_conf, max_conf, n_bins):
-    """Return a list[frozenset] of segment ids for each bin, using new logic."""
-    bin_thresholds = np.linspace(min_conf, max_conf, num=n_bins)
+    """Return a list[set] of segment ids for each bin, using new logic."""
+    bin_edges = np.linspace(min_conf, max_conf, num=n_bins + 1)
     confidences = np.array([s["confidence"] for s in segments])
-    indices = np.digitize(confidences, bin_thresholds, right=False)
-    bins: list[set] = [set() for _ in range(n_bins + 1)]
-    for seg, idx in zip(segments, indices, strict=False):
+    indices = np.clip(np.digitize(confidences, bin_edges) - 1, 0, n_bins - 1)
+    bins: list[set] = [set() for _ in range(n_bins)]
+    for seg, idx in zip(segments, indices, strict=True):
         bins[idx].add((seg["start"], seg["confidence"]))
     return bins
 
 
 def _get_bin_contents_ref(segments, min_conf, max_conf, n_bins):
-    """Return a list[set] of segment ids for each bin, using old logic."""
-    bin_thresholds = np.linspace(min_conf, max_conf, num=n_bins)
-    confidence_bins = []
-    for i in range(len(bin_thresholds)):
-        if i == 0:
-            confidence_bins.append((0, bin_thresholds[i]))
-        else:
-            confidence_bins.append((bin_thresholds[i - 1], bin_thresholds[i]))
-    bins: dict = {cb: set() for cb in confidence_bins}
+    """Return a list[set] of segment ids for each bin, using the reference loops."""
+    bin_edges = np.linspace(min_conf, max_conf, num=n_bins + 1)
+    bins: list[set] = [set() for _ in range(n_bins)]
     for seg in segments:
-        for cb in confidence_bins:
-            if seg["confidence"] >= cb[1]:
-                continue
-            if seg["confidence"] >= cb[0]:
-                bins[cb].add((seg["start"], seg["confidence"]))
-    return list(bins.values())
+        for i in range(n_bins):
+            if seg["confidence"] < bin_edges[i + 1] or i == n_bins - 1:
+                bins[i].add((seg["start"], seg["confidence"]))
+                break
+    return bins
 
 
 # ---------------------------------------------------------------------------
@@ -180,14 +164,11 @@ class TestBinAssignmentCorrectness:
         new_bins = _get_bin_contents(segs, 0.25, 1.0, n_bins)
         ref_bins = _get_bin_contents_ref(segs, 0.25, 1.0, n_bins)
 
-        # new_bins has n_bins+1 entries (last = conf >= max_conf), ref has n_bins
-        assert len(ref_bins) == n_bins
+        assert len(ref_bins) == len(new_bins) == n_bins
         for i in range(n_bins):
             assert new_bins[i] == ref_bins[i], (
                 f"Bin {i} mismatch: new={new_bins[i]}, ref={ref_bins[i]}"
             )
-        # new bin n_bins holds conf >= max_conf; should be empty for uniform(0.25, 1.0)
-        assert new_bins[n_bins] == set()
 
     def test_exact_same_output_when_no_bin_truncation(self):
         """When no bin is over-full both implementations return the same set.
@@ -198,13 +179,10 @@ class TestBinAssignmentCorrectness:
         """
         n_bins = 5
         n_per_bin = 3
-        thresholds = np.linspace(
-            0.25, 1.0, n_bins
-        )  # [0.25, 0.4375, 0.625, 0.8125, 1.0]
-        # Place n_per_bin confidences inside each of the n_bins-1 upper bins
+        edges = np.linspace(0.25, 1.0, n_bins + 1)  # [0.25, 0.4, ..., 0.85, 1.0]
         confidences = []
-        for i in range(1, n_bins):
-            lo, hi = float(thresholds[i - 1]), float(thresholds[i])
+        for i in range(n_bins):
+            lo, hi = float(edges[i]), float(edges[i + 1])
             confidences.extend(np.linspace(lo + 0.01, hi - 0.01, n_per_bin).tolist())
         segs = _make_segments(confidences)
 
@@ -223,24 +201,17 @@ class TestBinAssignmentCorrectness:
 
         assert _seg_ids(result_new) == _seg_ids(result_ref)
 
-    def test_at_max_conf_excluded_in_both(self):
-        """
-        Segment with confidence == max_conf must not appear in either implementation.
-        """
+    def test_max_conf_lands_in_the_last_bin_in_both(self):
         segs = _make_segments([0.5, 1.0])
-        rng_ref = np.random.default_rng(0)
-        rng_new = np.random.default_rng(0)
-        result_ref = _assign_balanced_bins_ref(list(segs), 0.25, 1.0, 5, 100, rng_ref)
-        result_new = _assign_balanced_bins_new(list(segs), 0.25, 1.0, 5, 100, rng_new)
-        assert all(s["confidence"] < 1.0 for s in result_ref)
-        assert all(s["confidence"] < 1.0 for s in result_new)
+
+        new_bins = _get_bin_contents(segs, 0.25, 1.0, 5)
+        ref_bins = _get_bin_contents_ref(segs, 0.25, 1.0, 5)
+
+        assert new_bins == ref_bins
+        assert new_bins[-1] == {(1.0, 1.0)}
 
     def test_below_min_conf_lands_in_bin_zero(self):
-        """Segments below min_conf go to bin 0 in both implementations (bin_0
-        covers [0, min_conf) in the original, and digitize index 0 covers the same
-        range). In practice _find_segments pre-filters by min_conf so this bin
-        is always empty during normal operation.
-        """
+        """Segments below min_conf go to bin 0 in both implementations."""
         segs = _make_segments([0.1, 0.15, 0.2, 0.5, 0.8])
         new_bins = _get_bin_contents(segs, 0.25, 1.0, 5)
         ref_bins = _get_bin_contents_ref(segs, 0.25, 1.0, 5)
@@ -261,13 +232,13 @@ class TestBinAssignmentCorrectness:
 
     def test_boundary_at_bin_threshold_same_bin_in_both(self):
         """A confidence exactly at a threshold must go to the same bin in both."""
-        n_bins = 4
-        # thresholds = np.linspace(0.25, 1.0, n_bins)  # [0.25, 0.5, 0.75, 1.0]
-        # 0.5 is exactly thresholds[1]
+        n_bins = 3
+        # edges = np.linspace(0.25, 1.0, n_bins + 1)  # [0.25, 0.5, 0.75, 1.0]
         segs = _make_segments([0.5])
         new_bins = _get_bin_contents(segs, 0.25, 1.0, n_bins)
         ref_bins = _get_bin_contents_ref(segs, 0.25, 1.0, n_bins)
-        assert new_bins[:n_bins] == ref_bins
+        assert new_bins == ref_bins
+        assert new_bins[1] == {(0.0, 0.5)}
 
     def test_empty_input(self):
         rng = np.random.default_rng(0)
@@ -283,14 +254,12 @@ class TestBinAssignmentCorrectness:
         result = _assign_balanced_bins_new(list(segs), 0.25, 1.0, 10, max_seg, rng)
         assert len(result) <= max_seg
 
-    def test_output_segment_confidences_in_valid_range(self):
-        """Every output segment must have confidence in [min_conf, max_conf)."""
+    def test_every_segment_lands_in_a_bin(self):
         confidences = RNG.uniform(0.1, 1.05, 200).tolist()
         segs = _make_segments(confidences)
         rng = np.random.default_rng(0)
-        result = _assign_balanced_bins_new(list(segs), 0.25, 1.0, 10, 200, rng)
-        for s in result:
-            assert 0.0 <= s["confidence"] < 1.0
+        result = _assign_balanced_bins_new(list(segs), 0.25, 1.0, 10, 2000, rng)
+        assert _seg_ids(result) == _seg_ids(segs)
 
 
 # ---------------------------------------------------------------------------
@@ -364,6 +333,29 @@ class TestParseFilesBalanced:
         all_segs = [s for _, segs in result for s in segs]
         assert len(all_segs) == 4
         assert all(0.25 <= s["confidence"] < 1.0 for s in all_segs)
+
+    def test_detections_spread_over_the_range_fill_max_segments(self):
+        confidences = np.linspace(0.25, 1.0, 200).tolist()
+        flist = [{"audio": "fake.wav", "result": "fake.txt"}]
+
+        with patch(
+            "birdnet_analyzer.segments.utils._find_segments",
+            return_value=self._mock_find_segments(confidences),
+        ):
+            result = parse_files(flist, max_segments=100, collection_mode="balanced")
+
+        assert sum(len(segs) for _, segs in result) == 100
+
+    def test_a_detection_at_max_conf_is_kept(self):
+        flist = [{"audio": "fake.wav", "result": "fake.txt"}]
+
+        with patch(
+            "birdnet_analyzer.segments.utils._find_segments",
+            return_value=self._mock_find_segments([0.5, 1.0]),
+        ):
+            result = parse_files(flist, collection_mode="balanced")
+
+        assert sorted(s["confidence"] for _, segs in result for s in segs) == [0.5, 1.0]
 
 
 # ---------------------------------------------------------------------------

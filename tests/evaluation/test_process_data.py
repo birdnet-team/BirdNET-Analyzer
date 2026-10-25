@@ -41,9 +41,7 @@ def test_unmatched_prediction_file_dropped_by_default(tmp_path, caplog):
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
     # rec2 has no annotation file at all.
-    _write_table(
-        pred / "rec2.txt", PRED_HEADER, [[0, 3, "X", 0.8], [3, 6, "X", 0.7]]
-    )
+    _write_table(pred / "rec2.txt", PRED_HEADER, [[0, 3, "X", 0.8], [3, 6, "X", 0.7]])
 
     result = process_data(
         annotation_path=str(ann),
@@ -67,9 +65,7 @@ def test_unmatched_prediction_file_scored_as_empty_when_opted_in(tmp_path, caplo
     ann, pred = _dirs(tmp_path)
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
-    _write_table(
-        pred / "rec2.txt", PRED_HEADER, [[0, 3, "X", 0.8], [3, 6, "X", 0.7]]
-    )
+    _write_table(pred / "rec2.txt", PRED_HEADER, [[0, 3, "X", 0.8], [3, 6, "X", 0.7]])
 
     result = process_data(
         annotation_path=str(ann),
@@ -113,9 +109,7 @@ def test_empty_class_excluded_from_overall(tmp_path):
     ann, pred = _dirs(tmp_path)
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     # Y is predicted but never annotated -> an empty class.
-    _write_table(
-        pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9], [0, 3, "Y", 0.9]]
-    )
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9], [0, 3, "Y", 0.9]])
 
     result = process_data(
         annotation_path=str(ann),
@@ -314,9 +308,7 @@ def test_predictions_without_the_confidence_column_are_rejected(tmp_path):
         )
 
 
-def test_annotation_only_recording_is_kept_without_recording_duration(
-    tmp_path, caplog
-):
+def test_annotation_only_recording_is_kept_without_recording_duration(tmp_path, caplog):
     caplog.set_level(logging.WARNING, logger=DataProcessor.__module__)
     ann, pred = _dirs(tmp_path)
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])

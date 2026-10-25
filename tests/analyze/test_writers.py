@@ -2,10 +2,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 import soundfile as sf
 
 import birdnet_analyzer.config as cfg
+from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS
 from birdnet_analyzer.analyze.core import (
     save_as_audacity,
     save_as_csv,
@@ -15,7 +18,6 @@ from birdnet_analyzer.analyze.core import (
 )
 from birdnet_analyzer.segments.utils import (
     _find_segments,
-    _find_segments_from_combined,
     parse_files,
     parse_folders,
 )
@@ -80,6 +82,84 @@ def test_without_detections_a_result_file_holds_only_its_header(
     table = _read(without_detections)
     assert table.empty
     assert list(table.columns) == list(_read(with_detection).columns)
+
+
+COLUMN_VALUES = {
+    "lat": 50.83,
+    "lon": 12.92,
+    "week": 20,
+    "overlap": 0.5,
+    "min_conf": 0.25,
+    "sensitivity": 1.0,
+    "species_list_file": "species_list.txt",
+    "model_path": "models/BirdNET_v3.0.tflite",
+}
+
+
+def test_csv_and_parquet_results_have_the_same_columns(tmp_path):
+    detections = _detections(
+        [(SOUNDSCAPE, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5)]
+    )
+    additional_columns = list(reversed(POSSIBLE_ADDITIONAL_COLUMNS))
+
+    save_as_csv(detections, tmp_path / "r.csv", additional_columns, **COLUMN_VALUES)
+    save_as_parquet(
+        detections, tmp_path / "r.parquet", additional_columns, **COLUMN_VALUES
+    )
+
+    columns = list(_read(tmp_path / "r.csv").columns)
+    assert columns == [
+        "Start (s)",
+        "End (s)",
+        "Scientific name",
+        "Common name",
+        "Confidence",
+        "File",
+        *additional_columns,
+    ]
+    assert list(_read(tmp_path / "r.parquet").columns) == columns
+
+
+@pytest.mark.parametrize(
+    "column_values",
+    [COLUMN_VALUES, dict.fromkeys(COLUMN_VALUES)],
+    ids=["values", "no-values"],
+)
+def test_an_empty_parquet_result_has_the_schema_of_a_non_empty_one(
+    tmp_path, column_values
+):
+    detections = _detections(
+        [(SOUNDSCAPE, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5)]
+    )
+
+    for name, df in (("one", detections), ("none", detections.iloc[:0])):
+        save_as_parquet(
+            df,
+            tmp_path / f"{name}.parquet",
+            POSSIBLE_ADDITIONAL_COLUMNS,
+            **column_values,
+        )
+
+    one, none = (pq.read_table(tmp_path / f"{n}.parquet") for n in ("one", "none"))
+    assert none.schema.remove_metadata() == one.schema.remove_metadata()
+    assert pa.concat_tables([one, none]).num_rows == 1
+
+
+def test_a_species_list_path_is_written_as_text(tmp_path):
+    detections = _detections(
+        [(SOUNDSCAPE, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5)]
+    )
+    species_list = Path("lists") / "species_list.txt"
+
+    for save, name in ((save_as_csv, "r.csv"), (save_as_parquet, "r.parquet")):
+        save(
+            detections,
+            tmp_path / name,
+            ["species_list"],
+            species_list_file=species_list,
+        )
+
+        assert _read(tmp_path / name)["species_list"].tolist() == [str(species_list)]
 
 
 def test_without_detections_the_audacity_labels_are_empty(tmp_path):
@@ -158,9 +238,9 @@ def test_segments_read_fields_containing_commas(tmp_path, write, filename):
         result,
     )
 
-    assert [
-        (s["audio"], s["species"]) for s in _find_segments_from_combined(str(result))
-    ] == [(afile, "Whales, Dolphins and Porpoises")]
+    assert [(s["audio"], s["species"]) for s in _find_segments(None, str(result))] == [
+        (afile, "Whales, Dolphins and Porpoises")
+    ]
     assert [s["species"] for s in _find_segments(afile, str(result))] == [
         "Whales, Dolphins and Porpoises"
     ]
@@ -185,6 +265,26 @@ def test_raven_times_are_offset_by_the_durations_of_the_preceding_files(tmp_path
     assert table["Begin Time (s)"].tolist() == [0.0, 3.0, 6.0, 18.1]
     assert table["End Time (s)"].tolist() == [3.0, 6.0, 9.0, 21.1]
     assert table["File Offset (s)"].tolist() == [0.0, 3.0, 0.0, 3.0]
+
+
+def test_a_combined_raven_table_is_read_back_by_segments(tmp_path):
+    a = _wav(tmp_path / "a.wav", 9)
+    b = _wav(tmp_path / "b.wav", 6)
+    rows = [
+        (a, 0.0, 3.0, "Turdus migratorius_American Robin", 0.5),
+        (b, 3.0, 6.0, "Cardinalis cardinalis_Northern Cardinal", 0.75),
+    ]
+    output = tmp_path / cfg.OUTPUT_RAVEN_FILENAME
+
+    _save_as_rtable(_detections(rows), output)
+
+    segments = parse_files(
+        [{"isCombinedFile": True, "result": str(output)}],
+        collection_mode="confidence",
+    )
+    assert sorted(
+        (s["audio"], s["start"], s["end"]) for _, segs in segments for s in segs
+    ) == [(a, 0.0, 3.0), (b, 3.0, 6.0)]
 
 
 def test_raven_table_accepts_a_categorical_input_column(tmp_path):
@@ -233,4 +333,4 @@ def test_kaleidoscope_indir_of_a_file_below_the_root_is_the_root(tmp_path):
     assert pd.read_csv(result, keep_default_na=False)["INDIR"].tolist() == [
         tmp_path.anchor
     ]
-    assert [s["audio"] for s in _find_segments_from_combined(str(result))] == [afile]
+    assert [s["audio"] for s in _find_segments(None, str(result))] == [afile]

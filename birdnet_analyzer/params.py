@@ -7,14 +7,16 @@ classifier as ``<classifier>.birdnet.train-params.csv`` (see
 those files -- and the ones written before the 2.x releases, which held fewer
 parameters in one column per parameter -- back into keyword arguments for
 :func:`birdnet_analyzer.analyze.analyze` and :func:`birdnet_analyzer.train.train`.
+The writers take their headers from :data:`ANALYSIS_PARAMS` and :data:`TRAIN_PARAMS`.
 
 They are shared by the CLI, which turns them into argument defaults so explicit
 command line arguments override the file, and by the GUI, which maps them onto its
 components in :mod:`birdnet_analyzer.gui.presets`.
 """
 
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Any, get_args
+from typing import Any, NamedTuple, get_args
 
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
 
@@ -52,26 +54,6 @@ def read_params(path: str) -> dict[str, str]:
     return dict(zip(rows[0], rows[1], strict=False))
 
 
-def _parser(params: dict[str, str], values: dict[str, Any]):
-    """Builds the parse function that maps file parameters onto keyword arguments.
-
-    The returned function takes the argument name, a converter, and the names the
-    parameter has carried over the versions. The first name found in the file wins;
-    empty and unconvertible values are left out.
-    """
-
-    def parse(key: str, converter, *headers: str):
-        for header in headers:
-            raw = params.get(header, "").strip()
-
-            if raw:
-                with suppress(ValueError):
-                    values[key] = converter(raw)
-                return
-
-    return parse
-
-
 def _to_int(raw: str) -> int:
     return int(float(raw))
 
@@ -94,6 +76,111 @@ def _to_acoustic_version(raw: str) -> str:
     return raw
 
 
+class _Param(NamedTuple):
+    key: str
+    # None for a parameter that is only recorded, not read back.
+    convert: Callable[[str], Any] | None = None
+    legacy_headers: tuple[str, ...] = ()
+    # An empty selection is still a selection.
+    keep_empty: bool = False
+
+
+_VERSION_HEADERS = ("BirdNET model version", "BirdNET Model version")
+
+# The rows of the parameters files by header, in the order they are written.
+ANALYSIS_PARAMS: dict[str, _Param] = {
+    "Model": _Param("model", str),
+    "BirdNET version": _Param("birdnet", str),
+    "Segment length": _Param("segment_length"),
+    "Sample rate": _Param("sample_rate"),
+    "Segment overlap": _Param("overlap", float),
+    "Bandpass filter minimum": _Param("fmin", _to_int),
+    "Bandpass filter maximum": _Param("fmax", _to_int),
+    "Merge consecutive detections": _Param("merge_consecutive", _to_int),
+    "Audio speed": _Param("audio_speed", float),
+    "Minimum confidence": _Param("min_conf", float),
+    "Sensitivity": _Param("sensitivity", float),
+    "Top N": _Param("top_n", _to_int),
+    "Batch size": _Param("batch_size", _to_int),
+    "Number of workers": _Param("n_workers", _to_int),
+    "Number of producers": _Param("n_producers", _to_int),
+    "Result type(s)": _Param("rtype", _to_list, keep_empty=True),
+    "Additional columns": _Param("additional_columns", _to_list, keep_empty=True),
+    "Latitude": _Param("lat", float),
+    "Longitude": _Param("lon", float),
+    "Week": _Param("week", _to_int),
+    "Species filter threshold": _Param("sf_thresh", float),
+    "Species list file": _Param("slist", str),
+    "Locale": _Param("locale", str),
+    "Custom classifier path": _Param("classifier", str),
+    "Custom classifier species list": _Param("cc_species_list", str),
+    "Split tables": _Param("split_tables", _to_bool),
+}
+TRAIN_PARAMS: dict[str, _Param] = {
+    "Classifier name": _Param("classifier_name", str),
+    "Model formats": _Param("model_formats", _to_list),
+    "Model save mode": _Param("model_save_mode", str),
+    "Bandpass filter minimum": _Param("fmin", _to_int),
+    "Bandpass filter maximum": _Param("fmax", _to_int),
+    "Audio speed": _Param("audio_speed", float),
+    "Crop mode": _Param("crop_mode", str),
+    "Crop overlap": _Param("overlap", float),
+    "Autotune": _Param("autotune", _to_bool),
+    "Autotune trials": _Param("autotune_trials", _to_int),
+    "Autotune folds": _Param("autotune_n_splits", _to_int),
+    "Autotune repeats": _Param("autotune_n_repeats", _to_int),
+    "Autotune metric": _Param("autotune_metric", str),
+    "Epochs": _Param("epochs", _to_int),
+    "Batch size": _Param("batch_size", _to_int, ("Batchsize",)),
+    "Learning rate": _Param("learning_rate", float),
+    "Hidden units": _Param("hidden_units", _to_int),
+    "Dropout": _Param("dropout", float),
+    "Weight decay": _Param("weight_decay"),
+    "Use label smoothing": _Param(
+        "label_smoothing", _to_bool, ("use label smoothing",)
+    ),
+    "Use mixup": _Param("mixup", _to_bool, ("use mixup",)),
+    "Use focal loss": _Param("use_focal_loss", _to_bool, ("use focal loss",)),
+    "Focal loss gamma": _Param("focal_loss_gamma", float, ("focal loss gamma",)),
+    "Focal loss alpha": _Param("focal_loss_alpha", float, ("focal loss alpha",)),
+    "Upsampling mode": _Param("upsampling_mode", str),
+    "Upsampling ratio": _Param("upsampling_ratio", float),
+    _VERSION_HEADERS[0]: _Param("birdnet", _to_acoustic_version, _VERSION_HEADERS[1:]),
+}
+
+
+def by_header(table: dict[str, _Param], values: dict[str, Any]) -> dict[str, Any]:
+    """Keys the values of a run, given by keyword, by the headers of ``table``.
+
+    Raises:
+        KeyError: If ``values`` lacks a parameter of ``table``.
+    """
+    return {header: values[param.key] for header, param in table.items()}
+
+
+def _read_values(params: dict[str, str], table: dict[str, _Param]) -> dict[str, Any]:
+    """Maps the parameters of a file onto keyword arguments.
+
+    The first of a parameter's headers found in the file wins; empty and
+    unconvertible values are left out.
+    """
+    values: dict[str, Any] = {}
+
+    for header, param in table.items():
+        if param.convert is None:
+            continue
+
+        for name in (header, *param.legacy_headers):
+            raw = params.get(name, "").strip()
+
+            if raw or (param.keep_empty and name in params):
+                with suppress(ValueError):
+                    values[param.key] = param.convert(raw)
+                break
+
+    return values
+
+
 def load_analysis_params(path: str) -> dict[str, Any]:
     """Reads the parameters of a previous analysis back as ``analyze()`` arguments.
 
@@ -112,41 +199,7 @@ def load_analysis_params(path: str) -> dict[str, Any]:
     Raises:
         ValueError: If the file is not an analysis parameters file.
     """
-    params = read_params(path)
-    values: dict[str, Any] = {}
-    parse = _parser(params, values)
-
-    parse("min_conf", float, "Minimum confidence")
-    parse("sensitivity", float, "Sensitivity")
-    parse("overlap", float, "Segment overlap")
-    parse("merge_consecutive", _to_int, "Merge consecutive detections")
-    parse("audio_speed", float, "Audio speed")
-    parse("fmin", _to_int, "Bandpass filter minimum")
-    parse("fmax", _to_int, "Bandpass filter maximum")
-    parse("sf_thresh", float, "Species filter threshold")
-    parse("batch_size", _to_int, "Batch size")
-    parse("n_producers", _to_int, "Number of producers")
-    parse("n_workers", _to_int, "Number of workers")
-    parse("top_n", _to_int, "Top N")
-    parse("lat", float, "Latitude")
-    parse("lon", float, "Longitude")
-    parse("week", _to_int, "Week")
-    parse("locale", str, "Locale")
-    parse("model", str, "Model")
-    parse("birdnet", str, "BirdNET version")
-    parse("slist", str, "Species list file")
-    parse("classifier", str, "Custom classifier path")
-    parse("cc_species_list", str, "Custom classifier species list")
-    parse("split_tables", _to_bool, "Split tables")
-
-    # An empty selection is still a selection, so these apply whenever the
-    # parameter is present.
-    for key, header in (
-        ("rtype", "Result type(s)"),
-        ("additional_columns", "Additional columns"),
-    ):
-        if header in params:
-            values[key] = _to_list(params[header])
+    values = _read_values(read_params(path), ANALYSIS_PARAMS)
 
     if len(values) < _MIN_RECOGNIZED_PARAMS:
         raise ValueError(f"Not an analysis parameters file: {path}")
@@ -173,35 +226,7 @@ def load_train_params(path: str) -> dict[str, Any]:
         ValueError: If the file is not a training parameters file.
     """
     params = read_params(path)
-    values: dict[str, Any] = {}
-    parse = _parser(params, values)
-
-    parse("classifier_name", str, "Classifier name")
-    parse("model_formats", _to_list, "Model formats")
-    parse("model_save_mode", str, "Model save mode")
-    parse("fmin", _to_int, "Bandpass filter minimum")
-    parse("fmax", _to_int, "Bandpass filter maximum")
-    parse("audio_speed", float, "Audio speed")
-    parse("crop_mode", str, "Crop mode")
-    parse("overlap", float, "Crop overlap")
-    parse("autotune", _to_bool, "Autotune")
-    parse("autotune_trials", _to_int, "Autotune trials")
-    parse("autotune_n_splits", _to_int, "Autotune folds")
-    parse("autotune_n_repeats", _to_int, "Autotune repeats")
-    parse("autotune_metric", str, "Autotune metric")
-    parse("epochs", _to_int, "Epochs")
-    parse("batch_size", _to_int, "Batch size", "Batchsize")
-    parse("learning_rate", float, "Learning rate")
-    parse("hidden_units", _to_int, "Hidden units")
-    parse("dropout", float, "Dropout")
-    parse("upsampling_mode", str, "Upsampling mode")
-    parse("upsampling_ratio", float, "Upsampling ratio")
-    parse("label_smoothing", _to_bool, "Use label smoothing", "use label smoothing")
-    parse("mixup", _to_bool, "Use mixup", "use mixup")
-    parse("use_focal_loss", _to_bool, "Use focal loss", "use focal loss")
-    parse("focal_loss_gamma", float, "Focal loss gamma", "focal loss gamma")
-    parse("focal_loss_alpha", float, "Focal loss alpha", "focal loss alpha")
-    parse("birdnet", _to_acoustic_version, *_VERSION_HEADERS)
+    values = _read_values(params, TRAIN_PARAMS)
 
     if len(values) < _MIN_RECOGNIZED_PARAMS:
         raise ValueError(f"Not a training parameters file: {path}")
@@ -211,6 +236,3 @@ def load_train_params(path: str) -> dict[str, Any]:
         values["birdnet"] = "2.4"
 
     return values
-
-
-_VERSION_HEADERS = ("BirdNET model version", "BirdNET Model version")

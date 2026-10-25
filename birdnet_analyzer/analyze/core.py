@@ -5,6 +5,8 @@ from math import isclose
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import birdnet_analyzer.config as cfg
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Sequence
 
@@ -16,6 +18,38 @@ if TYPE_CHECKING:
 
     from birdnet_analyzer.analyze.resume import RunMetadata
     from birdnet_analyzer.config import ADDITIONAL_COLUMNS, RESULT_TYPES
+
+_RESULT_FILES = {
+    "table": (cfg.OUTPUT_RAVEN_FILENAME, ".BirdNET.selection.table.txt"),
+    "csv": (cfg.OUTPUT_CSV_FILENAME, ".BirdNET.results.csv"),
+    "kaleidoscope": (
+        cfg.OUTPUT_KALEIDOSCOPE_FILENAME,
+        ".BirdNET.results.kaleidoscope.csv",
+    ),
+    "audacity": (cfg.OUTPUT_AUDACITY_FILENAME, ".BirdNET.results.txt"),
+    "parquet": (cfg.OUTPUT_PARQUET_FILENAME, ".BirdNET.results.parquet"),
+}
+
+# The columns of the csv and parquet results, with the types that keep the schema
+# of a parquet file independent of its detections.
+_TABULAR_COLUMNS = {
+    "Start (s)": "float32",
+    "End (s)": "float32",
+    "Scientific name": "string",
+    "Common name": "string",
+    "Confidence": "float32",
+    "File": "string",
+}
+_ADDITIONAL_COLUMN_TYPES = {
+    "lat": "float64",
+    "lon": "float64",
+    "week": "int64",
+    "overlap": "float64",
+    "sensitivity": "float64",
+    "min_conf": "float64",
+    "species_list": "string",
+    "model": "string",
+}
 
 
 def analyze(
@@ -140,7 +174,6 @@ def analyze(
         where it left off (if the analysis parameters match), and the journal is
         removed after the outputs are written.
     """
-    import birdnet_analyzer.config as cfg
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
     from birdnet_analyzer.model_utils import (
         effective_sensitivity,
@@ -148,6 +181,7 @@ def analyze(
         run_inference,
         validate_min_conf,
     )
+    from birdnet_analyzer.params import ANALYSIS_PARAMS, by_header
     from birdnet_analyzer.utils import save_params_file
 
     if classifier and model == "perch":
@@ -273,106 +307,75 @@ def analyze(
         df, merge_consecutive, hop_size=meta.hop_duration_s
     )
 
+    write_options = {
+        "bandpass_fmin": fmin,
+        "bandpass_fmax": fmax,
+        "audio_speed": audio_speed,
+        "meta": meta,
+        "additional_columns": additional_columns,
+        "column_values": _column_values(
+            lat=lat,
+            lon=lon,
+            week=week,
+            overlap=overlap,
+            min_conf=min_conf,
+            sensitivity=sensitivity,
+            species_list_file=species_list_file,
+            model_path=meta.model_path,
+        ),
+    }
+
+    inputs = _analysed_inputs(predictions, journal, input_files)
+
     if split_tables:
         _split_tables(
-            df,
-            audio_input_path,
-            Path(output),
-            fmin,
-            fmax,
-            meta,
-            audio_speed,
-            rtypes,
-            additional_columns,
-            lat,
-            lon,
-            week,
-            overlap,
-            min_conf,
-            sensitivity,
-            species_list_file,
+            df, inputs, audio_input_path, Path(output), rtypes, **write_options
         )
     else:
-        if "table" in rtypes:
-            save_as_rtable(
-                df,
-                fmin,
-                fmax,
-                meta.model_fmin,
-                meta.model_fmax,
-                audio_speed,
-                Path(output) / cfg.OUTPUT_RAVEN_FILENAME,
-            )
-
-        if "csv" in rtypes:
-            save_as_csv(
-                df,
-                Path(output) / cfg.OUTPUT_CSV_FILENAME,
-                additional_columns,
-                lat=lat,
-                lon=lon,
-                week=week,
-                overlap=overlap,
-                min_conf=min_conf,
-                sensitivity=sensitivity,
-                species_list_file=species_list_file,
-                model_path=meta.model_path,
-            )
-
-        if "kaleidoscope" in rtypes:
-            save_as_kaleidoscope(df, Path(output) / cfg.OUTPUT_KALEIDOSCOPE_FILENAME)
-
-        if "audacity" in rtypes:
-            save_as_audacity(df, Path(output) / cfg.OUTPUT_AUDACITY_FILENAME)
-
-        if "parquet" in rtypes:
-            save_as_parquet(
-                df,
-                Path(output) / cfg.OUTPUT_PARQUET_FILENAME,
-                additional_columns,
-                lat=lat,
-                lon=lon,
-                week=week,
-                overlap=overlap,
-                min_conf=min_conf,
-                sensitivity=sensitivity,
-                species_list_file=species_list_file,
-                model_path=meta.model_path,
-            )
+        _write_outputs(
+            df,
+            {rtype: Path(output) / name for rtype, (name, _) in _RESULT_FILES.items()},
+            rtypes,
+            inputs,
+            **write_options,
+        )
 
     if save_params:
         save_params_file(
             Path(output) / cfg.ANALYSIS_PARAMS_FILENAME,
-            {
-                "Model": model,
-                "BirdNET version": birdnet,
-                "Segment length": meta.segment_duration_s,
-                "Sample rate": meta.model_sr,
-                "Segment overlap": overlap,
-                "Bandpass filter minimum": fmin,
-                "Bandpass filter maximum": fmax,
-                "Merge consecutive detections": merge_consecutive,
-                "Audio speed": audio_speed,
-                "Minimum confidence": min_conf,
-                "Sensitivity": sensitivity,
-                "Top N": top_n or "",
-                "Batch size": batch_size,
-                "Number of workers": n_workers or "",
-                "Number of producers": n_producers,
-                "Result type(s)": ", ".join(rtypes),
-                "Additional columns": ", ".join(additional_columns)
-                if additional_columns
-                else "",
-                "Latitude": "" if lat is None else lat,
-                "Longitude": "" if lon is None else lon,
-                "Week": "" if week is None else week,
-                "Species filter threshold": sf_thresh,
-                "Species list file": species_list_file or "",
-                "Locale": locale,
-                "Custom classifier path": classifier or "",
-                "Custom classifier species list": cc_species_list or "",
-                "Split tables": split_tables,
-            },
+            by_header(
+                ANALYSIS_PARAMS,
+                {
+                    "model": model,
+                    "birdnet": birdnet,
+                    "segment_length": meta.segment_duration_s,
+                    "sample_rate": meta.model_sr,
+                    "overlap": overlap,
+                    "fmin": fmin,
+                    "fmax": fmax,
+                    "merge_consecutive": merge_consecutive,
+                    "audio_speed": audio_speed,
+                    "min_conf": min_conf,
+                    "sensitivity": sensitivity,
+                    "top_n": top_n or "",
+                    "batch_size": batch_size,
+                    "n_workers": n_workers or "",
+                    "n_producers": n_producers,
+                    "rtype": ", ".join(rtypes),
+                    "additional_columns": ", ".join(additional_columns)
+                    if additional_columns
+                    else "",
+                    "lat": "" if lat is None else lat,
+                    "lon": "" if lon is None else lon,
+                    "week": "" if week is None else week,
+                    "sf_thresh": sf_thresh,
+                    "slist": species_list_file or "",
+                    "locale": locale,
+                    "classifier": classifier or "",
+                    "cc_species_list": cc_species_list or "",
+                    "split_tables": split_tables,
+                },
+            ),
         )
 
     if journal is not None:
@@ -401,83 +404,92 @@ def _resume_fingerprint_params(**params) -> dict:
     return params
 
 
+def _analysed_inputs(predictions, journal, input_files: list[Path]) -> list[str]:
+    """The inputs an analysis read, whether or not they hold detections."""
+    files = input_files or [Path(f) for f in predictions.inputs]
+    unprocessable = journal.invalid_subset(input_files) if journal else set()
+
+    if predictions is not None:
+        unprocessable |= predictions.get_unprocessed_files()
+
+    return [str(f) for f in files if f not in unprocessable]
+
+
+def _path_key(path) -> str:
+    return os.path.normcase(os.path.abspath(path))
+
+
 def _split_tables(
     df: pd.DataFrame,
+    inputs: Sequence[str],
     audio_input_path: Path,
     output: Path,
-    bandpass_fmin: int,
-    bandpass_fmax: int,
-    meta: RunMetadata,
-    audio_speed: float,
-    rtypes: Sequence[str],
-    additional_columns,
-    lat,
-    lon,
-    week,
-    overlap,
-    min_conf,
-    sensitivity,
-    species_list_file,
+    rtypes: Collection[str],
+    **write_options,
 ):
+    """Writes the results of each of ``inputs`` to files of their own."""
     input_root = (
         Path(os.path.abspath(audio_input_path)) if audio_input_path.is_dir() else None
     )
+    frames = {_path_key(input_file): (input_file, df.iloc[:0]) for input_file in inputs}
 
     for input_file, df_file in df.groupby("input", sort=False, observed=True):
+        frames[_path_key(input_file)] = (input_file, df_file)
+
+    for input_file, df_file in frames.values():
         rpath = Path(os.path.abspath(input_file))
         rpath = rpath.relative_to(input_root) if input_root else Path(rpath.name)
         file_shorthand = str(rpath.with_suffix(""))
 
-        if "table" in rtypes:
+        _write_outputs(
+            df_file,
+            {
+                rtype: output / (file_shorthand + suffix)
+                for rtype, (_, suffix) in _RESULT_FILES.items()
+            },
+            rtypes,
+            [input_file],
+            **write_options,
+        )
+
+
+def _write_outputs(
+    df: pd.DataFrame,
+    paths: dict[str, Path],
+    rtypes: Collection[str],
+    inputs: Sequence[str],
+    *,
+    bandpass_fmin: int,
+    bandpass_fmax: int,
+    audio_speed: float,
+    meta: RunMetadata,
+    additional_columns: list[ADDITIONAL_COLUMNS] | None,
+    column_values: dict,
+):
+    """Writes ``df`` as each of ``rtypes``, to the path ``paths`` holds for it."""
+    for rtype, path in paths.items():
+        if rtype not in rtypes:
+            continue
+
+        if rtype == "table":
             save_as_rtable(
-                df_file,
+                df,
                 bandpass_fmin,
                 bandpass_fmax,
                 meta.model_fmin,
                 meta.model_fmax,
                 audio_speed,
-                output / (file_shorthand + ".BirdNET.selection.table.txt"),
+                path,
+                inputs=inputs,
             )
-
-        if "csv" in rtypes:
-            save_as_csv(
-                df_file,
-                output / (file_shorthand + ".BirdNET.results.csv"),
-                additional_columns,
-                lat=lat,
-                lon=lon,
-                week=week,
-                overlap=overlap,
-                min_conf=min_conf,
-                sensitivity=sensitivity,
-                species_list_file=species_list_file,
-                model_path=meta.model_path,
-            )
-
-        if "kaleidoscope" in rtypes:
-            save_as_kaleidoscope(
-                df_file, output / (file_shorthand + ".BirdNET.results.kaleidoscope.csv")
-            )
-
-        if "audacity" in rtypes:
-            save_as_audacity(
-                df_file, output / (file_shorthand + ".BirdNET.results.txt")
-            )
-
-        if "parquet" in rtypes:
-            save_as_parquet(
-                df_file,
-                output / (file_shorthand + ".BirdNET.results.parquet"),
-                additional_columns,
-                lat=lat,
-                lon=lon,
-                week=week,
-                overlap=overlap,
-                min_conf=min_conf,
-                sensitivity=sensitivity,
-                species_list_file=species_list_file,
-                model_path=meta.model_path,
-            )
+        elif rtype == "csv":
+            _save_csv(df, path, additional_columns, column_values)
+        elif rtype == "kaleidoscope":
+            save_as_kaleidoscope(df, path)
+        elif rtype == "audacity":
+            save_as_audacity(df, path)
+        elif rtype == "parquet":
+            _save_parquet(df, path, additional_columns, column_values)
 
 
 def result_dataframe(predictions, merge_consecutive: int) -> pd.DataFrame:
@@ -607,6 +619,7 @@ def save_as_rtable(
     model_fmax,
     audio_speed,
     outfile: Path,
+    inputs: Sequence[str] = (),
 ):
     from functools import partial
 
@@ -648,13 +661,23 @@ def save_as_rtable(
         },
     )
     timestamp_dtype = df["Begin Time (s)"].dtype
-    file_offsets = {}
+    durations = {_path_key(file): file_infos[file]["duration"] for file in files}
+    offsets_by_key = {}
     offset = timestamp_dtype.type(0)
 
-    for file in files:
-        file_offsets[file] = offset
-        offset += timestamp_dtype.type(file_infos[file]["duration"])
+    for file in [*inputs, *files]:
+        key = _path_key(file)
 
+        if key in offsets_by_key:
+            continue
+
+        offsets_by_key[key] = offset
+        duration = (
+            durations[key] if key in durations else get_audio_info(file)["duration"]
+        )
+        offset += timestamp_dtype.type(duration)
+
+    file_offsets = {file: offsets_by_key[_path_key(file)] for file in files}
     offsets = df["Begin Path"].astype(object).map(file_offsets)
     df["Begin Time (s)"] = df["Begin Time (s)"] + offsets
     df["End Time (s)"] = df["End Time (s)"] + offsets
@@ -694,28 +717,47 @@ def save_as_csv(
     species_list_file=None,
     model_path=None,
 ):
-    df = df.copy()
-    n_rows = df.shape[0]
+    _save_csv(
+        df,
+        output,
+        additional_columns,
+        _column_values(
+            lat=lat,
+            lon=lon,
+            week=week,
+            overlap=overlap,
+            min_conf=min_conf,
+            sensitivity=sensitivity,
+            species_list_file=species_list_file,
+            model_path=model_path,
+        ),
+    )
 
-    if additional_columns:
-        possible_cols = {
-            "lat": [lat if lat is not None else ""],
-            "lon": [lon if lon is not None else ""],
-            "week": [week if week is not None else ""],
-            "overlap": [overlap if overlap is not None else ""],
-            "sensitivity": [sensitivity if sensitivity is not None else ""],
-            "min_conf": [min_conf if min_conf is not None else ""],
-            "species_list": [species_list_file],
-            "model": [os.path.basename(model_path or "")],
-        }
-        additional_columns = [col for col in additional_columns if col in possible_cols]
 
-        for col in possible_cols:
-            if col in additional_columns:
-                df[col] = possible_cols[col] * n_rows
+def _column_values(
+    *, lat, lon, week, overlap, min_conf, sensitivity, species_list_file, model_path
+) -> dict:
+    """The values of the additional columns of the csv and parquet results."""
+    return {
+        "lat": lat,
+        "lon": lon,
+        "week": week,
+        "overlap": overlap,
+        "sensitivity": sensitivity,
+        "min_conf": min_conf,
+        "species_list": None
+        if species_list_file is None
+        else os.fspath(species_list_file),
+        "model": os.path.basename(model_path or ""),
+    }
 
-    df["Scientific name"], df["Common name"] = _split_species_name(df["species_name"])
 
+def _tabular(
+    df: pd.DataFrame,
+    additional_columns: list[ADDITIONAL_COLUMNS] | None,
+    column_values: dict,
+) -> pd.DataFrame:
+    """The detections as the csv and parquet results hold them."""
     df = df.rename(
         columns={
             "input": "File",
@@ -724,26 +766,37 @@ def save_as_csv(
             "confidence": "Confidence",
         }
     )
-
-    order = [
-        "Start (s)",
-        "End (s)",
-        "Scientific name",
-        "Common name",
-        "Confidence",
-        "File",
+    df["Scientific name"], df["Common name"] = _split_species_name(df["species_name"])
+    additional_columns = [
+        col for col in additional_columns or () if col in column_values
     ]
-    cols = [*order, *additional_columns] if additional_columns else order
-    df = df[cols]
+
+    for col in additional_columns:
+        df[col] = column_values[col]
+
+    return df[[*_TABULAR_COLUMNS, *additional_columns]]
+
+
+def _save_csv(df, output: Path, additional_columns, column_values: dict):
+    table = _tabular(df, additional_columns, column_values)
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output, index=False)
+    table.to_csv(output, index=False)
+
+
+def _save_parquet(df, output: Path, additional_columns, column_values: dict):
+    import pyarrow as pa
+
+    table = _tabular(df, additional_columns, column_values)
+    types = {**_TABULAR_COLUMNS, **_ADDITIONAL_COLUMN_TYPES}
+    schema = pa.schema([(col, pa.type_for_alias(types[col])) for col in table.columns])
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    table.to_parquet(output, index=False, schema=schema)
 
 
 def save_as_kaleidoscope(df: pd.DataFrame, output: Path):
     import pandas as pd
-
-    import birdnet_analyzer.config as cfg
 
     paths = df["input"].map(Path)
     _, common_names = _split_species_name(df["species_name"])
@@ -783,46 +836,18 @@ def save_as_parquet(
     species_list_file=None,
     model_path=None,
 ):
-    df = df.copy()
-    n_rows = df.shape[0]
-    df["Scientific name"], df["Common name"] = _split_species_name(df["species_name"])
-
-    df = df.rename(
-        columns={
-            "input": "File",
-            "start_time": "Start (s)",
-            "end_time": "End (s)",
-            "confidence": "Confidence",
-        }
+    _save_parquet(
+        df,
+        output,
+        additional_columns,
+        _column_values(
+            lat=lat,
+            lon=lon,
+            week=week,
+            overlap=overlap,
+            min_conf=min_conf,
+            sensitivity=sensitivity,
+            species_list_file=species_list_file,
+            model_path=model_path,
+        ),
     )
-
-    order = [
-        "Start (s)",
-        "End (s)",
-        "Scientific name",
-        "Common name",
-        "Confidence",
-        "File",
-    ]
-
-    if additional_columns:
-        possible_cols = {
-            "lat": [lat if lat is not None else ""],
-            "lon": [lon if lon is not None else ""],
-            "week": [week if week is not None else ""],
-            "overlap": [overlap if overlap is not None else ""],
-            "sensitivity": [sensitivity if sensitivity is not None else ""],
-            "min_conf": [min_conf if min_conf is not None else ""],
-            "species_list": [species_list_file],
-            "model": [os.path.basename(model_path or "")],
-        }
-        additional_columns = [col for col in additional_columns if col in possible_cols]
-
-        for col in additional_columns:
-            df[col] = possible_cols[col] * n_rows
-
-    cols = [*order, *additional_columns] if additional_columns else order
-    df: pd.DataFrame = df[cols]
-
-    output.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(output, index=False)
