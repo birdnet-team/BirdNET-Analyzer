@@ -329,9 +329,7 @@ class TestPerformanceAssessorAggregation:
 
     def test_drop_empty_false_includes_empty_class(self):
         pa = self._assessor()
-        overall = pa.calculate_metrics(
-            self.predictions, self.labels, drop_empty=False
-        )
+        overall = pa.calculate_metrics(self.predictions, self.labels, drop_empty=False)
         # The empty class contributes precision 0, pulling the macro mean below 1.
         assert overall.loc["Precision", "Overall"] < 1.0
 

@@ -29,6 +29,9 @@ class FakeResult:
         self.model_sr = 48000
         self.segment_duration_s = 3.0
 
+    def get_unprocessed_files(self):
+        return {Path(self.inputs[i]) for i in self.unprocessable_inputs}
+
     def to_dataframe(self):
         df = pd.DataFrame(self._rows, columns=RESULT_COLUMNS)
 
@@ -264,6 +267,51 @@ def test_analyze_with_invalid_file_completes_and_cleans_up(env):
     assert str(invalid) not in set(df["File"])
     assert len(df) == 6
     assert not (env["output_dir"] / JOURNAL_DIRNAME).exists()
+
+
+def test_a_resume_leaves_out_a_file_found_unprocessable_before(env):
+    invalid = env["files"][1]
+    invalid.write_bytes(b"not audio" * 100)
+    fake, _ = make_fake_run_inference(crash_after=2, invalid_files=[invalid])
+
+    with (
+        patch("birdnet_analyzer.model_utils.run_inference", fake),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        analyze(str(env["input_dir"]), str(env["output_dir"]), rtype="table")
+
+    fake, _ = make_fake_run_inference()
+
+    with patch("birdnet_analyzer.model_utils.run_inference", fake):
+        analyze(str(env["input_dir"]), str(env["output_dir"]), rtype="table")
+
+    table = pd.read_csv(env["output_dir"] / "BirdNET_SelectionTable.txt", sep="\t")
+    assert set(table["Begin Path"]) == {str(f) for f in env["files"] if f != invalid}
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Only Windows ignores the case of paths.")
+def test_a_resume_under_a_differently_cased_path_keeps_the_raven_times(env):
+    fake, _ = make_fake_run_inference(crash_after=2)
+
+    with (
+        patch("birdnet_analyzer.model_utils.run_inference", fake),
+        pytest.raises(RuntimeError, match="simulated crash"),
+    ):
+        analyze(str(env["input_dir"]), str(env["output_dir"]), rtype="table")
+
+    fake, calls = make_fake_run_inference()
+
+    with patch("birdnet_analyzer.model_utils.run_inference", fake):
+        analyze(str(env["input_dir"]).upper(), str(env["output_dir"]), rtype="table")
+
+    assert len(calls[0]) == 2
+    table = pd.read_csv(env["output_dir"] / "BirdNET_SelectionTable.txt", sep="\t")
+    first_begin = table.groupby(table["Begin Path"].map(os.path.normcase))[
+        "Begin Time (s)"
+    ].min()
+    assert first_begin[[os.path.normcase(f) for f in env["files"]]].tolist() == (
+        pytest.approx([0.0, 0.1, 0.2, 0.3], abs=1e-6)
+    )
 
 
 def test_single_file_input_does_not_create_journal(env):

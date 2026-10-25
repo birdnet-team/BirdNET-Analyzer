@@ -27,6 +27,7 @@ from birdnet_analyzer.config import (
     TRAIN_PARAMS_SUFFIX,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
+from birdnet_analyzer.params import TRAIN_PARAMS, by_header
 
 # Encode batch size per base model, measured on CPU inside a warm session: the 2.4
 # tflite interpreter re-plans on every batch-shape change, so small batches win
@@ -937,35 +938,38 @@ def train_model(
     # are the tuned ones.
     utils.save_params_file(
         classifier_path + TRAIN_PARAMS_SUFFIX,
-        {
-            "Classifier name": os.path.basename(classifier_path),
-            "Model formats": ", ".join(formats),
-            "Model save mode": model_save_mode,
-            "Bandpass filter minimum": fmin,
-            "Bandpass filter maximum": fmax,
-            "Audio speed": audio_speed,
-            "Crop mode": crop_mode,
-            "Crop overlap": overlap,
-            "Autotune": autotune,
-            "Autotune trials": autotune_trials,
-            "Autotune folds": autotune_n_splits,
-            "Autotune repeats": autotune_n_repeats,
-            "Autotune metric": autotune_metric,
-            "Epochs": epochs,
-            "Batch size": batch_size,
-            "Learning rate": learning_rate,
-            "Hidden units": hidden_units,
-            "Dropout": dropout,
-            "Weight decay": weight_decay,
-            "Use label smoothing": label_smoothing,
-            "Use mixup": mixup,
-            "Use focal loss": use_focal_loss,
-            "Focal loss gamma": focal_loss_gamma,
-            "Focal loss alpha": focal_loss_alpha,
-            "Upsampling mode": upsampling_mode,
-            "Upsampling ratio": upsampling_ratio,
-            "BirdNET model version": version,
-        },
+        by_header(
+            TRAIN_PARAMS,
+            {
+                "classifier_name": os.path.basename(classifier_path),
+                "model_formats": ", ".join(formats),
+                "model_save_mode": model_save_mode,
+                "fmin": fmin,
+                "fmax": fmax,
+                "audio_speed": audio_speed,
+                "crop_mode": crop_mode,
+                "overlap": overlap,
+                "autotune": autotune,
+                "autotune_trials": autotune_trials,
+                "autotune_n_splits": autotune_n_splits,
+                "autotune_n_repeats": autotune_n_repeats,
+                "autotune_metric": autotune_metric,
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "learning_rate": learning_rate,
+                "hidden_units": hidden_units,
+                "dropout": dropout,
+                "weight_decay": weight_decay,
+                "label_smoothing": label_smoothing,
+                "mixup": mixup,
+                "use_focal_loss": use_focal_loss,
+                "focal_loss_gamma": focal_loss_gamma,
+                "focal_loss_alpha": focal_loss_alpha,
+                "upsampling_mode": upsampling_mode,
+                "upsampling_ratio": upsampling_ratio,
+                "birdnet": version,
+            },
+        ),
     )
 
     if "tflite" in formats:

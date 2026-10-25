@@ -494,9 +494,7 @@ class DataProcessor:
                 if end_time_col_annot in annot_df.columns
                 else 0.0
             )
-            duration = max(
-                filter(pd.notna, (max_end_pred, max_end_annot)), default=0.0
-            )
+            duration = max(filter(pd.notna, (max_end_pred, max_end_annot)), default=0.0)
 
             if duration < 0:
                 duration = 0.0

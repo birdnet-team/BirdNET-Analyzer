@@ -640,6 +640,53 @@ def test_the_params_file_records_the_autotune_metric(tmp_path):
 
 
 @pytest.mark.usefixtures("synthetic_training_data")
+def test_the_params_file_reads_back_as_the_arguments_of_the_training(
+    monkeypatch, tmp_path
+):
+    from birdnet_analyzer import params
+    from birdnet_analyzer.config import TRAIN_PARAMS_SUFFIX
+    from birdnet_analyzer.train import utils as train_utils
+
+    for save in ("save_linear_classifier", "save_raven_model"):
+        monkeypatch.setattr(train_utils.model, save, lambda *args, **kwargs: None)
+
+    arguments = {
+        "model_formats": ["tflite", "raven"],
+        "model_save_mode": "append",
+        "fmin": 150,
+        "fmax": 12000,
+        "audio_speed": 2.0,
+        "crop_mode": "segments",
+        "overlap": 1.5,
+        "autotune": False,
+        "autotune_trials": 7,
+        "autotune_n_splits": 3,
+        "autotune_n_repeats": 2,
+        "autotune_metric": "val_AUROC",
+        "epochs": 1,
+        "batch_size": 8,
+        "learning_rate": 0.0005,
+        "hidden_units": 16,
+        "dropout": 0.25,
+        "label_smoothing": True,
+        "mixup": True,
+        "use_focal_loss": True,
+        "focal_loss_gamma": 3.0,
+        "focal_loss_alpha": 0.5,
+        "upsampling_mode": "mean",
+        "upsampling_ratio": 0.5,
+        "birdnet": "3.0",
+    }
+
+    train_utils.train_model("unused", output=str(tmp_path / "cc"), **arguments)
+
+    assert params.load_train_params(str(tmp_path / "cc") + TRAIN_PARAMS_SUFFIX) == {
+        "classifier_name": "cc",
+        **arguments,
+    }
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
 def test_off_grid_defaults_run_as_the_first_trial(monkeypatch, tmp_path):
     _, study = _autotune(
         monkeypatch,

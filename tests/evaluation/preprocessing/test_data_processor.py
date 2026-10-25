@@ -652,9 +652,7 @@ class TestDataProcessorLoadData:
     @patch(
         "birdnet_analyzer.evaluation.preprocessing.data_processor.read_and_concatenate_files_in_directory"
     )
-    def test_load_data_rejects_confidence_column_without_values(
-        self, mock_read_concat
-    ):
+    def test_load_data_rejects_confidence_column_without_values(self, mock_read_concat):
         mock_read_concat.return_value = pd.DataFrame(
             {
                 "Class": ["A", "B"],
