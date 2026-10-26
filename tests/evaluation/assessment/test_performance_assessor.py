@@ -5,6 +5,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from birdnet_analyzer import evaluation
+from birdnet_analyzer.evaluation.assessment import (
+    metrics,
+    performance_assessor,
+    plotting,
+)
 from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     PerformanceAssessor,
 )
@@ -750,3 +756,128 @@ class TestPerformanceAssessorPlotConfusionMatrix:
         predictions = self.rng.random((100, num_classes))
         labels = self.rng.integers(0, 2, size=(100, num_classes))
         assessor.plot_confusion_matrix(predictions, labels)
+
+
+def _tensors(num_classes=3):
+    rng = np.random.default_rng(3)
+
+    return rng.random((200, num_classes)), rng.integers(0, 2, (200, num_classes))
+
+
+def _recorded_sweep(monkeypatch, assessor, predictions, labels, per_class):
+    recorded = []
+    for name in (
+        "plot_metrics_across_thresholds",
+        "plot_metrics_across_thresholds_per_class",
+    ):
+        monkeypatch.setattr(plotting, name, lambda *args: recorded.append(args))
+
+    assessor.plot_metrics_all_thresholds(
+        predictions, labels, per_class_metrics=per_class
+    )
+    (args,) = recorded
+
+    return args
+
+
+@pytest.mark.parametrize("per_class", [False, True])
+def test_metrics_at_another_threshold_match_an_assessor_built_with_it(per_class):
+    predictions, labels = _tensors()
+    assessor = PerformanceAssessor(num_classes=3, threshold=0.5)
+
+    at_other = assessor.calculate_metrics(
+        predictions, labels, per_class_metrics=per_class, threshold=0.7
+    )
+
+    expected = PerformanceAssessor(num_classes=3, threshold=0.7).calculate_metrics(
+        predictions, labels, per_class_metrics=per_class
+    )
+    pd.testing.assert_frame_equal(at_other, expected)
+    assert not at_other.equals(
+        assessor.calculate_metrics(predictions, labels, per_class_metrics=per_class)
+    )
+    assert assessor.threshold == 0.5
+
+
+@pytest.mark.parametrize("empty_class", [False, True])
+@pytest.mark.parametrize("per_class", [False, True])
+def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
+    monkeypatch, per_class, empty_class
+):
+    predictions, labels = _tensors()
+    if empty_class:
+        labels[:, 1] = 0
+    assessor = PerformanceAssessor(
+        num_classes=3,
+        classes=("a", "b", "c"),
+        metrics_list=("auroc", "f1", "ap", "recall"),
+    )
+
+    thresholds, values, plotted, *_ = _recorded_sweep(
+        monkeypatch, assessor, predictions, labels, per_class
+    )
+
+    assert plotted == ["f1", "recall"]
+    expected = [
+        assessor.calculate_metrics(
+            predictions, labels, per_class_metrics=per_class, threshold=threshold
+        )
+        for threshold in thresholds
+    ]
+    for metric, row in (("f1", "F1"), ("recall", "Recall")):
+        if per_class:
+            for name in ("a", "b", "c"):
+                np.testing.assert_array_equal(
+                    values[name][metric], [df.loc[row, name] for df in expected]
+                )
+        else:
+            np.testing.assert_array_equal(
+                values[metric], [df.loc[row, "Overall"] for df in expected]
+            )
+
+
+@pytest.mark.parametrize("per_class", [False, True])
+def test_the_sweep_computes_no_threshold_free_metric(monkeypatch, per_class):
+    computed = []
+    for name in ("average_precision_score", "roc_auc_score"):
+
+        def recording(*args, name=name, score=getattr(metrics, name), **kwargs):
+            computed.append(name)
+            return score(*args, **kwargs)
+
+        monkeypatch.setattr(metrics, name, recording)
+
+    _recorded_sweep(
+        monkeypatch, PerformanceAssessor(num_classes=3), *_tensors(), per_class
+    )
+
+    assert computed == []
+
+
+def test_the_sweep_never_sets_the_threshold(monkeypatch):
+    assigned = []
+
+    class Recording(PerformanceAssessor):
+        def __setattr__(self, name, value):
+            if name == "threshold":
+                assigned.append(value)
+            super().__setattr__(name, value)
+
+    assessor = Recording(num_classes=3)
+    assigned.clear()
+
+    _recorded_sweep(monkeypatch, assessor, *_tensors(), per_class=True)
+
+    assert assigned == []
+
+
+def test_the_cli_offers_the_metrics_the_assessor_registers():
+    assert tuple(performance_assessor.METRICS) == evaluation.VALID_METRICS
+    assert evaluation.VALID_METRICS == (
+        "accuracy",
+        "recall",
+        "precision",
+        "f1",
+        "ap",
+        "auroc",
+    )

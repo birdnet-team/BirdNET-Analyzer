@@ -30,7 +30,12 @@ TABS = {
     "search": (search.build_search_tab, {"on_crop_select"}),
     "evaluation": (
         evaluation.build_evaluation_tab,
-        {"recompute_overall", "toggle_after_selection"},
+        {
+            "_lock_calculation",
+            "_unlock_calculation",
+            "recompute_overall",
+            "toggle_after_selection",
+        },
     ),
     "single_file": (
         single_file.build_single_analysis_tab,

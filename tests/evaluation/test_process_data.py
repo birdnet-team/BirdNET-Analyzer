@@ -355,3 +355,27 @@ def test_cli_writes_uncaught_errors_to_the_error_log(tmp_path, monkeypatch):
 
     assert len(logged) == 1
     assert isinstance(logged[0], KeyError)
+
+
+def test_an_assessor_for_one_class_is_binary_and_for_more_multilabel(tmp_path):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"], [3, 6, "Y"]])
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9], [3, 6, "Y", 0.4]])
+    processor = DataProcessor(str(pred), str(ann), recording_duration=30)
+
+    single = evaluation.build_assessor(processor, ["Y"], None, 0.2, ("f1",))
+    every = evaluation.build_assessor(processor, None, None, 0.3, ("ap", "f1"))
+
+    pa, predictions, labels, classes = single
+    assert classes == pa.classes == ("Y",)
+    assert (pa.task, pa.num_classes, pa.threshold, pa.metrics_list) == (
+        "binary",
+        1,
+        0.2,
+        ("f1",),
+    )
+    assert predictions.shape == labels.shape == (10, 1)
+    pa, predictions, _, classes = every
+    assert classes == pa.classes == ("X", "Y")
+    assert (pa.task, pa.num_classes, pa.metrics_list) == ("multilabel", 2, ("ap", "f1"))
+    assert predictions.shape == (10, 2)
