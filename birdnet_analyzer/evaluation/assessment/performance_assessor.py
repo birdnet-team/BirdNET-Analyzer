@@ -78,22 +78,17 @@ class PerformanceAssessor:
         Raises:
             ValueError: If any of the inputs are invalid.
         """
-        if not isinstance(num_classes, int) or num_classes <= 0:
+        if num_classes <= 0:
             raise ValueError("num_classes must be a positive integer.")
 
-        if not isinstance(threshold, float) or not 0 < threshold < 1:
-            raise ValueError("threshold must be a float between 0 and 1 (exclusive).")
+        if not 0 < threshold < 1:
+            raise ValueError("threshold must be between 0 and 1 (exclusive).")
 
-        if classes is not None:
-            if not isinstance(classes, tuple):
-                raise ValueError("classes must be a tuple of strings.")
-            if len(classes) != num_classes:
-                raise ValueError(
-                    f"Length of classes ({len(classes)}) must match "
-                    f"num_classes ({num_classes})."
-                )
-            if not all(isinstance(class_name, str) for class_name in classes):
-                raise ValueError("All elements in classes must be strings.")
+        if classes is not None and len(classes) != num_classes:
+            raise ValueError(
+                f"Length of classes ({len(classes)}) must match "
+                f"num_classes ({num_classes})."
+            )
 
         if task not in {"binary", "multilabel"}:
             raise ValueError("task must be 'binary' or 'multilabel'.")
@@ -118,11 +113,6 @@ class PerformanceAssessor:
         return list(self.classes or [f"Class {i}" for i in range(self.num_classes)])
 
     def _check_tensors(self, predictions: np.ndarray, labels: np.ndarray) -> None:
-        if not isinstance(predictions, np.ndarray):
-            raise TypeError("predictions must be a NumPy array.")
-        if not isinstance(labels, np.ndarray):
-            raise TypeError("labels must be a NumPy array.")
-
         if predictions.shape != labels.shape:
             raise ValueError("predictions and labels must have the same shape.")
         if predictions.ndim != 2:
@@ -179,7 +169,6 @@ class PerformanceAssessor:
         metric_ids: list[str] | tuple[str, ...],
         per_class_metrics: bool,
         averaging: Literal["macro", "micro", "weighted"],
-        drop_empty: bool,
         threshold: float | None,
     ) -> dict[str, np.ndarray]:
         """The metrics by display name: one value per class, or the aggregate."""
@@ -190,13 +179,8 @@ class PerformanceAssessor:
             )
 
         # Aggregate into a single column. Undefined (empty) classes are dropped so they
-        # cannot silently pull the average down, unless the caller keeps them.
-        keep = (
-            self.class_support(labels) > 0
-            if drop_empty
-            else np.ones(self.num_classes, dtype=bool)
-        )
-        kept = np.flatnonzero(keep)
+        # cannot silently pull the average down.
+        kept = np.flatnonzero(self.class_support(labels) > 0)
 
         if kept.size == 0:
             # Nothing scoreable -- report NaN rather than a misleading zero.
@@ -239,7 +223,6 @@ class PerformanceAssessor:
         labels: np.ndarray,
         per_class_metrics: bool = False,
         averaging: Literal["macro", "micro", "weighted"] = "macro",
-        drop_empty: bool = True,
         include_support: bool = False,
         threshold: float | None = None,
     ) -> pd.DataFrame:
@@ -253,11 +236,9 @@ class PerformanceAssessor:
             per_class_metrics (bool): If True, compute metrics for each class
                 individually. If False, return a single aggregate column.
             averaging (Literal["macro", "micro", "weighted"]): How to aggregate the
-                per-class metrics into the single ``Overall`` column. Ignored when
-                ``per_class_metrics`` is True.
-            drop_empty (bool): When aggregating, exclude classes with no positive labels
-                (their metrics are undefined) instead of counting them as zero. Applies
-                only to the aggregate column.
+                per-class metrics into the single ``Overall`` column; classes without a
+                positive label are left out of it. Ignored when ``per_class_metrics``
+                is True.
             include_support (bool): When ``per_class_metrics`` is True, append a
                 ``Support`` row with the number of positive samples per class.
             threshold (Optional[float]): The threshold for binarizing probabilities,
@@ -267,7 +248,6 @@ class PerformanceAssessor:
             pd.DataFrame: A DataFrame containing the computed metrics.
 
         Raises:
-            TypeError: If predictions or labels are not NumPy arrays.
             ValueError: If predictions and labels have mismatched dimensions or invalid
                 shapes.
         """
@@ -279,7 +259,6 @@ class PerformanceAssessor:
             self.metrics_list,
             per_class_metrics,
             averaging,
-            drop_empty,
             threshold,
         )
         columns = self._class_names() if per_class_metrics else ["Overall"]
@@ -358,7 +337,6 @@ class PerformanceAssessor:
                         metrics_to_plot,
                         per_class_metrics,
                         "macro",
-                        True,
                         threshold,
                     ).values()
                 )
@@ -406,7 +384,6 @@ class PerformanceAssessor:
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
 
         Raises:
-            TypeError: If predictions or labels are not NumPy arrays.
             ValueError: If predictions and labels have mismatched shapes or invalid
                 dimensions.
 

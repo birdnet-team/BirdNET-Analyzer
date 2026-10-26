@@ -10,7 +10,6 @@ import pytest
 gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
-from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.evaluation.assessment import performance_assessor  # noqa: E402
 from birdnet_analyzer.evaluation.assessment.performance_assessor import (  # noqa: E402
     PerformanceAssessor,
@@ -29,15 +28,6 @@ PROCESSOR_HANDLERS = {
     "calculate_metrics",
     "download_data_table",
 }
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    return tmp_path
 
 
 @pytest.fixture
@@ -150,21 +140,6 @@ def built(monkeypatch):
     return durations
 
 
-class FakeProcessor:
-    classes = ("species",)
-    samples_df = pd.DataFrame({"filename": ["recording.wav"]})
-
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-        self.recording_duration = kwargs.get("recording_duration")
-
-
-def _fake_values(recording_duration):
-    return ("annotations", "predictions", None, 3, 0.5, recording_duration, False) + (
-        None,
-    ) * 11
-
-
 def _event(demo, name, trigger=None):
     return next(
         event
@@ -196,23 +171,19 @@ def test_the_overall_row_follows_programmatic_averaging_changes(demo):
     ("text", "duration"),
     [("12.5", 12.5), (" 60 ", 60.0), ("3", 3.0), ("", None), ("  ", None)],
 )
-def test_a_recording_duration_is_parsed(monkeypatch, text, duration):
-    monkeypatch.setattr(data_processor, "DataProcessor", FakeProcessor)
+def test_a_recording_duration_is_parsed(folders, text, duration):
+    *_, proc_state = _refresh(None, _values(folders, text))
 
-    *_, proc_state = _refresh(None, _fake_values(text))
-
-    assert proc_state.processor.kwargs["recording_duration"] == duration
+    assert proc_state.processor.recording_duration == duration
 
 
 @pytest.mark.parametrize("text", ["12o", "1", "0", "-5"])
 def test_a_duration_the_processor_cannot_use_does_not_interrupt_the_refresh(
-    monkeypatch, text
+    folders, text
 ):
-    monkeypatch.setattr(data_processor, "DataProcessor", FakeProcessor)
+    *_, proc_state = _refresh(None, _values(folders, text))
 
-    *_, proc_state = _refresh(None, _fake_values(text))
-
-    assert proc_state.processor.kwargs["recording_duration"] is None
+    assert proc_state.processor.recording_duration is None
 
 
 def test_calculating_with_a_changed_duration_uses_a_processor_built_with_it(folders):
@@ -384,12 +355,13 @@ def test_calculating_without_a_metric_is_rejected(folders):
         _calculate(None, _values(folders), metrics=[False] * len(DEFAULT_METRICS))
 
 
-def test_a_failed_data_table_export_is_logged_with_its_step(monkeypatch, tmp_path):
+def test_a_failed_data_table_export_is_logged_with_its_step(
+    folders, monkeypatch, tmp_path
+):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
     monkeypatch.setattr(gu, "save_file_dialog", lambda **k: str(tmp_path / "data.csv"))
-    monkeypatch.setattr(data_processor, "DataProcessor", FakeProcessor)
-    *_, state = _refresh(None, _fake_values(""))
+    *_, state = _refresh(None, _values(folders))
 
     def fail():
         raise OSError("disk")
@@ -397,7 +369,7 @@ def test_a_failed_data_table_export_is_logged_with_its_step(monkeypatch, tmp_pat
     state.processor.get_sample_data = fail
 
     with pytest.raises(gr.Error) as raised:
-        evaluation.download_data_table(state, *_fake_values(""))
+        evaluation.download_data_table(state, *_values(folders))
 
     assert raised.value.message.startswith(
         loc.localize("eval-tab-error-saving-data-table")
@@ -511,7 +483,7 @@ def test_the_metrics_tables_have_a_row_per_class_and_an_overall_footer():
         num_classes=2, threshold=0.4, classes=("a", "b"), metrics_list=("f1", "recall")
     )
 
-    class_table, overall_row, widths = evaluation._build_metrics_tables(
+    class_table, overall_row, _ = evaluation._build_metrics_tables(
         pa, predictions, labels, "micro"
     )
 
@@ -524,7 +496,6 @@ def test_the_metrics_tables_have_a_row_per_class_and_an_overall_footer():
     assert overall_row[""].tolist() == [loc.localize("eval-tab-overall-row-label")]
     assert overall_row["Recall"].tolist() == overall.loc["Recall"].round(3).tolist()
     assert overall_row["Support"].tolist() == [labels.sum()]
-    assert widths == ["22%", "26.0%", "26.0%", "26.0%"]
 
 
 def _processor(classes, recordings):

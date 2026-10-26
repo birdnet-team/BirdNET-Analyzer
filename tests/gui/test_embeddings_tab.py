@@ -6,10 +6,8 @@ import pytest
 gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
-from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.embeddings import core as embeddings_core  # noqa: E402
 from birdnet_analyzer.gui import embeddings as gui_embeddings  # noqa: E402
-from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
 DB_SETTINGS = {
@@ -18,16 +16,7 @@ DB_SETTINGS = {
     "BANDPASS_FMAX": 8000,
     "AUDIO_ROOT": "recordings",
 }
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "GUI_SETTINGS_PATH", str(tmp_path / "gui.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    return tmp_path
+SELECT_DB_DIRECTORY = "select_directory_and_update_tb"
 
 
 @pytest.fixture
@@ -133,49 +122,44 @@ def test_a_failing_run_is_neither_retried_nor_masked(monkeypatch, hoplite_databa
     assert excinfo.value.__cause__ is raised[0]
 
 
-def _select_db_directory_handler():
-    with gr.Blocks() as demo:
-        gui_embeddings.build_embeddings_tab()
-
-    return next(
-        event.fn
-        for event in demo.fns.values()
-        if getattr(event.fn, "__name__", "") == "select_directory_and_update_tb"
-    )
-
-
 def test_picking_a_folder_for_a_new_database_leaves_it_empty(
-    appdir, monkeypatch, tmp_path
+    appdir, handler, monkeypatch, tmp_path
 ):
     folder = tmp_path / "new_db"
     folder.mkdir()
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: str(folder))
 
-    _, _, speed, fmin, fmax, _ = _select_db_directory_handler()(None)
+    _, _, speed, fmin, fmax, _ = handler(
+        gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY
+    )(None)
 
     assert list(folder.iterdir()) == []
     assert [u["interactive"] for u in (speed, fmin, fmax)] == [True, True, True]
 
 
 def test_picking_a_leftover_folder_treats_it_as_new_and_leaves_it_as_is(
-    appdir, monkeypatch, hoplite_leftover
+    appdir, handler, monkeypatch, hoplite_leftover
 ):
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: hoplite_leftover)
 
-    _, _, speed, fmin, fmax, _ = _select_db_directory_handler()(None)
+    _, _, speed, fmin, fmax, _ = handler(
+        gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY
+    )(None)
 
     assert os.listdir(hoplite_leftover) == ["hoplite.sqlite"]
     assert [u["interactive"] for u in (speed, fmin, fmax)] == [True, True, True]
 
 
 def test_picking_an_existing_database_shows_and_locks_its_settings(
-    appdir, monkeypatch, hoplite_database, hoplite_connections
+    appdir, handler, monkeypatch, hoplite_database, hoplite_connections
 ):
     path = hoplite_database(DB_SETTINGS)
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: path)
     monkeypatch.setattr(gr, "Info", lambda *a, **k: None)
 
-    _, _, speed, fmin, fmax, _ = _select_db_directory_handler()(None)
+    _, _, speed, fmin, fmax, _ = handler(
+        gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY
+    )(None)
 
     assert speed == gr.update(value=2.0, interactive=False)
     assert fmin == gr.update(value=500, interactive=False)
@@ -183,7 +167,9 @@ def test_picking_an_existing_database_shows_and_locks_its_settings(
     assert hoplite_connections.still_open() == []
 
 
-def test_a_failing_database_read_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+def test_a_failing_database_read_is_logged_and_shown(
+    appdir, handler, monkeypatch, tmp_path
+):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: str(tmp_path))
@@ -194,6 +180,6 @@ def test_a_failing_database_read_is_logged_and_shown(appdir, monkeypatch, tmp_pa
     monkeypatch.setattr(gui_embeddings, "read_database_settings", fail)
 
     with pytest.raises(gr.Error, match="disk"):
-        _select_db_directory_handler()(None)
+        handler(gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY)(None)
 
     assert len(logged) == 1

@@ -28,9 +28,10 @@ jobs:
       # because job-level env can use `github.workspace` but not `runner`.
       BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
       # acoustic 3.0 + geo 3.0 ONNX are the default analyze path; acoustic 2.4 TF
-      # is what embeddings and custom classifiers load. Hashed into the cache key
-      # below, so editing this list invalidates the entry rather than freezing it.
-      PREDOWNLOAD: "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us')"
+      # is what embeddings and custom classifiers load; the 3.0 SavedModel is the
+      # base the classifier exports are built on. Hashed into the cache key below,
+      # so editing this list invalidates the entry rather than freezing it.
+      PREDOWNLOAD: "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '3.0', 'pb', lang='en_us')"
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]

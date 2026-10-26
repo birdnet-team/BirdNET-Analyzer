@@ -13,32 +13,28 @@ tf = pytest.importorskip("tensorflow")
 keras = pytest.importorskip("keras")
 
 from birdnet_analyzer import model  # noqa: E402
+from tests.models import pb_model_cached  # noqa: E402
 
 LABELS = ["Sci a_Common a", "Sci b_Common b", "Sci c_Common c"]
 
 
 def _audio(base):
-    """A noise segment: digital silence takes the 3.0 SavedModel to NaN scores."""
+    # Noise, not digital silence: silence takes the 3.0 SavedModel to NaN scores.
     rng = np.random.default_rng(0)
 
     return rng.normal(0, 0.05, (1, base.segment_samples)).astype(np.float32)
 
 
-def _pb_cached(version: str) -> bool:
-    from birdnet.utils.helper import check_protobuf_model_files_exist
-    from birdnet.utils.local_data import get_model_path
-
-    return check_protobuf_model_files_exist(
-        get_model_path("acoustic", version, "pb", "fp32")
-    )
-
-
-needs_3_0 = pytest.mark.skipif(not _pb_cached("3.0"), reason="3.0 pb model not cached")
-needs_2_4 = pytest.mark.skipif(not _pb_cached("2.4"), reason="2.4 pb model not cached")
+needs_3_0 = pytest.mark.skipif(
+    not pb_model_cached("3.0"), reason="3.0 pb model not cached"
+)
+needs_2_4 = pytest.mark.skipif(
+    not pb_model_cached("2.4"), reason="2.4 pb model not cached"
+)
 
 
 def _head(version: str):
-    """A trained classifier as train_model hands it over: activation popped."""
+    # As train_model hands a classifier over: the activation popped.
     classifier = model.build_linear_classifier(
         len(LABELS), model.base_model(version).embeddings_dim
     )

@@ -334,30 +334,30 @@ def calculate_auroc(
     """
     _check_inputs(predictions, labels)
 
+    if task not in ("binary", "multilabel"):
+        raise ValueError(f"Unsupported task type: {task}")
+
     averaging = None if averaging_method == "none" else averaging_method
+    y_true = labels.astype(int)
+    # Undefined for a class whose labels are all the same; scikit-learn warns there.
+    undefined = y_true.min(axis=0) == y_true.max(axis=0)
 
-    try:
-        if task == "binary":
-            y_true = labels.astype(int)
-            y_scores = predictions
-            auroc = roc_auc_score(y_true, y_scores)
+    if task == "binary":
+        auroc = np.nan if undefined.any() else roc_auc_score(y_true, predictions)
+    elif averaging is None:
+        auroc = np.array(
+            [
+                np.nan
+                if undefined[i]
+                else roc_auc_score(y_true[:, i], predictions[:, i])
+                for i in range(y_true.shape[1])
+            ]
+        )
+    else:
+        auroc = (
+            np.nan
+            if undefined.any()
+            else roc_auc_score(y_true, predictions, average=averaging)
+        )
 
-        elif task == "multilabel":
-            y_true = labels.astype(int)
-            y_scores = predictions
-            auroc = roc_auc_score(y_true, y_scores, average=averaging)
-
-        else:
-            raise ValueError(f"Unsupported task type: {task}")
-
-    except ValueError as e:
-        if "Only one class present in y_true" in str(
-            e
-        ) or "Number of classes in y_true" in str(e):
-            auroc = np.nan
-        else:
-            raise
-
-    if isinstance(auroc, np.ndarray):
-        return auroc
-    return np.array([auroc])
+    return np.atleast_1d(auroc)

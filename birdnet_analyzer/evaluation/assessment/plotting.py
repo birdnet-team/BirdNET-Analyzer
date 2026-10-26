@@ -34,21 +34,16 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
         colors (List[str]): List of colors for the bars.
 
     Raises:
-        TypeError: If `metrics_df` is not a DataFrame or `colors` is not a list.
         KeyError: If 'Overall' column is missing in `metrics_df`.
         ValueError: If `metrics_df` is empty.
 
     Returns:
         plt.Figure
     """
-    if not isinstance(metrics_df, pd.DataFrame):
-        raise TypeError("metrics_df must be a pandas DataFrame.")
     if "Overall" not in metrics_df.columns:
         raise KeyError("metrics_df must contain an 'Overall' column.")
     if metrics_df.empty:
         raise ValueError("metrics_df is empty.")
-    if not isinstance(colors, list):
-        raise TypeError("colors must be a list.")
     if len(colors) == 0:
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -82,23 +77,18 @@ def plot_metrics_per_class(metrics_df: pd.DataFrame, colors: list[str]):
         colors (List[str]): List of colors for the lines.
 
     Raises:
-        TypeError: If inputs are not of expected types.
         ValueError: If `metrics_df` is empty.
 
     Returns:
         plt.Figure
     """
-    if not isinstance(metrics_df, pd.DataFrame):
-        raise TypeError("metrics_df must be a pandas DataFrame.")
     if metrics_df.empty:
         raise ValueError("metrics_df is empty.")
-    if not isinstance(colors, list):
-        raise TypeError("colors must be a list.")
     if len(colors) == 0:
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     line_styles = ["-", "--", "-.", ":", (0, (5, 10)), (0, (5, 5)), (0, (3, 5, 1, 5))]
-    fig = plt.figure(MATPLOTLIB_OVERALL_METRICS_FIGURE_NUM, figsize=(10, 6))
+    fig = plt.figure(MATPLOTLIB_PER_CLASS_METRICS_FIGURE_NUM, figsize=(10, 6))
     fig.clear()
     fig.tight_layout(pad=0)
     fig.set_dpi(300)
@@ -143,22 +133,13 @@ def plot_metrics_across_thresholds(
         colors (List[str]): List of colors for the lines.
 
     Raises:
-        TypeError: If inputs are not of expected types.
         ValueError: If thresholds or metric values have mismatched lengths.
 
     Returns:
         plt.Figure
     """
-    if not isinstance(thresholds, np.ndarray):
-        raise TypeError("thresholds must be a numpy ndarray.")
     if thresholds.size == 0:
         raise ValueError("thresholds array is empty.")
-    if not isinstance(metric_values_dict, dict):
-        raise TypeError("metric_values_dict must be a dictionary.")
-    if not isinstance(metrics_to_plot, list):
-        raise TypeError("metrics_to_plot must be a list.")
-    if not isinstance(colors, list):
-        raise TypeError("colors must be a list.")
     if len(colors) == 0:
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -215,24 +196,13 @@ def plot_metrics_across_thresholds_per_class(
         colors (List[str]): List of colors for the lines.
 
     Raises:
-        TypeError: If inputs are not of expected types.
         ValueError: If inputs have mismatched lengths or are empty.
 
     Returns:
         plt.Figure
     """
-    if not isinstance(thresholds, np.ndarray):
-        raise TypeError("thresholds must be a numpy ndarray.")
     if thresholds.size == 0:
         raise ValueError("thresholds array is empty.")
-    if not isinstance(metric_values_dict_per_class, dict):
-        raise TypeError("metric_values_dict_per_class must be a dictionary.")
-    if not isinstance(metrics_to_plot, list):
-        raise TypeError("metrics_to_plot must be a list.")
-    if not isinstance(class_names, list):
-        raise TypeError("class_names must be a list.")
-    if not isinstance(colors, list):
-        raise TypeError("colors must be a list.")
     if len(colors) == 0:
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -291,6 +261,9 @@ def plot_metrics_across_thresholds_per_class(
         ax.legend(loc="best", fontsize=8)
         ax.grid(True)
 
+    for ax in axes[num_classes:]:
+        fig.delaxes(ax)
+
     return fig
 
 
@@ -310,17 +283,14 @@ def plot_confusion_matrices(
         class_names (Sequence[str]): Sequence of class names.
 
     Raises:
-        TypeError: If inputs are not of expected types.
         ValueError: If confusion matrix dimensions or task specifications are invalid.
 
     Returns:
         plt.Figure
     """
-    if not isinstance(conf_mat, np.ndarray):
-        raise TypeError("conf_mat must be a numpy ndarray.")
     if conf_mat.size == 0:
         raise ValueError("conf_mat is empty.")
-    if not isinstance(task, str) or task not in ["binary", "multiclass", "multilabel"]:
+    if task not in ["binary", "multiclass", "multilabel"]:
         raise ValueError(
             "Invalid task. Expected 'binary', 'multiclass', or 'multilabel'."
         )

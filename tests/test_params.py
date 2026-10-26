@@ -1,68 +1,13 @@
-import csv
-
 import pytest
 
-from birdnet_analyzer import cli, params, utils
-
-# The analysis parameters as the versions before 2.x wrote them: one column per
-# parameter, a header row and a value row.
-OLD_ANALYSIS_HEADERS = [
-    "Model",
-    "BirdNET version",
-    "Segment length",
-    "Sample rate",
-    "Segment overlap",
-    "Bandpass filter minimum",
-    "Bandpass filter maximum",
-    "Merge consecutive detections",
-    "Audio speed",
-    "Minimum confidence",
-    "Sensitivity",
-    "Top N",
-    "Batch size",
-    "Number of workers",
-    "Number of producers",
-    "Result type(s)",
-    "Latitude",
-    "Longitude",
-    "Week",
-    "Species filter threshold",
-    "Species list file",
-    "Locale",
-    "Custom classifier path",
-    "Custom classifier species list",
-    "Split tables",
-]
-
-
-def analysis_values(**overrides):
-    values = dict.fromkeys(OLD_ANALYSIS_HEADERS, "")
-    values.update(
-        {
-            "Model": "birdnet",
-            "BirdNET version": "2.4",
-            "Segment length": "3.0",
-            "Sample rate": "48000",
-            "Segment overlap": "0.5",
-            "Bandpass filter minimum": "150",
-            "Bandpass filter maximum": "12000",
-            "Merge consecutive detections": "3",
-            "Audio speed": "1.0",
-            "Minimum confidence": "0.3",
-            "Sensitivity": "1.2",
-            "Batch size": "8",
-            "Number of workers": "4",
-            "Number of producers": "2",
-            "Result type(s)": "table, csv",
-            "Species filter threshold": "0.05",
-            "Locale": "en_us",
-            "Split tables": "False",
-        }
-    )
-    values.update(overrides)
-
-    return values
-
+from birdnet_analyzer import cli, params
+from tests.params_files import (
+    TRAIN_FILE,
+    analysis_values,
+    tall_file,
+    train_values,
+    wide_file,
+)
 
 EXPECTED_ANALYSIS_KWARGS = {
     "model": "birdnet",
@@ -78,65 +23,11 @@ EXPECTED_ANALYSIS_KWARGS = {
     "n_workers": 4,
     "n_producers": 2,
     "rtype": ["table", "csv"],
+    "additional_columns": ["lat", "lon"],
     "sf_thresh": 0.05,
     "locale": "en_us",
     "split_tables": False,
 }
-
-
-def wide_file(tmp_path, values):
-    """Writes a parameters file in the old one-column-per-parameter layout."""
-    path = tmp_path / "BirdNET_analysis_params.csv"
-
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(values.keys())
-        writer.writerow(values.values())
-
-    return str(path)
-
-
-def tall_file(tmp_path, values, name="birdnet.analyze-params.csv"):
-    """Writes a parameters file the way the current version saves it."""
-    path = tmp_path / name
-    utils.save_params_file(path, values)
-
-    return str(path)
-
-
-def train_values(**overrides):
-    values = {
-        "Classifier name": "MyClassifier",
-        "Model formats": "tflite, raven",
-        "Model save mode": "replace",
-        "Bandpass filter minimum": 150,
-        "Bandpass filter maximum": 12000,
-        "Audio speed": 2.0,
-        "Crop mode": "segments",
-        "Crop overlap": 1.5,
-        "Autotune": False,
-        "Autotune trials": 50,
-        "Autotune folds": 5,
-        "Autotune repeats": 1,
-        "Autotune metric": "val_AUROC",
-        "Epochs": 100,
-        "Batch size": 64,
-        "Learning rate": 0.0005,
-        "Hidden units": 512,
-        "Dropout": 0.25,
-        "Weight decay": 0.004,
-        "Use label smoothing": True,
-        "Use mixup": True,
-        "Use focal loss": True,
-        "Focal loss gamma": 2.0,
-        "Focal loss alpha": 0.25,
-        "Upsampling mode": "repeat",
-        "Upsampling ratio": 0.5,
-        "BirdNET model version": "2.4",
-    }
-    values.update(overrides)
-
-    return values
 
 
 @pytest.mark.parametrize("write_file", [wide_file, tall_file])
@@ -191,9 +82,7 @@ def test_files_of_an_analysis_are_read_back(tmp_path):
 
 
 def test_train_params_are_read_back_as_train_arguments(tmp_path):
-    file = tall_file(
-        tmp_path, train_values(), name="MyClassifier.birdnet.train-params.csv"
-    )
+    file = tall_file(tmp_path, train_values(), name=TRAIN_FILE)
 
     assert params.load_train_params(file) == {
         "classifier_name": "MyClassifier",
@@ -227,9 +116,7 @@ def test_train_params_are_read_back_as_train_arguments(tmp_path):
 
 def test_an_unknown_model_version_is_left_out(tmp_path):
     file = tall_file(
-        tmp_path,
-        train_values(**{"BirdNET model version": "9.9"}),
-        name="MyClassifier.birdnet.train-params.csv",
+        tmp_path, train_values(**{"BirdNET model version": "9.9"}), name=TRAIN_FILE
     )
 
     assert "birdnet" not in params.load_train_params(file)
@@ -337,11 +224,7 @@ def test_analysis_params_become_cli_defaults_that_explicit_arguments_override(
 
 
 def test_train_params_become_cli_defaults_that_explicit_arguments_override(tmp_path):
-    file = tall_file(
-        tmp_path,
-        train_values(Autotune=True, Epochs=75),
-        name="MyClassifier.birdnet.train-params.csv",
-    )
+    file = tall_file(tmp_path, train_values(Autotune=True, Epochs=75), name=TRAIN_FILE)
     parser = cli.train_parser()
 
     cli.apply_params_file_defaults(
@@ -369,9 +252,7 @@ def test_a_val_loss_metric_from_a_params_file_is_rejected_by_training(
     from birdnet_analyzer.train import utils as train_utils
 
     file = tall_file(
-        tmp_path,
-        train_values(**{"Autotune metric": "val_loss"}),
-        name="MyClassifier.birdnet.train-params.csv",
+        tmp_path, train_values(**{"Autotune metric": "val_loss"}), name=TRAIN_FILE
     )
     parser = cli.train_parser()
     cli.apply_params_file_defaults(
@@ -431,6 +312,6 @@ def test_the_cli_arguments_stay_in_sync_with_the_api():
 
 def test_a_train_params_file_without_a_version_is_a_2_4_one(tmp_path):
     values = {k: v for k, v in train_values().items() if k != "BirdNET model version"}
-    file = tall_file(tmp_path, values, name="MyClassifier.birdnet.train-params.csv")
+    file = tall_file(tmp_path, values, name=TRAIN_FILE)
 
     assert params.load_train_params(file)["birdnet"] == "2.4"

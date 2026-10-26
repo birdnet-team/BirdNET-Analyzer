@@ -5,31 +5,8 @@ import pytest
 gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
-from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import review  # noqa: E402
-from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    return tmp_path
-
-
-def _handler(name):
-    with gr.Blocks() as demo:
-        review.build_review_tab()
-
-    for event in demo.fns.values():
-        fn = getattr(event.fn, "func", event.fn)
-        if getattr(fn, "__name__", "") == name:
-            return fn
-
-    raise LookupError(name)
 
 
 def _review_state(directory, files):
@@ -46,7 +23,7 @@ def _review_state(directory, files):
 
 
 def test_out_of_range_confidences_are_left_out_of_the_regression(
-    appdir, monkeypatch, tmp_path
+    appdir, handler, monkeypatch, tmp_path
 ):
     from sklearn import linear_model
 
@@ -68,7 +45,7 @@ def test_out_of_range_confidences_are_left_out_of_the_regression(
 
     monkeypatch.setattr(linear_model, "LogisticRegression", RecordingRegression)
     monkeypatch.setattr(gu, "select_folder", lambda *a, **k: str(folder))
-    updates = _handler("start_review")(_review_state("", []))
+    updates = handler(review.build_review_tab, "start_review")(_review_state("", []))
 
     label = loc.localize("review-tab-regression-plot-label")
     plot = next(
@@ -84,7 +61,7 @@ def test_out_of_range_confidences_are_left_out_of_the_regression(
     assert fitted == [expected]
 
 
-def test_a_failed_move_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+def test_a_failed_move_is_logged_and_shown(appdir, handler, monkeypatch, tmp_path):
     clip = tmp_path / "0.900_a.wav"
     clip.touch()
     logged = []
@@ -96,28 +73,28 @@ def test_a_failed_move_is_logged_and_shown(appdir, monkeypatch, tmp_path):
     monkeypatch.setattr(os, "rename", fail)
 
     with pytest.raises(gr.Error, match="disk"):
-        _handler("next_review")(
+        handler(review.build_review_tab, "next_review")(
             _review_state(tmp_path, [str(clip)]), target_dir=review.POSITIVE_LABEL_DIR
         )
 
     assert len(logged) == 1
 
 
-def test_running_out_of_files_is_reported_as_is(appdir, monkeypatch, tmp_path):
+def test_running_out_of_files_is_reported_as_is(appdir, handler, monkeypatch, tmp_path):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
     with pytest.raises(gr.Error) as raised:
-        _handler("next_review")(_review_state(tmp_path, []))
+        handler(review.build_review_tab, "next_review")(_review_state(tmp_path, []))
 
     assert raised.value.message == loc.localize("review-tab-no-files-error")
     assert logged == []
 
 
-def test_the_download_buttons_skip_an_empty_plot(appdir, monkeypatch):
+def test_the_download_buttons_skip_an_empty_plot(appdir, handler, monkeypatch):
     downloads = []
     monkeypatch.setattr(gu, "download_plot", lambda *args: downloads.append(args))
-    download = _handler("download_plot")
+    download = handler(review.build_review_tab, "download_plot")
 
     assert download(None, "spectrogram") is None
     assert downloads == []

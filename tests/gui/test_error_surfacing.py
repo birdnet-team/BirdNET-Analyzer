@@ -2,7 +2,6 @@ import pytest
 
 gr = pytest.importorskip("gradio")
 
-from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import (  # noqa: E402
     embeddings,
     evaluation,
@@ -76,16 +75,6 @@ TABS = {
 }
 
 _WRAPPER_CODE = gu.gui_runtime_error_handler(lambda: None).__code__
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "GUI_SETTINGS_PATH", str(tmp_path / "gui.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
 
 
 def _handlers(build):

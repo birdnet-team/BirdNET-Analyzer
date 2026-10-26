@@ -19,6 +19,7 @@ from birdnet_analyzer.evaluation.preprocessing.utils import (
     extract_recording_filename,
     extract_recording_filename_from_filename,
     read_and_concatenate_files_in_directory,
+    recording_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -250,15 +251,6 @@ class DataProcessor:
                     class_col_pred
                 ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
         else:
-            # Ensure filenames correspond to the same recording (heuristic check).
-            if not self.prediction_file_name.startswith(
-                os.path.splitext(self.annotation_file_name)[0]
-            ):
-                logger.warning(
-                    "Prediction file name and annotation file name do not fully match, "
-                    "but proceeding anyway."
-                )
-
             prediction_file = os.path.join(
                 self.prediction_directory_path, self.prediction_file_name
             )
@@ -284,6 +276,18 @@ class DataProcessor:
                 self.predictions_df[class_col_pred] = self.predictions_df[
                     class_col_pred
                 ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
+
+            if not any(
+                self.get_column_name("Recording", prediction=prediction) in df.columns
+                for df, prediction in (
+                    (self.predictions_df, True),
+                    (self.annotations_df, False),
+                )
+            ):
+                # A named pair is one recording, whatever the two files are called.
+                recording = recording_key(self.annotation_file_name)
+                self.predictions_df["recording_filename"] = recording
+                self.annotations_df["recording_filename"] = recording
 
         confidence_col = self.get_column_name("Confidence", prediction=True)
         if (
@@ -674,11 +678,7 @@ class DataProcessor:
         Creates prediction and label tensors from the samples DataFrame.
 
         This method converts confidence scores and annotations for each class into
-        numpy arrays (tensors). It ensures that there are no NaN values in the DataFrame
-        before creating the tensors.
-
-        Raises:
-            ValueError: If NaN values are found in confidence or annotation columns.
+        numpy arrays (tensors).
         """
         if self.samples_df.empty:
             self.prediction_tensors = np.empty((0, len(self.classes)), dtype=np.float32)
@@ -686,12 +686,7 @@ class DataProcessor:
             return
 
         annotation_columns = [f"{cls}_annotation" for cls in self.classes]
-        if self.samples_df[annotation_columns].isna().to_numpy().any():
-            raise ValueError("NaN values found in annotation columns.")
-
         confidence_columns = [f"{cls}_confidence" for cls in self.classes]
-        if self.samples_df[confidence_columns].isna().to_numpy().any():
-            raise ValueError("NaN values found in confidence columns.")
 
         self.prediction_tensors = self.samples_df[confidence_columns].to_numpy(
             dtype=np.float32
@@ -715,15 +710,7 @@ class DataProcessor:
 
         Returns:
             str: The column name corresponding to the field.
-
-        Raises:
-            TypeError: If `field_name` or `prediction` is None.
         """
-        if field_name is None:
-            raise TypeError("field_name cannot be None.")
-        if prediction is None:
-            raise TypeError("prediction parameter cannot be None.")
-
         mapping = self.columns_predictions if prediction else self.columns_annotations
 
         if field_name in mapping and mapping[field_name] is not None:

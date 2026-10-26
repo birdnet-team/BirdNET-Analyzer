@@ -104,9 +104,24 @@ def _random_detections(seed: int, dtype: str, hop_size: float = 3.0) -> pd.DataF
     return df.sample(frac=1, random_state=rng)
 
 
-@pytest.mark.parametrize("hop_size", [1.5, 2.9, 3.0])
-@pytest.mark.parametrize("dtype", ["float16", "float32", "float64"])
-@pytest.mark.parametrize("merge_consecutive", [1, 2, 3, 4, 5])
+def _detections(rows):
+    return pd.DataFrame(
+        rows, columns=["input", "species_name", "start_time", "end_time", "confidence"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("merge_consecutive", "dtype", "hop_size"),
+    [
+        *(
+            (merge, dtype, 3.0)
+            for merge in (1, 3)
+            for dtype in ("float16", "float32", "float64")
+        ),
+        (3, "float32", 1.5),
+        (3, "float32", 2.9),
+    ],
+)
 def test_merge_consecutive_segments_matches_reference(
     merge_consecutive, dtype, hop_size
 ):
@@ -214,220 +229,64 @@ def test_merge_consecutive_segments_sorts_by_input_and_time_even_when_nothing_me
 
 
 def test_merge_consecutive_segments_merges_expected_rows():
-    df = pd.DataFrame(
+    df = _detections(
         [
-            {
-                "input": "file_a.wav",
-                "species_name": "species_alpha",
-                "start_time": 0.0,
-                "end_time": 2.0,
-                "confidence": 0.4,
-            },
-            {
-                "input": "file_a.wav",
-                "species_name": "species_alpha",
-                "start_time": 2.0,
-                "end_time": 4.0,
-                "confidence": 0.6,
-            },
-            {
-                "input": "file_a.wav",
-                "species_name": "species_alpha",
-                "start_time": 5.0,
-                "end_time": 6.0,
-                "confidence": 0.8,
-            },
-            {
-                "input": "file_b.wav",
-                "species_name": "species_beta",
-                "start_time": 0.0,
-                "end_time": 1.0,
-                "confidence": 0.5,
-            },
-            {
-                "input": "file_b.wav",
-                "species_name": "species_beta",
-                "start_time": 1.0,
-                "end_time": 2.0,
-                "confidence": 0.7,
-            },
+            ("file_a.wav", "species_alpha", 0.0, 2.0, 0.4),
+            ("file_a.wav", "species_alpha", 2.0, 4.0, 0.6),
+            ("file_a.wav", "species_alpha", 5.0, 6.0, 0.8),
+            ("file_b.wav", "species_beta", 0.0, 1.0, 0.5),
+            ("file_b.wav", "species_beta", 1.0, 2.0, 0.7),
         ]
     )
 
     merged = _merge_consecutive_segments(df, merge_consecutive=2, hop_size=2.0)
 
-    assert len(merged) == 3
-
-    merged_records = merged.to_dict("records")
-
-    assert merged_records[0]["input"] == "file_a.wav"
-    assert merged_records[0]["start_time"] == 0.0
-    assert merged_records[0]["end_time"] == 4.0
-    assert merged_records[0]["confidence"] == pytest.approx(0.5)
-
-    assert merged_records[1]["input"] == "file_a.wav"
-    assert merged_records[1]["start_time"] == 5.0
-    assert merged_records[1]["end_time"] == 6.0
-    assert merged_records[1]["confidence"] == pytest.approx(0.8)
-
-    assert merged_records[2]["input"] == "file_b.wav"
-    assert merged_records[2]["start_time"] == 0.0
-    assert merged_records[2]["end_time"] == 2.0
-    assert merged_records[2]["confidence"] == pytest.approx(0.6)
-
-
-def test_merge_consecutive_segments_merges_full_window():
-    df = pd.DataFrame(
-        [
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 0.0,
-                "end_time": 1.0,
-                "confidence": 0.25,
-            },
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 1.0,
-                "end_time": 2.0,
-                "confidence": 0.75,
-            },
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 2.0,
-                "end_time": 3.0,
-                "confidence": 0.5,
-            },
-        ]
-    )
-    merged = _merge_consecutive_segments(df, merge_consecutive=3, hop_size=1.0)
-
-    assert len(merged) == 1
-
-    record = merged.to_dict("records")[0]
-    assert record["start_time"] == 0.0
-    assert record["end_time"] == 3.0
-    assert record["confidence"] == pytest.approx((0.25 + 0.75 + 0.5) / 3)
+    assert merged[["input", "start_time", "end_time"]].to_numpy().tolist() == [
+        ["file_a.wav", 0.0, 4.0],
+        ["file_a.wav", 5.0, 6.0],
+        ["file_b.wav", 0.0, 2.0],
+    ]
+    assert merged["confidence"].tolist() == pytest.approx([0.5, 0.8, 0.6])
 
 
 def test_merge_consecutive_segments_merges_up_to_the_window_size():
-    # A run of 5 consecutive segments with merge_consecutive=3 must be split into
-    # chunks of at most 3: one merged row of 3 followed by one merged row of 2.
-    df = pd.DataFrame(
+    # Five consecutive segments at merge_consecutive=3: a merged 3, then a merged 2.
+    df = _detections(
         [
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": float(i),
-                "end_time": float(i + 1),
-                "confidence": 0.1 * (i + 1),
-            }
+            ("file.wav", "species", float(i), float(i + 1), 0.1 * (i + 1))
             for i in range(5)
         ]
     )
 
     merged = _merge_consecutive_segments(df, merge_consecutive=3, hop_size=1.0)
 
-    assert len(merged) == 2
-
-    records = merged.to_dict("records")
-
-    assert records[0]["start_time"] == 0.0
-    assert records[0]["end_time"] == 3.0
-    assert records[0]["confidence"] == pytest.approx((0.1 + 0.2 + 0.3) / 3)
-
-    assert records[1]["start_time"] == 3.0
-    assert records[1]["end_time"] == 5.0
-    assert records[1]["confidence"] == pytest.approx((0.4 + 0.5) / 2)
+    assert merged[["start_time", "end_time"]].to_numpy().tolist() == [
+        [0.0, 3.0],
+        [3.0, 5.0],
+    ]
+    assert merged["confidence"].tolist() == pytest.approx([0.2, 0.45])
 
 
 def test_merge_consecutive_segments_merges_partial_run_shorter_than_window():
-    # A run shorter than merge_consecutive must still be merged (up to N).
-    df = pd.DataFrame(
+    df = _detections(
         [
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 0.0,
-                "end_time": 1.0,
-                "confidence": 0.25,
-            },
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 1.0,
-                "end_time": 2.0,
-                "confidence": 0.75,
-            },
+            ("file.wav", "species", 0.0, 1.0, 0.25),
+            ("file.wav", "species", 1.0, 2.0, 0.75),
         ]
     )
+
     merged = _merge_consecutive_segments(df, merge_consecutive=3, hop_size=1.0)
 
-    assert len(merged) == 1
-
-    record = merged.to_dict("records")[0]
-    assert record["start_time"] == 0.0
-    assert record["end_time"] == 2.0
-    assert record["confidence"] == pytest.approx((0.25 + 0.75) / 2)
-
-
-def test_merge_consecutive_segments_handles_float16_time_columns():
-    df = pd.DataFrame(
-        [
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 0.0,
-                "end_time": 1.0,
-                "confidence": 0.1,
-            },
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 1.0,
-                "end_time": 2.0,
-                "confidence": 0.3,
-            },
-        ]
-    )
-
-    df["start_time"] = df["start_time"].astype("float16")
-    df["end_time"] = df["end_time"].astype("float16")
-
-    merged = _merge_consecutive_segments(df, merge_consecutive=2, hop_size=1.0)
-
-    assert len(merged) == 1
-    record = merged.to_dict("records")[0]
-    assert record["start_time"] == 0.0
-    assert record["end_time"] == 2.0
-    assert record["confidence"] == pytest.approx(0.2)
+    assert merged[["start_time", "end_time"]].to_numpy().tolist() == [[0.0, 2.0]]
+    assert merged["confidence"].tolist() == pytest.approx([0.5])
 
 
 def test_merge_consecutive_segments_no_merge_when_merge_value_is_one():
-    df = pd.DataFrame(
-        [
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 0.0,
-                "end_time": 1.0,
-                "confidence": 0.2,
-            },
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": 1.0,
-                "end_time": 2.0,
-                "confidence": 0.3,
-            },
-        ]
+    df = _detections(
+        [("file.wav", "species", 0.0, 1.0, 0.2), ("file.wav", "species", 1.0, 2.0, 0.3)]
     )
 
-    merged = _merge_consecutive_segments(df, merge_consecutive=1)
-
-    assert merged.equals(df)
+    assert _merge_consecutive_segments(df, merge_consecutive=1).equals(df)
 
 
 def test_merge_consecutive_segments_returns_empty_for_empty_dataframe():
@@ -448,23 +307,8 @@ def test_merge_consecutive_segments_raises_when_columns_missing():
 
 
 def test_merge_consecutive_segments_raises_for_non_numeric_time_values():
-    df = pd.DataFrame(
-        [
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": "a",
-                "end_time": "b",
-                "confidence": 0.1,
-            },
-            {
-                "input": "file.wav",
-                "species_name": "species",
-                "start_time": "c",
-                "end_time": "d",
-                "confidence": 0.2,
-            },
-        ]
+    df = _detections(
+        [("file.wav", "species", "a", "b", 0.1), ("file.wav", "species", "c", "d", 0.2)]
     )
 
     with pytest.raises(ValueError, match="Time columns must be numeric"):

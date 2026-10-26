@@ -1,5 +1,3 @@
-"""The GUI shows the birdnet library's model downloads."""
-
 import contextlib
 
 import pytest
@@ -88,7 +86,7 @@ def test_download_progress_survives_ui_failures(monkeypatch):
         )
 
     with gu.download_progress(broken_progress):
-        registered()(update("progress"))  # must not raise
+        registered()(update("progress"))
         registered()(update("retrying", error="connection reset"))
 
     assert len(warnings) == 1
@@ -148,11 +146,7 @@ MODEL_NAME = "acoustic model v3.0"
 
 
 def _capture_progress(monkeypatch):
-    """Captures what a handler's ``gr.Progress`` reports, and any toast it raises.
-
-    Gradio resolves the bar from a contextvar rather than from the argument, so a
-    stand-in callback is the only way to observe it outside a live event.
-    """
+    # Gradio resolves the bar from a contextvar, not from the handler's argument.
     import gradio as gr
 
     records: list = []
@@ -166,15 +160,11 @@ def _capture_progress(monkeypatch):
 
 
 def _emit_download():
-    """Reports a model download the way the birdnet library does mid-load.
-
-    Stays silent when nothing registered a sink, so a tab that never wraps its model
-    call fails on the missing progress update rather than on a TypeError here.
-    """
     import birdnet
 
     callback = birdnet.get_download_progress_callback()
 
+    # A tab that never registered a sink fails on the missing bar update, not here.
     if callback is None:
         return
 
@@ -208,26 +198,19 @@ def _assert_download_reached_the_bar(updates, infos):
 
 
 def _module(name):
-    """Imports a submodule by name.
-
-    ``birdnet_analyzer`` re-exports ``analyze``/``embeddings``/``search``/``train``
-    as functions, shadowing the submodules of the same name, so attribute access -
-    and monkeypatch's dotted string form, which uses it - reaches the function.
-    """
+    # The package re-exports analyze/embeddings/search/train as functions, which
+    # shadow the submodules for attribute access and for monkeypatch's dotted form.
     import importlib
 
     return importlib.import_module(name)
 
 
 class _FakeDatabase:
-    """The metadata surface the embeddings and search handlers read."""
-
     def get_metadata(self, key):
         return {"AUDIO_SPEED": 1.0, "BANDPASS_FMIN": 0, "BANDPASS_FMAX": 15000}
 
 
 def _run_single_file_tab(monkeypatch, report):
-    """Runs the single-file tab's handler over an ``analyze`` that calls ``report``."""
     import pandas as pd
 
     from birdnet_analyzer.gui import single_file
@@ -276,7 +259,6 @@ def _run_single_file_tab(monkeypatch, report):
 
 
 def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
-    """A first-use download is several hundred MB; a toast alone looks like a hang."""
     updates, infos = _run_single_file_tab(
         monkeypatch, lambda **kwargs: _emit_download()
     )
@@ -285,10 +267,6 @@ def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
 
 
 def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch):
-    """The same tracker carries the analysis itself, not just the download.
-
-    A long recording is minutes of work after the download has finished.
-    """
     from types import SimpleNamespace
 
     import birdnet_analyzer.gui.localization as loc
@@ -311,7 +289,6 @@ def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch
 
 
 def test_embeddings_tab_shows_the_download_on_its_progress_bar(monkeypatch, tmp_path):
-    """Building a database is the first thing a fresh install does, model and all."""
     from birdnet_analyzer.gui import embeddings as gui_embeddings
 
     records, infos = _capture_progress(monkeypatch)
@@ -345,7 +322,6 @@ def test_embeddings_tab_shows_the_download_on_its_progress_bar(monkeypatch, tmp_
 
 
 def test_search_tab_shows_the_download_on_its_progress_bar(monkeypatch):
-    """Searching embeds the query sample, which loads the model on first use."""
     from birdnet_analyzer.gui import search as gui_search
 
     records, infos = _capture_progress(monkeypatch)
@@ -373,7 +349,6 @@ def test_search_tab_shows_the_download_on_its_progress_bar(monkeypatch):
 
 
 def test_train_tab_shows_the_download_on_its_progress_bar(monkeypatch):
-    """Training embeds the training data first, which loads the model on first use."""
     from types import SimpleNamespace
 
     from birdnet_analyzer.gui import train as gui_train
@@ -431,7 +406,6 @@ def test_train_tab_shows_the_download_on_its_progress_bar(monkeypatch):
 
 
 def test_species_tab_shows_the_download_on_its_progress_bar(monkeypatch):
-    """The geo model is a download of its own on a fresh install."""
     from birdnet_analyzer.gui import species as gui_species
 
     records, infos = _capture_progress(monkeypatch)

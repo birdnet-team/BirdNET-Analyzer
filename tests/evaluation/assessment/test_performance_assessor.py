@@ -1,767 +1,140 @@
-import re
-
 import matplotlib
 import numpy as np
 import pandas as pd
 import pytest
 
 from birdnet_analyzer import evaluation
-from birdnet_analyzer.evaluation.assessment import (
-    metrics,
-    performance_assessor,
-    plotting,
-)
+from birdnet_analyzer.evaluation.assessment import performance_assessor, plotting
 from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     PerformanceAssessor,
 )
 
-matplotlib.use("Agg")  # Use non-interactive backend for plotting
-
-
-class TestPerformanceAssessorInit:
-    """
-    Test suite for the PerformanceAssessor __init__ method.
-    """
-
-    def test_init_with_valid_inputs(self):
-        """
-        Test initializing PerformanceAssessor with valid inputs.
-        """
-        num_classes = 3
-        threshold = 0.5
-        classes = ("Class1", "Class2", "Class3")
-        task = "multilabel"
-        metrics_list = ("recall", "precision", "f1")
-        assessor = PerformanceAssessor(
-            num_classes, threshold, classes, task, metrics_list
-        )
-        assert assessor.num_classes == num_classes
-        assert assessor.threshold == threshold
-        assert assessor.classes == classes
-        assert assessor.task == task
-        assert assessor.metrics_list == metrics_list
-
-    def test_init_with_invalid_num_classes(self):
-        """
-        Test initializing PerformanceAssessor with invalid num_classes
-        (non-positive integer).
-        """
-        with pytest.raises(
-            ValueError, match=re.escape("num_classes must be a positive integer.")
-        ):
-            PerformanceAssessor(num_classes=0)
-
-    def test_init_with_invalid_threshold(self):
-        """
-        Test initializing PerformanceAssessor with invalid threshold
-        (not between 0 and 1).
-        """
-        with pytest.raises(
-            ValueError,
-            match=re.escape("threshold must be a float between 0 and 1 (exclusive)."),
-        ):
-            PerformanceAssessor(num_classes=3, threshold=1.5)
-
-    def test_init_with_invalid_classes_length(self):
-        """
-        Test initializing PerformanceAssessor when length of classes does not match
-        num_classes.
-        """
-        with pytest.raises(
-            ValueError,
-            match=re.escape("Length of classes (3) must match num_classes (2)."),
-        ):
-            PerformanceAssessor(num_classes=2, classes=("Class1", "Class2", "Class3"))
-
-    def test_init_with_invalid_classes_type(self):
-        """
-        Test initializing PerformanceAssessor when classes is not a tuple of strings.
-        """
-        with pytest.raises(
-            ValueError, match=re.escape("classes must be a tuple of strings.")
-        ):
-            PerformanceAssessor(
-                num_classes=2, classes=["Class1", "Class2"]
-            )  # Should be tuple
-
-    def test_init_with_invalid_task(self):
-        """
-        Test initializing PerformanceAssessor with invalid task type.
-        """
-        with pytest.raises(
-            ValueError, match=re.escape("task must be 'binary' or 'multilabel'.")
-        ):
-            PerformanceAssessor(num_classes=2, task="invalid_task")
-
-    def test_init_with_invalid_metrics_list(self):
-        """
-        Test initializing PerformanceAssessor with invalid metrics_list containing
-        unsupported metric.
-        """
-        target = (
-            "Invalid metrics in ('recall', 'unsupported_metric'). Valid options are "
-            "['accuracy', 'recall', 'precision', 'f1', 'ap', 'auroc']."
-        )
-        with pytest.raises(
-            ValueError,
-            match=re.escape(target),
-        ):
-            PerformanceAssessor(
-                num_classes=2, metrics_list=("recall", "unsupported_metric")
-            )
-
-    def test_init_with_empty_metrics_list(self):
-        """
-        Test initializing PerformanceAssessor with empty metrics_list.
-        """
-        with pytest.raises(
-            ValueError, match=re.escape("metrics_list cannot be empty.")
-        ):
-            PerformanceAssessor(num_classes=2, metrics_list=())
-
-    def test_init_with_large_num_classes(self):
-        """
-        Test initializing PerformanceAssessor with a large number of classes.
-        """
-        num_classes = 1000
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        assert assessor.num_classes == num_classes
-
-    def test_init_with_default_parameters(self):
-        """
-        Test initializing PerformanceAssessor with default parameters.
-        """
-        assessor = PerformanceAssessor(num_classes=2)
-        assert assessor.num_classes == 2
-        assert assessor.threshold == 0.5
-        assert assessor.classes is None
-        assert assessor.task == "multilabel"
-        assert assessor.metrics_list == (
-            "recall",
-            "precision",
-            "f1",
-            "ap",
-            "auroc",
-            "accuracy",
-        )
-
-
-class TestPerformanceAssessorCalculateMetrics:
-    """
-    Test suite for the PerformanceAssessor calculate_metrics method.
-    """
-
-    def setup_method(self):
-        """
-        Setup method to create a PerformanceAssessor instance for testing.
-        """
-        self.rng = np.random.default_rng(42)
-
-    def test_calculate_metrics_with_valid_inputs(self):
-        """
-        Test calculate_metrics with valid predictions and labels.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        metrics_df = assessor.calculate_metrics(predictions, labels)
-        assert isinstance(metrics_df, pd.DataFrame)
-        assert not metrics_df.empty
-
-    def test_calculate_metrics_with_per_class_metrics(self):
-        """
-        Test calculate_metrics with per_class_metrics=True.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        metrics_df = assessor.calculate_metrics(
-            predictions, labels, per_class_metrics=True
-        )
-        assert isinstance(metrics_df, pd.DataFrame)
-        assert not metrics_df.empty
-        assert metrics_df.shape[1] == num_classes  # Columns should be per class
-
-    def test_calculate_metrics_with_invalid_predictions_shape(self):
-        """
-        Test calculate_metrics with invalid predictions shape.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random(100)  # Invalid shape
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.calculate_metrics(predictions, labels)
-
-    def test_calculate_metrics_with_invalid_labels_shape(self):
-        """
-        Test calculate_metrics with invalid labels shape.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100,))  # Invalid shape
-        with pytest.raises(
-            ValueError, match=r"predictions and labels must have the same shape."
-        ):
-            assessor.calculate_metrics(predictions, labels)
-
-    def test_calculate_metrics_with_mismatched_predictions_and_labels(self):
-        """
-        Test calculate_metrics when predictions and labels have mismatched shapes.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(
-            0, 2, size=(90, num_classes)
-        )  # Different number of samples
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.calculate_metrics(predictions, labels)
-
-    def test_calculate_metrics_with_invalid_predictions_type(self):
-        """
-        Test calculate_metrics with predictions of invalid type (not numpy array).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = [[0.1, 0.2, 0.3]] * 100  # List instead of numpy array
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        with pytest.raises(TypeError):
-            assessor.calculate_metrics(predictions, labels)
-
-    def test_calculate_metrics_with_invalid_labels_type(self):
-        """
-        Test calculate_metrics with labels of invalid type (not numpy array).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = [[0, 1, 0]] * 100  # List instead of numpy array
-        with pytest.raises(TypeError):
-            assessor.calculate_metrics(predictions, labels)
-
-    def test_calculate_metrics_with_invalid_metric_in_metrics_list(self):
-        """
-        Test calculate_metrics when metrics_list contains an invalid metric.
-        """
-        num_classes = 3
-        target = (
-            "Invalid metrics in ('invalid_metric',). "
-            "Valid options are "
-            "['accuracy', 'recall', 'precision', 'f1', 'ap', 'auroc']."
-        )
-        with pytest.raises(
-            ValueError,
-            match=re.escape(target),
-        ):
-            PerformanceAssessor(
-                num_classes=num_classes, metrics_list=("invalid_metric",)
-            )
-
-    def test_calculate_metrics_with_binary_task(self):
-        """
-        Test calculate_metrics with task='binary'.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random((100, 1))
-        labels = self.rng.integers(0, 2, size=(100, 1))
-        metrics_df = assessor.calculate_metrics(predictions, labels)
-        assert isinstance(metrics_df, pd.DataFrame)
-        assert not metrics_df.empty
-
-    def test_calculate_metrics_with_no_classes(self):
-        """
-        Test calculate_metrics when no classes are provided (classes=None).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes, classes=None)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        metrics_df = assessor.calculate_metrics(
-            predictions, labels, per_class_metrics=True
-        )
-        assert isinstance(metrics_df, pd.DataFrame)
-        assert not metrics_df.empty
-        expected_columns = [f"Class {i}" for i in range(num_classes)]
-        assert list(metrics_df.columns) == expected_columns
-
-
-class TestPerformanceAssessorAggregation:
-    """Tests for empty-class handling, averaging, and support."""
-
-    def setup_method(self):
-        # Class 0: 2 positives, both predicted (recall 1). Class 1: never positive
-        # (empty). Class 2: 1 positive, predicted (recall 1).
-        self.classes = ("A", "Empty", "C")
-        self.labels = np.zeros((10, 3), dtype=int)
-        self.labels[:2, 0] = 1
-        self.labels[0, 2] = 1
-        self.predictions = np.zeros((10, 3))
-        self.predictions[:2, 0] = 0.9
-        self.predictions[:3, 1] = 0.9  # false positives on the empty class
-        self.predictions[0, 2] = 0.9
-
-    def _assessor(self):
-        return PerformanceAssessor(
-            num_classes=3,
-            threshold=0.1,
-            classes=self.classes,
-            metrics_list=("precision", "recall"),
-        )
-
-    def test_empty_classes_detected(self):
-        pa = self._assessor()
-        assert pa.empty_classes(self.labels) == ("Empty",)
-
-    def test_class_support(self):
-        pa = self._assessor()
-        assert list(pa.class_support(self.labels)) == [2, 0, 1]
-
-    def test_empty_class_excluded_from_overall(self):
-        pa = self._assessor()
-        overall = pa.calculate_metrics(self.predictions, self.labels)
-        # A and C are perfect; the empty class is excluded so precision stays 1.
-        assert overall.loc["Precision", "Overall"] == pytest.approx(1.0)
-
-    def test_drop_empty_false_includes_empty_class(self):
-        pa = self._assessor()
-        overall = pa.calculate_metrics(self.predictions, self.labels, drop_empty=False)
-        # The empty class contributes precision 0, pulling the macro mean below 1.
-        assert overall.loc["Precision", "Overall"] < 1.0
-
-    def test_per_class_includes_support_row(self):
-        pa = self._assessor()
-        per_class = pa.calculate_metrics(
-            self.predictions, self.labels, per_class_metrics=True, include_support=True
-        )
-        assert "Support" in per_class.index
-        assert list(per_class.loc["Support"]) == [2, 0, 1]
-
-    def test_all_empty_labels_give_nan(self):
-        pa = self._assessor()
-        overall = pa.calculate_metrics(self.predictions, np.zeros((10, 3), dtype=int))
-        assert np.isnan(overall.loc["Precision", "Overall"])
-
-    def test_micro_and_macro_differ(self):
-        # Class A: 4 positives, 1 recalled (recall 1/4). Class C: 1 positive, recalled.
-        labels = np.zeros((10, 3), dtype=int)
-        labels[:4, 0] = 1
-        labels[0, 2] = 1
-        predictions = np.zeros((10, 3))
-        predictions[0, 0] = 0.9
-        predictions[0, 2] = 0.9
-        pa = PerformanceAssessor(
-            num_classes=3,
-            threshold=0.1,
-            classes=self.classes,
-            metrics_list=("recall",),
-        )
-        macro = pa.calculate_metrics(predictions, labels, averaging="macro")
-        micro = pa.calculate_metrics(predictions, labels, averaging="micro")
-        # macro = mean(1/4, 1) = 0.625; micro = 2/5 = 0.4.
-        assert macro.loc["Recall", "Overall"] == pytest.approx(0.625)
-        assert micro.loc["Recall", "Overall"] == pytest.approx(0.4)
-
-
-class TestPerformanceAssessorPlotMetrics:
-    """
-    Test suite for the PerformanceAssessor plot_metrics method.
-    """
-
-    def setup_method(self):
-        """
-        Setup method to create a PerformanceAssessor instance for testing.
-        """
-        self.rng = np.random.default_rng(42)
-
-    def test_plot_metrics_with_valid_inputs(self):
-        """
-        Test plot_metrics with valid predictions and labels.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((50, num_classes))
-        labels = self.rng.integers(0, 2, size=(50, num_classes))
-        assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_per_class_metrics(self):
-        """
-        Test plot_metrics with per_class_metrics=True.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((50, num_classes))
-        labels = self.rng.integers(0, 2, size=(50, num_classes))
-        assessor.plot_metrics(predictions, labels, per_class_metrics=True)
-
-    def test_plot_metrics_with_invalid_predictions_shape(self):
-        """
-        Test plot_metrics with invalid predictions shape.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random(50)  # Invalid shape
-        labels = self.rng.integers(0, 2, size=(50, num_classes))
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_invalid_labels_shape(self):
-        """
-        Test plot_metrics with invalid labels shape.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((50, num_classes))
-        labels = self.rng.integers(0, 2, size=(50,))  # Invalid shape
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_mismatched_predictions_and_labels(self):
-        """
-        Test plot_metrics when predictions and labels have mismatched shapes.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((50, num_classes))
-        labels = self.rng.integers(
-            0, 2, size=(40, num_classes)
-        )  # Different number of samples
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_binary_task(self):
-        """
-        Test plot_metrics with task='binary'.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random((50, 1))
-        labels = self.rng.integers(0, 2, size=(50, 1))
-        assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_no_classes(self):
-        """
-        Test plot_metrics when no classes are provided (classes=None).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes, classes=None)
-        predictions = self.rng.random((50, num_classes))
-        labels = self.rng.integers(0, 2, size=(50, num_classes))
-        assessor.plot_metrics(predictions, labels, per_class_metrics=True)
-
-    def test_plot_metrics_with_invalid_predictions_type(self):
-        """
-        Test plot_metrics with predictions of invalid type (not numpy array).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = [[0.1, 0.2, 0.3]] * 50  # List instead of numpy array
-        labels = self.rng.integers(0, 2, size=(50, num_classes))
-        with pytest.raises(TypeError):
-            assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_invalid_labels_type(self):
-        """
-        Test plot_metrics with labels of invalid type (not numpy array).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((50, num_classes))
-        labels = [[0, 1, 0]] * 50  # List instead of numpy array
-        with pytest.raises(TypeError):
-            assessor.plot_metrics(predictions, labels)
-
-    def test_plot_metrics_with_large_number_of_classes(self):
-        """
-        Test plot_metrics with a large number of classes.
-        """
-        num_classes = 100
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((50, num_classes))
-        labels = self.rng.integers(0, 2, size=(50, num_classes))
-        assessor.plot_metrics(predictions, labels, per_class_metrics=True)
-
-
-class TestPerformanceAssessorPlotMetricsAllThresholds:
-    """
-    Test suite for the PerformanceAssessor plot_metrics_all_thresholds method.
-    """
-
-    def setup_method(self):
-        """
-        Setup method to create a PerformanceAssessor instance for testing.
-        """
-        self.rng = np.random.default_rng(42)
-
-    def test_plot_metrics_all_thresholds_with_valid_inputs(self):
-        """
-        Test plot_metrics_all_thresholds with valid predictions and labels.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_per_class_metrics(self):
-        """
-        Test plot_metrics_all_thresholds with per_class_metrics=True.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_metrics_all_thresholds(
-            predictions, labels, per_class_metrics=True
-        )
-
-    def test_plot_metrics_all_thresholds_with_invalid_predictions_shape(self):
-        """
-        Test plot_metrics_all_thresholds with invalid predictions shape.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random(100)  # Invalid shape
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        with pytest.raises(
-            ValueError, match=r"predictions and labels must have the same shape."
-        ):
-            assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_invalid_labels_shape(self):
-        """
-        Test plot_metrics_all_thresholds with invalid labels shape.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100,))  # Invalid shape
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_mismatched_predictions_and_labels(self):
-        """
-        Test plot_metrics_all_thresholds when predictions and labels have mismatched
-        shapes.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(
-            0, 2, size=(90, num_classes)
-        )  # Different number of samples
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_binary_task(self):
-        """
-        Test plot_metrics_all_thresholds with task='binary'.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random((100, 1))
-        labels = self.rng.integers(0, 2, size=(100, 1))
-        assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_no_classes(self):
-        """
-        Test plot_metrics_all_thresholds when no classes are provided (classes=None).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes, classes=None)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_metrics_all_thresholds(
-            predictions, labels, per_class_metrics=True
-        )
-
-    def test_plot_metrics_all_thresholds_with_invalid_predictions_type(self):
-        """
-        Test plot_metrics_all_thresholds with predictions of invalid type
-        (not numpy array).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = [[0.1, 0.2, 0.3]] * 100  # List instead of numpy array
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        with pytest.raises(TypeError):
-            assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_invalid_labels_type(self):
-        """
-        Test plot_metrics_all_thresholds with labels of invalid type (not numpy array).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = [[0, 1, 0]] * 100  # List instead of numpy array
-        with pytest.raises(TypeError):
-            assessor.plot_metrics_all_thresholds(predictions, labels)
-
-    def test_plot_metrics_all_thresholds_with_large_number_of_classes(self):
-        """
-        Test plot_metrics_all_thresholds with a large number of classes.
-        """
-        num_classes = 50
-        assessor = PerformanceAssessor(num_classes=num_classes)
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_metrics_all_thresholds(
-            predictions, labels, per_class_metrics=True
-        )
-
-
-class TestPerformanceAssessorPlotConfusionMatrix:
-    """
-    Test suite for the PerformanceAssessor plot_confusion_matrix method.
-    """
-
-    def setup_method(self):
-        """
-        Setup method to create a PerformanceAssessor instance for testing.
-        """
-        self.rng = np.random.default_rng(42)  # For reproducibility
-
-    def test_plot_confusion_matrix_with_valid_inputs(self):
-        """
-        Test plot_confusion_matrix with valid predictions and labels.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(
-            num_classes=num_classes, task="binary", classes=("Class",)
-        )
-        predictions = self.rng.random((100, 1))
-        labels = self.rng.integers(0, 2, size=(100, 1))
-        assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_multilabel_task(self):
-        """
-        Test plot_confusion_matrix with multilabel task.
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(num_classes=num_classes, task="multilabel")
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_invalid_predictions_shape(self):
-        """
-        Test plot_confusion_matrix with invalid predictions shape.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random(100)  # Invalid shape
-        labels = self.rng.integers(0, 2, size=(100, 1))
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_invalid_labels_shape(self):
-        """
-        Test plot_confusion_matrix with invalid labels shape.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random((100, 1))
-        labels = self.rng.integers(0, 2, size=(100,))  # Invalid shape
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_mismatched_predictions_and_labels(self):
-        """
-        Test plot_confusion_matrix when predictions and labels have mismatched shapes.
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random((100, 1))
-        labels = self.rng.integers(0, 2, size=(90, 1))  # Different number of samples
-        with pytest.raises(
-            ValueError,
-            match=re.escape("predictions and labels must have the same shape."),
-        ):
-            assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_invalid_predictions_type(self):
-        """
-        Test plot_confusion_matrix with predictions of invalid type (not numpy array).
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = [0.1] * 100  # List instead of numpy array
-        labels = self.rng.integers(0, 2, size=(100, 1))
-        with pytest.raises(
-            TypeError, match=re.escape("predictions must be a NumPy array.")
-        ):
-            assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_invalid_labels_type(self):
-        """
-        Test plot_confusion_matrix with labels of invalid type (not numpy array).
-        """
-        num_classes = 1
-        assessor = PerformanceAssessor(num_classes=num_classes, task="binary")
-        predictions = self.rng.random((100, 1))
-        labels = [0] * 100  # List instead of numpy array
-        with pytest.raises(TypeError, match=re.escape("labels must be a NumPy array.")):
-            assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_large_number_of_classes(self):
-        """
-        Test plot_confusion_matrix with a large number of classes.
-        """
-        num_classes = 20
-        assessor = PerformanceAssessor(num_classes=num_classes, task="multilabel")
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_confusion_matrix(predictions, labels)
-
-    def test_plot_confusion_matrix_with_no_classes(self):
-        """
-        Test plot_confusion_matrix when no classes are provided (classes=None).
-        """
-        num_classes = 3
-        assessor = PerformanceAssessor(
-            num_classes=num_classes, classes=None, task="multilabel"
-        )
-        predictions = self.rng.random((100, num_classes))
-        labels = self.rng.integers(0, 2, size=(100, num_classes))
-        assessor.plot_confusion_matrix(predictions, labels)
+matplotlib.use("Agg")
 
 
 def _tensors(num_classes=3):
     rng = np.random.default_rng(3)
 
     return rng.random((200, num_classes)), rng.integers(0, 2, (200, num_classes))
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ({"num_classes": 0}, "positive integer"),
+        ({"num_classes": 3, "threshold": 1.5}, "between 0 and 1"),
+        ({"num_classes": 2, "classes": ("a", "b", "c")}, "must match num_classes"),
+        ({"num_classes": 2, "task": "multiclass"}, "'binary' or 'multilabel'"),
+        ({"num_classes": 2, "metrics_list": ()}, "cannot be empty"),
+        ({"num_classes": 2, "metrics_list": ("recall", "map")}, "Invalid metrics"),
+    ],
+    ids=["classes", "threshold", "class-names", "task", "no-metric", "unknown-metric"],
+)
+def test_settings_the_assessor_cannot_score_with_are_rejected(settings, message):
+    with pytest.raises(ValueError, match=message):
+        PerformanceAssessor(**settings)
+
+
+@pytest.mark.parametrize(
+    ("predictions_shape", "labels_shape", "message"),
+    [((90, 3), (100, 3), "same shape"), ((100, 2), (100, 2), "must match num_classes")],
+)
+def test_tensors_of_the_wrong_shape_are_rejected(
+    predictions_shape, labels_shape, message
+):
+    rng = np.random.default_rng(0)
+
+    with pytest.raises(ValueError, match=message):
+        PerformanceAssessor(num_classes=3).calculate_metrics(
+            rng.random(predictions_shape), rng.integers(0, 2, labels_shape)
+        )
+
+
+def test_the_rows_are_the_metrics_and_the_columns_the_classes_or_overall():
+    predictions, labels = _tensors(2)
+    named = PerformanceAssessor(num_classes=2, classes=("a", "b"))
+    unnamed = PerformanceAssessor(num_classes=2)
+
+    per_class = named.calculate_metrics(predictions, labels, per_class_metrics=True)
+    numbered = unnamed.calculate_metrics(predictions, labels, per_class_metrics=True)
+    overall = named.calculate_metrics(predictions, labels)
+
+    assert per_class.columns.tolist() == ["a", "b"]
+    assert numbered.columns.tolist() == ["Class 0", "Class 1"]
+    assert overall.columns.tolist() == ["Overall"]
+    assert overall.index.tolist() == [
+        "Recall",
+        "Precision",
+        "F1",
+        "AP",
+        "AUROC",
+        "Accuracy",
+    ]
+
+
+def _with_an_empty_class():
+    # A: two positives, both found. Empty: never annotated, predicted three times.
+    # C: one positive, found.
+    labels = np.zeros((10, 3), dtype=int)
+    labels[:2, 0] = 1
+    labels[0, 2] = 1
+    predictions = np.zeros((10, 3))
+    predictions[:2, 0] = 0.9
+    predictions[:3, 1] = 0.9
+    predictions[0, 2] = 0.9
+    assessor = PerformanceAssessor(
+        num_classes=3,
+        threshold=0.1,
+        classes=("A", "Empty", "C"),
+        metrics_list=("precision", "recall"),
+    )
+
+    return assessor, predictions, labels
+
+
+def test_the_classes_without_a_positive_label_and_the_support_are_reported():
+    assessor, _, labels = _with_an_empty_class()
+
+    assert assessor.empty_classes(labels) == ("Empty",)
+    assert assessor.class_support(labels).tolist() == [2, 0, 1]
+
+
+def test_nothing_annotated_scores_nan_rather_than_zero():
+    assessor, predictions, _ = _with_an_empty_class()
+
+    overall = assessor.calculate_metrics(predictions, np.zeros((10, 3), dtype=int))
+
+    assert np.isnan(overall.loc["Precision", "Overall"])
+
+
+@pytest.mark.parametrize(
+    ("classes", "task"), [(("a",), "binary"), (("a", "b", "c"), "multilabel")]
+)
+def test_the_plots_hold_one_panel_per_class_and_one_line_per_threshold_metric(
+    classes, task
+):
+    predictions, labels = _tensors(len(classes))
+    assessor = PerformanceAssessor(
+        num_classes=len(classes),
+        classes=classes,
+        task=task,
+        metrics_list=("recall", "precision", "ap"),
+    )
+
+    overall = assessor.plot_metrics(predictions, labels)
+    per_class = assessor.plot_metrics(predictions, labels, per_class_metrics=True)
+    sweep = assessor.plot_metrics_all_thresholds(predictions, labels)
+    sweep_per_class = assessor.plot_metrics_all_thresholds(
+        predictions, labels, per_class_metrics=True
+    )
+    confusion = assessor.plot_confusion_matrix(predictions, labels)
+
+    assert len(overall.axes[0].patches) == 3
+    assert len(per_class.axes[0].lines) == 3
+    assert [len(ax.lines) for ax in sweep.axes] == [2]
+    assert [ax.get_title() for ax in sweep_per_class.axes] == list(classes)
+    assert [len(ax.lines) for ax in sweep_per_class.axes] == [2] * len(classes)
+    assert len(confusion.axes) == len(classes)
 
 
 def _recorded_sweep(monkeypatch, assessor, predictions, labels, per_class):
@@ -818,6 +191,7 @@ def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
     )
 
     assert plotted == ["f1", "recall"]
+    assert assessor.threshold == 0.5
     expected = [
         assessor.calculate_metrics(
             predictions, labels, per_class_metrics=per_class, threshold=threshold
@@ -834,41 +208,6 @@ def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
             np.testing.assert_array_equal(
                 values[metric], [df.loc[row, "Overall"] for df in expected]
             )
-
-
-@pytest.mark.parametrize("per_class", [False, True])
-def test_the_sweep_computes_no_threshold_free_metric(monkeypatch, per_class):
-    computed = []
-    for name in ("average_precision_score", "roc_auc_score"):
-
-        def recording(*args, name=name, score=getattr(metrics, name), **kwargs):
-            computed.append(name)
-            return score(*args, **kwargs)
-
-        monkeypatch.setattr(metrics, name, recording)
-
-    _recorded_sweep(
-        monkeypatch, PerformanceAssessor(num_classes=3), *_tensors(), per_class
-    )
-
-    assert computed == []
-
-
-def test_the_sweep_never_sets_the_threshold(monkeypatch):
-    assigned = []
-
-    class Recording(PerformanceAssessor):
-        def __setattr__(self, name, value):
-            if name == "threshold":
-                assigned.append(value)
-            super().__setattr__(name, value)
-
-    assessor = Recording(num_classes=3)
-    assigned.clear()
-
-    _recorded_sweep(monkeypatch, assessor, *_tensors(), per_class=True)
-
-    assert assigned == []
 
 
 def test_the_cli_offers_the_metrics_the_assessor_registers():

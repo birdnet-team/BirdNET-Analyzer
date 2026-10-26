@@ -1,10 +1,3 @@
-"""The train tab's base model choice.
-
-The classifier is trained on one BirdNET version's embeddings, chosen with a radio
-that defaults to the newest version. A cache file fixes the version it was created
-with, so loading one shows that version and disables the choice.
-"""
-
 import os
 import re
 from types import SimpleNamespace
@@ -20,15 +13,6 @@ from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import train  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    return tmp_path
 
 
 def _radio(label_key):
@@ -404,7 +388,9 @@ def test_selecting_a_cache_shows_its_version(appdir, monkeypatch, tmp_path):
     assert update == gr.update(value="2.4")
 
 
-def test_a_failing_folder_listing_is_logged_and_shown(appdir, monkeypatch, tmp_path):
+def test_a_failing_folder_listing_is_logged_and_shown(
+    appdir, handler, monkeypatch, tmp_path
+):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
     monkeypatch.setattr(gu, "select_folder", lambda **_: str(tmp_path))
@@ -413,16 +399,9 @@ def test_a_failing_folder_listing_is_logged_and_shown(appdir, monkeypatch, tmp_p
         raise OSError("disk")
 
     monkeypatch.setattr(train.utils, "list_subdirectories", fail)
-    with gr.Blocks() as demo:
-        train.build_train_tab()
-    select = next(
-        event.fn
-        for event in demo.fns.values()
-        if getattr(event.fn, "__name__", "") == "selection_fn"
-    )
 
     with pytest.raises(gr.Error, match="disk"):
-        select()
+        handler(train.build_train_tab, "selection_fn")()
 
     assert len(logged) == 1
 
