@@ -27,12 +27,6 @@ which is why CI pre-downloads outside pytest. Do the same locally if a first run
 times out:
 `python -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_us')"`
 
-**Real-inference tests can hang on Windows** in the `birdnet` library's join of its
-worker processes (an upstream issue). The signs: no pytest summary line, a `Timeout`
-banner, and `python` processes with `multiprocessing.spawn` in their command line
-that outlive the run. Stop those processes, make sure no other pytest run and no run
-of the library's own suite is active, and rerun once.
-
 ## Before handing work back
 
 Run `ruff check` and `python -m pytest`. **The ruff version is pinned in two
