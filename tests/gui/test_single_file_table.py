@@ -13,6 +13,7 @@ gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.analysis as ga  # noqa: E402
 import birdnet_analyzer.gui.single_file as sfa  # noqa: E402
+import birdnet_analyzer.gui.utils as gu  # noqa: E402
 
 
 class FakePredictions:
@@ -58,14 +59,14 @@ def run(monkeypatch, result, merge_consecutive=1):
         1.0,
         0,
         15000,
-        "all",
+        gu.ALL_SPECIES,
         None,
         -1,
         -1,
         -1,
         True,
         0.03,
-        "BirdNET 3.0",
+        gu.USE_BIRDNET_3_0,
         None,
         "en_us",
     )

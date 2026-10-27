@@ -53,7 +53,7 @@ import birdnet_analyzer.gui.single_file as sfa
 import birdnet_analyzer.gui.utils as gu
 
 reads_on_import = list(reads)
-on_import = [gu.CUSTOM_SPECIES, sfa.HEADER_CONFIDENCE_LBL]
+on_import = [gu._label(gu.CUSTOM_SPECIES), sfa.HEADER_CONFIDENCE_LBL]
 
 import birdnet_analyzer.gui.localization as loc
 
@@ -64,7 +64,7 @@ print(
         {
             "reads": reads_on_import,
             "on_import": on_import,
-            "loaded": [gu.CUSTOM_SPECIES, sfa.HEADER_CONFIDENCE_LBL],
+            "loaded": [gu._label(gu.CUSTOM_SPECIES), sfa.HEADER_CONFIDENCE_LBL],
         }
     )
 )
@@ -117,7 +117,9 @@ def test_the_window_opens_in_the_language_of_the_settings(monkeypatch, gui_main)
     monkeypatch.setattr(
         gu,
         "open_window",
-        lambda builders: seen.append([gu.CUSTOM_SPECIES, sfa.HEADER_CONFIDENCE_LBL]),
+        lambda builders: seen.append(
+            [gu._label(gu.CUSTOM_SPECIES), sfa.HEADER_CONFIDENCE_LBL]
+        ),
     )
 
     gui_main()

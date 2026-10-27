@@ -21,8 +21,12 @@ def perch_offered(monkeypatch):
     from birdnet_analyzer.gui import utils as gu
 
     # macOS drops Perch from the choices, and a persisted Perch then falls back.
-    choices = [*gu.model_choices(), gu.USE_PERCH]
-    monkeypatch.setattr(gu, "model_choices", lambda: list(dict.fromkeys(choices)))
+    offered = gu.model_choices
+    monkeypatch.setattr(
+        gu,
+        "model_choices",
+        lambda: list(dict.fromkeys([*offered(), *gu._choices(gu.USE_PERCH)])),
+    )
 
 
 @pytest.fixture

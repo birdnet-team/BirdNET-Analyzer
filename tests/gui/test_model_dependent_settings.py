@@ -118,7 +118,7 @@ def test_a_birdnet_preset_is_applied_on_a_perch_built_tab(appdir):
 
     assert skipped == []
     assert updates[tab.species]["value"] == gu.PREDICT_SPECIES
-    assert gu.PREDICT_SPECIES in updates[tab.species]["choices"]
+    assert gu.PREDICT_SPECIES in values_of(updates[tab.species]["choices"])
     assert updates[tab.overlap]["value"] == 2.0
     assert updates[tab.overlap]["maximum"] == 2.9
 
@@ -246,7 +246,7 @@ def test_the_species_choices_keep_their_order_across_models(appdir, model):
 
     _, _, species, _ = tab.on_model_change(model, gu.ALL_SPECIES, 0.0, "en_us")
 
-    assert species["choices"] == values_of(tab.species.choices)
+    assert values_of(species["choices"]) == values_of(tab.species.choices)
 
 
 @pytest.mark.parametrize(
