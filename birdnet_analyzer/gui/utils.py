@@ -43,8 +43,12 @@ _BIRDNET_MODEL_VERSIONS: dict[str, str] = {
     USE_BIRDNET_3_0: "3.0",
 }
 
+SPECIES_FILE_KEY = "species_list_file"
+CLASSIFIER_FILE_KEY = "custom_classifier_file"
+
 _WINDOW: "webview.Window | None" = None
 _URL = ""
+_STARTUP_WARNINGS: list[str] = []
 _HEART_LOGO = "data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjE2IiB2aWV3Qm94PSIwIDAgMTYgMTYiIHZlcnNpb249IjEuMSIgd2lkdGg9IjE2IiBkYXRhLXZpZXctY29tcG9uZW50PSJ0cnVlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICAgIDxwYXRoIGQ9Im04IDE0LjI1LjM0NS42NjZhLjc1Ljc1IDAgMCAxLS42OSAwbC0uMDA4LS4wMDQtLjAxOC0uMDFhNy4xNTIgNy4xNTIgMCAwIDEtLjMxLS4xNyAyMi4wNTUgMjIuMDU1IDAgMCAxLTMuNDM0LTIuNDE0QzIuMDQ1IDEwLjczMSAwIDguMzUgMCA1LjUgMCAyLjgzNiAyLjA4NiAxIDQuMjUgMSA1Ljc5NyAxIDcuMTUzIDEuODAyIDggMy4wMiA4Ljg0NyAxLjgwMiAxMC4yMDMgMSAxMS43NSAxIDEzLjkxNCAxIDE2IDIuODM2IDE2IDUuNWMwIDIuODUtMi4wNDUgNS4yMzEtMy44ODUgNi44MThhMjIuMDY2IDIyLjA2NiAwIDAgMS0zLjc0NCAyLjU4NGwtLjAxOC4wMS0uMDA2LjAwM2gtLjAwMlpNNC4yNSAyLjVjLTEuMzM2IDAtMi43NSAxLjE2NC0yLjc1IDMgMCAyLjE1IDEuNTggNC4xNDQgMy4zNjUgNS42ODJBMjAuNTggMjAuNTggMCAwIDAgOCAxMy4zOTNhMjAuNTggMjAuNTggMCAwIDAgMy4xMzUtMi4yMTFDMTIuOTIgOS42NDQgMTQuNSA3LjY1IDE0LjUgNS41YzAtMS44MzYtMS40MTQtMy0yLjc1LTMtMS4zNzMgMC0yLjYwOS45ODYtMy4wMjkgMi40NTZhLjc0OS43NDkgMCAwIDEtMS40NDIgMEM2Ljg1OSAzLjQ4NiA1LjYyMyAyLjUgNC4yNSAyLjVaIj48L3BhdGg+DQo8L3N2Zz4="  # noqa: E501
 _SAMPLE_KEYS = Literal[
     "use_top_n_checkbox",
@@ -60,6 +64,7 @@ _SAMPLE_KEYS = Literal[
 _SPECIES_KEYS = Literal[
     "species_list_radio",
     "species_file_input",
+    "species_file_state",
     "lat_number",
     "lon_number",
     "week_number",
@@ -810,7 +815,38 @@ def default_model():
     return USE_BIRDNET_3_0 if USE_BIRDNET_3_0 in choices else choices[0]
 
 
+def _drop_choices_with_missing_files(state: TabState):
+    """Falls back to the default model or species list if the file it needs is gone."""
+    model_choice = state.get(
+        "model_selection_radio", default_model(), choices=model_choices()
+    )
+
+    if (
+        model_choice == _label("CUSTOM_CLASSIFIER")
+        and state.get_file(CLASSIFIER_FILE_KEY) is None
+    ):
+        state.remember({"model_selection_radio": default_model()})
+        _STARTUP_WARNINGS.append(
+            loc.localize("startup-classifier-missing-warning").format(
+                model=default_model()
+            )
+        )
+
+    species_choice = state.get(
+        "species_list_radio", _label("ALL_SPECIES"), choices=_species_choices(False)
+    )
+
+    if (
+        species_choice == _label("CUSTOM_SPECIES")
+        and state.get_file(SPECIES_FILE_KEY) is None
+    ):
+        state.remember({"species_list_radio": _label("ALL_SPECIES")})
+        _STARTUP_WARNINGS.append(loc.localize("startup-species-list-missing-warning"))
+
+
 def sample_species_model_settings(state: TabState, opened=True):
+    _drop_choices_with_missing_files(state)
+
     # The model decides which sample and species settings are available, so it has to
     # be known before those are built, even though it is shown below them.
     model_choice = state.get(
@@ -1285,24 +1321,25 @@ def select_file(filetypes=(), state_key=None):
     return None
 
 
-def show_species_choice(choice: str, file_input):
+def show_species_choice(choice: str, species_file):
     """Sets the visibility of the species list choices.
 
     Args:
         choice: The label of the currently active choice.
+        species_file: The selected species list file, if any.
 
     Returns:
         A list of [
-            Row update,
-            File update,
-            Column update,
+            Position row update,
+            Species file selector update,
+            Species list update,
         ]
     """
     if choice == _label("CUSTOM_SPECIES"):
         return [
             gr.update(visible=False),
             gr.update(visible=True),
-            gr.update(visible=bool(file_input)),
+            gr.update(visible=bool(species_file)),
         ]
     if choice == _label("PREDICT_SPECIES"):
         return [
@@ -1316,6 +1353,18 @@ def show_species_choice(choice: str, file_input):
         gr.update(visible=False),
         gr.update(visible=False),
     ]
+
+
+def _read_or_none(read: Callable, path: str | None):
+    """Reads a file restored from the last session; one it cannot read shows nothing."""
+    if path is None:
+        return None
+
+    try:
+        return read(path)
+    except (OSError, ValueError):
+        logger.debug("Restored file could not be read", exc_info=True)
+        return None
 
 
 def model_selection(state: TabState, opened=True):
@@ -1333,6 +1382,7 @@ def model_selection(state: TabState, opened=True):
                 info=loc.localize("model-selection-radio-info"),
             )
             selected_model = model_selection_radio.value
+            classifier_file = state.get_file(CLASSIFIER_FILE_KEY)
 
             with gr.Column(
                 visible=selected_model == _label("CUSTOM_CLASSIFIER")
@@ -1343,12 +1393,13 @@ def model_selection(state: TabState, opened=True):
                     )
                 )
                 classifier_file_input = gr.Files(
+                    value=classifier_file,
                     file_types=[".tflite"],
-                    visible=False,
+                    visible=classifier_file is not None,
                     interactive=False,
                     show_label=False,
                 )
-                selected_classifier_state = gr.State()
+                selected_classifier_state = gr.State(classifier_file)
 
                 @gui_runtime_error_handler
                 def on_custom_classifier_selection_click():
@@ -1373,6 +1424,7 @@ def model_selection(state: TabState, opened=True):
 
                         return gr.skip(), gr.skip(), gr.skip()
 
+                    state.remember({CLASSIFIER_FILE_KEY: file})
                     labels = utils.read_classifier_labels(file)
 
                     if labels is None:
@@ -1404,12 +1456,14 @@ def model_selection(state: TabState, opened=True):
             accepts=cfg.ALL_MODEL_LANGUAGES,
         )
 
+        classifier_labels = _read_or_none(utils.read_classifier_labels, classifier_file)
         species_list_df = gr.List(
-            value=[],
+            value=classifier_labels or [],
             headers=[loc.localize("species-list-header")],
             max_height=200,
             show_label=False,
-            visible=False,
+            visible=selected_model == _label("CUSTOM_CLASSIFIER")
+            and classifier_labels is not None,
         )
 
     classifier_selection_button.click(
@@ -1438,6 +1492,10 @@ def model_selection(state: TabState, opened=True):
         "classifier_labels_df": species_list_df,
         "locale_dropdown": locale_settings,
     }
+
+
+def _read_species_rows(file: str) -> list[list[str]]:
+    return [[species] for species in utils.read_lines(file, fail_on_blank_lines=True)]
 
 
 def species_lists(
@@ -1480,24 +1538,56 @@ def species_lists(
                     map_plot,
                 ) = species_list_coordinates(state)
 
-            species_file_input = gr.File(
-                file_types=[".txt"],
-                visible=selected_species_list == _label("CUSTOM_SPECIES"),
-                show_label=False,
-            )
+            species_file = state.get_file(SPECIES_FILE_KEY)
 
+            with gr.Column(
+                visible=selected_species_list == _label("CUSTOM_SPECIES")
+            ) as species_file_selector:
+                species_file_button = gr.Button(
+                    loc.localize("species-list-custom-list-selection-button-label")
+                )
+                species_file_input = gr.File(
+                    value=species_file,
+                    file_types=[".txt"],
+                    visible=species_file is not None,
+                    interactive=False,
+                    show_label=False,
+                )
+                species_file_state = gr.State(species_file)
+
+        species_rows = _read_or_none(_read_species_rows, species_file)
         list_df = gr.List(
-            value=[],
+            value=species_rows or [],
             headers=[loc.localize("species-list-header")],
             max_height=200,
             show_label=False,
-            visible=False,
+            visible=selected_species_list == _label("CUSTOM_SPECIES")
+            and bool(species_rows),
         )
 
     species_list_radio.change(
         show_species_choice,
-        inputs=[species_list_radio, species_file_input],
-        outputs=[position_row, species_file_input, list_df],
+        inputs=[species_list_radio, species_file_state],
+        outputs=[position_row, species_file_selector, list_df],
+        show_progress="hidden",
+    )
+
+    @gui_runtime_error_handler
+    def on_species_file_selection_click():
+        file = select_file(("Text files (*.txt)",), state_key="species_list_file")
+
+        if not file:
+            return gr.skip(), gr.skip()
+
+        # Raises for a list the analysis could not use, before it is taken.
+        _read_species_rows(file)
+        state.remember({SPECIES_FILE_KEY: file})
+
+        return file, gr.update(value=file, visible=True)
+
+    species_file_button.click(
+        on_species_file_selection_click,
+        outputs=[species_file_state, species_file_input],
         show_progress="hidden",
     )
 
@@ -1506,9 +1596,7 @@ def species_lists(
         if not file:
             return gr.update(value=[], visible=False)
 
-        species_list = utils.read_lines(file, fail_on_blank_lines=True)
-
-        return gr.update(value=[[el] for el in species_list], visible=True)
+        return gr.update(value=_read_species_rows(file), visible=True)
 
     species_file_input.change(
         on_species_file_change,
@@ -1520,6 +1608,7 @@ def species_lists(
     return {
         "species_list_radio": species_list_radio,
         "species_file_input": species_file_input,
+        "species_file_state": species_file_state,
         "lat_number": lat_number,
         "lon_number": lon_number,
         "week_number": week_number,
@@ -1776,15 +1865,20 @@ def open_window(
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
         if settings.MODEL_DIR_STARTUP_WARNING:
-
-            def warn_model_dir_fallback():
-                gr.Warning(
-                    loc.localize("model-dir-fallback-warning").format(
-                        path=settings.MODEL_DIR_STARTUP_WARNING
-                    )
+            _STARTUP_WARNINGS.append(
+                loc.localize("model-dir-fallback-warning").format(
+                    path=settings.MODEL_DIR_STARTUP_WARNING
                 )
+            )
 
-            demo.load(warn_model_dir_fallback)
+        if _STARTUP_WARNINGS:
+
+            def show_startup_warnings():
+                # Tabs sharing a setting fall back alike, so their warnings repeat.
+                for message in dict.fromkeys(_STARTUP_WARNINGS):
+                    gr.Warning(message)
+
+            demo.load(show_startup_warnings)
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,

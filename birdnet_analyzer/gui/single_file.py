@@ -369,7 +369,7 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             sample_settings["fmin_number"],
             sample_settings["fmax_number"],
             species_settings["species_list_radio"],
-            species_settings["species_file_input"],
+            species_settings["species_file_state"],
             species_settings["lat_number"],
             species_settings["lon_number"],
             species_settings["week_number"],

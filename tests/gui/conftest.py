@@ -9,6 +9,7 @@ def appdir(monkeypatch):
     from birdnet_analyzer.gui import utils as gu
 
     monkeypatch.setattr(gs, "_PERSISTED", [])
+    monkeypatch.setattr(gu, "_STARTUP_WARNINGS", [])
     # The species-list controls draw a plotly map; plotly is not in the test extra.
     monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
 

@@ -30,6 +30,7 @@ class Tab(NamedTuple):
     overlap: gr.Slider
     locale: gr.Dropdown
     species_file_input: gr.File
+    species_file_state: gr.State
     sensitivity: gr.Slider
     on_model_change: object
 
@@ -45,6 +46,7 @@ def build(**persisted) -> Tab:
         sample, species, model = gu.sample_species_model_settings(state)
         controls.wire(
             state,
+            species_file_state=species["species_file_state"],
             species_file_input=species["species_file_input"],
             classifier_state=model["selected_classifier_state"],
             classifier_file_input=model["classifier_file_input"],
@@ -63,6 +65,7 @@ def build(**persisted) -> Tab:
         overlap,
         model["locale_dropdown"],
         species["species_file_input"],
+        species["species_file_state"],
         sample["sensitivity_slider"],
         find_event(demo, (radio._id, "change"), overlap).fn,
     )
@@ -369,7 +372,7 @@ def test_a_preset_for_another_model_passes_gradios_input_checks(appdir):
     tab = build(model_selection_radio=gu.USE_PERCH)
     session = Session(tab)
     show_species_choice = find_event(
-        tab.demo, (tab.species._id, "change"), tab.species_file_input
+        tab.demo, (tab.species._id, "change"), takes=tab.species_file_state
     )
 
     updates = session.load(tab.controls.load_button, "BirdNET")
@@ -396,7 +399,7 @@ def test_a_preset_the_model_change_narrows_leaves_nothing_stale(appdir):
     tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
     session = Session(tab)
     show_species_choice = find_event(
-        tab.demo, (tab.species._id, "change"), tab.species_file_input
+        tab.demo, (tab.species._id, "change"), takes=tab.species_file_state
     )
 
     updates = session.load(tab.controls.load_button, "Perch")
