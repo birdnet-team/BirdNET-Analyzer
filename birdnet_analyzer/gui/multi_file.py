@@ -374,7 +374,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             sample_settings["fmin_number"],
             sample_settings["fmax_number"],
             species_settings["species_list_radio"],
-            species_settings["species_file_input"],
+            species_settings["species_file_state"],
             species_settings["lat_number"],
             species_settings["lon_number"],
             species_settings["week_number"],
@@ -444,6 +444,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         preset_controls.wire(
             state,
             species_file_input=species_settings["species_file_input"],
+            species_file_state=species_settings["species_file_state"],
             classifier_state=model_settings["selected_classifier_state"],
             classifier_file_input=model_settings["classifier_file_input"],
             classifier_labels_df=model_settings["classifier_labels_df"],

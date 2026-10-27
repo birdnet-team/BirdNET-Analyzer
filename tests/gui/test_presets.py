@@ -6,6 +6,7 @@ import birdnet_analyzer.gui.localization as loc  # noqa: E402
 from birdnet_analyzer import settings, utils  # noqa: E402
 from birdnet_analyzer.gui import presets  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
+from birdnet_analyzer.gui import utils as gu  # noqa: E402
 from tests.params_files import (  # noqa: E402
     TRAIN_FILE,
     analysis_values,
@@ -254,7 +255,7 @@ def test_a_species_list_analysis_restores_the_custom_list(appdir, tmp_path):
     assert values["species_list_radio"] == loc.localize(
         "species-list-radio-option-custom-list"
     )
-    assert values[presets.SPECIES_FILE_KEY] == "/data/birds.txt"
+    assert values[gu.SPECIES_FILE_KEY] == "/data/birds.txt"
 
 
 def test_a_custom_classifier_analysis_restores_the_classifier(appdir, tmp_path):
@@ -267,7 +268,7 @@ def test_a_custom_classifier_analysis_restores_the_classifier(appdir, tmp_path):
     assert values["model_selection_radio"] == loc.localize(
         "species-list-radio-option-custom-classifier"
     )
-    assert values[presets.CLASSIFIER_FILE_KEY] == "/models/my.tflite"
+    assert values[gu.CLASSIFIER_FILE_KEY] == "/models/my.tflite"
 
 
 @pytest.mark.parametrize(

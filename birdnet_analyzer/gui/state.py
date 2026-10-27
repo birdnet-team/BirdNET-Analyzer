@@ -12,6 +12,7 @@ discarded in favour of the default the component is built with. That way a stale
 settings file can never keep a tab from starting up.
 """
 
+import os
 from collections.abc import Callable
 from typing import Any, NamedTuple
 
@@ -137,6 +138,16 @@ class TabState:
             maximum=maximum,
         )
 
+    def get_file(self, key: str) -> str | None:
+        """Reads a persisted file path.
+
+        Returns:
+            The path, or None if none was persisted or the file no longer exists.
+        """
+        path = self._values.get(key)
+
+        return path if isinstance(path, str) and os.path.isfile(path) else None
+
     def persist(
         self, key: str, constructor, accepts: dict[str, Any] | None = None, **kwargs
     ):
@@ -216,12 +227,14 @@ class TabState:
         )
 
     def remember(self, values: dict[str, Any]) -> None:
-        """Persists values a handler derived from others, by setting key.
+        """Persists values by setting key that no user edit of a component persists.
 
-        Only user edits persist on their own, and the build drops a value that does
-        not fit instead of fitting it.
+        E.g. values a handler derived from others, since only user edits persist on
+        their own and the build drops a value that does not fit instead of fitting it.
+        Components built afterwards start with these values.
         """
         settings.update_tab_settings(self.tab, values)
+        self._values.update(values)
 
     def add_fitter(self, fn: Callable, inputs: list, outputs: list) -> None:
         """Registers a handler that fits components to the values of others.
