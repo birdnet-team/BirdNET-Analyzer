@@ -1,10 +1,9 @@
 import logging
 import os
-import shutil
-import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+import soundfile as sf
 
 from birdnet_analyzer.cli import segments_parser
 from birdnet_analyzer.segments.core import segments
@@ -21,100 +20,29 @@ RAVEN_HEADER = (
 )
 
 
-@pytest.fixture
-def setup_test_environment():
-    test_dir = tempfile.mkdtemp()
-    input_dir = os.path.join(test_dir, "input")
-    output_dir = os.path.join(test_dir, "output")
-    results_dir = os.path.join(test_dir, "results")
-
-    os.makedirs(input_dir, exist_ok=True)
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(results_dir, exist_ok=True)
-
-    file_list = [
-        {
-            "audio": os.path.join(input_dir, "audio1.wav"),
-            "result": os.path.join(results_dir, "result1.csv"),
-        },
-        {
-            "audio": os.path.join(input_dir, "audio2.wav"),
-            "result": os.path.join(results_dir, "result2.csv"),
-        },
-    ]
-
-    yield {
-        "test_dir": test_dir,
-        "input_dir": input_dir,
-        "output_dir": output_dir,
-        "results_dir": results_dir,
-        "file_list": file_list,
-    }
-
-    shutil.rmtree(test_dir)
-
-
-@patch("birdnet_analyzer.segments.utils.extract_segments")
-@patch("birdnet_analyzer.segments.utils.parse_files")
-@patch("birdnet_analyzer.segments.utils.parse_folders")
-def test_segments_cli(
-    mock_parse_folders: MagicMock,
-    mock_parse_files: MagicMock,
-    mock_extract_segments: MagicMock,
-    setup_test_environment,
-):
-    env = setup_test_environment
-
-    parser = segments_parser()
-    args = parser.parse_args(
-        [
-            env["input_dir"],
-            "--results",
-            env["results_dir"],
-            "--output",
-            env["output_dir"],
-            "--threads",
-            "1",
-        ]
+def _raven_row(selection, start, end, common, scientific, code, confidence, audio):
+    return (
+        f"{selection}\tSpectrogram 1\t1\t{start}\t{end}\t0\t15000\t{common}\t"
+        f"{scientific}\t{code}\t{confidence}\t{audio}\t{start}"
     )
-
-    mock_parse_files.return_value = [
-        (
-            env["file_list"][0]["audio"],
-            [{"start": 0, "end": 3, "species": "sp1", "confidence": 0.9}],
-        ),
-        (
-            env["file_list"][1]["audio"],
-            [{"start": 0, "end": 3, "species": "sp2", "confidence": 0.8}],
-        ),
-    ]
-
-    segments(**vars(args))
-
-    mock_parse_folders.assert_called_once()
-    mock_parse_files.assert_called_once()
-    mock_extract_segments.assert_called()
 
 
 @patch("birdnet_analyzer.segments.utils.extract_segments")
 @patch("birdnet_analyzer.segments.utils.parse_files")
 @patch("birdnet_analyzer.segments.utils.parse_folders")
 def test_segments_cli_accepts_full_parser_surface(
-    mock_parse_folders: MagicMock,
-    mock_parse_files: MagicMock,
-    mock_extract_segments: MagicMock,
-    setup_test_environment,
+    mock_parse_folders, mock_parse_files, mock_extract_segments, tmp_path
 ):
-    env = setup_test_environment
-
-    parser = segments_parser()
-    args = parser.parse_args(
+    audio, results, output = (
+        str(tmp_path / name) for name in ("audio", "results", "output")
+    )
+    args = segments_parser().parse_args(
         [
-            env["input_dir"],
+            audio,
             "--results",
-            env["results_dir"],
+            results,
             "--output",
-            env["output_dir"],
+            output,
             "--max_segments",
             "5",
             "--seg_length",
@@ -133,17 +61,16 @@ def test_segments_cli_accepts_full_parser_surface(
             "0.15",
         ]
     )
-
     mock_parse_files.return_value = [
         (
-            env["file_list"][0]["audio"],
+            os.path.join(audio, "rec.wav"),
             [{"start": 0, "end": 3, "species": "sp1", "confidence": 0.9}],
         ),
     ]
 
     segments(**vars(args))
 
-    mock_parse_folders.assert_called_once_with(env["input_dir"], env["results_dir"])
+    mock_parse_folders.assert_called_once_with(audio, results)
     mock_parse_files.assert_called_once()
     parse_files_kwargs = mock_parse_files.call_args.kwargs
     assert parse_files_kwargs["max_segments"] == 5
@@ -152,6 +79,40 @@ def test_segments_cli_accepts_full_parser_surface(
     assert parse_files_kwargs["min_conf"] == 0.15
     assert parse_files_kwargs["max_conf"] == 0.9
     mock_extract_segments.assert_called_once()
+
+
+def test_segments_are_cut_from_a_result_table_of_the_example_soundscape(tmp_path):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio_dir.mkdir()
+    results_dir.mkdir()
+    audio = audio_dir / "soundscape.wav"
+    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    sf.write(audio, sig[: 9 * rate], rate)
+    rows = [
+        _raven_row(
+            1, 0, 3, "American Robin", "Turdus migratorius", "amerob", 0.9, audio
+        ),
+        _raven_row(
+            2, 3, 6, "Northern Cardinal", "Cardinalis cardinalis", "norcar", 0.8, audio
+        ),
+    ]
+    (results_dir / "soundscape.BirdNET.selection.table.txt").write_text(
+        "\n".join([RAVEN_HEADER, *rows]) + "\n", encoding="utf-8"
+    )
+
+    done = segments(
+        str(audio_dir), str(out), str(results_dir), collection_mode="confidence"
+    )
+
+    assert done == [(str(audio), True)]
+    clips = sorted(p.relative_to(out).as_posix() for p in out.rglob("*.wav"))
+    assert clips == [
+        "American Robin/0.900_1_soundscape_0.00s_3.00s.wav",
+        "Northern Cardinal/0.800_2_soundscape_3.00s_6.00s.wav",
+    ]
+    assert [sf.info(out / clip).duration for clip in clips] == [3.0, 3.0]
 
 
 def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):

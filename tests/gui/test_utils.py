@@ -205,23 +205,12 @@ def test_an_error_without_a_message_is_shown_by_its_repr(monkeypatch):
     assert raised.value.message == "EOFError()"
 
 
-def _settings_handler(name, monkeypatch):
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-
-    with gr.Blocks() as demo:
-        gu.build_settings()
-
-    return next(
-        event.fn
-        for event in demo.fns.values()
-        if getattr(event.fn, "__name__", "") == name
-    )
-
-
 @pytest.mark.parametrize(
-    ("handler", "value"), [("on_theme_change", "dark"), ("on_language_change", "de")]
+    ("name", "value"), [("on_theme_change", "dark"), ("on_language_change", "de")]
 )
-def test_a_failed_settings_write_is_logged_and_shown(monkeypatch, handler, value):
+def test_a_failed_settings_write_is_logged_and_shown(
+    appdir, handler, monkeypatch, name, value
+):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
@@ -231,13 +220,17 @@ def test_a_failed_settings_write_is_logged_and_shown(monkeypatch, handler, value
     monkeypatch.setattr(gu.settings, "set_setting", fail)
 
     with pytest.raises(gr.Error, match="disk"):
-        _settings_handler(handler, monkeypatch)(value)
+        handler(gu.build_settings, name)(value)
 
     assert len(logged) == 1
 
 
+def _species_controls():
+    gu.sample_species_model_settings(gs.TabState("single"))
+
+
 def test_a_failing_species_match_is_logged_at_debug_and_swallowed(
-    monkeypatch, caplog, tmp_path
+    appdir, handler, monkeypatch, caplog, tmp_path
 ):
     from birdnet_analyzer import model_utils
 
@@ -252,16 +245,7 @@ def test_a_failing_species_match_is_logged_at_debug_and_swallowed(
         raise RuntimeError("matcher bug")
 
     monkeypatch.setattr(model_utils, "match_species_to_model", fail)
-    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-
-    with gr.Blocks() as demo:
-        gu.sample_species_model_settings(gs.TabState("single"))
-    warn = next(
-        event.fn
-        for event in demo.fns.values()
-        if getattr(event.fn, "__name__", "") == "warn_unmatched_species"
-    )
+    warn = handler(_species_controls, "warn_unmatched_species")
 
     with caplog.at_level(logging.DEBUG, logger=gu.logger.name):
         assert warn(str(species_file), gu.USE_BIRDNET_3_0, "en_us") is None
@@ -270,7 +254,7 @@ def test_a_failing_species_match_is_logged_at_debug_and_swallowed(
     assert [str(r.exc_info[1]) for r in debug] == ["matcher bug"]
 
 
-def test_an_unreadable_species_list_is_logged_and_shown(monkeypatch):
+def test_an_unreadable_species_list_is_logged_and_shown(appdir, handler, monkeypatch):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
@@ -278,18 +262,8 @@ def test_an_unreadable_species_list_is_logged_and_shown(monkeypatch):
         raise OSError("disk")
 
     monkeypatch.setattr(gu.utils, "read_lines", fail)
-    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-
-    with gr.Blocks() as demo:
-        gu.sample_species_model_settings(gs.TabState("single"))
-    on_species_file_change = next(
-        event.fn
-        for event in demo.fns.values()
-        if getattr(event.fn, "__name__", "") == "on_species_file_change"
-    )
 
     with pytest.raises(gr.Error, match="disk"):
-        on_species_file_change("species.txt")
+        handler(_species_controls, "on_species_file_change")("species.txt")
 
     assert len(logged) == 1

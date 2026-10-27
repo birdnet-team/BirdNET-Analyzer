@@ -96,6 +96,12 @@ footer {
     font-weight: var(--weight-semibold);
 }
 
+.eval-selection > .wrap:last-child,
+.eval-selection .wrap-inner {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
 .success {
     background-color: #00b81f;
 }

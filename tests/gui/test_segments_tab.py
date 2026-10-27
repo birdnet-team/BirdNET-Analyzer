@@ -2,9 +2,7 @@ import pytest
 
 gr = pytest.importorskip("gradio")
 
-from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import segments as gui_segments  # noqa: E402
-from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
 
@@ -38,10 +36,7 @@ def test_the_speed_slider_reaches_the_extraction_as_a_factor(
     assert seen["audio_speed"] == speed
 
 
-def test_a_failing_folder_pick_is_logged_and_shown(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
+def test_a_failing_folder_pick_is_logged_and_shown(appdir, handler, monkeypatch):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
@@ -49,13 +44,8 @@ def test_a_failing_folder_pick_is_logged_and_shown(monkeypatch, tmp_path):
         raise OSError("disk")
 
     monkeypatch.setattr(gu, "select_directory", fail)
-    with gr.Blocks() as demo:
-        gui_segments.build_segments_tab()
-    select = next(
-        event.fn.func
-        for event in demo.fns.values()
-        if getattr(getattr(event.fn, "func", None), "__name__", "")
-        == "select_directory_to_state_and_tb"
+    select = handler(
+        gui_segments.build_segments_tab, "select_directory_to_state_and_tb"
     )
 
     with pytest.raises(gr.Error, match="disk"):

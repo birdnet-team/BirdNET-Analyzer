@@ -1,20 +1,4 @@
-"""Tests for the training data-loading path (decode/crop + batched encoding).
-
-These cover the correctness-critical pieces introduced when the loader was changed to
-parallel decoding + a single batched encode call:
-
-* ``_read_and_crop_file`` -- turns a file into fixed-length segments per crop mode and
-  fails soft on unreadable files.
-* ``encode_arrays_batched`` -- runs a batch through an encoding session and drops the
-  rows the pipeline marked invalid (so labels stay aligned with valid embeddings).
-
-They intentionally avoid loading the BirdNET model: crop tests use a synthetic wav and
-the batched-encode test uses a fake session, so the suite stays fast.
-"""
-
 import contextlib
-import os
-import tempfile
 from unittest.mock import patch
 
 import numpy as np
@@ -34,51 +18,32 @@ SR = 48000
 SIG_LENGTH = 3.0
 
 
-@pytest.fixture
-def sine_wav():
-    """A 5 s mono sine wav at 48 kHz -> long enough for several 3 s segments."""
-    duration = 5.0
+def _sine_wav(path, duration):
     t = np.linspace(0, duration, int(SR * duration), endpoint=False, dtype="float32")
-    sig = (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32")
-    fd, path = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
-    sf.write(path, sig, SR)
-    yield path
-    os.remove(path)
+    sf.write(path, (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
+
+    return str(path)
 
 
 def _label():
     return np.array([1.0, 0.0], dtype="float32")
 
 
-def test_read_and_crop_center_returns_single_segment(sine_wav):
+@pytest.mark.parametrize(
+    ("crop_mode", "n_segments"), [("center", 1), ("first", 1), ("segments", 2)]
+)
+def test_a_file_is_cropped_into_labelled_segments(tmp_path, crop_mode, n_segments):
     segs, labels = _read_and_crop_file(
-        sine_wav, _label(), sample_rate=SR, crop_mode="center", sig_length=SIG_LENGTH
+        _sine_wav(tmp_path / "five.wav", 5.0),
+        _label(),
+        sample_rate=SR,
+        crop_mode=crop_mode,
+        sig_length=SIG_LENGTH,
     )
-    assert len(segs) == 1
-    assert len(labels) == 1
-    assert segs[0].dtype == np.float32
-    assert segs[0].shape[0] == int(SIG_LENGTH * SR)
-    # each segment is labelled with the file's label vector
-    np.testing.assert_array_equal(labels[0], _label())
 
-
-def test_read_and_crop_first_returns_single_segment(sine_wav):
-    segs, labels = _read_and_crop_file(
-        sine_wav, _label(), sample_rate=SR, crop_mode="first", sig_length=SIG_LENGTH
-    )
-    assert len(segs) == 1 == len(labels)
-    assert segs[0].shape[0] == int(SIG_LENGTH * SR)
-
-
-def test_read_and_crop_segments_returns_multiple_aligned(sine_wav):
-    segs, labels = _read_and_crop_file(
-        sine_wav, _label(), sample_rate=SR, crop_mode="segments", sig_length=SIG_LENGTH
-    )
-    # 5 s / 3 s -> at least two segments; labels stay 1:1 with segments
-    assert len(segs) >= 2
-    assert len(segs) == len(labels)
-    assert all(s.shape[0] == int(SIG_LENGTH * SR) for s in segs)
+    assert [s.shape for s in segs] == [(int(SIG_LENGTH * SR),)] * n_segments
+    assert all(s.dtype == np.float32 for s in segs)
+    np.testing.assert_array_equal(labels, [_label()] * n_segments)
 
 
 def test_read_and_crop_bad_file_returns_empty():
@@ -107,25 +72,16 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
     mock_load.assert_not_called()
 
 
-@pytest.fixture
-def short_wav():
-    """A 0.4 s wav -> shorter than the 1 s min_len, so split_signal yields nothing."""
-    duration = 0.4
-    t = np.linspace(0, duration, int(SR * duration), endpoint=False, dtype="float32")
-    sig = (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32")
-    fd, path = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
-    sf.write(path, sig, SR)
-    yield path
-    os.remove(path)
-
-
-def test_read_and_crop_first_short_file_fails_soft(short_wav):
-    # split_signal returns [] below min_len, so 'first' must slice rather than index
-    # [0]: a sub-min_len file yields no segment instead of crashing the threaded loader.
+def test_read_and_crop_first_short_file_fails_soft(tmp_path):
+    # Below the 1 s minimum split_signal yields nothing, and "first" must not index it.
     segs, labels = _read_and_crop_file(
-        short_wav, _label(), sample_rate=SR, crop_mode="first", sig_length=SIG_LENGTH
+        _sine_wav(tmp_path / "short.wav", 0.4),
+        _label(),
+        sample_rate=SR,
+        crop_mode="first",
+        sig_length=SIG_LENGTH,
     )
+
     assert segs == []
     assert labels == []
 
@@ -138,8 +94,6 @@ class _FakeResult:
 
 
 class _FakeSession:
-    """Records the inputs it receives and returns a preconfigured result."""
-
     def __init__(self, result):
         self._result = result
         self.received = None
@@ -160,7 +114,6 @@ def test_encode_arrays_batched_all_valid():
     assert embeddings.shape == (3, 4)
     assert valid.dtype == bool
     assert valid.tolist() == [True, True, True]
-    # the whole batch is handed to the session in a single call
     assert len(session.received) == 3
 
 
@@ -174,7 +127,6 @@ def test_encode_arrays_batched_drops_masked_rows():
     embeddings, valid = model_utils.encode_arrays_batched(session, signals)
 
     assert valid.tolist() == [True, False, True]
-    # caller filters with the mask; remaining rows are inputs 0 and 2, order preserved
     kept = embeddings[valid]
     np.testing.assert_array_equal(kept[0], emb[0, 0])
     np.testing.assert_array_equal(kept[1], emb[2, 0])
@@ -199,7 +151,7 @@ def _cache_arrays(embeddings_dim):
 
 
 def test_cache_round_trip_keeps_the_model_version(tmp_path):
-    """Recorded as 3.0 although the width says 2.4: the record is what comes back."""
+    # Recorded as 3.0 although the width says 2.4: the record is what comes back.
     x, y = _cache_arrays(1024)
     path = str(tmp_path / "cache.npz")
 
@@ -270,7 +222,6 @@ class _FakeAcousticModel:
 
 @pytest.fixture
 def fake_encoder(monkeypatch):
-    """Embeds every segment as zeros without loading a BirdNET model."""
     monkeypatch.setattr(
         model_utils, "_load_acoustic_for_embeddings", lambda _: _FakeAcousticModel()
     )

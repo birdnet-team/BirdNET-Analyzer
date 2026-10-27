@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from typing import Literal, NamedTuple
 
 from birdnet_analyzer.evaluation.assessment.performance_assessor import (
+    METRICS,
     PerformanceAssessor,
 )
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
@@ -26,6 +27,10 @@ if typing.TYPE_CHECKING:
     import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# The metrics the PerformanceAssessor understands; also the CLI's allowed choices.
+VALID_METRICS = tuple(METRICS)
+DEFAULT_METRICS = ("auroc", "precision", "recall", "f1", "ap")
 
 
 class EvaluationResult(NamedTuple):
@@ -48,6 +53,42 @@ class EvaluationResult(NamedTuple):
     sample_data: "pd.DataFrame"
 
 
+def build_assessor(
+    processor: DataProcessor,
+    selected_classes: Sequence[str] | None,
+    selected_recordings: list[str] | None,
+    threshold: float,
+    metrics_list: tuple[str, ...],
+) -> tuple[PerformanceAssessor, "np.ndarray", "np.ndarray", tuple[str, ...]]:
+    """The assessor for the selected classes and recordings of a processor.
+
+    Args:
+        processor (DataProcessor): The processed predictions and annotations.
+        selected_classes (Optional[Sequence[str]]): The classes to assess, all if
+            ``None``.
+        selected_recordings (Optional[List[str]]): The recordings to assess, all if
+            ``None``.
+        threshold (float): Confidence threshold for predictions.
+        metrics_list (Tuple[str, ...]): Metrics to compute.
+
+    Returns:
+        The ``PerformanceAssessor``, the prediction and label tensors it assesses, and
+        their classes.
+    """
+    predictions, labels, classes = processor.get_filtered_tensors(
+        selected_classes, selected_recordings
+    )
+    pa = PerformanceAssessor(
+        num_classes=len(classes),
+        threshold=threshold,
+        classes=classes,
+        task="binary" if len(classes) == 1 else "multilabel",
+        metrics_list=metrics_list,
+    )
+
+    return pa, predictions, labels, classes
+
+
 def process_data(
     annotation_path: str,
     prediction_path: str,
@@ -59,7 +100,7 @@ def process_data(
     columns_predictions: dict[str, str] | None = None,
     selected_classes: Sequence[str] | None = None,
     selected_recordings: list[str] | None = None,
-    metrics_list: tuple[str, ...] = ("auroc", "precision", "recall", "f1", "ap"),
+    metrics_list: tuple[str, ...] = DEFAULT_METRICS,
     threshold: float = 0.1,
     class_wise: bool = False,
     averaging: Literal["macro", "micro", "weighted"] = "macro",
@@ -132,27 +173,8 @@ def process_data(
         score_unannotated_as_empty=score_unannotated_as_empty,
     )
 
-    available_classes = processor.classes
-    available_recordings = processor.samples_df["filename"].unique().tolist()
-
-    if selected_classes is None:
-        selected_classes = available_classes
-    if selected_recordings is None:
-        selected_recordings = available_recordings
-
-    predictions, labels, classes = processor.get_filtered_tensors(
-        selected_classes, selected_recordings
-    )
-
-    num_classes = len(classes)
-    task = "binary" if num_classes == 1 else "multilabel"
-
-    pa = PerformanceAssessor(
-        num_classes=num_classes,
-        threshold=threshold,
-        classes=classes,
-        task=task,
-        metrics_list=metrics_list,
+    pa, predictions, labels, classes = build_assessor(
+        processor, selected_classes, selected_recordings, threshold, metrics_list
     )
 
     metrics_df = pa.calculate_metrics(
@@ -173,10 +195,6 @@ def process_data(
         empty_classes=pa.empty_classes(labels),
         sample_data=processor.get_sample_data(),
     )
-
-
-# The metrics the PerformanceAssessor understands; also the CLI's allowed choices.
-VALID_METRICS = ("accuracy", "recall", "precision", "f1", "ap", "auroc")
 
 
 def _threshold_arg(value: str) -> float:
@@ -249,7 +267,7 @@ def main():
         "--metrics",
         nargs="+",
         choices=VALID_METRICS,
-        default=["auroc", "precision", "recall", "f1", "ap"],
+        default=list(DEFAULT_METRICS),
         help="List of metrics (accuracy is excluded by default; in this sample-based "
         "multilabel setting it is dominated by true negatives and misleadingly high)",
     )

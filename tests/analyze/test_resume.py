@@ -1,5 +1,3 @@
-"""Tests for the crash-safe resume journal and the resumable analyze() flow."""
-
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -16,8 +14,6 @@ RESULT_COLUMNS = ["input", "start_time", "end_time", "species_name", "confidence
 
 
 class FakeResult:
-    """Stand-in for the library's AcousticFilePredictionResult."""
-
     def __init__(self, files, rows, invalid_indices=()):
         self.inputs = np.array([str(f) for f in files])
         self.unprocessable_inputs = list(invalid_indices)
@@ -44,7 +40,6 @@ class FakeResult:
 
 
 def detection_rows(file):
-    """Two deterministic, file-specific detection rows."""
     name = Path(file).stem
     return [
         (str(file), 0.0, 3.0, f"Sci{name}_Common{name}", 0.8),
@@ -53,16 +48,6 @@ def detection_rows(file):
 
 
 def make_fake_run_inference(crash_after=None, invalid_files=()):
-    """Build a run_inference replacement that drives on_file_complete per file.
-
-    Args:
-        crash_after: Simulate a crash (raise) after this many files completed.
-            None runs to completion.
-        invalid_files: Files to report as unprocessable (empty result).
-
-    Returns:
-        The fake function and a list recording the files of each invocation.
-    """
     calls = []
 
     def fake_run_inference(path, on_file_complete=None, **kwargs):
@@ -119,7 +104,6 @@ def test_journal_persistence_and_inspect(env):
     params = {"min_conf": 0.25, "model": "birdnet"}
     journal = ResumeJournal.open(env["output_dir"], params, n_files_total=4)
 
-    # Persist two files, one of them unprocessable.
     journal.on_file_complete(FakeResult([files[0]], detection_rows(files[0])))
     journal.on_file_complete(FakeResult([files[1]], [], invalid_indices=[0]))
 
@@ -131,12 +115,10 @@ def test_journal_persistence_and_inspect(env):
     assert progress.n_completed == 2
     assert progress.n_files_total == 4
 
-    # Reopening with identical params keeps the stored partials...
     journal = ResumeJournal.open(env["output_dir"], params, n_files_total=4)
     assert journal.completed_subset(files) == {files[0], files[1]}
     assert journal.metadata() is not None
 
-    # ...while changed params wipe the journal.
     journal = ResumeJournal.open(
         env["output_dir"], {**params, "min_conf": 0.5}, n_files_total=4
     )
@@ -148,15 +130,12 @@ def test_journal_persistence_and_inspect(env):
 
 
 def test_changed_file_is_not_treated_as_completed(env):
-    """A file edited in place after its result was stored is no longer counted as
-    done, so a resume re-analyzes it instead of reusing stale detections."""
     files = env["files"]
     journal = ResumeJournal.open(env["output_dir"], {"p": 1}, n_files_total=4)
 
     journal.on_file_complete(FakeResult([files[0]], detection_rows(files[0])))
     assert journal.completed_subset(files) == {files[0]}
 
-    # Rewrite the file with different content, as an in-place regeneration would.
     sf.write(files[0], np.zeros(9600, dtype=np.float32), 48000)
 
     assert journal.completed_subset(files) == set()
@@ -166,7 +145,6 @@ def test_combined_dataframe_orders_by_input(env):
     files = env["files"]
     journal = ResumeJournal.open(env["output_dir"], {"p": 1}, n_files_total=4)
 
-    # Later files completed first (out of order), plus fresh results for the rest.
     journal.on_file_complete(FakeResult([files[3]], detection_rows(files[3])))
     journal.on_file_complete(FakeResult([files[1]], detection_rows(files[1])))
     current_df = FakeResult(
@@ -178,12 +156,10 @@ def test_combined_dataframe_orders_by_input(env):
 
     assert list(df["input"].unique()) == [str(f) for f in files]
     assert len(df) == 8
-    # Rows within a file stay time-ordered.
     assert df.groupby("input", sort=False)["start_time"].is_monotonic_increasing.all()
 
 
 def test_analyze_resumes_after_crash(env):
-    # First run crashes after two files were persisted.
     fake, calls = make_fake_run_inference(crash_after=2)
 
     with (
@@ -196,8 +172,6 @@ def test_analyze_resumes_after_crash(env):
     assert journal_dir.exists()
     assert ResumeJournal.inspect(env["output_dir"]).n_completed == 2
 
-    # Second run only gets the files the first run did not complete. The fake
-    # processes files in sorted order, so the first two were persisted.
     fake, calls = make_fake_run_inference()
 
     with patch("birdnet_analyzer.model_utils.run_inference", fake):
@@ -213,7 +187,6 @@ def test_analyze_resumes_after_crash(env):
 
 
 def test_analyze_all_files_already_completed(env):
-    # Crash after every file was persisted but before outputs were written.
     fake, _ = make_fake_run_inference(crash_after=4)
 
     with (
@@ -224,7 +197,6 @@ def test_analyze_all_files_already_completed(env):
 
     assert ResumeJournal.inspect(env["output_dir"]).n_completed == 4
 
-    # The resume must not run any inference and still produce the outputs.
     def must_not_run(*args, **kwargs):
         raise AssertionError("run_inference must not be called")
 
@@ -246,7 +218,6 @@ def test_changed_params_invalidate_resume_state(env):
     ):
         run_analyze(env, min_conf=0.25)
 
-    # A different detection parameter must trigger a full re-analysis.
     fake, calls = make_fake_run_inference()
 
     with patch("birdnet_analyzer.model_utils.run_inference", fake):

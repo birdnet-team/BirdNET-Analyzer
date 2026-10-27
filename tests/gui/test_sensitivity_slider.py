@@ -1,9 +1,4 @@
-"""The sensitivity slider follows the selected model.
-
-Every BirdNET model and custom classifier takes a sensitivity. Selecting Perch
-disables the slider and shows 1.0 (what the analysis will use); switching back
-restores the value the user last set.
-"""
+"""The sensitivity slider follows the selected model."""
 
 import pytest
 
@@ -12,28 +7,6 @@ gr = pytest.importorskip("gradio")
 from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
-
-
-@pytest.fixture(autouse=True)
-def no_map_figure(monkeypatch):
-    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    return tmp_path
-
-
-@pytest.fixture
-def perch_offered(monkeypatch):
-    """macOS drops Perch from the choices, and a persisted choice that is not
-    offered falls back to the default model."""
-    choices = [*gu.model_choices(), gu.USE_PERCH]
-    monkeypatch.setattr(gu, "model_choices", lambda: list(dict.fromkeys(choices)))
 
 
 def build():

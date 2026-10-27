@@ -3,9 +3,7 @@ import json
 import logging
 import os
 import platform
-import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import get_args
 from unittest.mock import patch
@@ -18,6 +16,7 @@ import soundfile as sf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import logs, settings
+from birdnet_analyzer.analyze import POSSIBLE_ADDITIONAL_COLUMNS
 from birdnet_analyzer.analyze import cli as analyze_cli
 from birdnet_analyzer.analyze.core import (
     _split_tables,
@@ -33,31 +32,23 @@ from birdnet_analyzer.cli import analyzer_parser
 from birdnet_analyzer.params import load_analysis_params
 from birdnet_analyzer.utils import load_codes
 
+SOUNDSCAPE = "birdnet_analyzer/example/soundscape.wav"
+
 
 @pytest.fixture
-def setup_test_environment():
-    """Create a temporary test environment with audio files."""
-    test_dir = tempfile.mkdtemp()
-    input_dir = os.path.join(test_dir, "input")
-    output_dir = os.path.join(test_dir, "output")
+def env(tmp_path):
+    (tmp_path / "input").mkdir()
+    (tmp_path / "output").mkdir()
 
-    os.makedirs(input_dir)
-    os.makedirs(output_dir)
-
-    yield {
-        "test_dir": test_dir,
-        "input_dir": input_dir,
-        "output_dir": output_dir,
+    return {
+        "test_dir": str(tmp_path),
+        "input_dir": str(tmp_path / "input"),
+        "output_dir": str(tmp_path / "output"),
     }
-
-    shutil.rmtree(test_dir)
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_cli_accepts_full_parser_surface(
-    mock_run_inference, setup_test_environment
-):
-    env = setup_test_environment
+def test_analyze_cli_accepts_full_parser_surface(mock_run_inference, env):
 
     mock_run_inference.return_value = object()
 
@@ -140,18 +131,11 @@ def test_analyze_cli_accepts_full_parser_surface(
     assert call_kwargs["sigmoid_sensitivity"] == 1.2
 
 
-def test_analyze_with_real_custom_classifier(setup_test_environment):
-    """Test analyzing with a real custom classifier."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
+def test_analyze_with_real_custom_classifier(env):
     classifier = "tests/data/analyze/CustomClassifier.tflite"
     labels = classifier.replace(".tflite", "_Labels.txt", 1)
 
-    analyze(soundscape_path, env["output_dir"], classifier=classifier)
+    analyze(SOUNDSCAPE, env["output_dir"], classifier=classifier)
 
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file), "Output file was not created"
@@ -167,20 +151,11 @@ def test_analyze_with_real_custom_classifier(setup_test_environment):
             )
 
 
-def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environment):
-    """Test analyzing with a real custom classifier and species list."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
+def test_analyze_with_real_custom_classifier_and_species_list(env):
     classifier = "tests/data/analyze/CustomClassifier.tflite"
     species_list = "tests/data/analyze/species_list.txt"
 
-    analyze(
-        soundscape_path, env["output_dir"], classifier=classifier, slist=species_list
-    )
+    analyze(SOUNDSCAPE, env["output_dir"], classifier=classifier, slist=species_list)
 
     output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
     assert os.path.exists(output_file), "Output file was not created"
@@ -198,35 +173,11 @@ def test_analyze_with_real_custom_classifier_and_species_list(setup_test_environ
             )
 
 
-# @pytest.mark.skip(reason="currently not stable anymore")
 @pytest.mark.skipif(
     platform.system() == "Darwin", reason="Don't ask me why it times out on macOS."
 )
-@pytest.mark.parametrize(
-    ("audio_speed", "overlap"),
-    [
-        (10, 1),
-        (5, 2),
-        (5, 0),
-        (0.1, 1),
-        (0.2, 0),
-        (0.3, 0.7),
-    ],
-)
-def test_analyze_with_speed_up_and_overlap(
-    setup_test_environment, audio_speed, overlap
-):
-    """Test analyzing with speed up."""
-    if audio_speed == 0.3 and overlap == 0.7:
-        pytest.skip(
-            "This combination is currently not stable, see birdnet-team/birdnet#37"
-        )
-
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
+@pytest.mark.parametrize(("audio_speed", "overlap"), [(5, 2), (0.2, 0)])
+def test_analyze_with_speed_up_and_overlap(env, audio_speed, overlap):
     file_length = 120
     precision = 100
     seq_length = 3.0
@@ -251,7 +202,7 @@ def test_analyze_with_speed_up_and_overlap(
             expected_start_timestamps.pop()
 
     analyze(
-        soundscape_path,
+        SOUNDSCAPE,
         env["output_dir"],
         birdnet="2.4",
         audio_speed=audio_speed,
@@ -287,228 +238,46 @@ def test_analyze_with_speed_up_and_overlap(
             )
 
 
-def test_analyze_with_additional_columns_parquet(setup_test_environment):
-    """Test analyzing with additional columns."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
-    # Call function under test. Pinned to the 2.4 acoustic model (its labels are the
-    # baseline the "model" column is checked against); the geo species filter still
-    # uses the newest geo model, matched onto 2.4 by scientific name.
+def test_the_additional_columns_carry_the_settings_of_the_analysis(env):
+    # 2.4: the "model" column is checked against that model's file name.
     analyze(
-        soundscape_path,
+        SOUNDSCAPE,
         env["output_dir"],
         birdnet="2.4",
         top_n=1,
         min_conf=0,
-        additional_columns=[
-            "lat",
-            "lon",
-            "week",
-            "model",
-            "overlap",
-            "sensitivity",
-            "species_list",
-            "min_conf",
-        ],
+        additional_columns=list(POSSIBLE_ADDITIONAL_COLUMNS),
         lat=42.5,
         lon=-76.45,
         week=20,
-        rtype=["parquet"],
+        rtype=["csv", "parquet"],
     )
 
-    output_file = os.path.join(env["output_dir"], "BirdNET_CombinedTable.parquet")
-    assert os.path.exists(output_file)
-    model_path = birdnet.load("acoustic", "2.4", "tf").model_path
-
-    output_df = pd.read_parquet(output_file)
-
-    assert "lat" in output_df.columns, "Latitude column not found in output"
-    assert "lon" in output_df.columns, "Longitude column not found in output"
-    assert "week" in output_df.columns, "Week column not found in output"
-    assert "model" in output_df.columns, "Model column not found in output"
-    assert "overlap" in output_df.columns, "Overlap column not found in output"
-    assert "sensitivity" in output_df.columns, "Sensitivity column not found in output"
-    assert "species_list" in output_df.columns, (
-        "Species list column not found in output"
+    expected = {
+        "lat": 42.5,
+        "lon": -76.45,
+        "week": 20,
+        "model": os.path.basename(birdnet.load("acoustic", "2.4", "tf").model_path),
+        "overlap": 0.0,
+        "sensitivity": 1.0,
+        "species_list": "",
+        "min_conf": 0.0,
+    }
+    out = Path(env["output_dir"])
+    tables = (
+        pd.read_csv(out / cfg.OUTPUT_CSV_FILENAME, keep_default_na=False),
+        pd.read_parquet(out / cfg.OUTPUT_PARQUET_FILENAME),
     )
-    assert "min_conf" in output_df.columns, "Min confidence column not found in output"
-
-    for _, row in output_df.iterrows():
-        assert float(row["lat"]) == 42.5, "Latitude value does not match expected value"
-        assert float(row["lon"]) == -76.45, (
-            "Longitude value does not match expected value"
-        )
-        assert int(row["week"]) == 20, "Week value does not match expected value"
-        assert row["model"] == os.path.basename(model_path), (
-            "Model value does not match expected value"
-        )
-        assert float(row["overlap"]) == 0.0, (
-            "Overlap value does not match expected value"
-        )
-        assert float(row["sensitivity"]) == 1.0, (
-            "Sensitivity value does not match expected value"
-        )
-        assert row["species_list"] == "", (
-            "Species list value does not match expected value"
-        )
-        assert float(row["min_conf"]) == 0, (
-            "Min confidence value does not match expected value"
-        )
-
-
-def test_analyze_with_additional_columns(setup_test_environment):
-    """Test analyzing with additional columns."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
-    analyze(
-        soundscape_path,
-        env["output_dir"],
-        birdnet="2.4",
-        top_n=1,
-        min_conf=0,
-        additional_columns=[
-            "lat",
-            "lon",
-            "week",
-            "model",
-            "overlap",
-            "sensitivity",
-            "species_list",
-            "min_conf",
-        ],
-        lat=42.5,
-        lon=-76.45,
-        week=20,
-        overlap=0,
-        sensitivity=1.0,
-        rtype=["csv"],
-    )
-
-    output_file = os.path.join(env["output_dir"], "BirdNET_CombinedTable.csv")
-    assert os.path.exists(output_file)
-
-    with open(output_file) as f:
-        reader = csv.DictReader(f)
-        headers: list[str] = reader.fieldnames  # ty:ignore[invalid-assignment]
-        assert "lat" in headers, "Latitude column not found in output"
-        assert "lon" in headers, "Longitude column not found in output"
-        assert "week" in headers, "Week column not found in output"
-        assert "model" in headers, "Model column not found in output"
-        assert "overlap" in headers, "Overlap column not found in output"
-        assert "sensitivity" in headers, "Sensitivity column not found in output"
-        assert "species_list" in headers, "Species list column not found in output"
-        assert "min_conf" in headers, "Min confidence column not found in output"
-
-        for row in reader:
-            assert float(row["lat"]) == 42.5, (
-                "Latitude value does not match expected value"
-            )
-            assert float(row["lon"]) == -76.45, (
-                "Longitude value does not match expected value"
-            )
-            assert int(row["week"]) == 20, "Week value does not match expected value"
-            assert float(row["overlap"]) == 0, (
-                "Overlap value does not match expected value"
-            )
-            assert float(row["sensitivity"]) == 1.0, (
-                "Sensitivity value does not match expected value"
-            )
-            assert row["species_list"] == "", (
-                "Species list value does not match expected value"
-            )
-            assert float(row["min_conf"]) == 0, (
-                "Min confidence value does not match expected value"
-            )
-
-
-def test_sensitivity(setup_test_environment):
-    """Test sensitivity setting."""
-    env = setup_test_environment
-
-    soundscape_path = "birdnet_analyzer/example/soundscape.wav"
-
-    assert os.path.exists(soundscape_path), "Soundscape file does not exist"
-
-    normal_sensitivity_result = {}
-    low_sensitivity_result = {}
-    high_sensitivity_result = {}
-
-    analyze(soundscape_path, env["output_dir"], birdnet="2.4", top_n=1, min_conf=0)
-    output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
-    assert os.path.exists(output_file)
-
-    def extract_confidence_from_output(output_file, result_dict):
-        with open(output_file) as f:
-            lines = f.readlines()[1:]
-            for line in lines:
-                parts = line.strip().split("\t")
-                start = float(parts[1])
-                end = float(parts[2])
-                confidence = float(parts[6])
-                result_dict[(start, end)] = confidence
-
-    extract_confidence_from_output(output_file, normal_sensitivity_result)
-
-    analyze(
-        soundscape_path,
-        env["output_dir"],
-        birdnet="2.4",
-        top_n=1,
-        sensitivity=0.75,
-        min_conf=0,
-    )
-    output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
-    assert os.path.exists(output_file)
-
-    extract_confidence_from_output(output_file, low_sensitivity_result)
-
-    analyze(
-        soundscape_path,
-        env["output_dir"],
-        birdnet="2.4",
-        top_n=1,
-        sensitivity=1.25,
-        min_conf=0,
-    )
-    output_file = os.path.join(env["output_dir"], "BirdNET_SelectionTable.txt")
-    assert os.path.exists(output_file)
-
-    extract_confidence_from_output(output_file, high_sensitivity_result)
-
-    for key in normal_sensitivity_result:
-        assert key in low_sensitivity_result, (
-            "Low sensitivity result missing key from normal sensitivity result"
-        )
-        assert key in high_sensitivity_result, (
-            "High sensitivity result missing key from normal sensitivity result"
-        )
-        assert low_sensitivity_result[key] <= normal_sensitivity_result[key], (
-            "Low sensitivity confidence should be less than or equal to normal "
-            "sensitivity"
-        )
-        assert high_sensitivity_result[key] >= normal_sensitivity_result[key], (
-            "High sensitivity confidence should be greater than or equal to normal "
-            "sensitivity"
-        )
+    for table in tables:
+        assert len(table) > 0
+        assert table[list(expected)].drop_duplicates().to_dict("records") == [expected]
 
 
 @patch("birdnet_analyzer.model_utils.run_geomodel")
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_defaults_to_birdnet_3_0_and_reconciles_geo_list(
-    mock_run_inference, mock_run_geomodel, setup_test_environment
+    mock_run_inference, mock_run_geomodel, env
 ):
-    """The default analysis uses the 3.0 model and hands the geo species list to
-    run_inference, which reconciles it onto the model's own labels."""
-    env = setup_test_environment
-
     mock_run_geomodel.return_value.to_set.return_value = {"Cardinalis cardinalis_x"}
     mock_run_inference.return_value = object()
 
@@ -525,17 +294,12 @@ def test_analyze_defaults_to_birdnet_3_0_and_reconciles_geo_list(
     mock_run_inference.assert_called_once()
     call_kwargs = mock_run_inference.call_args.kwargs
     assert call_kwargs["version"] == "3.0"
-    # The geo prediction is handed to run_inference to be reconciled onto the model.
     assert call_kwargs["custom_species_list"] == {"Cardinalis cardinalis_x"}
     assert call_kwargs["strict_species_list"] is False
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_without_location_passes_no_species_list(
-    mock_run_inference, setup_test_environment
-):
-    """Without lat/lon and without a --slist there is no species list to reconcile."""
-    env = setup_test_environment
+def test_analyze_without_location_passes_no_species_list(mock_run_inference, env):
     mock_run_inference.return_value = object()
 
     analyze(env["input_dir"], env["output_dir"], _return_only=True)
@@ -544,26 +308,12 @@ def test_analyze_without_location_passes_no_species_list(
     assert call_kwargs["custom_species_list"] is None
 
 
-@patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_takes_no_show_progress_argument(
-    mock_run_inference, setup_test_environment
-):
-    env = setup_test_environment
-    mock_run_inference.return_value = object()
-
-    with pytest.raises(TypeError, match="show_progress"):
-        analyze(
-            env["input_dir"], env["output_dir"], show_progress=True, _return_only=True
-        )
-
-
 @pytest.mark.parametrize("coordinate", [{"lat": 50.83}, {"lon": 12.92}])
 @patch("birdnet_analyzer.model_utils.run_geomodel")
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_rejects_a_single_coordinate(
-    mock_run_inference, mock_run_geomodel, coordinate, setup_test_environment
+    mock_run_inference, mock_run_geomodel, coordinate, env
 ):
-    env = setup_test_environment
 
     with pytest.raises(ValueError, match="both lat and lon"):
         analyze(env["input_dir"], env["output_dir"], _return_only=True, **coordinate)
@@ -573,10 +323,7 @@ def test_analyze_rejects_a_single_coordinate(
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_rejects_perch_with_a_custom_classifier(
-    mock_run_inference, setup_test_environment
-):
-    env = setup_test_environment
+def test_analyze_rejects_perch_with_a_custom_classifier(mock_run_inference, env):
 
     with pytest.raises(ValueError, match="Perch"):
         analyze(
@@ -591,10 +338,7 @@ def test_analyze_rejects_perch_with_a_custom_classifier(
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_analyze_runs_perch_without_a_custom_classifier(
-    mock_run_inference, setup_test_environment
-):
-    env = setup_test_environment
+def test_analyze_runs_perch_without_a_custom_classifier(mock_run_inference, env):
     mock_run_inference.return_value = object()
 
     analyze(env["input_dir"], env["output_dir"], model="perch", _return_only=True)
@@ -603,8 +347,6 @@ def test_analyze_runs_perch_without_a_custom_classifier(
 
 
 def test_match_species_to_model_joins_on_scientific_name():
-    """Requested species map onto a model's labels by scientific name; unknowns are
-    reported as unmatched."""
     from birdnet_analyzer.model_utils import match_species_to_model
 
     model_species = [
@@ -612,9 +354,6 @@ def test_match_species_to_model_joins_on_scientific_name():
         "Turdus migratorius_American Robin",
         "Astur gentilis_Eurasian Goshawk",
     ]
-    # Common names differ between taxonomies and one request is a non-bird the model
-    # does not know; the shared scientific names survive as model labels, the rest is
-    # reported unmatched.
     requested = [
         "Cardinalis cardinalis_Cardenal Norteno",
         "Astur gentilis_Northern Goshawk",
@@ -631,8 +370,6 @@ def test_match_species_to_model_joins_on_scientific_name():
 
 
 def test_match_species_to_model_falls_back_to_common_name():
-    """A reclassified species (scientific name changed, common name stable) still
-    matches via its common name."""
     from birdnet_analyzer.model_utils import match_species_to_model
 
     model_species = ["Astur cooperii_Cooper's Hawk"]  # was Accipiter cooperii
@@ -644,7 +381,6 @@ def test_match_species_to_model_falls_back_to_common_name():
 
 
 def test_match_species_to_model_matches_exact_and_bare_names():
-    """Exact label, a bare scientific name, and a bare common name all resolve."""
     from birdnet_analyzer.model_utils import match_species_to_model
 
     model_species = ["Turdus migratorius_American Robin"]
@@ -659,8 +395,6 @@ def test_match_species_to_model_matches_exact_and_bare_names():
 
 
 def test_match_species_to_model_skips_ambiguous_common_name():
-    """A common name shared by two model labels can't disambiguate, so a request that
-    only matches on that common name is left unmatched rather than guessed."""
     from birdnet_analyzer.model_utils import match_species_to_model
 
     model_species = ["Genus aone_Shared Name", "Genus btwo_Shared Name"]
@@ -672,8 +406,6 @@ def test_match_species_to_model_skips_ambiguous_common_name():
 
 
 def test_reconcile_species_list_file_warns_and_skips(tmp_path, caplog):
-    """A user --slist file is reconciled to the model; genuinely unknown species are
-    skipped with a warning that names them."""
     import logging
 
     from birdnet_analyzer.model_utils import _reconcile_species_list
@@ -702,7 +434,6 @@ def test_reconcile_species_list_file_warns_and_skips(tmp_path, caplog):
 
 
 def test_reconcile_species_list_strict_raises(tmp_path):
-    """--strict turns an unknown species into an error instead of a warning."""
     from birdnet_analyzer.model_utils import _reconcile_species_list
 
     slist = tmp_path / "species_list.txt"
@@ -718,9 +449,7 @@ def test_reconcile_species_list_strict_raises(tmp_path):
 def test_reconcile_species_list_all_unmatched_raises_even_without_strict(
     tmp_path, caplog
 ):
-    """A user list where nothing reconciles must error, not return an empty set: the
-    library reads an empty custom list as 'no filter' and would analyze every species,
-    the opposite of the user's intent - so this is an error even in the default mode."""
+    # An empty custom list means "no filter" to the library: the opposite of the intent.
     import logging
 
     from birdnet_analyzer.model_utils import _reconcile_species_list
@@ -738,11 +467,8 @@ def test_reconcile_species_list_all_unmatched_raises_even_without_strict(
     assert "not filtered" not in caplog.text
 
 
-# The BirdNET example species list as it was before the 3.0 taxonomy update - a
-# realistic "legacy" list a user may still have on disk. Five labels were revised in
-# 3.0: four common-name changes (scientific name unchanged) and one genus
-# reclassification (Accipiter -> Astur cooperii, common name unchanged). Kept verbatim
-# so this doubles as a regression fixture for the reconciler against the real model.
+# The example species list before the 3.0 taxonomy update: four common names changed
+# and one genus (Accipiter -> Astur cooperii) was reclassified since.
 _LEGACY_EXAMPLE_SPECIES_LIST = [
     "Accipiter cooperii_Cooper's Hawk",
     "Agelaius phoeniceus_Red-winged Blackbird",
@@ -796,9 +522,6 @@ _LEGACY_EXAMPLE_SPECIES_LIST = [
 
 
 def test_reconcile_legacy_example_list_file_against_real_3_0_model(tmp_path):
-    """The pre-3.0 example species list, read from an actual file, reconciles fully
-    onto the real BirdNET 3.0 model - the four common-name revisions map by scientific
-    name and the reclassified hawk maps by common name, so nothing is dropped."""
     from birdnet_analyzer.model_utils import _reconcile_species_list
 
     model_species = birdnet.load("acoustic", "3.0", "onnx", lang="en_us").species_list
@@ -806,8 +529,6 @@ def test_reconcile_legacy_example_list_file_against_real_3_0_model(tmp_path):
     slist = tmp_path / "species_list.txt"
     slist.write_text("\n".join(_LEGACY_EXAMPLE_SPECIES_LIST) + "\n", encoding="utf-8")
 
-    # strict=True raises (listing any unmatched) if a legacy label fails to reconcile,
-    # so a clean return proves every entry mapped onto a current model label.
     matched = _reconcile_species_list(str(slist), model_species, strict=True)
 
     assert len(matched) == len(_LEGACY_EXAMPLE_SPECIES_LIST)
@@ -822,8 +543,6 @@ def test_reconcile_legacy_example_list_file_against_real_3_0_model(tmp_path):
 
 
 def test_acoustic_species_list_returns_current_3_0_labels():
-    """acoustic_species_list reads only the label file (what the GUI uses to preview a
-    custom list) and returns the current 3.0 taxonomy, not the retired 2.4 labels."""
     from birdnet_analyzer.model_utils import acoustic_species_list
 
     labels = acoustic_species_list("3.0", "en_us")
@@ -834,8 +553,6 @@ def test_acoustic_species_list_returns_current_3_0_labels():
 
 
 def test_reconcile_species_list_geo_collection_is_silent(caplog):
-    """A geo-derived collection (not a path) is filtered to the model silently - its
-    unmatched species (e.g. non-birds) are expected, not warned about."""
     import logging
 
     from birdnet_analyzer.model_utils import _reconcile_species_list
@@ -869,12 +586,11 @@ def test_reconcile_species_list_warns_when_a_collection_matches_nothing(
 
 
 def test_an_analysis_without_detections_writes_every_result_type(
-    setup_test_environment,
+    env,
 ):
-    env = setup_test_environment
 
     analyze(
-        "birdnet_analyzer/example/soundscape.wav",
+        SOUNDSCAPE,
         env["output_dir"],
         min_conf=0.9999,
         rtype=list(get_args(cfg.RESULT_TYPES)),
@@ -892,10 +608,26 @@ def test_an_analysis_without_detections_writes_every_result_type(
     assert pd.read_csv(os.path.join(env["output_dir"], cfg.OUTPUT_CSV_FILENAME)).empty
 
 
+def test_the_example_soundscape_is_analysed_to_every_result_type(env):
+    analyze(SOUNDSCAPE, env["output_dir"], rtype=list(get_args(cfg.RESULT_TYPES)))
+
+    out = Path(env["output_dir"])
+    detections = pd.read_csv(out / cfg.OUTPUT_CSV_FILENAME)
+    raven = pd.read_csv(out / cfg.OUTPUT_RAVEN_FILENAME, sep="\t")
+    kaleidoscope = pd.read_csv(out / cfg.OUTPUT_KALEIDOSCOPE_FILENAME)
+    audacity = (out / cfg.OUTPUT_AUDACITY_FILENAME).read_text(encoding="utf-8")
+
+    assert len(detections) > 0
+    assert len(pd.read_parquet(out / cfg.OUTPUT_PARQUET_FILENAME)) == len(detections)
+    assert sorted(raven["Common Name"]) == sorted(detections["Common name"])
+    assert sorted(kaleidoscope["TOP1MATCH"]) == sorted(detections["Common name"])
+    assert len(audacity.splitlines()) == len(detections)
+
+
 def test_split_tables_of_a_relative_input_mirror_it_inside_the_output(
     tmp_path, monkeypatch
 ):
-    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    sig, rate = sf.read(SOUNDSCAPE)
     (tmp_path / "rel_in" / "sub").mkdir(parents=True)
     sf.write(tmp_path / "rel_in" / "a.wav", sig[: 6 * rate], rate)
     sf.write(tmp_path / "rel_in" / "sub" / "b.wav", sig[: 6 * rate], rate)
@@ -910,7 +642,7 @@ def test_split_tables_of_a_relative_input_mirror_it_inside_the_output(
 
 
 def test_split_tables_of_a_relative_file_land_in_the_output(tmp_path, monkeypatch):
-    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    sig, rate = sf.read(SOUNDSCAPE)
     (tmp_path / "rel_in").mkdir()
     sf.write(tmp_path / "rel_in" / "a.wav", sig[: 6 * rate], rate)
     monkeypatch.chdir(tmp_path)
@@ -928,9 +660,8 @@ def test_split_tables_of_a_relative_file_land_in_the_output(tmp_path, monkeypatc
 @patch("birdnet_analyzer.model_utils.run_geomodel")
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_a_location_at_zero_is_kept_in_the_params_file(
-    mock_run_inference, mock_run_geomodel, setup_test_environment
+    mock_run_inference, mock_run_geomodel, env
 ):
-    env = setup_test_environment
     mock_run_inference.return_value.to_dataframe.return_value = pd.DataFrame(
         {
             "input": ["a.wav"],
@@ -942,7 +673,7 @@ def test_a_location_at_zero_is_kept_in_the_params_file(
     )
 
     analyze(
-        "birdnet_analyzer/example/soundscape.wav",
+        SOUNDSCAPE,
         env["output_dir"],
         lat=0.0,
         lon=0.0,

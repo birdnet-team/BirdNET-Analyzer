@@ -4,13 +4,43 @@ The ``PerformanceAssessor`` computes precision, recall, F1, AUROC and accuracy f
 binary and multilabel tasks.
 """
 
-from typing import ClassVar, Literal
+from collections.abc import Callable
+from typing import Literal, NamedTuple
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 
 from birdnet_analyzer.evaluation.assessment import metrics, plotting
+
+
+class Metric(NamedTuple):
+    """A metric the assessor computes, and the row it is reported in."""
+
+    display_name: str
+    function: Callable[..., np.ndarray]
+    needs_threshold: bool
+
+
+def _accuracy(predictions, labels, task, threshold, averaging_method):
+    return metrics.calculate_accuracy(
+        predictions=predictions,
+        labels=labels,
+        task=task,
+        num_classes=predictions.shape[1],
+        threshold=threshold,
+        averaging_method=averaging_method,
+    )
+
+
+METRICS: dict[str, Metric] = {
+    "accuracy": Metric("Accuracy", _accuracy, True),
+    "recall": Metric("Recall", metrics.calculate_recall, True),
+    "precision": Metric("Precision", metrics.calculate_precision, True),
+    "f1": Metric("F1", metrics.calculate_f1_score, True),
+    "ap": Metric("AP", metrics.calculate_average_precision, False),
+    "auroc": Metric("AUROC", metrics.calculate_auroc, False),
+}
 
 
 class PerformanceAssessor:
@@ -48,32 +78,26 @@ class PerformanceAssessor:
         Raises:
             ValueError: If any of the inputs are invalid.
         """
-        if not isinstance(num_classes, int) or num_classes <= 0:
+        if num_classes <= 0:
             raise ValueError("num_classes must be a positive integer.")
 
-        if not isinstance(threshold, float) or not 0 < threshold < 1:
-            raise ValueError("threshold must be a float between 0 and 1 (exclusive).")
+        if not 0 < threshold < 1:
+            raise ValueError("threshold must be between 0 and 1 (exclusive).")
 
-        if classes is not None:
-            if not isinstance(classes, tuple):
-                raise ValueError("classes must be a tuple of strings.")
-            if len(classes) != num_classes:
-                raise ValueError(
-                    f"Length of classes ({len(classes)}) must match "
-                    f"num_classes ({num_classes})."
-                )
-            if not all(isinstance(class_name, str) for class_name in classes):
-                raise ValueError("All elements in classes must be strings.")
+        if classes is not None and len(classes) != num_classes:
+            raise ValueError(
+                f"Length of classes ({len(classes)}) must match "
+                f"num_classes ({num_classes})."
+            )
 
         if task not in {"binary", "multilabel"}:
             raise ValueError("task must be 'binary' or 'multilabel'.")
 
-        valid_metrics = ["accuracy", "recall", "precision", "f1", "ap", "auroc"]
         if not metrics_list:
             raise ValueError("metrics_list cannot be empty.")
-        if not all(metric in valid_metrics for metric in metrics_list):
+        if not all(metric in METRICS for metric in metrics_list):
             raise ValueError(
-                f"Invalid metrics in {metrics_list}. Valid options are {valid_metrics}."
+                f"Invalid metrics in {metrics_list}. Valid options are {list(METRICS)}."
             )
 
         self.num_classes = num_classes
@@ -84,95 +108,97 @@ class PerformanceAssessor:
 
         self.colors = ["#3A50B1", "#61A83E", "#D74C4C", "#A13FA1", "#D9A544", "#F3A6E0"]
 
-    # Display labels for each supported metric id, in a stable order.
-    _METRIC_DISPLAY_NAMES: ClassVar[dict[str, str]] = {
-        "recall": "Recall",
-        "precision": "Precision",
-        "f1": "F1",
-        "ap": "AP",
-        "auroc": "AUROC",
-        "accuracy": "Accuracy",
-    }
-
     def _class_names(self) -> list[str]:
         """The class labels to use as columns, falling back to ``Class i``."""
         return list(self.classes or [f"Class {i}" for i in range(self.num_classes)])
+
+    def _check_tensors(self, predictions: np.ndarray, labels: np.ndarray) -> None:
+        if predictions.shape != labels.shape:
+            raise ValueError("predictions and labels must have the same shape.")
+        if predictions.ndim != 2:
+            raise ValueError("predictions and labels must be 2-dimensional arrays.")
+        if predictions.shape[1] != self.num_classes:
+            raise ValueError(
+                f"The number of columns in predictions ({predictions.shape[1]}) "
+                + f"must match num_classes ({self.num_classes})."
+            )
 
     def _compute_metrics_dict(
         self,
         predictions: np.ndarray,
         labels: np.ndarray,
         averaging_method,
-        num_classes: int,
+        metric_ids: list[str] | tuple[str, ...],
+        threshold: float | None = None,
     ) -> dict[str, np.ndarray]:
-        """Compute every requested metric, keyed by its display name.
+        """Compute the given metrics, keyed by their display names.
 
         Args:
             predictions (np.ndarray): Prediction probabilities.
             labels (np.ndarray): Ground truth labels, same shape as predictions.
             averaging_method: Averaging passed to the metric functions. ``None`` yields
                 one value per class; ``"macro"``/``"micro"``/``"weighted"`` aggregate.
-            num_classes (int): Number of columns in the arrays (needed by accuracy).
+            metric_ids: The ids of the metrics to compute, in output order.
+            threshold (Optional[float]): The threshold for binarizing probabilities,
+                ``self.threshold`` if not given.
 
         Returns:
             An ordered mapping of display name to a 1D array of metric values.
         """
+        threshold = self.threshold if threshold is None else threshold
         results: dict[str, np.ndarray] = {}
 
-        for metric_name in self.metrics_list:
-            if metric_name == "recall":
-                value = metrics.calculate_recall(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-            elif metric_name == "precision":
-                value = metrics.calculate_precision(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-            elif metric_name == "f1":
-                value = metrics.calculate_f1_score(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-            elif metric_name == "ap":
-                value = metrics.calculate_average_precision(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    averaging_method=averaging_method,
-                )
-            elif metric_name == "auroc":
-                value = metrics.calculate_auroc(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    averaging_method=averaging_method,
-                )
-            elif metric_name == "accuracy":
-                value = metrics.calculate_accuracy(
-                    predictions=predictions,
-                    labels=labels,
-                    task=self.task,
-                    num_classes=num_classes,
-                    threshold=self.threshold,
-                    averaging_method=averaging_method,
-                )
-            else:
-                continue
-
-            results[self._METRIC_DISPLAY_NAMES[metric_name]] = np.atleast_1d(value)
+        for metric_id in metric_ids:
+            metric = METRICS[metric_id]
+            extra = {"threshold": threshold} if metric.needs_threshold else {}
+            value = metric.function(
+                predictions=predictions,
+                labels=labels,
+                task=self.task,
+                averaging_method=averaging_method,
+                **extra,
+            )
+            results[metric.display_name] = np.atleast_1d(value)
 
         return results
+
+    def _metric_values(
+        self,
+        predictions: np.ndarray,
+        labels: np.ndarray,
+        metric_ids: list[str] | tuple[str, ...],
+        per_class_metrics: bool,
+        averaging: Literal["macro", "micro", "weighted"],
+        threshold: float | None,
+    ) -> dict[str, np.ndarray]:
+        """The metrics by display name: one value per class, or the aggregate."""
+        if per_class_metrics:
+            # One value per class: no averaging across classes.
+            return self._compute_metrics_dict(
+                predictions, labels, None, metric_ids, threshold
+            )
+
+        # Aggregate into a single column. Undefined (empty) classes are dropped so they
+        # cannot silently pull the average down.
+        kept = np.flatnonzero(self.class_support(labels) > 0)
+
+        if kept.size == 0:
+            # Nothing scoreable -- report NaN rather than a misleading zero.
+            return {METRICS[m].display_name: np.array([np.nan]) for m in metric_ids}
+
+        # For a binary task the metric functions want no averaging (they use the
+        # positive-class value). For multilabel we always aggregate across the kept
+        # classes -- even a single kept column, where ``average=None`` would wrongly
+        # return one value per binary outcome instead of a single score.
+        averaging_method = None if self.task == "binary" else averaging
+
+        return self._compute_metrics_dict(
+            predictions[:, kept],
+            labels[:, kept],
+            averaging_method,
+            metric_ids,
+            threshold,
+        )
 
     def class_support(self, labels: np.ndarray) -> np.ndarray:
         """Number of positive samples per class (the support of each class)."""
@@ -197,8 +223,8 @@ class PerformanceAssessor:
         labels: np.ndarray,
         per_class_metrics: bool = False,
         averaging: Literal["macro", "micro", "weighted"] = "macro",
-        drop_empty: bool = True,
         include_support: bool = False,
+        threshold: float | None = None,
     ) -> pd.DataFrame:
         """
         Calculate multiple performance metrics for the given predictions and labels.
@@ -210,86 +236,39 @@ class PerformanceAssessor:
             per_class_metrics (bool): If True, compute metrics for each class
                 individually. If False, return a single aggregate column.
             averaging (Literal["macro", "micro", "weighted"]): How to aggregate the
-                per-class metrics into the single ``Overall`` column. Ignored when
-                ``per_class_metrics`` is True.
-            drop_empty (bool): When aggregating, exclude classes with no positive labels
-                (their metrics are undefined) instead of counting them as zero. Applies
-                only to the aggregate column.
+                per-class metrics into the single ``Overall`` column; classes without a
+                positive label are left out of it. Ignored when ``per_class_metrics``
+                is True.
             include_support (bool): When ``per_class_metrics`` is True, append a
                 ``Support`` row with the number of positive samples per class.
+            threshold (Optional[float]): The threshold for binarizing probabilities,
+                instead of the assessor's own one.
 
         Returns:
             pd.DataFrame: A DataFrame containing the computed metrics.
 
         Raises:
-            TypeError: If predictions or labels are not NumPy arrays.
             ValueError: If predictions and labels have mismatched dimensions or invalid
                 shapes.
         """
-        if not isinstance(predictions, np.ndarray):
-            raise TypeError("predictions must be a NumPy array.")
-        if not isinstance(labels, np.ndarray):
-            raise TypeError("labels must be a NumPy array.")
+        self._check_tensors(predictions, labels)
 
-        if predictions.shape != labels.shape:
-            raise ValueError("predictions and labels must have the same shape.")
-        if predictions.ndim != 2:
-            raise ValueError("predictions and labels must be 2-dimensional arrays.")
-        if predictions.shape[1] != self.num_classes:
-            raise ValueError(
-                f"The number of columns in predictions ({predictions.shape[1]}) "
-                + f"must match num_classes ({self.num_classes})."
-            )
-
-        if per_class_metrics:
-            # One value per class: no averaging across classes.
-            results = self._compute_metrics_dict(
-                predictions, labels, averaging_method=None, num_classes=self.num_classes
-            )
-            metrics_df = pd.DataFrame.from_dict(
-                results, orient="index", columns=pd.Index(self._class_names())
-            )
-            if include_support:
-                metrics_df.loc["Support"] = self.class_support(labels)
-
-            return metrics_df
-
-        # Aggregate into a single column. Undefined (empty) classes are dropped so they
-        # cannot silently pull the average down, unless the caller keeps them.
-        keep = (
-            self.class_support(labels) > 0
-            if drop_empty
-            else np.ones(self.num_classes, dtype=bool)
+        results = self._metric_values(
+            predictions,
+            labels,
+            self.metrics_list,
+            per_class_metrics,
+            averaging,
+            threshold,
         )
-        kept = np.flatnonzero(keep)
-
-        if kept.size == 0:
-            # Nothing scoreable -- report NaN rather than a misleading zero.
-            results = {
-                self._METRIC_DISPLAY_NAMES[m]: np.array([np.nan])
-                for m in self.metrics_list
-            }
-            return pd.DataFrame.from_dict(
-                results, orient="index", columns=pd.Index(["Overall"])
-            )
-
-        predictions_kept = predictions[:, kept]
-        labels_kept = labels[:, kept]
-        # For a binary task the metric functions want no averaging (they use the
-        # positive-class value). For multilabel we always aggregate across the kept
-        # classes -- even a single kept column, where ``average=None`` would wrongly
-        # return one value per binary outcome instead of a single score.
-        averaging_method = None if self.task == "binary" else averaging
-        results = self._compute_metrics_dict(
-            predictions_kept,
-            labels_kept,
-            averaging_method=averaging_method,
-            num_classes=kept.size,
+        columns = self._class_names() if per_class_metrics else ["Overall"]
+        metrics_df = pd.DataFrame.from_dict(
+            results, orient="index", columns=pd.Index(columns)
         )
+        if per_class_metrics and include_support:
+            metrics_df.loc["Support"] = self.class_support(labels)
 
-        return pd.DataFrame.from_dict(
-            results, orient="index", columns=pd.Index(["Overall"])
-        )
+        return metrics_df
 
     def plot_metrics(
         self,
@@ -343,84 +322,52 @@ class PerformanceAssessor:
         Returns:
             None
         """
-        # Save the original threshold so the sweep never leaks out of this method,
-        # even if a metric computation or the plotting call raises.
-        original_threshold = self.threshold
+        self._check_tensors(predictions, labels)
 
         thresholds = np.arange(0.05, 1.0, 0.05)
+        metrics_to_plot = [m for m in self.metrics_list if METRICS[m].needs_threshold]
+        columns = self.num_classes if per_class_metrics else 1
 
-        # Exclude metrics that are not threshold-dependent
-        metrics_to_plot = [m for m in self.metrics_list if m not in ["auroc", "ap"]]
+        values = np.array(
+            [
+                list(
+                    self._metric_values(
+                        predictions,
+                        labels,
+                        metrics_to_plot,
+                        per_class_metrics,
+                        "macro",
+                        threshold,
+                    ).values()
+                )
+                for threshold in thresholds
+            ],
+            dtype=float,
+        ).reshape(len(thresholds), len(metrics_to_plot), columns)
 
-        try:
-            if per_class_metrics:
-                class_names = self._class_names()
+        if per_class_metrics:
+            class_names = self._class_names()
 
-                metric_values_dict_per_class = {
-                    class_name: {metric: [] for metric in metrics_to_plot}
-                    for class_name in class_names
-                }
-
-                for thresh in thresholds:
-                    self.threshold = thresh
-                    metrics_df = self.calculate_metrics(
-                        predictions, labels, per_class_metrics=True
-                    )
-                    for metric_name in metrics_to_plot:
-                        metric_label = self._METRIC_DISPLAY_NAMES[metric_name]
-                        for class_name in class_names:
-                            value = metrics_df.loc[metric_label, class_name]
-                            metric_values_dict_per_class[class_name][
-                                metric_name
-                            ].append(value)
-
-                metric_values_dict_per_class = {
+            return plotting.plot_metrics_across_thresholds_per_class(
+                thresholds,
+                {
                     class_name: {
-                        metric: np.array(values)
-                        for metric, values in metrics_dict.items()
+                        metric: values[:, m, c]
+                        for m, metric in enumerate(metrics_to_plot)
                     }
-                    for class_name, metrics_dict in (
-                        metric_values_dict_per_class.items()
-                    )
-                }
+                    for c, class_name in enumerate(class_names)
+                },
+                metrics_to_plot,
+                class_names,
+                self.colors,
+            )
 
-                fig = plotting.plot_metrics_across_thresholds_per_class(
-                    thresholds,
-                    metric_values_dict_per_class,
-                    metrics_to_plot,
-                    class_names,
-                    self.colors,
-                )
-            else:
-                metric_values_dict = {
-                    metric_name: [] for metric_name in metrics_to_plot
-                }
-
-                for thresh in thresholds:
-                    self.threshold = thresh
-                    metrics_df = self.calculate_metrics(
-                        predictions, labels, per_class_metrics=False
-                    )
-                    for metric_name in metrics_to_plot:
-                        metric_label = self._METRIC_DISPLAY_NAMES[metric_name]
-                        value = metrics_df.loc[metric_label, "Overall"]
-                        metric_values_dict[metric_name].append(value)
-
-                metric_values_dict = {
-                    metric_name: np.array(values)
-                    for metric_name, values in metric_values_dict.items()
-                }
-
-                fig = plotting.plot_metrics_across_thresholds(
-                    thresholds,
-                    metric_values_dict,
-                    metrics_to_plot,
-                    self.colors,
-                )
-        finally:
-            self.threshold = original_threshold
-
-        return fig
+        return plotting.plot_metrics_across_thresholds(
+            thresholds,
+            {metric: values[:, m, 0] for m, metric in enumerate(metrics_to_plot)},
+            metrics_to_plot,
+            self.colors,
+        )
 
     def plot_confusion_matrix(
         self,
@@ -437,26 +384,13 @@ class PerformanceAssessor:
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
 
         Raises:
-            TypeError: If predictions or labels are not NumPy arrays.
             ValueError: If predictions and labels have mismatched shapes or invalid
                 dimensions.
 
         Returns:
             None
         """
-        if not isinstance(predictions, np.ndarray):
-            raise TypeError("predictions must be a NumPy array.")
-        if not isinstance(labels, np.ndarray):
-            raise TypeError("labels must be a NumPy array.")
-        if predictions.shape != labels.shape:
-            raise ValueError("predictions and labels must have the same shape.")
-        if predictions.ndim != 2:
-            raise ValueError("predictions and labels must be 2-dimensional arrays.")
-        if predictions.shape[1] != self.num_classes:
-            raise ValueError(
-                f"The number of columns in predictions ({predictions.shape[1]}) "
-                + f"must match num_classes ({self.num_classes})."
-            )
+        self._check_tensors(predictions, labels)
 
         if self.task == "binary":
             y_pred = (predictions >= self.threshold).astype(int).flatten()

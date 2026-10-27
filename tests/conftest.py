@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import tempfile
 
 import pytest
 
@@ -9,6 +10,41 @@ if "BIRDNET_APP_DATA" not in os.environ:
     from birdnet.utils.local_data import get_app_data_path
 
     os.environ["BIRDNET_APP_DATA"] = str(get_app_data_path() / "birdnet")
+
+
+@pytest.fixture(autouse=True, scope="session")
+def two_inference_workers():
+    """Caps the birdnet library's default worker count at 2.
+
+    The default is one worker per physical core, each loading its own model.
+    """
+    from birdnet.acoustic.inference.configs import ProcessingConfig
+
+    validate = ProcessingConfig.validate_n_workers
+
+    def validate_n_workers(cls, n_workers):
+        return min(2, validate(None)) if n_workers is None else validate(n_workers)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(
+            ProcessingConfig, "validate_n_workers", classmethod(validate_n_workers)
+        )
+        yield
+
+
+@pytest.fixture(autouse=True, scope="session")
+def session_tempdir(tmp_path_factory):
+    """Keeps the run's temporary files, e.g. the birdnet session logs, out of TEMP.
+
+    The environment variables carry it to spawned worker processes.
+    """
+    tempdir = str(tmp_path_factory.mktemp("tempdir"))
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(tempfile, "tempdir", tempdir)
+        for name in ("TEMP", "TMP", "TMPDIR"):
+            patch.setenv(name, tempdir)
+        yield
 
 
 @pytest.fixture(autouse=True)

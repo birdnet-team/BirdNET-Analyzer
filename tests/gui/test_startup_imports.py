@@ -1,10 +1,4 @@
-"""Guard the GUI startup path against heavy imports creeping back in.
-
-Startup cost is dominated by what gets imported before the window opens. The
-expensive libraries (tensorflow, scipy/librosa via ``birdnet_analyzer.audio``,
-plotly, sklearn) are all deferred into event handlers; these tests fail if any
-of them sneaks back onto the import or Blocks-build path.
-"""
+"""The heavy libraries stay out of the GUI startup path."""
 
 import json
 import os

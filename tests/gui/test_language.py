@@ -9,12 +9,6 @@ FALLBACK_LANGUAGE_FILE = Path(LANG_DIR) / "en.json"
 
 
 def _format_fields(text: str) -> set | None:
-    """Returns the str.format field names used in text, e.g. {"0"} for "{0} files".
-
-    Returns None if text is not a valid format string. A stray brace is itself the
-    kind of defect this check exists to catch, so it is reported alongside the file
-    and key rather than escaping as a bare ValueError from the middle of a loop.
-    """
     try:
         return {
             field for _, field, _, _ in Formatter().parse(text) if field is not None
@@ -24,13 +18,6 @@ def _format_fields(text: str) -> set | None:
 
 
 def test_language_directory_is_populated():
-    """Every other test here globs LANG_DIR - guard against globbing nothing.
-
-    LANG_DIR used to resolve one level too high (``<repo>/lang`` instead of
-    ``<repo>/birdnet_analyzer/lang``), so each check in this module iterated an empty
-    sequence and passed without ever opening a file. That is how a zh_CN.json which
-    could not be parsed at all reached main with every CI lane green.
-    """
     language_files = sorted(Path(LANG_DIR).glob("*.json"))
 
     assert language_files, (
@@ -44,14 +31,6 @@ def test_language_directory_is_populated():
 
 
 def test_language_files_are_valid_json():
-    """A file that cannot be parsed has to name itself.
-
-    ``gui/localization.py`` catches only FileNotFoundError when it loads a language
-    file, so a malformed one raises JSONDecodeError and takes the GUI down at startup
-    for anyone who selected that language. Checking it here - rather than letting the
-    decode error surface from whichever other test happens to read the file first -
-    keeps the failure pointing at the file that is actually broken.
-    """
     invalid = []
 
     for language_file in sorted(Path(LANG_DIR).glob("*.json")):
@@ -100,12 +79,6 @@ def test_language_keys():
 
 
 def test_language_format_fields_match_fallback():
-    """Every translation has to keep the format fields of its English source.
-
-    A dropped field silently swallows the value it was meant to interpolate, and
-    an invented one raises IndexError/KeyError inside the GUI at format time -
-    neither is visible to a reviewer who doesn't read the language.
-    """
     with open(FALLBACK_LANGUAGE_FILE, encoding="utf-8") as f:
         fallback: dict = json.load(f)
 
@@ -150,11 +123,6 @@ def test_language_format_fields_match_fallback():
 
 
 def test_language_files_are_canonically_formatted():
-    """Language files have to be sorted and indented the same way.
-
-    They are written by a json load/dump round-trip, so enforcing that shape keeps
-    a new or edited translation from showing up as a whole-file diff.
-    """
     unformatted = []
 
     for language_file in sorted(Path(LANG_DIR).glob("*.json")):

@@ -1,9 +1,4 @@
-"""The overlap, species list and locale controls follow the selected model.
-
-Their limits depend on the model, but a preset or params file may switch the model and
-set them in one go, so they accept what any model takes and the model change handler
-fits them to the model, also as part of applying the preset.
-"""
+"""The overlap, species list and locale controls follow the selected model."""
 
 import asyncio
 from typing import NamedTuple
@@ -23,24 +18,7 @@ from birdnet_analyzer.gui import utils as gu  # noqa: E402
 ONLY_3_0_LOCALE = "es_es"
 
 
-@pytest.fixture(autouse=True)
-def no_map_figure(monkeypatch):
-    monkeypatch.setattr(gu, "plot_map_scatter_mapbox", lambda *a, **k: None)
-
-
-@pytest.fixture
-def appdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "APPDIR", tmp_path)
-    monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(tmp_path / "state.json"))
-    monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
-    monkeypatch.setattr(gs, "_PERSISTED", [])
-    return tmp_path
-
-
-@pytest.fixture(autouse=True)
-def perch_offered(monkeypatch):
-    choices = [*gu.model_choices(), gu.USE_PERCH]
-    monkeypatch.setattr(gu, "model_choices", lambda: list(dict.fromkeys(choices)))
+pytestmark = pytest.mark.usefixtures("perch_offered")
 
 
 class Tab(NamedTuple):

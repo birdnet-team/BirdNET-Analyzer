@@ -9,11 +9,7 @@ GUI_UTILS = Path(birdnet_analyzer.__file__).parent / "gui" / "utils.py"
 
 
 def _webview_start_calls() -> list[ast.Call]:
-    """Every ``webview.start(...)`` call in the GUI, read rather than executed.
-
-    Starting the window for real needs pywebview, which the test extra does not
-    install, and a display, which CI does not have.
-    """
+    # Read, not run: pywebview is not in the test extra and CI has no display.
     tree = ast.parse(GUI_UTILS.read_text(encoding="utf-8"))
 
     return [
@@ -28,11 +24,6 @@ def _webview_start_calls() -> list[ast.Call]:
 
 
 def test_window_is_not_opened_in_debug_mode():
-    """pywebview's debug flag puts a devtools context menu in shipped builds.
-
-    It has been removed twice and come back twice with every lane green, because
-    nothing in the suite looks at how the window is opened.
-    """
     calls = _webview_start_calls()
 
     assert calls, (

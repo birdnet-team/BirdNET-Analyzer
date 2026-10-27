@@ -1,9 +1,4 @@
-"""The model-directory resolver and the directory probe.
-
-``apply_model_directory`` runs at package import, before anything can import
-``birdnet`` (which freezes its model directory from ``BIRDNET_APP_DATA`` at its
-own import time).
-"""
+"""The model directory, resolved at package import before ``birdnet`` freezes it."""
 
 import json
 import os
@@ -178,7 +173,9 @@ def test_a_corrupted_settings_file_is_ignored_quietly_at_package_import(clean):
     assert "JSONDecodeError" not in result.stderr
 
 
-def test_env_provenance_flag(clean, monkeypatch):
+def test_the_settings_remember_whether_the_env_var_chose_the_directory(
+    clean, monkeypatch
+):
     monkeypatch.setattr(settings, "MODEL_DIR_FROM_ENV", False)
     monkeypatch.setenv(settings.MODEL_DIR_ENV_VAR, str(clean / "from-env"))
 

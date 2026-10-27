@@ -25,18 +25,6 @@ def appdir(monkeypatch, tmp_path):
     logs._remove_installed_handlers()
 
 
-def test_every_test_runs_against_a_temporary_appdir(tmp_path_factory):
-    basetemp = tmp_path_factory.getbasetemp()
-
-    assert settings.APPDIR.is_relative_to(basetemp)
-    for path in (
-        settings.GUI_SETTINGS_PATH,
-        settings.STATE_SETTINGS_PATH,
-        settings.ERROR_LOG_FILE,
-    ):
-        assert Path(path).is_relative_to(basetemp)
-
-
 @pytest.mark.parametrize("content", ["{not json", "[1, 2]"])
 def test_a_corrupted_settings_file_falls_back_to_the_defaults(
     appdir, tmp_path, content
