@@ -2,7 +2,6 @@ import pytest
 
 gr = pytest.importorskip("gradio")
 
-import birdnet_analyzer.gui.localization as loc  # noqa: E402
 from birdnet_analyzer import settings, utils  # noqa: E402
 from birdnet_analyzer.gui import presets  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
@@ -203,8 +202,8 @@ def test_the_analysis_params_of_a_previous_run_are_read_back(
         "output_type_checkboxgroup": ["table", "csv"],
         "additional_columns_checkboxgroup": ["lat", "lon"],
         "split_tables_checkbox": False,
-        "species_list_radio": loc.localize("species-list-radio-option-all"),
-        "model_selection_radio": "BirdNET 2.4",
+        "species_list_radio": gu.ALL_SPECIES,
+        "model_selection_radio": gu.USE_BIRDNET_2_4,
     }
 
 
@@ -213,7 +212,7 @@ def test_a_birdnet_3_0_analysis_restores_the_3_0_model_choice(appdir, tmp_path):
         wide_file(tmp_path, analysis_values(**{"BirdNET version": "3.0"}))
     )
 
-    assert values["model_selection_radio"] == "BirdNET 3.0"
+    assert values["model_selection_radio"] == gu.USE_BIRDNET_3_0
 
 
 def test_a_top_n_analysis_does_not_restore_the_confidence_placeholder(appdir, tmp_path):
@@ -238,9 +237,7 @@ def test_a_location_based_analysis_restores_the_predicted_species_list(
         )
     )
 
-    assert values["species_list_radio"] == loc.localize(
-        "species-list-radio-option-predict-list"
-    )
+    assert values["species_list_radio"] == gu.PREDICT_SPECIES
     assert values["lat_number"] == 42.5
     assert values["lon_number"] == -76.4
     assert values["week_number"] == 20
@@ -252,9 +249,7 @@ def test_a_species_list_analysis_restores_the_custom_list(appdir, tmp_path):
         wide_file(tmp_path, analysis_values(**{"Species list file": "/data/birds.txt"}))
     )
 
-    assert values["species_list_radio"] == loc.localize(
-        "species-list-radio-option-custom-list"
-    )
+    assert values["species_list_radio"] == gu.CUSTOM_SPECIES
     assert values[gu.SPECIES_FILE_KEY] == "/data/birds.txt"
 
 
@@ -265,9 +260,7 @@ def test_a_custom_classifier_analysis_restores_the_classifier(appdir, tmp_path):
         )
     )
 
-    assert values["model_selection_radio"] == loc.localize(
-        "species-list-radio-option-custom-classifier"
-    )
+    assert values["model_selection_radio"] == gu.CUSTOM_CLASSIFIER
     assert values[gu.CLASSIFIER_FILE_KEY] == "/models/my.tflite"
 
 

@@ -250,7 +250,7 @@ def _run_single_file_tab(monkeypatch, report):
         week=-1,
         use_yearlong=True,
         sf_thresh=0.03,
-        selected_model="BirdNET 2.4",
+        selected_model=gu.USE_BIRDNET_2_4,
         custom_classifier_file=None,
         locale="en_us",
     )

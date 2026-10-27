@@ -6,10 +6,10 @@ A value is written back as soon as the user edits it and is restored when the
 component is built, so the GUI comes up showing the values of the last session.
 
 Restored values are validated against the component they belong to. A value that does
-not fit -- because the settings file was written by an older version, in a different
-language, on a platform offering different models, or was edited by hand -- is
-discarded in favour of the default the component is built with. That way a stale
-settings file can never keep a tab from starting up.
+not fit -- because the settings file was written by an older version, on a platform
+offering different models, or was edited by hand -- is discarded in favour of the
+default the component is built with. That way a stale settings file can never keep a
+tab from starting up.
 """
 
 import os

@@ -85,6 +85,22 @@ def species_list(tmp_path):
     return str(path)
 
 
+@pytest.fixture
+def language(monkeypatch):
+    monkeypatch.setattr(loc, "TARGET_LANGUAGE", loc.TARGET_LANGUAGE)
+    monkeypatch.setattr(loc, "LANGUAGE_LOOKUP", loc.LANGUAGE_LOOKUP)
+
+    def switch(language):
+        settings.set_setting("language-id", language)
+        loc.load_local_state()
+
+    return switch
+
+
+def values_of(radio) -> list:
+    return [value for _, value in radio.choices]
+
+
 def test_a_picked_classifier_is_selected_after_a_restart(
     appdir, classifier, monkeypatch
 ):
@@ -126,14 +142,14 @@ def test_files_applied_by_a_preset_are_selected_after_a_restart(
 def test_a_missing_classifier_falls_back_to_the_default_model(appdir, saved):
     tab = Tab(model_selection_radio=gu.CUSTOM_CLASSIFIER, **saved)
 
+    shown = {value: label for label, value in tab.model.choices}[tab.model.value]
+
     assert tab.model.value == gu.default_model()
     assert settings.get_tab_settings("multi")["model_selection_radio"] == (
         gu.default_model()
     )
     assert [
-        loc.localize("startup-classifier-missing-warning").format(
-            model=gu.default_model()
-        )
+        loc.localize("startup-classifier-missing-warning").format(model=shown)
     ] == gu._STARTUP_WARNINGS
 
 
@@ -174,6 +190,17 @@ def test_a_deleted_species_list_falls_back_to_all_species(
     assert [
         loc.localize("startup-species-list-missing-warning")
     ] == gu._STARTUP_WARNINGS
+
+
+def test_the_saved_choices_do_not_change_with_the_language(appdir, language):
+    language("de")
+    german = Tab()
+    language("en")
+    english = Tab()
+
+    assert german.species.choices != english.species.choices
+    assert values_of(german.species) == values_of(english.species)
+    assert values_of(german.model) == values_of(english.model)
 
 
 @pytest.mark.parametrize(

@@ -27,20 +27,25 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
-# Localized on access, so they follow the language gui.main loads.
-_LOCALIZED_LABELS = {
-    "CUSTOM_SPECIES": "species-list-radio-option-custom-list",
-    "PREDICT_SPECIES": "species-list-radio-option-predict-list",
-    "CUSTOM_CLASSIFIER": "species-list-radio-option-custom-classifier",
-    "ALL_SPECIES": "species-list-radio-option-all",
-    "USE_PERCH": "species-list-radio-option-use-perch",
+# The ids of the species-list and model choices. state.json and presets store them.
+ALL_SPECIES = "all"
+CUSTOM_SPECIES = "custom-list"
+PREDICT_SPECIES = "predict-list"
+CUSTOM_CLASSIFIER = "custom-classifier"
+USE_PERCH = "perch"
+USE_BIRDNET_3_0 = "3.0"
+USE_BIRDNET_2_4 = "2.4"
+_LABEL_KEYS = {
+    ALL_SPECIES: "species-list-radio-option-all",
+    CUSTOM_SPECIES: "species-list-radio-option-custom-list",
+    PREDICT_SPECIES: "species-list-radio-option-predict-list",
+    CUSTOM_CLASSIFIER: "species-list-radio-option-custom-classifier",
+    USE_PERCH: "species-list-radio-option-use-perch",
 }
-# BirdNET acoustic model choices. Not localized: the version number is the label.
-USE_BIRDNET_2_4 = "BirdNET 2.4"
-USE_BIRDNET_3_0 = "BirdNET 3.0"
-_BIRDNET_MODEL_VERSIONS: dict[str, str] = {
-    USE_BIRDNET_2_4: "2.4",
-    USE_BIRDNET_3_0: "3.0",
+# Newest first. Not localized: the version number is the label.
+_BIRDNET_MODEL_LABELS = {
+    USE_BIRDNET_3_0: "BirdNET 3.0",
+    USE_BIRDNET_2_4: "BirdNET 2.4",
 }
 
 SPECIES_FILE_KEY = "species_list_file"
@@ -88,41 +93,39 @@ _SPECTROGRAM_DEFAULTS = {
 }
 
 
-def _label(name: str) -> str:
-    return loc.localize(_LOCALIZED_LABELS[name])
+def _label(choice: str) -> str:
+    if choice in _BIRDNET_MODEL_LABELS:
+        return _BIRDNET_MODEL_LABELS[choice]
+
+    return loc.localize(_LABEL_KEYS[choice])
 
 
-def __getattr__(name: str) -> str:
-    if name in _LOCALIZED_LABELS:
-        return _label(name)
-
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+def _choices(*ids: str) -> list[tuple[str, str]]:
+    return [(_label(choice), choice) for choice in ids]
 
 
 def is_birdnet_model(model_choice: str) -> bool:
     """Whether the selected model is an official BirdNET acoustic model."""
-    return model_choice in _BIRDNET_MODEL_VERSIONS
+    return model_choice in _BIRDNET_MODEL_LABELS
 
 
 def birdnet_version(model_choice: str) -> str:
     """The acoustic model version for a BirdNET model choice (falls back to 2.4)."""
-    return _BIRDNET_MODEL_VERSIONS.get(model_choice, "2.4")
+    return model_choice if is_birdnet_model(model_choice) else "2.4"
 
 
 def model_supports_sensitivity(model_choice: str) -> bool:
     """Whether the sensitivity slider applies to the selected model choice."""
     from birdnet_analyzer.model_utils import supports_sensitivity
 
-    return supports_sensitivity(
-        "perch" if model_choice == _label("USE_PERCH") else "birdnet"
-    )
+    return supports_sensitivity("perch" if model_choice == USE_PERCH else "birdnet")
 
 
-def _species_choices(is_perch: bool) -> list[str]:
+def _species_choices(is_perch: bool) -> list[tuple[str, str]]:
     if is_perch:
-        return [_label("ALL_SPECIES"), _label("CUSTOM_SPECIES")]
+        return _choices(ALL_SPECIES, CUSTOM_SPECIES)
 
-    return [_label("ALL_SPECIES"), _label("CUSTOM_SPECIES"), _label("PREDICT_SPECIES")]
+    return _choices(ALL_SPECIES, CUSTOM_SPECIES, PREDICT_SPECIES)
 
 
 def _max_overlap(is_perch: bool) -> float:
@@ -781,38 +784,33 @@ def birdnet_model_choices() -> list[tuple[str, str]]:
 
     The known versions are filtered down to those the installed birdnet library ships,
     so a dropped version stops being offered without a code change. A brand-new major
-    version still needs a label added here.
+    version still needs a label in ``_BIRDNET_MODEL_LABELS``.
     """
     available = get_args(ACOUSTIC_MODEL_VERSIONS)
 
-    return [
-        (label, version)
-        for label, version in (
-            (USE_BIRDNET_3_0, "3.0"),
-            (USE_BIRDNET_2_4, "2.4"),
-        )
-        if version in available
-    ]
+    return _choices(
+        *(version for version in _BIRDNET_MODEL_LABELS if version in available)
+    )
 
 
 def model_choices():
-    """Returns the models that can be selected on the current platform."""
-    birdnet_models = [label for label, _ in birdnet_model_choices()]
+    """The models that can be selected on the current platform, as ``(label, id)``."""
+    birdnet_models = [version for _, version in birdnet_model_choices()]
 
-    values = [*birdnet_models, _label("CUSTOM_CLASSIFIER"), _label("USE_PERCH")]
+    values = [*birdnet_models, CUSTOM_CLASSIFIER, USE_PERCH]
 
     if platform.system() == "Darwin":
         # TODO: Remove when tf 2.21+ is available on macOS
-        values.remove(_label("USE_PERCH"))
+        values.remove(USE_PERCH)
 
-    return values
+    return _choices(*values)
 
 
 def default_model():
     """The model selected by default: the newest available BirdNET acoustic model."""
-    choices = model_choices()
+    models = [model for _, model in model_choices()]
 
-    return USE_BIRDNET_3_0 if USE_BIRDNET_3_0 in choices else choices[0]
+    return USE_BIRDNET_3_0 if USE_BIRDNET_3_0 in models else models[0]
 
 
 def _drop_choices_with_missing_files(state: TabState):
@@ -822,25 +820,22 @@ def _drop_choices_with_missing_files(state: TabState):
     )
 
     if (
-        model_choice == _label("CUSTOM_CLASSIFIER")
+        model_choice == CUSTOM_CLASSIFIER
         and state.get_file(CLASSIFIER_FILE_KEY) is None
     ):
         state.remember({"model_selection_radio": default_model()})
         _STARTUP_WARNINGS.append(
             loc.localize("startup-classifier-missing-warning").format(
-                model=default_model()
+                model=_label(default_model())
             )
         )
 
     species_choice = state.get(
-        "species_list_radio", _label("ALL_SPECIES"), choices=_species_choices(False)
+        "species_list_radio", ALL_SPECIES, choices=_species_choices(False)
     )
 
-    if (
-        species_choice == _label("CUSTOM_SPECIES")
-        and state.get_file(SPECIES_FILE_KEY) is None
-    ):
-        state.remember({"species_list_radio": _label("ALL_SPECIES")})
+    if species_choice == CUSTOM_SPECIES and state.get_file(SPECIES_FILE_KEY) is None:
+        state.remember({"species_list_radio": ALL_SPECIES})
         _STARTUP_WARNINGS.append(loc.localize("startup-species-list-missing-warning"))
 
 
@@ -852,7 +847,7 @@ def sample_species_model_settings(state: TabState, opened=True):
     model_choice = state.get(
         "model_selection_radio", default_model(), choices=model_choices()
     )
-    is_perch = model_choice == _label("USE_PERCH")
+    is_perch = model_choice == USE_PERCH
 
     sample_settings = sample_sliders(
         state,
@@ -864,7 +859,7 @@ def sample_species_model_settings(state: TabState, opened=True):
     model_settings = model_selection(state, opened=opened)
 
     def on_model_change(value, species_choice, overlap, current_locale):
-        is_perch = value == _label("USE_PERCH")
+        is_perch = value == USE_PERCH
         choices = _species_choices(is_perch)
         max_overlap = _max_overlap(is_perch)
         shown = {
@@ -876,8 +871,8 @@ def sample_species_model_settings(state: TabState, opened=True):
 
         # Keep the current species selection (e.g. the one a preset was just
         # applied with) as long as the new model offers it.
-        if species_choice not in choices:
-            fitted["species_list_radio"] = _label("ALL_SPECIES")
+        if species_choice not in [choice for _, choice in choices]:
+            fitted["species_list_radio"] = ALL_SPECIES
 
         if model_supports_sensitivity(value):
             sensitivity_update = gr.update(
@@ -1325,7 +1320,7 @@ def show_species_choice(choice: str, species_file):
     """Sets the visibility of the species list choices.
 
     Args:
-        choice: The label of the currently active choice.
+        choice: The currently active choice.
         species_file: The selected species list file, if any.
 
     Returns:
@@ -1335,13 +1330,13 @@ def show_species_choice(choice: str, species_file):
             Species list update,
         ]
     """
-    if choice == _label("CUSTOM_SPECIES"):
+    if choice == CUSTOM_SPECIES:
         return [
             gr.update(visible=False),
             gr.update(visible=True),
             gr.update(visible=bool(species_file)),
         ]
-    if choice == _label("PREDICT_SPECIES"):
+    if choice == PREDICT_SPECIES:
         return [
             gr.update(visible=True),
             gr.update(visible=False),
@@ -1385,7 +1380,7 @@ def model_selection(state: TabState, opened=True):
             classifier_file = state.get_file(CLASSIFIER_FILE_KEY)
 
             with gr.Column(
-                visible=selected_model == _label("CUSTOM_CLASSIFIER")
+                visible=selected_model == CUSTOM_CLASSIFIER
             ) as custom_classifier_selector:
                 classifier_selection_button = gr.Button(
                     loc.localize(
@@ -1462,7 +1457,7 @@ def model_selection(state: TabState, opened=True):
             headers=[loc.localize("species-list-header")],
             max_height=200,
             show_label=False,
-            visible=selected_model == _label("CUSTOM_CLASSIFIER")
+            visible=selected_model == CUSTOM_CLASSIFIER
             and classifier_labels is not None,
         )
 
@@ -1473,7 +1468,7 @@ def model_selection(state: TabState, opened=True):
     )
 
     def on_model_selection_change(choice: str, cc_state):
-        if choice == _label("CUSTOM_CLASSIFIER"):
+        if choice == CUSTOM_CLASSIFIER:
             return gr.update(visible=True), gr.update(visible=cc_state is not None)
 
         return gr.update(visible=False), gr.update(visible=False)
@@ -1519,7 +1514,7 @@ def species_lists(
                 gr.Radio,
                 accepts={"choices": _species_choices(is_perch=False)},
                 choices=_species_choices(is_perch),
-                value=_label("ALL_SPECIES"),
+                value=ALL_SPECIES,
                 label=loc.localize("species-list-radio-label"),
                 info=loc.localize("species-list-radio-info"),
                 elem_classes="d-block",
@@ -1527,7 +1522,7 @@ def species_lists(
             selected_species_list = species_list_radio.value
 
             with gr.Column(
-                visible=selected_species_list == _label("PREDICT_SPECIES")
+                visible=selected_species_list == PREDICT_SPECIES
             ) as position_row:
                 (
                     lat_number,
@@ -1541,7 +1536,7 @@ def species_lists(
             species_file = state.get_file(SPECIES_FILE_KEY)
 
             with gr.Column(
-                visible=selected_species_list == _label("CUSTOM_SPECIES")
+                visible=selected_species_list == CUSTOM_SPECIES
             ) as species_file_selector:
                 species_file_button = gr.Button(
                     loc.localize("species-list-custom-list-selection-button-label")
@@ -1561,8 +1556,7 @@ def species_lists(
             headers=[loc.localize("species-list-header")],
             max_height=200,
             show_label=False,
-            visible=selected_species_list == _label("CUSTOM_SPECIES")
-            and bool(species_rows),
+            visible=selected_species_list == CUSTOM_SPECIES and bool(species_rows),
         )
 
     species_list_radio.change(
