@@ -167,7 +167,7 @@ After the training process is finished your output folder should like this:
   ├── CustomClassifier.birdnet.train-params.csv
   └── ...
 
-To use this classifier select the "Custom classifier" option in the species selection section of the BirdNET-Analyzer GUI and select the .tflite file.
+To use this classifier select the "Custom classifier" option in the model selection section of the BirdNET-Analyzer GUI and select the .tflite file.
 
 When using the CLI you can specify the path to the .tflite file using the `-\-classifier` or `-c` argument.
 

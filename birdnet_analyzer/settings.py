@@ -159,11 +159,11 @@ def _report_fatal_startup_error(message: str) -> None:
 def apply_model_directory() -> None:
     """Points the birdnet library's model directory at the right place.
 
-    Must run before ``birdnet`` is imported anywhere in the process: the library
-    reads ``BIRDNET_APP_DATA`` once, at import time. Precedence: an already-set
-    environment variable (automation - fails fast rather than falling back), the
-    GUI's persisted setting (any run mode - falls back to the default with a
-    warning when unusable), then the frozen app's default. From source or Docker
+    Must run before the library resolves its first model path from
+    ``BIRDNET_APP_DATA``, which it does whenever it needs one. Precedence: an
+    already-set environment variable (automation - fails fast rather than falling
+    back), the GUI's persisted setting (any run mode - falls back to the default
+    with a warning when unusable), then the frozen app's default. From source or Docker
     with nothing configured, the library's own default stands, so pip installs,
     CI caches and the baked Docker image keep their existing model stores.
     """

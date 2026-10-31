@@ -6,8 +6,7 @@ from birdnet_analyzer.settings import apply_model_directory
 # application. The shipped CLI and GUI configure handlers via logs.setup_logging().
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-# Before anything can import birdnet: it resolves its model directory from
-# BIRDNET_APP_DATA once, at import time.
+# The birdnet library reads BIRDNET_APP_DATA whenever it needs a model path.
 apply_model_directory()
 
 from birdnet_analyzer.analyze import analyze  # noqa: E402

@@ -16,18 +16,18 @@ if "BIRDNET_APP_DATA" not in os.environ:
 def two_inference_workers():
     """Caps the birdnet library's default worker count at 2.
 
-    The default is one worker per physical core, each loading its own model.
+    The default is one worker per physical core when memory allows, each loading
+    its own model.
     """
-    from birdnet.acoustic.inference.configs import ProcessingConfig
+    from birdnet.acoustic.inference import session
 
-    validate = ProcessingConfig.validate_n_workers
-
-    def validate_n_workers(cls, n_workers):
-        return min(2, validate(None)) if n_workers is None else validate(n_workers)
+    default_n_workers = session.default_n_workers
 
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(
-            ProcessingConfig, "validate_n_workers", classmethod(validate_n_workers)
+            session,
+            "default_n_workers",
+            lambda **kwargs: min(2, default_n_workers(**kwargs)),
         )
         yield
 

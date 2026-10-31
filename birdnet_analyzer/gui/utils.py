@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import gradio as gr
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
+from gradio.context import Context
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
@@ -248,9 +249,9 @@ def _format_bytes(n: int) -> str:
 
 def _effective_model_directory() -> str:
     """The model directory this session actually uses (the library's resolved one)."""
-    from birdnet.utils.local_data import APP_DIR
+    from birdnet.utils.local_data import get_birdnet_app_data_folder
 
-    return str(APP_DIR)
+    return str(get_birdnet_app_data_folder())
 
 
 def _default_model_directory() -> str:
@@ -918,10 +919,24 @@ def sample_species_model_settings(state: TabState, opened=True):
         species_settings["species_list_radio"],
         model_settings["locale_dropdown"],
     ]
-    model_settings["model_selection_radio"].change(
-        on_model_change, inputs=inputs, outputs=outputs, show_progress="hidden"
-    )
     state.add_fitter(on_model_change, inputs, outputs)
+
+    # One listener: the frontend runs them one after another, repainting piece by piece.
+    @gui_runtime_error_handler
+    def on_model_selection_change(
+        value, species_choice, overlap, current_locale, classifier
+    ):
+        return [
+            *on_model_change(value, species_choice, overlap, current_locale),
+            *model_settings["updates_for_model"](value, classifier),
+        ]
+
+    model_settings["model_selection_radio"].change(
+        on_model_selection_change,
+        inputs=[*inputs, model_settings["selected_classifier_state"]],
+        outputs=[*outputs, *model_settings["model_outputs"]],
+        show_progress="hidden",
+    )
 
     def warn_unmatched_species(file, model_choice, locale):
         """Heads-up when a chosen custom list has species the selected model lacks.
@@ -1362,6 +1377,116 @@ def _read_or_none(read: Callable, path: str | None):
         return None
 
 
+_FACT_COUNT = 4
+
+
+def _thousands(number: int) -> str:
+    return f"{number:,}".replace(",", "\u202f")
+
+
+def _reason_without_path(error: Exception, file: str) -> str:
+    """The error's cause, naming the file as the notice does, without its directory."""
+    cause = error.__cause__ or error
+    if isinstance(cause, OSError) and cause.strerror:
+        return cause.strerror
+
+    path, name = os.path.abspath(file), os.path.basename(file)
+    reason = str(cause) or str(error)
+    for form in (repr(path), path):
+        reason = reason.replace(form, name)
+
+    return reason
+
+
+def _model_facts(
+    model_choice: str, classifier_file: str | None, *, retry_failed: bool = False
+) -> tuple[list[tuple[str, str]], str | None]:
+    """The captions and values that summarize the selected model, plus a warning.
+
+    Empty when there is nothing to show: no classifier chosen yet, or one the library
+    cannot read, which the warning then explains.
+    """
+    from birdnet_analyzer import model_utils
+
+    def seconds(model: str) -> str:
+        return loc.localize("model-selection-facts-segment-value").format(
+            f"{model_utils.segment_length_s(model):g}"
+        )
+
+    segment_label = loc.localize("model-selection-facts-segment-label")
+
+    if model_choice == CUSTOM_CLASSIFIER:
+        if classifier_file is None:
+            return [], None
+
+        try:
+            info = model_utils.classifier_info(
+                classifier_file, retry_failed=retry_failed
+            )
+        except (OSError, ValueError) as e:
+            logger.debug("Classifier could not be inspected", exc_info=True)
+            return [], loc.localize(
+                "model-selection-classifier-unreadable-warning"
+            ).format(
+                file=os.path.basename(classifier_file),
+                error=_reason_without_path(e, classifier_file),
+            )
+
+        if info.mode == "append":
+            output = loc.localize("model-selection-facts-output-append")
+            classes = info.n_species - model_utils.class_count(info.version)
+        else:
+            output = loc.localize("model-selection-facts-output-replace")
+            classes = info.n_species
+
+        labels = _read_or_none(utils.read_classifier_labels, classifier_file)
+        warning = None
+
+        if labels is not None and len(labels) != info.n_species:
+            labels_file = utils.classifier_labels_path(classifier_file) or ""
+            warning = loc.localize("model-selection-labels-mismatch-warning").format(
+                labels=len(labels),
+                classes=info.n_species,
+                file=os.path.basename(labels_file),
+            )
+
+        return [
+            (
+                loc.localize("model-selection-facts-base-model-label"),
+                _label(info.version),
+            ),
+            (loc.localize("model-selection-facts-classes-label"), _thousands(classes)),
+            (loc.localize("model-selection-facts-output-label"), output),
+            (segment_label, seconds(info.version)),
+        ], warning
+
+    if model_choice == USE_PERCH:
+        languages = loc.localize("model-selection-facts-languages-scientific")
+        location = loc.localize("model-selection-facts-location-unavailable")
+    else:
+        languages = str(len(model_languages(model_choice)))
+        location = loc.localize("model-selection-facts-location-available")
+
+    return [
+        (segment_label, seconds(model_choice)),
+        (
+            loc.localize("model-selection-facts-classes-label"),
+            _thousands(model_utils.class_count(model_choice)),
+        ),
+        (loc.localize("model-selection-facts-languages-label"), languages),
+        (loc.localize("model-selection-facts-location-label"), location),
+    ], None
+
+
+def _facts_updates(facts: list[tuple[str, str]], warning: str | None) -> list:
+    return [
+        gr.update(visible=bool(facts)),
+        *(gr.update(label=caption, value=value) for caption, value in facts),
+        *([gr.skip()] * (_FACT_COUNT - len(facts))),
+        gr.update(value=warning or "", visible=warning is not None),
+    ]
+
+
 def model_selection(state: TabState, opened=True):
     with (
         gr.Group(),
@@ -1374,7 +1499,6 @@ def model_selection(state: TabState, opened=True):
                 choices=model_choices(),
                 value=default_model(),
                 label=loc.localize("model-selection-radio-label"),
-                info=loc.localize("model-selection-radio-info"),
             )
             selected_model = model_selection_radio.value
             classifier_file = state.get_file(CLASSIFIER_FILE_KEY)
@@ -1398,7 +1522,7 @@ def model_selection(state: TabState, opened=True):
 
                 @gui_runtime_error_handler
                 def on_custom_classifier_selection_click():
-                    from birdnet_analyzer.model_utils import classifier_version
+                    from birdnet_analyzer.model_utils import classifier_info
 
                     file = select_file(
                         ("TFLite classifier (*.tflite)",),
@@ -1406,10 +1530,10 @@ def model_selection(state: TabState, opened=True):
                     )
 
                     if not file:
-                        return None, None, None
+                        return gr.skip()
 
                     try:
-                        classifier_version(file)
+                        classifier_info(file, retry_failed=True)
                     except (OSError, ValueError) as e:
                         gr.Warning(
                             loc.localize(
@@ -1417,10 +1541,11 @@ def model_selection(state: TabState, opened=True):
                             ).format(e)
                         )
 
-                        return gr.skip(), gr.skip(), gr.skip()
+                        return gr.skip()
 
                     state.remember({CLASSIFIER_FILE_KEY: file})
                     labels = utils.read_classifier_labels(file)
+                    facts = _facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file))
 
                     if labels is None:
                         gr.Warning(
@@ -1433,13 +1558,36 @@ def model_selection(state: TabState, opened=True):
                             file,
                             gr.update(value=file, visible=True),
                             gr.update(visible=False),
+                            *facts,
                         )
 
                     return (
                         file,
                         gr.update(value=file, visible=True),
                         gr.update(value=labels, visible=True),
+                        *facts,
                     )
+
+        facts, warning = (
+            ([], None)
+            if selected_model == CUSTOM_CLASSIFIER
+            else _model_facts(selected_model, None)
+        )
+
+        with gr.Row(
+            variant="panel", elem_classes="model-facts", visible=bool(facts)
+        ) as facts_row:
+            fact_boxes = [
+                gr.Textbox(value=value, label=caption, interactive=False)
+                for caption, value in facts or [("", "")] * _FACT_COUNT
+            ]
+
+        facts_warning = gr.Markdown(
+            warning or "",
+            visible=warning is not None,
+            elem_classes="model-facts-warning",
+        )
+        facts_outputs = [facts_row, *fact_boxes, facts_warning]
 
         # Shown: restrict locale to the model's languages. Hidden (Perch/custom): offer
         # the union so a saved locale from another version isn't dropped by persist.
@@ -1454,7 +1602,7 @@ def model_selection(state: TabState, opened=True):
         classifier_labels = _read_or_none(utils.read_classifier_labels, classifier_file)
         species_list_df = gr.List(
             value=classifier_labels or [],
-            headers=[loc.localize("species-list-header")],
+            headers=[loc.localize("model-selection-facts-classes-label")],
             max_height=200,
             show_label=False,
             visible=selected_model == CUSTOM_CLASSIFIER
@@ -1463,22 +1611,66 @@ def model_selection(state: TabState, opened=True):
 
     classifier_selection_button.click(
         on_custom_classifier_selection_click,
-        outputs=[selected_classifier_state, classifier_file_input, species_list_df],
+        outputs=[
+            selected_classifier_state,
+            classifier_file_input,
+            species_list_df,
+            *facts_outputs,
+        ],
         show_progress="hidden",
     )
 
-    def on_model_selection_change(choice: str, cc_state):
-        if choice == CUSTOM_CLASSIFIER:
-            return gr.update(visible=True), gr.update(visible=cc_state is not None)
+    model_outputs = [custom_classifier_selector, species_list_df, *facts_outputs]
 
-        return gr.update(visible=False), gr.update(visible=False)
+    def updates_for_model(choice: str, classifier: str | None) -> list:
+        """One update per ``model_outputs`` for the choice."""
+        custom = choice == CUSTOM_CLASSIFIER
+        labels = (
+            _read_or_none(utils.read_classifier_labels, classifier) if custom else None
+        )
 
-    model_selection_radio.change(
-        on_model_selection_change,
+        return [
+            gr.update(visible=custom),
+            gr.update(visible=labels is not None),
+            *_facts_updates(*_model_facts(choice, classifier)),
+        ]
+
+    @gui_runtime_error_handler
+    def on_classifier_change(choice: str, classifier: str | None):
+        return updates_for_model(choice, classifier)
+
+    selected_classifier_state.change(
+        on_classifier_change,
         inputs=[model_selection_radio, selected_classifier_state],
-        outputs=[custom_classifier_selector, species_list_df],
+        outputs=model_outputs,
         show_progress="hidden",
     )
+
+    if classifier_file is not None:
+
+        @gui_runtime_error_handler
+        def on_page_load(choice: str, classifier: str | None):
+            """Inspects the persisted classifier once the window is up, not at build.
+
+            Shown as the summary when it is the selected model; otherwise only cached,
+            so the first switch to it is instant.
+            """
+            from birdnet_analyzer import model_utils
+
+            if choice == CUSTOM_CLASSIFIER:
+                return updates_for_model(choice, classifier)
+
+            with suppress(OSError, ValueError):
+                model_utils.classifier_info(classifier)
+
+            return gr.skip()
+
+        Context.root_block.load(
+            on_page_load,
+            inputs=[model_selection_radio, selected_classifier_state],
+            outputs=model_outputs,
+            show_progress="hidden",
+        )
 
     return {
         "model_selection_radio": model_selection_radio,
@@ -1486,6 +1678,11 @@ def model_selection(state: TabState, opened=True):
         "classifier_file_input": classifier_file_input,
         "classifier_labels_df": species_list_df,
         "locale_dropdown": locale_settings,
+        "model_facts_row": facts_row,
+        "model_facts": fact_boxes,
+        "model_facts_warning": facts_warning,
+        "model_outputs": model_outputs,
+        "updates_for_model": updates_for_model,
     }
 
 

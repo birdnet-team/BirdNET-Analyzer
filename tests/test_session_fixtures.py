@@ -2,17 +2,16 @@ import os
 import tempfile
 from pathlib import Path
 
-import psutil
-from birdnet.acoustic.inference.configs import ProcessingConfig
+import birdnet
 
 from birdnet_analyzer import settings
 
 
 def test_the_inference_default_is_at_most_two_workers():
-    cores = psutil.cpu_count(logical=False) or 1
+    model = birdnet.load("acoustic", "3.0", "onnx")
 
-    assert ProcessingConfig.validate_n_workers(None) == min(2, cores)
-    assert ProcessingConfig.validate_n_workers(1) == 1
+    assert 1 <= model.predict_session()._conf.processing_conf.workers <= 2
+    assert model.predict_session(n_workers=1)._conf.processing_conf.workers == 1
 
 
 def test_temporary_files_stay_in_the_test_session(tmp_path_factory):

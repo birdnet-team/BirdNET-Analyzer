@@ -600,7 +600,7 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     show_progress="hidden",
                 )
 
-            def on_cache_mode_change(value, data_dir, test_data_dir):
+            def cache_mode_updates(value, data_dir, test_data_dir):
                 return (
                     gr.update(visible=value == "save"),
                     gr.update(visible=value == "load"),
@@ -624,18 +624,6 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     "",
                     gr.update(value=None, visible=False),
                 )
-
-            cache_mode.change(
-                clear_cache_location,
-                outputs=[
-                    cache_file_state,
-                    selected_cache_dir_textbox,
-                    cache_file_name,
-                    selected_cache_file_textbox,
-                    cache_file_input,
-                ],
-                show_progress="hidden",
-            )
 
         with (
             gr.Group(),
@@ -740,17 +728,28 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     visible=visible, interactive=visible and new_cache_mode != "load"
                 )
 
-            gr.on(
-                [cache_mode.change, crop_mode.change],
+            crop_mode.change(
                 on_crop_or_cache_mode_change,
                 inputs=[cache_mode, crop_mode],
                 outputs=crop_overlap,
                 show_progress="hidden",
             )
 
+            def on_cache_mode_change(value, data_dir, test_data_dir, crop_mode_value):
+                return (
+                    *cache_mode_updates(value, data_dir, test_data_dir),
+                    *clear_cache_location(),
+                    on_crop_or_cache_mode_change(value, crop_mode_value),
+                )
+
             cache_mode.change(
                 on_cache_mode_change,
-                inputs=[cache_mode, input_directory_state, test_data_dir_state],
+                inputs=[
+                    cache_mode,
+                    input_directory_state,
+                    test_data_dir_state,
+                    crop_mode,
+                ],
                 outputs=[
                     new_cache_file_row,
                     load_cache_file_row,
@@ -764,6 +763,12 @@ def build_train_tab() -> gu.TAB_BUILDER_RESULT:
                     crop_mode,
                     threads_number,
                     base_model_radio,
+                    cache_file_state,
+                    selected_cache_dir_textbox,
+                    cache_file_name,
+                    selected_cache_file_textbox,
+                    cache_file_input,
+                    crop_overlap,
                 ],
                 show_progress="hidden",
             )

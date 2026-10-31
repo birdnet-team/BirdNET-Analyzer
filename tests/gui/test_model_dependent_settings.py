@@ -1,6 +1,7 @@
-"""The overlap, species list and locale controls follow the selected model."""
+"""The overlap, species list, locale and model summary follow the selected model."""
 
 import asyncio
+from types import SimpleNamespace
 from typing import NamedTuple
 
 import pytest
@@ -10,7 +11,8 @@ gr = pytest.importorskip("gradio")
 from gradio.state_holder import SessionState  # noqa: E402
 
 import birdnet_analyzer.config as cfg  # noqa: E402
-from birdnet_analyzer import settings, utils  # noqa: E402
+import birdnet_analyzer.gui.localization as loc  # noqa: E402
+from birdnet_analyzer import model_utils, settings, utils  # noqa: E402
 from birdnet_analyzer.gui import presets  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
@@ -32,7 +34,11 @@ class Tab(NamedTuple):
     species_file_input: gr.File
     species_file_state: gr.State
     sensitivity: gr.Slider
-    on_model_change: object
+    classifier_state: gr.State
+    labels: gr.List
+    facts_row: gr.Row
+    facts: list[gr.Textbox]
+    facts_warning: gr.Markdown
 
 
 def build(**persisted) -> Tab:
@@ -67,7 +73,11 @@ def build(**persisted) -> Tab:
         species["species_file_input"],
         species["species_file_state"],
         sample["sensitivity_slider"],
-        find_event(demo, (radio._id, "change"), overlap).fn,
+        model["selected_classifier_state"],
+        model["classifier_labels_df"],
+        model["model_facts_row"],
+        model["model_facts"],
+        model["model_facts_warning"],
     )
 
 
@@ -78,6 +88,19 @@ def current(tab: Tab) -> dict:
 def apply(tab: Tab, values: dict):
     updates, skipped = tab.state.updates_for(values, current(tab))
     return dict(zip(tab.state.components(), updates, strict=True)), skipped
+
+
+def change_model(
+    tab: Tab,
+    model,
+    species=gu.ALL_SPECIES,
+    overlap=0.0,
+    locale="en_us",
+    classifier=None,
+) -> dict:
+    event = find_event(tab.demo, (tab.model._id, "change"), tab.overlap)
+    updates = event.fn(model, species, overlap, locale, classifier)
+    return dict(zip(event.outputs, updates, strict=True))
 
 
 def values_of(choices) -> list:
@@ -141,9 +164,7 @@ def test_switching_from_perch_to_birdnet_pulls_the_overlap_down(appdir):
     tab = build(model_selection_radio=gu.USE_PERCH, overlap_slider=4.0)
     assert tab.overlap.value == 4.0
 
-    _, overlap, _, _ = tab.on_model_change(
-        gu.USE_BIRDNET_3_0, gu.ALL_SPECIES, 4.0, "en_us"
-    )
+    overlap = change_model(tab, gu.USE_BIRDNET_3_0, overlap=4.0)[tab.overlap]
 
     assert overlap["maximum"] == 2.9
     assert overlap["value"] == 2.9
@@ -151,7 +172,7 @@ def test_switching_from_perch_to_birdnet_pulls_the_overlap_down(appdir):
 
 def test_an_overlap_pulled_down_by_a_model_switch_survives_a_restart(appdir):
     tab = build(model_selection_radio=gu.USE_PERCH, overlap_slider=4.0)
-    tab.on_model_change(gu.USE_BIRDNET_3_0, gu.ALL_SPECIES, 4.0, "en_us")
+    change_model(tab, gu.USE_BIRDNET_3_0, overlap=4.0)
     settings.set_tab_setting("multi", "model_selection_radio", gu.USE_BIRDNET_3_0)
 
     assert build().overlap.value == 2.9
@@ -161,7 +182,7 @@ def test_a_model_switch_after_a_reset_keeps_the_settings_empty(appdir):
     tab = build(model_selection_radio=gu.USE_PERCH)
     gs.reset_to_defaults()
 
-    tab.on_model_change(gu.default_model(), gu.ALL_SPECIES, 0.0, "en_us")
+    change_model(tab, gu.default_model())
 
     assert settings.get_tab_settings("multi") == {}
 
@@ -235,7 +256,7 @@ def test_a_locale_the_new_model_lacks_falls_back_to_english(appdir):
 def test_perch_hides_the_locale_and_keeps_it(appdir):
     tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
 
-    *_, locale = tab.on_model_change(gu.USE_PERCH, gu.ALL_SPECIES, 0.0, ONLY_3_0_LOCALE)
+    locale = change_model(tab, gu.USE_PERCH, locale=ONLY_3_0_LOCALE)[tab.locale]
 
     assert locale == gr.update(visible=False, choices=cfg.ALL_MODEL_LANGUAGES)
 
@@ -244,7 +265,7 @@ def test_perch_hides_the_locale_and_keeps_it(appdir):
 def test_the_species_choices_keep_their_order_across_models(appdir, model):
     tab = build(model_selection_radio=model)
 
-    _, _, species, _ = tab.on_model_change(model, gu.ALL_SPECIES, 0.0, "en_us")
+    species = change_model(tab, model)[tab.species]
 
     assert values_of(species["choices"]) == values_of(tab.species.choices)
 
@@ -354,7 +375,8 @@ class Session:
             for c in (tab.model, tab.species, tab.overlap, tab.locale)
         ]
         return self.run(
-            find_event(tab.demo, (tab.model._id, "change"), tab.overlap), shown
+            find_event(tab.demo, (tab.model._id, "change"), tab.overlap),
+            [*shown, None],
         )
 
 
@@ -463,3 +485,312 @@ def test_a_params_file_arrives_fitted(appdir, tmp_path, monkeypatch):
         gu.ALL_SPECIES,
         gu.CUSTOM_SPECIES,
     ]
+
+
+def classifier_with_labels(tmp_path, count: int) -> str:
+    path = tmp_path / "my.tflite"
+    path.write_bytes(b"")
+    (tmp_path / "my_Labels.txt").write_text(
+        "\n".join(f"Genus species{i}_Bird {i}" for i in range(count)), encoding="utf-8"
+    )
+    return str(path)
+
+
+def fake_classifier(monkeypatch, version="3.0", mode="replace", n_species=12):
+    monkeypatch.setattr(
+        model_utils,
+        "classifier_info",
+        lambda path, **kwargs: SimpleNamespace(
+            version=version, mode=mode, n_species=n_species
+        ),
+    )
+
+
+def summary(tab: Tab, updates: dict) -> dict:
+    return {
+        "visible": updates[tab.facts_row]["visible"],
+        "tiles": [
+            (updates[tile].get("label"), updates[tile].get("value"))
+            for tile in tab.facts
+        ],
+        "warning": updates[tab.facts_warning],
+    }
+
+
+def test_the_summary_describes_the_built_model(appdir):
+    tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+
+    assert tab.facts_row.visible
+    assert [(box.label, box.value) for box in tab.facts] == [
+        ("Segment length", "3 s"),
+        ("Classes", "11\u202f560"),
+        ("Label languages", str(len(gu.model_languages(gu.USE_BIRDNET_3_0)))),
+        ("Species by location", "Available"),
+    ]
+    assert not tab.facts_warning.visible
+
+
+def test_switching_to_perch_updates_the_summary(appdir):
+    tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+
+    shown = summary(tab, change_model(tab, gu.USE_PERCH))
+
+    assert shown["visible"]
+    assert shown["tiles"] == [
+        ("Segment length", "5 s"),
+        ("Classes", "14\u202f795"),
+        ("Label languages", "Scientific names only"),
+        ("Species by location", "Not available"),
+    ]
+    assert shown["warning"]["visible"] is False
+
+
+def test_a_custom_classifier_shows_what_it_was_trained_on(
+    appdir, tmp_path, monkeypatch
+):
+    fake_classifier(monkeypatch, version="2.4", mode="append", n_species=6522 + 4)
+    classifier = classifier_with_labels(tmp_path, 6522 + 4)
+    tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+
+    shown = summary(tab, change_model(tab, gu.CUSTOM_CLASSIFIER, classifier=classifier))
+
+    assert shown["tiles"] == [
+        ("Based on", "BirdNET 2.4"),
+        ("Classes", "4"),
+        ("Output", "Official classes + custom"),
+        ("Segment length", "3 s"),
+    ]
+    assert shown["warning"]["visible"] is False
+
+
+def page_load(tab: Tab, model, classifier) -> dict:
+    event = find_event(tab.demo, (tab.demo._id, "load"), tab.facts_row)
+    return dict(zip(event.outputs, event.fn(model, classifier), strict=True))
+
+
+def test_a_persisted_classifier_is_summarized_once_the_page_loads(
+    appdir, tmp_path, monkeypatch
+):
+    fake_classifier(monkeypatch, n_species=12)
+    classifier = classifier_with_labels(tmp_path, 12)
+
+    tab = build(
+        model_selection_radio=gu.CUSTOM_CLASSIFIER, custom_classifier_file=classifier
+    )
+    assert not tab.facts_row.visible
+
+    shown = summary(tab, page_load(tab, gu.CUSTOM_CLASSIFIER, classifier))
+
+    assert shown["visible"]
+    assert shown["tiles"] == [
+        ("Based on", "BirdNET 3.0"),
+        ("Classes", "12"),
+        ("Output", "Custom classes only"),
+        ("Segment length", "3 s"),
+    ]
+
+
+def test_a_label_file_of_the_wrong_length_is_flagged(appdir, tmp_path, monkeypatch):
+    fake_classifier(monkeypatch, n_species=12)
+    classifier = classifier_with_labels(tmp_path, 11)
+    tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+
+    shown = summary(tab, change_model(tab, gu.CUSTOM_CLASSIFIER, classifier=classifier))
+
+    assert shown["visible"]
+    assert shown["warning"]["visible"] is True
+    assert shown["warning"]["value"] == loc.localize(
+        "model-selection-labels-mismatch-warning"
+    ).format(labels=11, classes=12, file="my_Labels.txt")
+
+
+def test_without_a_readable_classifier_there_is_no_summary(
+    appdir, tmp_path, monkeypatch
+):
+    tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+
+    assert not summary(tab, change_model(tab, gu.CUSTOM_CLASSIFIER))["visible"]
+
+    gone = str(tmp_path / "gone.tflite")
+    shown = summary(tab, change_model(tab, gu.CUSTOM_CLASSIFIER, classifier=gone))
+
+    assert not shown["visible"]
+    assert shown["warning"]["visible"] is True
+    assert "gone.tflite" in shown["warning"]["value"]
+    assert tmp_path.name not in shown["warning"]["value"]
+
+    def reject(path, **kwargs):
+        raise ValueError(
+            f"Failed to inspect custom TFLite model '{path}': not a classifier"
+        ) from ValueError("not a classifier")
+
+    monkeypatch.setattr(model_utils, "classifier_info", reject)
+    shown = summary(
+        tab, change_model(tab, gu.CUSTOM_CLASSIFIER, classifier="head.tflite")
+    )
+
+    assert shown["warning"]["value"] == loc.localize(
+        "model-selection-classifier-unreadable-warning"
+    ).format(file="head.tflite", error="not a classifier")
+
+
+def test_an_unreadable_persisted_classifier_is_flagged_once_the_page_loads(
+    appdir, tmp_path, monkeypatch
+):
+    def reject(path, **kwargs):
+        raise ValueError("not a classifier")
+
+    monkeypatch.setattr(model_utils, "classifier_info", reject)
+    classifier = classifier_with_labels(tmp_path, 1)
+    tab = build(
+        model_selection_radio=gu.CUSTOM_CLASSIFIER, custom_classifier_file=classifier
+    )
+
+    shown = summary(tab, page_load(tab, gu.CUSTOM_CLASSIFIER, classifier))
+
+    assert not shown["visible"]
+    assert shown["warning"]["visible"] is True
+    assert "my.tflite" in shown["warning"]["value"]
+
+
+def test_a_persisted_mismatched_label_file_is_flagged_once_the_page_loads(
+    appdir, tmp_path, monkeypatch
+):
+    fake_classifier(monkeypatch, n_species=12)
+    classifier = classifier_with_labels(tmp_path, 11)
+    tab = build(
+        model_selection_radio=gu.CUSTOM_CLASSIFIER, custom_classifier_file=classifier
+    )
+
+    shown = summary(tab, page_load(tab, gu.CUSTOM_CLASSIFIER, classifier))
+
+    assert shown["visible"]
+    assert shown["warning"]["visible"] is True
+    assert shown["warning"]["value"] == loc.localize(
+        "model-selection-labels-mismatch-warning"
+    ).format(labels=11, classes=12, file="my_Labels.txt")
+
+
+def test_a_classifier_stored_with_a_birdnet_preset_keeps_the_models_view(
+    appdir, tmp_path, monkeypatch
+):
+    fake_classifier(monkeypatch, n_species=12)
+    classifier = classifier_with_labels(tmp_path, 12)
+    tab = build()
+    event = find_event(tab.demo, (tab.classifier_state._id, "change"), tab.facts_row)
+
+    updates = dict(
+        zip(event.outputs, event.fn(gu.USE_BIRDNET_3_0, classifier), strict=True)
+    )
+
+    shown = summary(tab, updates)
+    assert shown["tiles"][0] == ("Segment length", "3 s")
+    assert shown["tiles"][1][0] == "Classes"
+    assert updates[tab.labels]["visible"] is False
+
+
+def test_a_persisted_classifier_is_inspected_before_the_first_switch(
+    appdir, tmp_path, monkeypatch
+):
+    calls = []
+
+    def record(path, **kwargs):
+        calls.append(path)
+        return SimpleNamespace(version="3.0", mode="replace", n_species=12)
+
+    monkeypatch.setattr(model_utils, "classifier_info", record)
+    classifier = classifier_with_labels(tmp_path, 12)
+    tab = build(
+        model_selection_radio=gu.USE_BIRDNET_3_0, custom_classifier_file=classifier
+    )
+    assert calls == []
+
+    load = find_event(tab.demo, (tab.demo._id, "load"), tab.facts_row)
+
+    assert load.fn(gu.USE_BIRDNET_3_0, classifier) == gr.skip()
+    assert calls == [classifier]
+
+
+def test_repicking_the_same_classifier_refreshes_the_summary(
+    appdir, tmp_path, monkeypatch
+):
+    fake_classifier(monkeypatch, n_species=12)
+    classifier = classifier_with_labels(tmp_path, 11)
+    monkeypatch.setattr(gu, "select_file", lambda *a, **k: classifier)
+    tab = build(model_selection_radio=gu.CUSTOM_CLASSIFIER)
+    pick = pick_event(tab)
+
+    first = dict(zip(pick.outputs, pick.fn(), strict=True))
+    classifier_with_labels(tmp_path, 12)
+    second = dict(zip(pick.outputs, pick.fn(), strict=True))
+
+    assert summary(tab, first)["warning"]["visible"] is True
+    assert summary(tab, second)["warning"]["visible"] is False
+
+
+def test_picking_a_classifier_again_retries_a_failed_inspection(
+    appdir, tmp_path, monkeypatch
+):
+    calls = []
+
+    def inspect(path, *, library):
+        calls.append(path)
+        if len(calls) == 1:
+            raise ValueError("Failed to inspect model due to timeout.")
+        return SimpleNamespace(version="3.0", mode="replace", n_species=12)
+
+    monkeypatch.setattr(model_utils.birdnet, "inspect_custom_tflite", inspect)
+    model_utils._INSPECTIONS.clear()
+    classifier = classifier_with_labels(tmp_path, 12)
+    monkeypatch.setattr(gu, "select_file", lambda *a, **k: classifier)
+    tab = build(model_selection_radio=gu.CUSTOM_CLASSIFIER)
+    pick = pick_event(tab)
+
+    assert pick.fn() == gr.skip()
+    second = dict(zip(pick.outputs, pick.fn(), strict=True))
+
+    assert summary(tab, second)["tiles"][1] == ("Classes", "12")
+    assert len(calls) == 2
+
+
+def pick_event(tab: Tab):
+    return next(
+        event
+        for event in tab.demo.fns.values()
+        if event.targets[0][1] == "click" and tab.facts_row in event.outputs
+    )
+
+
+def test_cancelling_the_file_dialog_changes_nothing(appdir, monkeypatch):
+    monkeypatch.setattr(gu, "select_file", lambda *a, **k: None)
+    tab = build(model_selection_radio=gu.CUSTOM_CLASSIFIER)
+
+    assert pick_event(tab).fn() == gr.skip()
+
+
+def test_a_model_switch_is_a_single_update(appdir):
+    tab = build()
+
+    listeners = [
+        event
+        for event in tab.demo.fns.values()
+        if (tab.model._id, "change") in event.targets
+    ]
+
+    assert len(listeners) == 1
+    assert all(
+        component in listeners[0].outputs
+        for component in (tab.sensitivity, tab.locale, tab.facts_row)
+    )
+
+
+def test_the_summary_follows_the_picked_classifier(appdir, tmp_path, monkeypatch):
+    fake_classifier(monkeypatch, n_species=12)
+    classifier = classifier_with_labels(tmp_path, 12)
+    tab = build()
+    event = find_event(tab.demo, (tab.classifier_state._id, "change"), tab.facts_row)
+
+    updates = event.fn(gu.CUSTOM_CLASSIFIER, classifier)
+
+    shown = summary(tab, dict(zip(event.outputs, updates, strict=True)))
+    assert shown["tiles"][1] == ("Classes", "12")

@@ -20,11 +20,10 @@ covers updating the ref.
 
 **Models download on first use.** Inference comes from the `birdnet` dependency,
 which fetches roughly 120 MB (acoustic), 35 MB (geo) and 380 MB (perch-v2) into the
-directory named by `BIRDNET_APP_DATA` — **read at import time** — skipping files
-that already exist. CI points it at a cached workspace path; `Dockerfile` bakes the
-models into the image. Tests have a 120 s timeout that a cold download can exceed,
-which is why CI pre-downloads outside pytest. Do the same locally if a first run
-times out:
+directory named by `BIRDNET_APP_DATA`, skipping files that already exist. CI points
+it at a cached workspace path; `Dockerfile` bakes the models into the image. Tests
+have a 120 s timeout that a cold download can exceed, which is why CI pre-downloads
+outside pytest. Do the same locally if a first run times out:
 `python -c "import birdnet; birdnet.load('acoustic', '2.4', 'tf', lang='en_us')"`
 
 ## Before handing work back

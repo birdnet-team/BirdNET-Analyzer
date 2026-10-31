@@ -23,9 +23,9 @@ jobs:
     # pytest-timeout cannot interrupt. Healthy jobs finish in ~2-6 min.
     timeout-minutes: 30
     env:
-      # birdnet reads this at import time and skips models already present, so a
-      # restored cache avoids re-fetching them from tuc.cloud. Under the workspace
-      # because job-level env can use `github.workspace` but not `runner`.
+      # birdnet skips models already present, so a restored cache avoids re-fetching
+      # them from tuc.cloud. Under the workspace because job-level env can use
+      # `github.workspace` but not `runner`.
       BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
       # acoustic 3.0 + geo 3.0 ONNX are the default analyze path; acoustic 2.4 TF
       # is what embeddings and custom classifiers load; the 3.0 SavedModel is the

@@ -105,3 +105,57 @@ footer {
 .success {
     background-color: #00b81f;
 }
+
+.model-facts.panel {
+    padding: var(--spacing-lg) var(--spacing-md);
+}
+
+.model-facts .form {
+    background: none;
+    border: none;
+    box-shadow: none;
+    gap: 0;
+}
+
+.model-facts .form > .block {
+    background: none;
+    border-width: 0 0 0 1px !important;
+    border-color: var(--border-color-primary);
+    border-radius: 0;
+    padding: var(--spacing-xs) var(--spacing-xl);
+}
+
+.model-facts .form > .block:first-child {
+    border-width: 0 !important;
+}
+
+.model-facts [data-testid="block-info"] {
+    color: var(--block-info-text-color);
+    font-size: var(--block-info-text-size);
+    margin-bottom: var(--spacing-xxs);
+}
+
+.model-facts textarea {
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: var(--body-text-color);
+    -webkit-text-fill-color: var(--body-text-color);
+    cursor: default;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    height: auto !important;
+    opacity: 1;
+    padding: 0;
+    resize: none;
+}
+
+.block.model-facts-warning {
+    background: var(--error-background-fill);
+    border: 1px solid var(--error-border-color);
+    padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.block.model-facts-warning .prose {
+    color: var(--error-text-color);
+}
