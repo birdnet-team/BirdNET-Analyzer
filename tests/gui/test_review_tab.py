@@ -57,7 +57,7 @@ def test_out_of_range_confidences_are_left_out_of_the_regression(
     points = sorted(map(tuple, axes.collections[-1].get_offsets().tolist()))
     expected = [(0.1, 0), (0.2, 0), (0.9, 1)]
 
-    assert points == pytest.approx(expected)
+    assert points == [pytest.approx(point) for point in expected]
     assert fitted == [expected]
 
 

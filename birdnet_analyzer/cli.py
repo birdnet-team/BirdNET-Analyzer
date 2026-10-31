@@ -411,7 +411,10 @@ def computing_resources_args():
     p.add_argument(
         "--n_workers",
         type=int,
-        help="Number of worker processes for audio processing. Defaults to number of CPU cores.",
+        help=(
+            "Number of worker processes for audio processing. Defaults to as many as "
+            "fit the available memory, at most one per CPU core."
+        ),
     )
     p.add_argument(
         "--n_producers",

@@ -298,18 +298,11 @@ def read_lines(
 _BIRDNET_SUFFIX = "Model_FP32.tflite"
 
 
-def read_classifier_labels(classifier_file: str) -> list[str] | None:
-    """Reads the labels belonging to a custom classifier.
+def classifier_labels_path(classifier_file: str) -> str | None:
+    """The label file next to a custom classifier, or None if there is none.
 
-    Looks for the label file next to the classifier, following the naming used when a
-    custom classifier is trained, and falls back to the naming of the shipped BirdNET
-    models.
-
-    Args:
-        classifier_file: Absolute path to the classifier file.
-
-    Returns:
-        The labels, or None if no label file was found.
+    Follows the naming used when a custom classifier is trained, and falls back to the
+    naming of the shipped BirdNET models.
     """
     base_name = os.path.splitext(classifier_file)[0]
     labels_file = base_name + "_Labels.txt"
@@ -317,7 +310,14 @@ def read_classifier_labels(classifier_file: str) -> list[str] | None:
     if not os.path.isfile(labels_file) and classifier_file.endswith(_BIRDNET_SUFFIX):
         labels_file = classifier_file.removesuffix(_BIRDNET_SUFFIX) + "Labels.txt"
 
-    if not os.path.isfile(labels_file):
+    return labels_file if os.path.isfile(labels_file) else None
+
+
+def read_classifier_labels(classifier_file: str) -> list[str] | None:
+    """The labels of a custom classifier, or None if it has no label file."""
+    labels_file = classifier_labels_path(classifier_file)
+
+    if labels_file is None:
         return None
 
     return read_lines(labels_file, fail_on_blank_lines=True)

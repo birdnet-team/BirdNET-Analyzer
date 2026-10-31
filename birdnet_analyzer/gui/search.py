@@ -444,8 +444,6 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
             visible=new_crop_mode == "segments", interactive=new_crop_mode == "segments"
         )
 
-    crop_mode.change(on_crop_select, inputs=crop_mode, outputs=crop_overlap)
-
     @gu.gui_runtime_error_handler
     def update_query_spectrogram(audiofilepath, db_selection, crop_mode, crop_overlap):
         import numpy as np
@@ -486,10 +484,18 @@ def build_search_tab() -> gu.TAB_BUILDER_RESULT:
 
         return gr.update(value=None, visible=False), [], {}
 
+    def on_crop_mode_change(new_crop_mode, audiofilepath, db_selection, overlap):
+        return (
+            on_crop_select(new_crop_mode),
+            *update_query_spectrogram(
+                audiofilepath, db_selection, new_crop_mode, overlap
+            ),
+        )
+
     crop_mode.change(
-        update_query_spectrogram,
-        inputs=[query_sample_tb, db_selection_tb, crop_mode, crop_overlap],
-        outputs=[query_spectrogram, results_state, export_state],
+        on_crop_mode_change,
+        inputs=[crop_mode, query_sample_tb, db_selection_tb, crop_overlap],
+        outputs=[crop_overlap, query_spectrogram, results_state, export_state],
         preprocess=False,
     )
 

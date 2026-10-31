@@ -29,21 +29,11 @@ def build():
     with gr.Blocks() as demo:
         train.build_train_tab()
 
-    base_model = _radio("training-tab-base-model-radio-label")
-    cache_mode = _radio("training-tab-cache-mode-radio-label")
-    on_cache_mode_change = next(
-        event.fn
-        for event in demo.fns.values()
-        if event.targets
-        and event.targets[0] == (cache_mode._id, "change")
-        and base_model in event.outputs
-    )
-
-    return base_model, on_cache_mode_change
+    return demo, _radio("training-tab-base-model-radio-label")
 
 
 def test_the_newest_version_is_the_default_base(appdir):
-    base_model, _ = build()
+    _, base_model = build()
 
     assert base_model.value == cfg.DEFAULT_ACOUSTIC_MODEL_VERSION
     assert base_model.interactive
@@ -51,19 +41,20 @@ def test_the_newest_version_is_the_default_base(appdir):
 
 
 def test_loading_a_cache_disables_the_base_choice(appdir):
-    _, on_cache_mode_change = build()
+    demo, base_model = build()
+    cache_mode = _radio("training-tab-cache-mode-radio-label")
 
-    *_, update = on_cache_mode_change("load", None, None)
-    assert update["interactive"] is False
+    disabled = _fire(demo, cache_mode, {cache_mode: "load"})[base_model]
+    enabled = _fire(demo, cache_mode, {cache_mode: "none"})[base_model]
 
-    *_, update = on_cache_mode_change("none", None, None)
-    assert update["interactive"] is True
+    assert disabled["interactive"] is False
+    assert enabled["interactive"] is True
 
 
 def test_the_base_choice_is_built_disabled_when_a_cache_is_persisted(appdir):
     settings.set_tab_setting("train", "cache_mode_radio", "load")
 
-    base_model, _ = build()
+    _, base_model = build()
 
     assert not base_model.interactive
 
@@ -341,6 +332,20 @@ def test_the_autotune_repeats_are_editable_only_with_several_folds(
 
     assert repeats.interactive is editable
     assert update["interactive"] is editable
+
+
+def test_a_cache_mode_switch_is_a_single_update(appdir):
+    with gr.Blocks() as demo:
+        train.build_train_tab()
+    cache_mode = _radio("training-tab-cache-mode-radio-label")
+
+    listeners = [
+        event
+        for event in demo.fns.values()
+        if (cache_mode._id, "change") in event.targets
+    ]
+
+    assert len(listeners) == 1
 
 
 def test_changing_the_cache_mode_forgets_the_picked_cache_location(appdir):

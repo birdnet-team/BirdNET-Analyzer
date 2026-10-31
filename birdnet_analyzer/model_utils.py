@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import functools
 import logging
 import os
 import threading
+from collections import OrderedDict
 from contextlib import suppress
 from typing import TYPE_CHECKING, cast
 
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
         AcousticEncodingSession,
         AcousticSessionBase,
     )
+    from birdnet.acoustic.models.base import AcousticModelBase
     from birdnet.globals import (
         ACOUSTIC_MODEL_VERSIONS,
         MODEL_LANGUAGES,
@@ -318,27 +319,72 @@ def _language_for_version(language: MODEL_LANGUAGES, version: str) -> MODEL_LANG
     return MODEL_LANGUAGE_EN_US
 
 
-def classifier_version(classifier: str) -> ACOUSTIC_MODEL_VERSIONS:
-    """The BirdNET version a custom classifier was trained on, read from its file.
+def _model_class(model: str) -> type[AcousticModelBase]:
+    if model == "perch":
+        return birdnet.AcousticModelPerchV2
+    if model == "3.0":
+        return birdnet.AcousticModelV3_0
+    return birdnet.AcousticModelV2_4
+
+
+def segment_length_s(model: str) -> float:
+    """The length in seconds of the segments a model scores."""
+    return _model_class(model).get_segment_size_s()
+
+
+def class_count(model: str) -> int:
+    """The number of classes an official model outputs; not all of them are species."""
+    return _model_class(model).get_n_classes()
+
+
+_INSPECTIONS: OrderedDict[
+    tuple[str, int, int], birdnet.CustomTFLiteInfo | OSError | ValueError
+] = OrderedDict()
+_INSPECTIONS_LOCK = threading.Lock()
+_INSPECTIONS_KEPT = 8
+
+
+def classifier_info(
+    classifier: str, *, retry_failed: bool = False
+) -> birdnet.CustomTFLiteInfo:
+    """What the birdnet library reads from a custom classifier file.
+
+    Each file is inspected once, and a failure is remembered too, so switching models
+    with an unusable classifier stays instant. ``retry_failed`` inspects such a file
+    again, for the paths where the user waits for the answer anyway.
 
     Raises:
         OSError: The file cannot be read.
         ValueError: The file is not a BirdNET classifier (e.g. a detached head).
     """
     stat = os.stat(classifier)
-    info = _inspect_classifier(
-        os.path.abspath(classifier), stat.st_mtime_ns, stat.st_size
-    )
+    key = (os.path.abspath(classifier), stat.st_mtime_ns, stat.st_size)
 
+    with _INSPECTIONS_LOCK:
+        info = _INSPECTIONS.get(key)
+
+        if info is None or (retry_failed and isinstance(info, Exception)):
+            # Opened in a subprocess: ~0.3 s with litert, ~3.5 s with TensorFlow's
+            # interpreter.
+            try:
+                info = birdnet.inspect_custom_tflite(key[0], library="litert")
+            except (OSError, ValueError) as e:
+                info = e
+
+            _INSPECTIONS[key] = info
+            while len(_INSPECTIONS) > _INSPECTIONS_KEPT:
+                _INSPECTIONS.popitem(last=False)
+
+    if isinstance(info, Exception):
+        raise info
+
+    return info
+
+
+def classifier_version(classifier: str) -> ACOUSTIC_MODEL_VERSIONS:
+    """The BirdNET version a custom classifier was trained on, read from its file."""
+    info = classifier_info(classifier, retry_failed=True)
     return cast("ACOUSTIC_MODEL_VERSIONS", info.version)
-
-
-@functools.lru_cache(maxsize=8)
-def _inspect_classifier(
-    path: str, mtime_ns: int, size: int
-) -> birdnet.CustomTFLiteInfo:
-    # Opened in a subprocess: ~0.3 s with litert, ~3.5 s with TensorFlow's interpreter.
-    return birdnet.inspect_custom_tflite(path, library="litert")
 
 
 def classifier_batch_size(version: str, batch_size: int) -> int:

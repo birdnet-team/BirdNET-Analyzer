@@ -52,12 +52,13 @@ class Tab:
     def select(self, outputs, path, monkeypatch):
         monkeypatch.setattr(gu, "select_file", lambda *a, **k: path)
         on_select = next(
-            event.fn for event in self.demo.fns.values() if event.outputs == outputs
+            event.fn
+            for event in self.demo.fns.values()
+            if event.outputs[: len(outputs)] == outputs
         )
         on_select()
 
     def pick_classifier(self, path, monkeypatch):
-        monkeypatch.setattr(model_utils, "classifier_version", lambda path: "2.4")
         self.select(
             [self.classifier, self.classifier_file, self.labels], path, monkeypatch
         )
@@ -71,7 +72,16 @@ class Tab:
 
 
 @pytest.fixture
-def classifier(tmp_path):
+def classifier(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        model_utils,
+        "classifier_info",
+        lambda path, **kwargs: SimpleNamespace(
+            version="2.4", mode="replace", n_species=1
+        ),
+    )
     path = tmp_path / "my.tflite"
     path.write_bytes(b"")
     (tmp_path / "my_Labels.txt").write_text(BLACKBIRD, encoding="utf-8")

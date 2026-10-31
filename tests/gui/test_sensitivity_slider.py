@@ -32,15 +32,17 @@ def test_slider_disabled_for_perch_and_restored_for_birdnet(appdir):
     assert slider.interactive
     assert slider.value == 1.25
 
-    to_3_0, *_ = on_model_change(gu.USE_BIRDNET_3_0, gu.ALL_SPECIES, 0.0, "en_us")
+    to_3_0, *_ = on_model_change(gu.USE_BIRDNET_3_0, gu.ALL_SPECIES, 0.0, "en_us", None)
     assert to_3_0["interactive"] is True
     assert to_3_0["value"] == 1.25
 
-    to_perch, *_ = on_model_change(gu.USE_PERCH, gu.ALL_SPECIES, 0.0, "en_us")
+    to_perch, *_ = on_model_change(gu.USE_PERCH, gu.ALL_SPECIES, 0.0, "en_us", None)
     assert to_perch["interactive"] is False
     assert to_perch["value"] == 1.0
 
-    to_custom, *_ = on_model_change(gu.CUSTOM_CLASSIFIER, gu.ALL_SPECIES, 0.0, "en_us")
+    to_custom, *_ = on_model_change(
+        gu.CUSTOM_CLASSIFIER, gu.ALL_SPECIES, 0.0, "en_us", None
+    )
     assert to_custom["interactive"] is True
     assert to_custom["value"] == 1.25, "the user's sensitivity comes back"
 
@@ -84,12 +86,12 @@ def test_an_unusable_classifier_is_not_selected(appdir, monkeypatch):
     import birdnet_analyzer.gui.localization as loc
     from birdnet_analyzer import model_utils
 
-    def reject(path):
+    def reject(path, **kwargs):
         raise ValueError("looks like a detached classifier head")
 
     warnings = []
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: "head_detached.tflite")
-    monkeypatch.setattr(model_utils, "classifier_version", reject)
+    monkeypatch.setattr(model_utils, "classifier_info", reject)
     monkeypatch.setattr(
         gr, "Warning", lambda message, *a, **k: warnings.append(message)
     )
@@ -103,7 +105,7 @@ def test_an_unusable_classifier_is_not_selected(appdir, monkeypatch):
         if fn.targets and fn.targets[0][1] == "click" and state in fn.outputs
     )
 
-    assert on_select() == (gr.skip(), gr.skip(), gr.skip())
+    assert on_select() == gr.skip()
     assert warnings == [
         loc.localize("species-list-custom-classifier-invalid-warning").format(
             "looks like a detached classifier head"

@@ -124,7 +124,8 @@ def analyze(
         batch_size (int, optional): Segments per inference batch; a classifier
             trained on BirdNET 3.0 always takes 1. Defaults to 1.
         n_workers (int | None, optional): Number of inference worker processes.
-            Defaults to None, one per physical CPU core.
+            Defaults to None: as many as fit the available memory, at most one per
+            CPU core.
         n_producers (int, optional): Number of processes reading the audio files.
             Defaults to 1.
         rtype (str | list[str], optional): Result file format(s): "table" (Raven

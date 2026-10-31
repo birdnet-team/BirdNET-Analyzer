@@ -173,3 +173,22 @@ def test_a_failing_export_is_logged_and_shown(appdir, handler, monkeypatch, tmp_
         )
 
     assert len(logged) == 1
+
+
+def test_a_crop_mode_switch_is_a_single_update(appdir):
+    with gr.Blocks() as demo:
+        gui_search.build_search_tab()
+    crop_mode = next(
+        block
+        for block in demo.blocks.values()
+        if isinstance(block, gr.Radio)
+        and block.label == loc.localize("training-tab-crop-mode-radio-label")
+    )
+
+    listeners = [
+        event
+        for event in demo.fns.values()
+        if (crop_mode._id, "change") in event.targets
+    ]
+
+    assert len(listeners) == 1
