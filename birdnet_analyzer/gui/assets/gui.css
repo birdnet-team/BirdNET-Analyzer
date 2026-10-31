@@ -159,3 +159,7 @@ footer {
 .block.model-facts-warning .prose {
     color: var(--error-text-color);
 }
+
+[data-testid="toast-text"] {
+    white-space: pre-line;
+}
