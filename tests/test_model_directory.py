@@ -1,11 +1,13 @@
-"""The model directory, resolved at package import before ``birdnet`` freezes it."""
+"""The model directory the birdnet library downloads to and loads from."""
 
 import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
+from birdnet.utils.local_data import get_app_data_path, get_model_path
 
 from birdnet_analyzer import settings
 
@@ -74,6 +76,46 @@ def test_an_unusable_setting_falls_back_with_a_warning(clean, monkeypatch):
     assert os.environ[settings.MODEL_DIR_ENV_VAR] == str(
         settings.default_model_directory()
     )
+
+
+def model_file() -> Path:
+    return get_model_path("acoustic", "3.0", "onnx", "fp32")
+
+
+def restart():
+    os.environ.pop(settings.MODEL_DIR_ENV_VAR, None)
+    settings.apply_model_directory()
+
+
+def test_a_changed_directory_is_used_at_once_and_after_a_restart(clean):
+    target = clean / "chosen"
+    target.mkdir()
+
+    settings.set_model_directory(str(target))
+    assert model_file().is_relative_to(target.resolve())
+
+    restart()
+    assert model_file().is_relative_to(target.resolve())
+
+
+@pytest.mark.parametrize("frozen", [False, True])
+def test_restoring_the_default_takes_effect_at_once_and_after_a_restart(
+    clean, monkeypatch, frozen
+):
+    monkeypatch.setattr(settings, "FROZEN", frozen)
+    default = (
+        settings.default_model_directory().resolve()
+        if frozen
+        else get_app_data_path() / "birdnet"
+    )
+    settings.set_model_directory(str(clean / "chosen"))
+    assert not model_file().is_relative_to(default)
+
+    settings.set_model_directory("")
+    assert model_file().is_relative_to(default)
+
+    restart()
+    assert model_file().is_relative_to(default)
 
 
 def test_frozen_default_is_local_appdata_on_windows(clean, monkeypatch):

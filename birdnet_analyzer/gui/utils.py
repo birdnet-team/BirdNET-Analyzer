@@ -248,21 +248,10 @@ def _format_bytes(n: int) -> str:
 
 
 def _effective_model_directory() -> str:
-    """The model directory this session actually uses (the library's resolved one)."""
+    """The model directory the library loads models from right now."""
     from birdnet.utils.local_data import get_birdnet_app_data_folder
 
     return str(get_birdnet_app_data_folder())
-
-
-def _default_model_directory() -> str:
-    """The model directory the next start uses once the setting is cleared."""
-    if settings.FROZEN:
-        return str(settings.default_model_directory())
-
-    from birdnet.globals import PKG_NAME
-    from birdnet.utils.local_data import get_app_data_path
-
-    return str(get_app_data_path() / PKG_NAME)
 
 
 # Download sinks by the thread that runs birdnet.load; the library's callback fires
@@ -340,6 +329,18 @@ def download_progress(progress: "gr.Progress | None" = None):
             _DOWNLOAD_SINKS.pop(thread, None)
             if not _DOWNLOAD_SINKS:
                 birdnet.set_download_progress_callback(None)
+
+
+def _refuse_while_models_in_use() -> None:
+    if _DOWNLOAD_SINKS:
+        raise gr.Error(loc.localize("model-dir-busy-error"))
+
+
+def _switch_model_directory(directory: str) -> None:
+    # Under the lock, no model operation can start between the check and the switch.
+    with _DOWNLOAD_SINKS_LOCK:
+        _refuse_while_models_in_use()
+        settings.set_model_directory(directory)
 
 
 def select_folder(state_key=None):
@@ -561,6 +562,7 @@ def build_settings():
 
             @gui_runtime_error_handler
             def on_model_dir_select():
+                _refuse_while_models_in_use()
                 dir_name = select_folder(state_key="model-directory")
 
                 if not dir_name:
@@ -570,22 +572,24 @@ def build_settings():
 
                 if verdict == "invalid":
                     raise gr.Error(loc.localize("model-dir-invalid-error"))
+
+                _switch_model_directory(dir_name)
+
                 if verdict == "readonly":
                     gr.Warning(loc.localize("model-dir-readonly-warning"))
                 elif verdict == "ok-low-space":
                     gr.Warning(loc.localize("model-dir-low-space-warning"))
 
-                settings.set_setting(settings.MODEL_DIR_SETTING_KEY, dir_name)
-                gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
+                gr.Info(loc.localize("settings-tab-model-dir-saved-info"))
 
-                return dir_name
+                return _effective_model_directory()
 
             @gui_runtime_error_handler
             def on_model_dir_reset():
-                settings.set_setting(settings.MODEL_DIR_SETTING_KEY, "")
-                gr.Info(loc.localize("settings-tab-model-dir-restart-info"))
+                _switch_model_directory("")
+                gr.Info(loc.localize("settings-tab-model-dir-saved-info"))
 
-                return _default_model_directory()
+                return _effective_model_directory()
 
             state = TabState(_SETTINGS_TAB_ID)
 
@@ -2009,6 +2013,19 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
             child.join(timeout=5)
 
 
+def _show_startup_warnings():
+    # Tabs sharing a setting fall back alike, so their warnings repeat.
+    for message in dict.fromkeys(_STARTUP_WARNINGS):
+        gr.Warning(message)
+
+    if settings.MODEL_DIR_STARTUP_WARNING:
+        gr.Warning(
+            loc.localize("model-dir-fallback-warning").format(
+                path=settings.MODEL_DIR_STARTUP_WARNING
+            )
+        )
+
+
 def open_window(
     builder: list[Callable[[], TAB_BUILDER_RESULT]] | Callable[[], TAB_BUILDER_RESULT],
 ):
@@ -2055,21 +2072,8 @@ def open_window(
 
             demo.load(update_plots, inputs=inputs, outputs=outputs)
 
-        if settings.MODEL_DIR_STARTUP_WARNING:
-            _STARTUP_WARNINGS.append(
-                loc.localize("model-dir-fallback-warning").format(
-                    path=settings.MODEL_DIR_STARTUP_WARNING
-                )
-            )
-
-        if _STARTUP_WARNINGS:
-
-            def show_startup_warnings():
-                # Tabs sharing a setting fall back alike, so their warnings repeat.
-                for message in dict.fromkeys(_STARTUP_WARNINGS):
-                    gr.Warning(message)
-
-            demo.load(show_startup_warnings)
+        if _STARTUP_WARNINGS or settings.MODEL_DIR_STARTUP_WARNING:
+            demo.load(_show_startup_warnings)
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,

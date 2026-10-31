@@ -51,8 +51,8 @@ MODEL_DIR_ENV_VAR = "BIRDNET_APP_DATA"
 MODEL_DIR_MIN_FREE_BYTES = 2 * 1024**3
 
 # Set when the configured model directory was unusable at startup (e.g. an
-# unplugged data drive) and the default is used for this session instead; the
-# GUI surfaces it as a warning once it is up.
+# unplugged data drive) and the default is used instead, until the setting is
+# changed; the GUI surfaces it as a warning.
 MODEL_DIR_STARTUP_WARNING: str | None = None
 
 # Whether the model directory came from the environment variable (as opposed to
@@ -184,14 +184,32 @@ def apply_model_directory() -> None:
         return
 
     stored = _stored_model_directory()
-    if stored:
-        if _usable_directory(stored):
-            os.environ[MODEL_DIR_ENV_VAR] = str(Path(stored).expanduser())
-            return
+    if stored and not _usable_directory(stored):
         MODEL_DIR_STARTUP_WARNING = stored
+        stored = None
 
-    if FROZEN:
+    _point_library_at(stored)
+
+
+def _point_library_at(directory: str | None) -> None:
+    if directory:
+        os.environ[MODEL_DIR_ENV_VAR] = str(Path(directory).expanduser())
+    elif FROZEN:
         os.environ[MODEL_DIR_ENV_VAR] = str(default_model_directory())
+    else:
+        os.environ.pop(MODEL_DIR_ENV_VAR, None)
+
+
+def set_model_directory(directory: str) -> None:
+    """Stores the GUI's model directory and points the library at it.
+
+    An empty ``directory`` restores the default.
+    """
+    global MODEL_DIR_STARTUP_WARNING  # noqa: PLW0603
+
+    set_setting(MODEL_DIR_SETTING_KEY, directory)
+    _point_library_at(directory)
+    MODEL_DIR_STARTUP_WARNING = None
 
 
 def _backup_path(log_path: Path) -> Path:
