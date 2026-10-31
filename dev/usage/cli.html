@@ -207,7 +207,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--n_workers</kbd></dt>
-<dd><p>Number of worker processes for audio processing. Defaults to number of CPU cores.</p>
+<dd><p>Number of worker processes for audio processing. Defaults to as many as fit the available memory, at most one per CPU core.</p>
 </dd>
 <dt><kbd>--n_producers</kbd></dt>
 <dd><p>Number of producer processes for audio processing. Defaults to 1.</p>
@@ -302,7 +302,7 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
 <p>Default: <code class="docutils literal notranslate"><span class="pre">8</span></code></p>
 </dd>
 <dt><kbd>--n_workers</kbd></dt>
-<dd><p>Number of worker processes for audio processing. Defaults to number of CPU cores.</p>
+<dd><p>Number of worker processes for audio processing. Defaults to as many as fit the available memory, at most one per CPU core.</p>
 </dd>
 <dt><kbd>--n_producers</kbd></dt>
 <dd><p>Number of producer processes for audio processing. Defaults to 1.</p>

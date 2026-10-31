@@ -42,7 +42,7 @@ Older models can also be used as custom classifiers in the GUI or using the `--c
 
 Just download your desired model version and unzip.
 
-* GUI: Select the \*_Model_FP32.tflite file under **Species selection / Custom classifier**
+* GUI: Select the \*_Model_FP32.tflite file under **Model selection / Custom classifier**. The summary shown below the model choice tells you which BirdNET version the classifier's layout matches, how many classes it has and whether it replaces or extends the official classes, so you can check that the right file was picked.
 * CLI: ``python -m birdnet_analyzer.analyze ... --classifier 'path_to_Model_FP32.tflite' --cc_species_list 'path_to_Labels.txt'``
 
 Model Version History
