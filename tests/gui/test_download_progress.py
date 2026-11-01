@@ -310,6 +310,7 @@ def test_embeddings_tab_shows_the_download_on_its_progress_bar(monkeypatch, tmp_
         overlap=0.0,
         batch_size=1,
         producers_number=1,
+        workers_auto=False,
         workers_number=1,
         audio_speed=1.0,
         fmin=0,

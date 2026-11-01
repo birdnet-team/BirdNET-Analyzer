@@ -1,3 +1,4 @@
+import inspect
 import os
 import re
 
@@ -35,6 +36,7 @@ def _run(db_directory, fmin=200, fmax=9000):
         db_directory=db_directory,
         overlap=0.5,
         producers_number=3,
+        workers_auto=False,
         workers_number=5,
         batch_size=7,
         audio_speed=-2,
@@ -183,3 +185,29 @@ def test_a_failing_database_read_is_logged_and_shown(
         handler(gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY)(None)
 
     assert len(logged) == 1
+
+
+def test_embedding_lets_birdnet_pick_the_worker_count_by_default(
+    appdir, embeddings_calls, tmp_path
+):
+    with gr.Blocks() as demo:
+        gui_embeddings.build_embeddings_tab()
+
+    run = next(
+        e
+        for e in demo.fns.values()
+        if getattr(e.fn, "__name__", None) == "run_embeddings_with_tqdm_tracking"
+    )
+    names = list(inspect.signature(run.fn).parameters)[: len(run.inputs)]
+    inputs = dict(zip(names, run.inputs, strict=True))
+    assert isinstance(inputs["workers_auto"], gr.Checkbox)
+    assert isinstance(inputs["workers_number"], gr.Number)
+    values = {name: component.value for name, component in inputs.items()}
+    values.update(input_path="recordings", db_directory=str(tmp_path / "new_db"))
+
+    def start(**overrides):
+        run.fn(*[{**values, **overrides}[name] for name in names])
+        return embeddings_calls.pop()[1]["n_workers"]
+
+    assert start() is None
+    assert start(workers_auto=False, workers_number=5) == 5

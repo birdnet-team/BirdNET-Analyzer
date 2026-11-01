@@ -95,7 +95,7 @@ def run_analysis(
             ``input_path``.
         save_params: Whether to write the parameters file next to the results.
         n_producers: The number of producer processes.
-        n_workers: The number of worker processes.
+        n_workers: The number of worker processes, or None to let birdnet choose.
         progress: The gradio progress bar.
         split_tables: Whether to split the output into separate tables per input file.
             Defaults to False.

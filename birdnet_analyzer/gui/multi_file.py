@@ -62,6 +62,7 @@ def run_batch_analysis(
     locale,
     batch_size,
     producers_number,
+    workers_auto,
     workers_number,
     input_dir,
     progress=gr.Progress(),
@@ -102,7 +103,7 @@ def run_batch_analysis(
             save_params=True,
             progress=progress,
             n_producers=producers_number,
-            n_workers=workers_number,
+            n_workers=None if workers_auto else workers_number,
             split_tables=split_tables_checkbox,
         )
     except RuntimeError:
@@ -345,7 +346,9 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
                 info=loc.localize("multi-tab-split-table-checkbox-info"),
             )
 
-        bs_number, producers_number, workers_number = gu.computing_settings(state)
+        bs_number, producers_number, workers_auto_checkbox, workers_number = (
+            gu.computing_settings(state)
+        )
         resume_status_md = gr.Markdown(visible=False)
 
         with gr.Row(equal_height=True):
@@ -388,6 +391,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             model_settings["locale_dropdown"],
             bs_number,
             producers_number,
+            workers_auto_checkbox,
             workers_number,
             input_directory_state,
         ]

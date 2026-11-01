@@ -338,7 +338,6 @@ def load_analysis_params(path: str) -> dict[str, Any]:
             "sf_thresh": "sf_thresh_number",
             "batch_size": "batch_size_number",
             "n_producers": "producers_number",
-            "n_workers": "workers_number",
             "top_n": "top_n_input",
             "lat": "lat_number",
             "lon": "lon_number",

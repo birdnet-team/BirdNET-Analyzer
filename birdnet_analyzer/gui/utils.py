@@ -1940,17 +1940,32 @@ def computing_settings(state: TabState):
             info=loc.localize("computing-settings-producers-number-info"),
             minimum=1,
         )
+        workers_auto_checkbox = state.persist(
+            "workers_auto_checkbox",
+            gr.Checkbox,
+            value=True,
+            label=loc.localize("computing-settings-workers-auto-checkbox-label"),
+            info=loc.localize("computing-settings-workers-auto-checkbox-info"),
+        )
         workers_number = state.persist(
             "workers_number",
             gr.Number,
             precision=1,
             label=loc.localize("computing-settings-workers-number-label"),
-            value=psutil.cpu_count(logical=True) or 1,
+            value=psutil.cpu_count(logical=False) or 1,
             info=loc.localize("computing-settings-workers-number-info"),
             minimum=1,
+            visible=not workers_auto_checkbox.value,
         )
 
-    return bs_number, producers_number, workers_number
+    workers_auto_checkbox.change(
+        lambda auto: gr.update(visible=not auto),
+        inputs=workers_auto_checkbox,
+        outputs=workers_number,
+        show_progress="hidden",
+    )
+
+    return bs_number, producers_number, workers_auto_checkbox, workers_number
 
 
 def info_box(description: str, title="Info") -> gr.Accordion:

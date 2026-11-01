@@ -15,6 +15,7 @@ def run_embeddings_with_tqdm_tracking(
     overlap,
     batch_size,
     producers_number,
+    workers_auto,
     workers_number,
     audio_speed,
     fmin,
@@ -29,6 +30,7 @@ def run_embeddings_with_tqdm_tracking(
             db_directory,
             overlap,
             producers_number,
+            workers_auto,
             workers_number,
             batch_size,
             audio_speed,
@@ -45,6 +47,7 @@ def run_embeddings(
     db_directory,
     overlap,
     producers_number,
+    workers_auto,
     workers_number,
     batch_size,
     audio_speed,
@@ -78,7 +81,7 @@ def run_embeddings(
         db_directory,
         overlap=overlap,
         n_producers=producers_number,
-        n_workers=workers_number,
+        n_workers=None if workers_auto else workers_number,
         batch_size=batch_size,
         audio_speed=audio_speed,
         fmin=fmin,
@@ -229,7 +232,9 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
                     info=loc.localize("embedding-settings-audio-speed-slider-info"),
                 )
 
-            bs_number, producers_number, workers_number = gu.computing_settings(state)
+            bs_number, producers_number, workers_auto_checkbox, workers_number = (
+                gu.computing_settings(state)
+            )
 
             fmin_number, fmax_number = gu.bandpass_settings(state)
 
@@ -320,6 +325,7 @@ def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
                 overlap_slider,
                 bs_number,
                 producers_number,
+                workers_auto_checkbox,
                 workers_number,
                 audio_speed_slider,
                 fmin_number,
