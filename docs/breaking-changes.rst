@@ -332,3 +332,7 @@ Other changes
 * **Search** with a query longer than one segment (``--crop_mode segments``) ranks the
   results by their mean score over all query segments. v2.4.0 counted a result only for
   the query segments whose own top results contained it, so its rankings differ.
+* **The GUI's worker count** is automatic by default: the birdnet library starts as
+  many worker processes as fit the available memory, at most one per CPU core, where
+  v2.4.0 started one per logical core. A count set in an earlier version is ignored
+  until "Automatic worker count" is unchecked.

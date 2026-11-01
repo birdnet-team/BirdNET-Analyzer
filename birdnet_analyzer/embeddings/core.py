@@ -55,7 +55,8 @@ def embeddings(
         file_output (str | None, optional): Path to save the output embeddings. If None,
             embeddings are not saved to a file. Defaults to None.
         n_workers (int | None, optional): Number of worker processes to use for
-            processing. Defaults to None, one per physical CPU core.
+            processing. Defaults to None: as many as fit the available memory, at
+            most one per CPU core.
         n_producers (int, optional): Number of producer processes to use for
             processing. Defaults to 1.
         on_update (Callable[[AcousticProgressStats], None] | None, optional): Callback

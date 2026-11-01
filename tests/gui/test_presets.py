@@ -194,7 +194,6 @@ def test_the_analysis_params_of_a_previous_run_are_read_back(
         "fmax_number": 12000,
         "sf_thresh_number": 0.05,
         "batch_size_number": 8,
-        "workers_number": 4,
         "producers_number": 2,
         "use_top_n_checkbox": False,
         "yearlong_checkbox": True,
