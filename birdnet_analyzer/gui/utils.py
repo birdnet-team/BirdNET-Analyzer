@@ -77,9 +77,7 @@ _SPECIES_KEYS = Literal[
     "sf_thresh_number",
     "yearlong_checkbox",
     "selected_classifier_state",
-    "map_plot",
 ]
-TAB_BUILDER_RESULT = tuple[gr.Component, gr.Component, gr.Component] | None
 
 _SETTINGS_TAB_ID = "settings"
 _SPECTROGRAM_COLORMAPS = ["viridis", "magma", "plasma", "inferno", "Greys", "jet"]
@@ -1207,26 +1205,19 @@ def species_list_coordinates(state: TabState, show_map=False):
                 info=loc.localize("species-list-coordinates-lon-number-info"),
             )
 
-        # No initial figure: open_window's demo.load repopulates every map plot on
-        # page load, so building one here only slows startup.
-        map_plot = gr.Plot(
-            show_label=False,
-            scale=2,
-            visible=show_map,
-        )
+        map_plot = None
 
-        lat_number.change(
-            plot_map_scatter_mapbox,
-            inputs=[lat_number, lon_number],
-            outputs=map_plot,
-            show_progress="hidden",
-        )
-        lon_number.change(
-            plot_map_scatter_mapbox,
-            inputs=[lat_number, lon_number],
-            outputs=map_plot,
-            show_progress="hidden",
-        )
+        if show_map:
+            # No initial figure: the tab draws it when first selected.
+            map_plot = gr.Plot(show_label=False, scale=2)
+
+            for coordinate in (lat_number, lon_number):
+                coordinate.change(
+                    plot_map_scatter_mapbox,
+                    inputs=[lat_number, lon_number],
+                    outputs=map_plot,
+                    show_progress="hidden",
+                )
 
     with gr.Group():
         with gr.Row():
@@ -1731,7 +1722,7 @@ def species_lists(
                     week_number,
                     sf_thresh_number,
                     yearlong_checkbox,
-                    map_plot,
+                    _,
                 ) = species_list_coordinates(state)
 
             species_file = state.get_file(SPECIES_FILE_KEY)
@@ -1809,7 +1800,6 @@ def species_lists(
         "week_number": week_number,
         "sf_thresh_number": sf_thresh_number,
         "yearlong_checkbox": yearlong_checkbox,
-        "map_plot": map_plot,
     }
 
 
@@ -2041,9 +2031,14 @@ def _show_startup_warnings():
         )
 
 
-def open_window(
-    builder: list[Callable[[], TAB_BUILDER_RESULT]] | Callable[[], TAB_BUILDER_RESULT],
-):
+def _close_splash():
+    with suppress(ModuleNotFoundError):
+        import pyi_splash  # type: ignore
+
+        pyi_splash.close()
+
+
+def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
     Args:
@@ -2060,35 +2055,19 @@ def open_window(
     ):
         build_header()
 
-        map_plots = []
-
         if callable(builder):
-            map_plots.append(builder())  # ty:ignore[call-top-callable]
+            builder()  # ty:ignore[call-top-callable]
         elif isinstance(builder, tuple | set | list):
-            map_plots.extend(build() for build in builder)
+            for build in builder:
+                build()
 
         build_settings()
         build_footer()
 
-        map_plots = [plot for plot in map_plots if plot]
-
-        if map_plots:
-            inputs = []
-            outputs = []
-            for lat, lon, plot in map_plots:
-                inputs.extend([lat, lon])
-                outputs.append(plot)
-
-            def update_plots(*args):
-                return [
-                    plot_map_scatter_mapbox(lat, lon)
-                    for lat, lon in utils.batched(args, 2, strict=True)
-                ]
-
-            demo.load(update_plots, inputs=inputs, outputs=outputs)
-
         if _STARTUP_WARNINGS or settings.MODEL_DIR_STARTUP_WARNING:
             demo.load(_show_startup_warnings)
+    theme = gr.themes.Default()
+
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
@@ -2096,27 +2075,27 @@ def open_window(
         _URL = demo.queue(api_open=False).launch(
             css=css_file.read(),
             js=js_file.read(),
-            theme=gr.themes.Default(),
+            theme=theme,
             prevent_thread_lock=True,
             quiet=True,
             enable_monitoring=False,
             allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
             footer_links=[],
         )[1]
+    dark = settings.theme() == "dark"
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
-        _URL.rstrip("/") + f"?__theme={settings.theme()}",
+        _URL.rstrip("/") + f"?__theme={'dark' if dark else 'light'}",
         width=1300,
         height=900,
         min_size=(1300, 900),
+        # The page's body fill, so the window does not flash white before it renders.
+        # pywebview takes "#rrggbb" only; the light fill is the keyword "white".
+        background_color=theme.neutral_950 if dark else "#ffffff",
     )
     set_window(_WINDOW)
-
-    with suppress(ModuleNotFoundError):
-        import pyi_splash  # type: ignore
-
-        pyi_splash.close()
+    _WINDOW.events.shown += _close_splash
 
     if sys.platform == "win32":
         import ctypes
@@ -2128,7 +2107,7 @@ def open_window(
         _WINDOW.events.loaded += lambda: dwmapi.DwmSetWindowAttribute(  # type: ignore
             BrowserView.instances[_WINDOW.uid].Handle.ToInt32(),  # type: ignore
             20,  # DWMWA_USE_IMMERSIVE_DARK_MODE
-            ctypes.byref(ctypes.c_bool(settings.theme() == "dark")),
+            ctypes.byref(ctypes.c_bool(dark)),
             ctypes.sizeof(wintypes.BOOL),
         )
 

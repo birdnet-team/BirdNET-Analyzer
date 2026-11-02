@@ -174,7 +174,7 @@ def run_single_file_analysis(
     )
 
 
-def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
+def build_single_analysis_tab() -> None:
     state = TabState("single")
 
     with gr.Tab(loc.localize("single-tab-title")):
@@ -474,12 +474,6 @@ def build_single_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         kaleidoscope_download_button.click(
             download_kaleidoscope, inputs=last_prediction_state
         )
-
-    return (
-        species_settings["lat_number"],
-        species_settings["lon_number"],
-        species_settings["map_plot"],
-    )
 
 
 if __name__ == "__main__":

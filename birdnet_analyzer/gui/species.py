@@ -39,7 +39,7 @@ def run_species_list(
     return gr.update()
 
 
-def build_species_tab() -> gu.TAB_BUILDER_RESULT:
+def build_species_tab() -> None:
     state = TabState("species")
 
     with gr.Tab(loc.localize("species-tab-title")) as species_tab:
@@ -143,8 +143,6 @@ def build_species_tab() -> gu.TAB_BUILDER_RESULT:
         inputs=[lat_number, lon_number],
         outputs=map_plot,
     )
-
-    return lat_number, lon_number, map_plot
 
 
 if __name__ == "__main__":

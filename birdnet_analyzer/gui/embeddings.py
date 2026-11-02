@@ -99,7 +99,7 @@ def run_embeddings(
     )
 
 
-def build_embeddings_tab() -> gu.TAB_BUILDER_RESULT:
+def build_embeddings_tab() -> None:
     state = TabState("embeddings")
 
     with gr.Tab(loc.localize("embeddings-tab-title")):

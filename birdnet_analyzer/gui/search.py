@@ -106,7 +106,7 @@ def run_search(
     return chunks, 0, gr.Button(interactive=True), {}
 
 
-def build_search_tab() -> gu.TAB_BUILDER_RESULT:
+def build_search_tab() -> None:
     from birdnet_analyzer.embeddings.core import SETTINGS_KEY
 
     state = TabState("search")

@@ -1,5 +1,6 @@
 """Starting the GUI through ``gui.main``, up to the window."""
 
+import ast
 import json
 import os
 import subprocess
@@ -185,3 +186,18 @@ def test_an_unavailable_model_directory_is_warned_about_when_the_page_loads(
         if any(trigger == "load" for _, trigger in event.targets)
     ]
     assert gu._show_startup_warnings in on_load
+
+
+def test_a_frozen_spawn_child_is_dispatched_before_main_imports_the_gui():
+    source = (Path(birdnet_analyzer.gui.__file__).parent / "__main__.py").read_text(
+        encoding="utf-8"
+    )
+    calls = [
+        node.value.func.id
+        for node in ast.parse(source).body
+        if isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+    ]
+
+    assert calls == ["freeze_support", "main"]
