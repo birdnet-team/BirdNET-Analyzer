@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import re
 from types import SimpleNamespace
@@ -8,6 +9,8 @@ import pandas as pd
 import pytest
 
 gr = pytest.importorskip("gradio")
+
+from gradio.state_holder import SessionState  # noqa: E402
 
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
 from birdnet_analyzer.evaluation.assessment import performance_assessor  # noqa: E402
@@ -105,8 +108,12 @@ def _values(
     )
 
 
-def _refresh(proc_state, values, classes=None, recordings=None):
-    return evaluation.refresh_processor(proc_state, classes, recordings, *values)
+def _refresh(proc_state, values, classes=None, recordings=None, listed=None):
+    listed = evaluation._Listed() if listed is None else listed
+
+    return evaluation.refresh_processor(
+        listed, proc_state, classes, recordings, *values
+    )
 
 
 def _calculate(proc_state, values, classes=None, recordings=None, metrics=None):
@@ -202,7 +209,9 @@ def test_calculating_with_a_changed_duration_uses_a_processor_built_with_it(fold
     [
         lambda values: _calculate(None, values),
         lambda values: evaluation.download_data_table(None, *values),
-        lambda values: evaluation.check_parameters(None, *values),
+        lambda values: evaluation.check_parameters(
+            evaluation._Checked(), None, *values
+        ),
     ],
     ids=["calculate", "download", "check"],
 )
@@ -221,11 +230,14 @@ def test_a_duration_the_processor_cannot_use_is_rejected_before_reading(
 
 
 def test_the_processor_is_built_once_per_change_of_its_inputs(folders, built):
+    checked = evaluation._Checked()
     *_, proc_state = _refresh(None, _values(folders))
-    proc_state = evaluation.check_parameters(proc_state, *_values(folders))
+    proc_state = evaluation.check_parameters(checked, proc_state, *_values(folders))
     proc_state = _calculate(proc_state, _values(folders)).proc_state
 
-    proc_state = evaluation.check_parameters(proc_state, *_values(folders, "60"))
+    proc_state = evaluation.check_parameters(
+        checked, proc_state, *_values(folders, "60")
+    )
     _calculate(proc_state, _values(folders, "60"))
 
     assert built == [None, 60.0]
@@ -238,7 +250,12 @@ def test_a_folder_picked_again_is_read_again_and_its_new_recordings_selected(
     _write_recording(folders, "rec4")
 
     *_, offered, picked = evaluation.refresh_after_pick(
-        True, proc_state, classes["value"], recordings["value"], *_values(folders)
+        True,
+        evaluation._Listed(),
+        proc_state,
+        classes["value"],
+        recordings["value"],
+        *_values(folders),
     )
 
     assert len(built) == 2
@@ -250,7 +267,12 @@ def test_a_cancelled_folder_dialog_reads_nothing(folders, built):
     classes, recordings, proc_state = _refresh(None, _values(folders))
 
     *_, kept = evaluation.refresh_after_pick(
-        False, proc_state, classes["value"], recordings["value"], *_values(folders)
+        False,
+        evaluation._Listed(),
+        proc_state,
+        classes["value"],
+        recordings["value"],
+        *_values(folders),
     )
 
     assert kept is proc_state
@@ -262,7 +284,12 @@ def test_a_partial_selection_survives_a_folder_picked_again(folders):
     _write_recording(folders, "rec4")
 
     _, recordings, _ = evaluation.refresh_after_pick(
-        True, proc_state, classes["value"], ["rec1", "rec3"], *_values(folders)
+        True,
+        evaluation._Listed(),
+        proc_state,
+        classes["value"],
+        ["rec1", "rec3"],
+        *_values(folders),
     )
 
     assert recordings["value"] == ["rec1", "rec3"]
@@ -418,7 +445,7 @@ def test_everything_that_builds_the_processor_shares_one_queue(demo):
     assert len(queues) == 1
 
 
-def test_calculating_is_locked_while_the_lists_change(demo):
+def test_calculating_stays_locked_until_the_lists_follow_the_inputs(demo, folders):
     events = demo.fns
 
     def chain_start(event):
@@ -435,10 +462,67 @@ def test_calculating_is_locked_while_the_lists_change(demo):
 
     assert refreshes
     for refresh in refreshes:
-        unlock = next(e for e in events.values() if e.trigger_after == refresh._id)
+        unlock = next(
+            e
+            for e in events.values()
+            if e.trigger_after == refresh._id and not e.trigger_only_on_failure
+        )
         assert chain_start(refresh).fn() == gr.update(interactive=False)
-        assert unlock.fn() == gr.update(interactive=True)
+        assert unlock.fn is evaluation._unlock_calculation
+        assert unlock.inputs[0] in refresh.inputs
         assert chain_start(refresh).outputs == unlock.outputs
+        assert refresh.trigger_mode == "always_last"
+        assert unlock.trigger_mode == "multiple"
+
+    listed = evaluation._Listed()
+    unlock = evaluation._unlock_calculation
+    unmapped = _values(folders, prediction_class="Species")
+    evaluation.refresh_after_pick(True, listed, None, None, None, *_values(folders))
+
+    assert unlock(listed, *_values(folders)) == gr.update(interactive=True)
+    assert unlock(listed, *_values(folders, min_overlap=0.2)) == gr.update(
+        interactive=True
+    )
+    assert unlock(listed, *unmapped) == gr.update()
+
+    _refresh(None, unmapped, listed=listed)
+
+    assert unlock(listed, *unmapped) == gr.update(interactive=True)
+
+
+def test_a_failed_step_empties_the_lists_and_unlocks_calculating(demo):
+    events = demo.fns
+    names = {"refresh_processor", "refresh_after_pick", "select_directory"}
+    steps = [e for e in events.values() if getattr(e.fn, "__name__", "") in names]
+    refresh = next(e for e in steps if e.fn.__name__ == "refresh_processor")
+
+    assert len(steps) == 5
+    for step in steps:
+        recover = next(
+            e
+            for e in events.values()
+            if e.trigger_after == step._id and e.trigger_only_on_failure
+        )
+        classes, recordings, button = asyncio.run(
+            demo.process_api(recover, [], SessionState(demo))
+        )["data"]
+
+        assert recover.outputs[:2] == refresh.outputs[:2]
+        assert classes["choices"] == classes["value"] == []
+        assert recordings["choices"] == recordings["value"] == []
+        assert button["interactive"] is True
+
+
+def test_an_invalid_parameter_is_reported_once_when_entered_and_left(folders):
+    checked = evaluation._Checked()
+    kept = object()
+    message = re.escape(loc.localize("eval-tab-error-no-valid-recording-duration"))
+
+    with pytest.raises(gr.Error, match=message):
+        evaluation.check_parameters(checked, None, *_values(folders, "12o"))
+    assert evaluation.check_parameters(checked, kept, *_values(folders, "12o")) is kept
+    with pytest.raises(gr.Error, match=message):
+        evaluation.check_parameters(checked, None, *_values(folders, "1o"))
 
 
 def test_recordings_are_chosen_in_a_multiselect_dropdown(demo):

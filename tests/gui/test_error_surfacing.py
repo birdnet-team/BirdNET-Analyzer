@@ -24,6 +24,7 @@ TABS = {
     "evaluation": (
         evaluation.build_evaluation_tab,
         {
+            "_after_failure",
             "_lock_calculation",
             "_unlock_calculation",
             "recompute_overall",
@@ -49,7 +50,10 @@ TABS = {
         {"<lambda>", "on_collection_mode_change"},
     ),
     "species": (species.build_species_tab, {"<lambda>", "on_change"}),
-    "settings": (gu.build_settings, {"_effective_model_directory"}),
+    "settings": (
+        gu.build_settings,
+        {"_effective_model_directory", "_next_start_language"},
+    ),
     "train": (
         train.build_train_tab,
         {

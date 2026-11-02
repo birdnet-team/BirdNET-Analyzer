@@ -529,13 +529,20 @@ def build_footer():
         )
 
 
+def _next_start_language() -> str:
+    """The language the GUI starts in next time."""
+    saved = settings.get_setting("language-id", settings.FALLBACK_LANGUAGE)
+
+    return saved if saved in loc.available_languages() else settings.FALLBACK_LANGUAGE
+
+
 def build_settings():
     with gr.Tab(loc.localize("settings-tab-title")) as settings_tab:
         with gr.Group():
             with gr.Row():
                 languages_dropdown = gr.Dropdown(
                     loc.available_languages(),
-                    value=loc.TARGET_LANGUAGE,
+                    value=_next_start_language,
                     label=loc.localize("settings-tab-language-dropdown-label"),
                     info=loc.localize("settings-tab-language-dropdown-info"),
                     interactive=True,
@@ -756,6 +763,10 @@ def build_settings():
 
         @gui_runtime_error_handler
         def on_language_change(value):
+            # gradio's Dropdown sends .input again when it loses focus.
+            if value == _next_start_language():
+                return
+
             loc.set_language(value)
             gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
 

@@ -421,20 +421,24 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
         def restore_run_ui():
             return gr.update(interactive=True), gr.update(visible=False)
 
-        start_batch_analysis_btn.click(
+        analysed = start_batch_analysis_btn.click(
             prepare_run_ui,
             outputs=[start_batch_analysis_btn, pause_batch_analysis_btn, result_grid],
             show_progress="hidden",
-        ).then(run_batch_analysis, inputs=inputs, outputs=result_grid).then(
-            restore_run_ui,
-            outputs=[start_batch_analysis_btn, pause_batch_analysis_btn],
-            show_progress="hidden",
-        ).then(
-            refresh_resume_status,
-            inputs=resume_status_inputs,
-            outputs=resume_status_outputs,
-            show_progress="hidden",
-        )
+        ).then(run_batch_analysis, inputs=inputs, outputs=result_grid)
+
+        # gradio does not run .then after a step that raised.
+        for finished in (analysed.then, analysed.failure):
+            finished(
+                restore_run_ui,
+                outputs=[start_batch_analysis_btn, pause_batch_analysis_btn],
+                show_progress="hidden",
+            ).then(
+                refresh_resume_status,
+                inputs=resume_status_inputs,
+                outputs=resume_status_outputs,
+                show_progress="hidden",
+            )
         pause_batch_analysis_btn.click(
             pause_batch_analysis,
             outputs=pause_batch_analysis_btn,
