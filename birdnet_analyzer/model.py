@@ -118,7 +118,7 @@ def mixup(x, y, rng: Generator, augmentation_ratio=0.25, alpha=0.2):
         x2, y2 = x[second_index], y[second_index]
         lambda_ = rng.beta(alpha, alpha)
         mixed_x = lambda_ * x1 + (1 - lambda_) * x2
-        mixed_y = lambda_ * y1 + (1 - lambda_) * y2
+        mixed_y = lambda_ * np.maximum(y1, 0) + (1 - lambda_) * np.maximum(y2, 0)
         x[index] = mixed_x
         y[index] = mixed_y
 
@@ -902,6 +902,11 @@ def save_detached_classifier(
             f.writelines(label + "\n" for label in labels)
 
 
+def _negatives_as_zero(y_true):
+    """A negative label (-1) is scored as 0."""
+    return tf.maximum(y_true, 0.0)
+
+
 def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     """
     Focal loss for better handling of class imbalance.
@@ -920,6 +925,7 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
     Returns:
         Focal loss value.
     """
+    y_true = _negatives_as_zero(y_true)
     y_false = 1 - y_true
     y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
     y_false_pred = 1 - y_pred
@@ -933,6 +939,7 @@ def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25, epsilon=1e-7):
 
 
 def custom_loss(y_true, y_pred, epsilon=1e-7):
+    y_true = _negatives_as_zero(y_true)
     positive_loss = -tf.reduce_sum(
         y_true * tf.math.log(tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)), axis=-1
     )
