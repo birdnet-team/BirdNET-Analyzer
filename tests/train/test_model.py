@@ -6,9 +6,11 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from birdnet_analyzer import base_models
 from birdnet_analyzer.model import (
     build_linear_classifier,
+    custom_loss,
     focal_loss,
     get_empty_class_exception,
     label_smoothing,
+    mixup,
     random_multilabel_split,
     random_split,
     train_linear_classifier,
@@ -291,6 +293,54 @@ def test_the_auc_metrics_count_a_negative_label_as_a_negative():
     with_zero.update_state(np.array([[1], [0], [0]], "float32"), y_pred)
 
     assert float(with_negative.result()) == pytest.approx(float(with_zero.result()))
+
+
+@pytest.mark.parametrize(
+    "loss",
+    [custom_loss, lambda y, p: focal_loss(y, p, gamma=2.5)],
+    ids=["custom", "focal"],
+)
+def test_the_losses_score_a_negative_label_like_a_zero(loss):
+    p = tf.constant([[0.5], [0.1], [0.01], [1e-6]])
+    with_negative = loss(-tf.ones_like(p), p)
+    with_zero = loss(tf.zeros_like(p), p)
+
+    assert np.isfinite(with_negative.numpy()).all()
+    np.testing.assert_allclose(with_negative.numpy(), with_zero.numpy())
+
+
+def test_training_with_negative_samples_keeps_the_loss_finite_and_non_negative():
+    import keras
+
+    keras.utils.set_random_seed(0)
+    rng = np.random.default_rng(1)
+    x, y = _two_class_data()
+    x = np.vstack([x, rng.normal(size=(20, 8)).astype("float32")])
+    y = np.vstack([y, np.tile([-1.0, 0.0], (20, 1)).astype("float32")])
+
+    _, history = _train(
+        build_linear_classifier(2, 8),
+        x,
+        y,
+        train_with_label_smoothing=False,
+        train_with_focal_loss=True,
+        focal_loss_gamma=2.5,
+    )
+
+    losses = history.history["loss"]
+    assert np.isfinite(losses).all()
+    assert min(losses) >= 0
+
+
+def test_mixup_labels_a_mix_with_a_negative_sample_by_the_audio_shares():
+    x = np.eye(2, dtype="float32")
+    y = np.array([[1, -1], [0, 1]], dtype="float32")
+
+    mixup(x, y, np.random.default_rng(0), augmentation_ratio=0.5, alpha=1.0)
+
+    mixed = (x > 0).all(axis=1)
+    assert mixed.sum() == 1
+    np.testing.assert_allclose(y[mixed], x[mixed])
 
 
 def test_base_models_carry_the_library_constants():

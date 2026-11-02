@@ -12,6 +12,9 @@ import pytest
 tf = pytest.importorskip("tensorflow")
 keras = pytest.importorskip("keras")
 
+# The 3.0 TFLite conversions pass 120 s on the macOS runners.
+pytestmark = pytest.mark.timeout(300)
+
 from birdnet_analyzer import model  # noqa: E402
 from tests.models import pb_model_cached  # noqa: E402
 

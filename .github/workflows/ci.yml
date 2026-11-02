@@ -33,6 +33,8 @@ jobs:
       # so editing this list invalidates the entry rather than freezing it.
       PREDOWNLOAD: "import birdnet; birdnet.load('acoustic', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '2.4', 'tf', lang='en_us'); birdnet.load('geo', '3.0', 'onnx', lang='en_us'); birdnet.load('acoustic', '3.0', 'pb', lang='en_us')"
     strategy:
+      # One slow runner must not cancel the other lanes' results.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
