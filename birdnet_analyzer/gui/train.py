@@ -299,7 +299,7 @@ def start_training(
     return fig, metrics
 
 
-def build_train_tab() -> gu.TAB_BUILDER_RESULT:
+def build_train_tab() -> None:
     state = TabState("train")
 
     # Training on a cache file leaves the training data and the preprocessing settings

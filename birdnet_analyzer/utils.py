@@ -1,6 +1,5 @@
 """Module containing common function."""
 
-import itertools
 import os
 import warnings
 from functools import cache
@@ -58,18 +57,6 @@ def runtime_error_handler(f):
             raise
 
     return wrapper
-
-
-def batched(iterable, n, *, strict=False):
-    # TODO: Remove this function when Python 3.12 is the minimum version
-    # batched('ABCDEFG', 3) → ABC DEF G
-    if n < 1:
-        raise ValueError("n must be at least one")
-    iterator = iter(iterable)
-    while batch := tuple(itertools.islice(iterator, n)):
-        if strict and len(batch) != n:
-            raise ValueError("batched(): incomplete batch")
-        yield batch
 
 
 def spectrogram_from_file(

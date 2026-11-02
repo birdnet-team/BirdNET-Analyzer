@@ -30,7 +30,7 @@ def _confidence(path: str) -> float | None:
     return value if 0 <= value <= 1 else None
 
 
-def build_review_tab() -> gu.TAB_BUILDER_RESULT:
+def build_review_tab() -> None:
     state = TabState("review")
 
     def collect_segments(directory, shuffle=False):
@@ -488,7 +488,10 @@ def build_review_tab() -> gu.TAB_BUILDER_RESULT:
             return gr.Audio(autoplay=value)
 
         autoplay_checkbox.change(
-            toggle_autoplay, inputs=autoplay_checkbox, outputs=review_audio
+            toggle_autoplay,
+            inputs=autoplay_checkbox,
+            outputs=review_audio,
+            show_progress="hidden",
         )
 
         review_change_output = [

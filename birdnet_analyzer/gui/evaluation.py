@@ -963,7 +963,7 @@ def _results_panel() -> _Results:
     )
 
 
-def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
+def build_evaluation_tab() -> None:
     state = TabState("evaluation")
 
     with gr.Tab(loc.localize("eval-tab-title")):
@@ -1036,7 +1036,10 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         for kind, (button, textbox, files_table) in pickers.items():
             group, dropdowns = column_boxes[kind]
             button.click(
-                _lock_calculation, outputs=[calculate_button], queue=False
+                _lock_calculation,
+                outputs=[calculate_button],
+                queue=False,
+                show_progress="hidden",
             ).then(
                 select_directory,
                 inputs=[gr.State(kind), files_states[kind], dir_states[kind]],
@@ -1060,6 +1063,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 toggle_after_selection,
                 inputs=[dir_states["annotation"], dir_states["prediction"]],
                 outputs=[mapping_group, selection_group],
+                show_progress="hidden",
             )
 
         # Setting the column defaults on a folder pick fires ``.change`` but not
@@ -1073,6 +1077,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             _lock_calculation,
             outputs=[calculate_button],
             queue=False,
+            show_progress="hidden",
         ).then(
             refresh_processor,
             inputs=refresh_inputs,

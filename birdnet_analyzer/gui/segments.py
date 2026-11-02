@@ -73,7 +73,7 @@ def _extract_segments(
     )
 
 
-def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
+def build_segments_tab() -> None:
     import psutil
 
     state = TabState("segments")
@@ -302,6 +302,7 @@ def build_segments_tab() -> gu.TAB_BUILDER_RESULT:
             on_collection_mode_change,
             inputs=collection_mode_radio,
             outputs=num_bins,
+            show_progress="hidden",
         )
 
 

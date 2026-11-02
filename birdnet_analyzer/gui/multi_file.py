@@ -177,7 +177,7 @@ def refresh_resume_status(input_dir, output_dir):
     )
 
 
-def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
+def build_multi_analysis_tab() -> None:
     state = TabState("multi")
 
     with gr.Tab(loc.localize("multi-tab-title")):
@@ -444,6 +444,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             show_additional_columns,
             inputs=output_type_radio,
             outputs=additional_columns_,
+            show_progress="hidden",
         )
         preset_controls.wire(
             state,
@@ -453,12 +454,6 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             classifier_file_input=model_settings["classifier_file_input"],
             classifier_labels_df=model_settings["classifier_labels_df"],
         )
-
-    return (
-        species_settings["lat_number"],
-        species_settings["lon_number"],
-        species_settings["map_plot"],
-    )
 
 
 if __name__ == "__main__":
