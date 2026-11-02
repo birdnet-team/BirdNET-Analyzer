@@ -427,8 +427,7 @@ def build_multi_analysis_tab() -> gu.TAB_BUILDER_RESULT:
             show_progress="hidden",
         ).then(run_batch_analysis, inputs=inputs, outputs=result_grid)
 
-        # gradio does not run .then after a step that raised.
-        for finished in (analysed.then, analysed.failure):
+        for finished in (analysed.success, analysed.failure):
             finished(
                 restore_run_ui,
                 outputs=[start_batch_analysis_btn, pause_batch_analysis_btn],

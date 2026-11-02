@@ -84,7 +84,7 @@ class ProcessorState(typing.NamedTuple):
     """A DataProcessor together with the arguments it was built with."""
 
     processor: DataProcessor
-    arguments: dict
+    arguments: dict | None
 
 
 @dataclasses.dataclass
@@ -606,6 +606,10 @@ def _lists_for(
         )
     except _MissingColumnError:
         # Folders are picked before their columns are mapped; calculating reports it.
+        # A reread's old processor only carries the selection over from here on.
+        if reread and proc_state is not None:
+            proc_state = proc_state._replace(arguments=None)
+
         return gr.update(), gr.update(), proc_state
 
     (classes, selected_classes), (recordings, selected_recordings) = _selection_choices(
@@ -687,11 +691,13 @@ def _unlock_calculation(listed: _Listed, *processor_values):
 
 
 def _after_failure():
-    # Empty lists calculate with every class and recording, so none can be stale.
+    # Empty lists calculate with every class and recording, so none can be stale, and
+    # without a processor calculating reads the files again.
     # One dict per output: gradio takes the value out of an update it applies.
     return (
         gr.update(choices=[], value=[]),
         gr.update(choices=[], value=[]),
+        None,
         gr.update(interactive=True),
     )
 
@@ -1093,7 +1099,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         ]
         refresh_outputs = [classes, recordings, processor_state]
         unlock_inputs = [listed, *processor_inputs]
-        failed_outputs = [classes, recordings, calculate_button]
+        failed_outputs = [*refresh_outputs, calculate_button]
         picked_state = gr.State(False)
         # One queue for everything that builds the processor, so a build under way is
         # reused instead of run twice.
@@ -1140,7 +1146,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 show_progress="full",
             )
             picked.failure(_after_failure, outputs=failed_outputs)
-            refreshed = picked.then(
+            refreshed = picked.success(
                 refresh_after_pick,
                 inputs=[picked_state, *refresh_inputs],
                 outputs=refresh_outputs,
@@ -1148,7 +1154,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                 # The default drops a change made while the lists are being rebuilt.
                 trigger_mode="always_last",
             )
-            refreshed.then(
+            refreshed.success(
                 _unlock_calculation,
                 inputs=unlock_inputs,
                 outputs=[calculate_button],
@@ -1180,7 +1186,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             concurrency_id=processor_queue,
             trigger_mode="always_last",
         )
-        refreshed.then(
+        refreshed.success(
             _unlock_calculation,
             inputs=unlock_inputs,
             outputs=[calculate_button],

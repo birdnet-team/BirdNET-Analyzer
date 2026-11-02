@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import re
+import shutil
 from types import SimpleNamespace
 
 import matplotlib
@@ -498,19 +499,68 @@ def test_a_failed_step_empties_the_lists_and_unlocks_calculating(demo):
 
     assert len(steps) == 5
     for step in steps:
-        recover = next(
-            e
-            for e in events.values()
-            if e.trigger_after == step._id and e.trigger_only_on_failure
-        )
-        classes, recordings, button = asyncio.run(
-            demo.process_api(recover, [], SessionState(demo))
+        followers = [e for e in events.values() if e.trigger_after == step._id]
+        recover = next(e for e in followers if e.trigger_only_on_failure)
+        session = SessionState(demo)
+        session[refresh.outputs[2]._id] = "old processor"
+        classes, recordings, _, button = asyncio.run(
+            demo.process_api(recover, [], session)
         )["data"]
 
-        assert recover.outputs[:2] == refresh.outputs[:2]
+        assert all(
+            e.trigger_only_on_failure or e.trigger_only_on_success for e in followers
+        )
+        assert recover.outputs[:3] == refresh.outputs
+        assert session[refresh.outputs[2]._id] is None
         assert classes["choices"] == classes["value"] == []
         assert recordings["choices"] == recordings["value"] == []
         assert button["interactive"] is True
+
+
+def test_calculating_after_a_failed_reread_reports_it_instead_of_using_old_data(
+    folders,
+):
+    values = _values(folders)
+    listed = evaluation._Listed()
+    *_, proc_state = evaluation.refresh_after_pick(
+        True, listed, None, None, None, *values
+    )
+    message = re.escape(loc.localize("eval-tab-error-init-processor"))
+    shutil.rmtree(folders["prediction"])
+
+    with pytest.raises(gr.Error, match=message):
+        evaluation.refresh_after_pick(True, listed, proc_state, None, None, *values)
+    _, _, proc_state, _ = evaluation._after_failure()
+
+    with pytest.raises(gr.Error, match=message):
+        _calculate(proc_state, values)
+
+
+def test_a_column_gone_from_a_repicked_folder_is_reported_and_mapping_it_recovers(
+    folders,
+):
+    values = _values(folders)
+    mapped = _values(folders, prediction_class="Species")
+    listed = evaluation._Listed()
+    classes, recordings, proc_state = evaluation.refresh_after_pick(
+        True, listed, None, None, None, *values
+    )
+    for recording in (*RECORDINGS, "rec4"):
+        _write_recording(folders, recording, "Species")
+
+    *_, proc_state = evaluation.refresh_after_pick(
+        True, listed, proc_state, classes["value"], recordings["value"], *values
+    )
+
+    with pytest.raises(gr.Error) as raised:
+        _calculate(proc_state, values)
+    assert raised.value.message.startswith(loc.localize("eval-tab-error-missing-col"))
+
+    _, recordings, _ = _refresh(
+        proc_state, mapped, classes["value"], recordings["value"]
+    )
+
+    assert recordings["value"] == [*RECORDINGS, "rec4"]
 
 
 def test_an_invalid_parameter_is_reported_once_when_entered_and_left(folders):

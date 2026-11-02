@@ -68,7 +68,9 @@ def test_the_start_button_comes_back_after_a_run_whether_or_not_it_failed(appdir
     prepare = events[run.trigger_after]
     followers = [e for e in events.values() if e.trigger_after == run._id]
 
-    assert sorted(e.trigger_only_on_failure for e in followers) == [False, True]
+    assert sorted(
+        (e.trigger_only_on_success, e.trigger_only_on_failure) for e in followers
+    ) == [(False, True), (True, False)]
     for follower in followers:
         start, pause = follower.fn()
         status = next(e for e in events.values() if e.trigger_after == follower._id)
