@@ -225,6 +225,32 @@ def test_a_failed_settings_write_is_logged_and_shown(
     assert len(logged) == 1
 
 
+def test_the_restart_warning_appears_once_per_language_picked(
+    appdir, handler, monkeypatch
+):
+    warnings = []
+    monkeypatch.setattr(gr, "Warning", lambda message, **_: warnings.append(message))
+    change = handler(gu.build_settings, "on_language_change")
+
+    change("de")
+    change("de")
+    change(gu.loc.TARGET_LANGUAGE)
+
+    assert len(warnings) == 2
+    assert gu.settings.get_setting("language-id") == gu.loc.TARGET_LANGUAGE
+
+
+def test_the_language_dropdown_shows_the_language_of_the_next_start(appdir):
+    gu.settings.set_setting("language-id", "de")
+
+    with gr.Blocks() as demo:
+        gu.build_settings()
+
+    event = next(e for e in demo.fns.values() if e.fn.__name__ == "on_language_change")
+
+    assert event.inputs[0].value == "de"
+
+
 def _species_controls():
     gu.sample_species_model_settings(gs.TabState("single"))
 

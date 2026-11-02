@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import typing
@@ -84,6 +85,24 @@ class ProcessorState(typing.NamedTuple):
 
     processor: DataProcessor
     arguments: dict
+
+
+@dataclasses.dataclass
+class _Listed:
+    """The inputs the last completed refresh of the class and recording lists used."""
+
+    basis: dict | None = None
+
+
+@dataclasses.dataclass
+class _Checked:
+    """The processor inputs the typed parameters were last checked with."""
+
+    inputs: tuple | None = None
+
+
+# Both the _Parameters fields and the processor arguments of the typed parameters.
+_TYPED_PARAMETERS = ("sample_duration", "min_overlap", "recording_duration")
 
 
 class _MissingColumnError(gr.Error):
@@ -536,7 +555,38 @@ def toggle_after_selection(annotation_dir, prediction_dir):
     return [gr.update(visible=visible)] * 2
 
 
+def _lists_basis(processor_values) -> dict | None:
+    """The processor arguments the class and recording lists depend on.
+
+    The typed parameters change without a refresh, so they are left out.
+    """
+    arguments = _processor_arguments(*processor_values, strict=False)
+
+    if arguments is None:
+        return None
+
+    return {
+        key: value for key, value in arguments.items() if key not in _TYPED_PARAMETERS
+    }
+
+
 def _refreshed(
+    listed: _Listed,
+    proc_state: ProcessorState | None,
+    current_classes,
+    current_recordings,
+    processor_values,
+    reread: bool,
+):
+    updates = _lists_for(
+        proc_state, current_classes, current_recordings, processor_values, reread
+    )
+    listed.basis = _lists_basis(processor_values)
+
+    return updates
+
+
+def _lists_for(
     proc_state: ProcessorState | None,
     current_classes,
     current_recordings,
@@ -574,31 +624,45 @@ def _refreshed(
 
 @gu.gui_runtime_error_handler
 def refresh_processor(
+    listed: _Listed,
     proc_state: ProcessorState | None,
     current_classes,
     current_recordings,
     *processor_values,
 ):
     return _refreshed(
-        proc_state, current_classes, current_recordings, processor_values, False
+        listed, proc_state, current_classes, current_recordings, processor_values, False
     )
 
 
 @gu.gui_runtime_error_handler
 def refresh_after_pick(
     picked: bool,
+    listed: _Listed,
     proc_state: ProcessorState | None,
     current_classes,
     current_recordings,
     *processor_values,
 ):
     return _refreshed(
-        proc_state, current_classes, current_recordings, processor_values, picked
+        listed,
+        proc_state,
+        current_classes,
+        current_recordings,
+        processor_values,
+        picked,
     )
 
 
 @gu.gui_runtime_error_handler
-def check_parameters(proc_state: ProcessorState | None, *processor_values):
+def check_parameters(
+    checked: _Checked, proc_state: ProcessorState | None, *processor_values
+):
+    # Enter and then leaving the field both check; the second would repeat an error.
+    if processor_values == checked.inputs:
+        return proc_state
+
+    checked.inputs = processor_values
     arguments = _processor_arguments(*processor_values, strict=True)
 
     if arguments is None:
@@ -614,8 +678,22 @@ def _lock_calculation():
     return gr.update(interactive=False)
 
 
-def _unlock_calculation():
+def _unlock_calculation(listed: _Listed, *processor_values):
+    # Lagging lists are still being refreshed, or a failure emptied them and unlocked.
+    if listed.basis != _lists_basis(processor_values):
+        return gr.update()
+
     return gr.update(interactive=True)
+
+
+def _after_failure():
+    # Empty lists calculate with every class and recording, so none can be stale.
+    # One dict per output: gradio takes the value out of an update it applies.
+    return (
+        gr.update(choices=[], value=[]),
+        gr.update(choices=[], value=[]),
+        gr.update(interactive=True),
+    )
 
 
 @gu.gui_runtime_error_handler
@@ -968,6 +1046,8 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
     with gr.Tab(loc.localize("eval-tab-title")):
         processor_state = gr.State()
+        listed = gr.State(_Listed())
+        checked = gr.State(_Checked())
         pa_state = gr.State()
         predictions_state = gr.State()
         labels_state = gr.State()
@@ -1004,8 +1084,16 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             parameters.score_unannotated,
             *column_dropdowns,
         ]
-        refresh_inputs = [processor_state, classes, recordings, *processor_inputs]
+        refresh_inputs = [
+            listed,
+            processor_state,
+            classes,
+            recordings,
+            *processor_inputs,
+        ]
         refresh_outputs = [classes, recordings, processor_state]
+        unlock_inputs = [listed, *processor_inputs]
+        failed_outputs = [classes, recordings, calculate_button]
         picked_state = gr.State(False)
         # One queue for everything that builds the processor, so a build under way is
         # reused instead of run twice.
@@ -1035,7 +1123,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         # made from the old ones.
         for kind, (button, textbox, files_table) in pickers.items():
             group, dropdowns = column_boxes[kind]
-            button.click(
+            picked = button.click(
                 _lock_calculation, outputs=[calculate_button], queue=False
             ).then(
                 select_directory,
@@ -1050,12 +1138,24 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
                     *dropdowns,
                 ],
                 show_progress="full",
-            ).then(
+            )
+            picked.failure(_after_failure, outputs=failed_outputs)
+            refreshed = picked.then(
                 refresh_after_pick,
                 inputs=[picked_state, *refresh_inputs],
                 outputs=refresh_outputs,
                 concurrency_id=processor_queue,
-            ).then(_unlock_calculation, outputs=[calculate_button])
+                # The default drops a change made while the lists are being rebuilt.
+                trigger_mode="always_last",
+            )
+            refreshed.then(
+                _unlock_calculation,
+                inputs=unlock_inputs,
+                outputs=[calculate_button],
+                # The default drops an unlock while another one is pending.
+                trigger_mode="multiple",
+            )
+            refreshed.failure(_after_failure, outputs=failed_outputs)
             files_table.change(
                 toggle_after_selection,
                 inputs=[dir_states["annotation"], dir_states["prediction"]],
@@ -1064,7 +1164,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
 
         # Setting the column defaults on a folder pick fires ``.change`` but not
         # ``.input``.
-        gr.on(
+        refreshed = gr.on(
             [
                 mapping_file.change,
                 parameters.score_unannotated.change,
@@ -1078,22 +1178,26 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
             inputs=refresh_inputs,
             outputs=refresh_outputs,
             concurrency_id=processor_queue,
-        ).then(_unlock_calculation, outputs=[calculate_button])
+            trigger_mode="always_last",
+        )
+        refreshed.then(
+            _unlock_calculation,
+            inputs=unlock_inputs,
+            outputs=[calculate_button],
+            trigger_mode="multiple",
+        )
+        refreshed.failure(_after_failure, outputs=failed_outputs)
 
         # Building reads every file, so the typed parameters are checked once they are
         # entered, not per keystroke. They do not change the lists.
-        typed_fields = (
-            parameters.sample_duration,
-            parameters.min_overlap,
-            parameters.recording_duration,
-        )
+        typed_fields = tuple(getattr(parameters, name) for name in _TYPED_PARAMETERS)
         gr.on(
             [
                 *(field.blur for field in typed_fields),
                 *(field.submit for field in typed_fields),
             ],
             check_parameters,
-            inputs=[processor_state, *processor_inputs],
+            inputs=[checked, processor_state, *processor_inputs],
             outputs=[processor_state],
             concurrency_id=processor_queue,
         )
