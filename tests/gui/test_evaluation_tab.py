@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import matplotlib
 import numpy as np
-import pandas as pd
 import pytest
 
 gr = pytest.importorskip("gradio")
@@ -211,7 +210,7 @@ def test_calculating_with_a_changed_duration_uses_a_processor_built_with_it(fold
         lambda values: _calculate(None, values),
         lambda values: evaluation.download_data_table(None, *values),
         lambda values: evaluation.check_parameters(
-            evaluation._Checked(), None, *values
+            False, evaluation._Entered(), None, *values
         ),
     ],
     ids=["calculate", "download", "check"],
@@ -231,13 +230,15 @@ def test_a_duration_the_processor_cannot_use_is_rejected_before_reading(
 
 
 def test_the_processor_is_built_once_per_change_of_its_inputs(folders, built):
-    checked = evaluation._Checked()
+    entered = evaluation._Entered()
     *_, proc_state = _refresh(None, _values(folders))
-    proc_state = evaluation.check_parameters(checked, proc_state, *_values(folders))
+    proc_state = evaluation.check_parameters(
+        False, entered, proc_state, *_values(folders)
+    )
     proc_state = _calculate(proc_state, _values(folders)).proc_state
 
     proc_state = evaluation.check_parameters(
-        checked, proc_state, *_values(folders, "60")
+        False, entered, proc_state, *_values(folders, "60")
     )
     _calculate(proc_state, _values(folders, "60"))
 
@@ -536,7 +537,7 @@ def test_calculating_after_a_failed_reread_reports_it_instead_of_using_old_data(
         _calculate(proc_state, values)
 
 
-def test_a_column_gone_from_a_repicked_folder_is_reported_and_mapping_it_recovers(
+def test_a_column_gone_from_a_picked_folder_empties_the_lists_until_it_is_mapped(
     folders,
 ):
     values = _values(folders)
@@ -548,10 +549,14 @@ def test_a_column_gone_from_a_repicked_folder_is_reported_and_mapping_it_recover
     for recording in (*RECORDINGS, "rec4"):
         _write_recording(folders, recording, "Species")
 
-    *_, proc_state = evaluation.refresh_after_pick(
+    classes, recordings, proc_state = evaluation.refresh_after_pick(
         True, listed, proc_state, classes["value"], recordings["value"], *values
     )
 
+    assert classes["choices"] == classes["value"] == []
+    assert recordings["choices"] == recordings["value"] == []
+    assert classes is not recordings
+    assert evaluation._unlock_calculation(listed, *values)["interactive"] is True
     with pytest.raises(gr.Error) as raised:
         _calculate(proc_state, values)
     assert raised.value.message.startswith(loc.localize("eval-tab-error-missing-col"))
@@ -564,15 +569,78 @@ def test_a_column_gone_from_a_repicked_folder_is_reported_and_mapping_it_recover
 
 
 def test_an_invalid_parameter_is_reported_once_when_entered_and_left(folders):
-    checked = evaluation._Checked()
+    entered = evaluation._Entered()
     kept = object()
+    invalid = _values(folders, "12o")
     message = re.escape(loc.localize("eval-tab-error-no-valid-recording-duration"))
 
     with pytest.raises(gr.Error, match=message):
-        evaluation.check_parameters(checked, None, *_values(folders, "12o"))
-    assert evaluation.check_parameters(checked, kept, *_values(folders, "12o")) is kept
+        evaluation.check_parameters(False, entered, None, *invalid)
+    assert evaluation.check_parameters(True, entered, kept, *invalid) is kept
     with pytest.raises(gr.Error, match=message):
-        evaluation.check_parameters(checked, None, *_values(folders, "1o"))
+        evaluation.check_parameters(True, entered, None, *invalid)
+
+
+def test_pressing_enter_again_checks_again_after_a_file_is_repaired(folders):
+    entered = evaluation._Entered()
+    values = _values(folders, min_overlap=0.4)
+    source = folders["prediction"] / "rec1.txt"
+    readable = source.read_text(encoding="utf-8")
+    source.write_text(readable.replace("0.9", "x"), encoding="utf-8")
+    message = re.escape(loc.localize("eval-tab-error-init-processor"))
+
+    with pytest.raises(gr.Error, match=message):
+        evaluation.check_parameters(False, entered, None, *values)
+    with pytest.raises(gr.Error, match=message):
+        evaluation.check_parameters(False, entered, None, *values)
+
+    source.write_text(readable, encoding="utf-8")
+
+    assert evaluation.check_parameters(False, entered, None, *values) is not None
+
+
+def test_only_leaving_a_field_can_skip_its_check(demo):
+    checks = [
+        event
+        for event in demo.fns.values()
+        if getattr(event.fn, "__name__", "") == "check_parameters"
+    ]
+
+    assert sorted(check.inputs[0].value for check in checks) == [False, True]
+    for check in checks:
+        event_name = "blur" if check.inputs[0].value else "submit"
+        assert {name for _, name in check.targets} == {event_name}
+
+
+def test_a_recording_without_a_known_duration_is_listed_and_counted_once_one_is_typed(
+    folders,
+):
+    _write_table(
+        folders["annotation"] / "no_end.txt",
+        ["Begin Time (s)", "End Time (s)", "Class", "File Duration (s)"],
+        [[0, 0, "Robin", ""]],
+    )
+    _write_table(
+        folders["prediction"] / "no_end.txt",
+        [
+            "Begin Time (s)",
+            "End Time (s)",
+            "Common Name",
+            "Confidence",
+            "File Duration (s)",
+        ],
+        [[0, 0, "Robin", 0.9, ""]],
+    )
+    classes, recordings, proc_state = _refresh(None, _values(folders))
+    selection = classes["value"], recordings["value"]
+
+    assert recordings["choices"] == ["no_end", *RECORDINGS]
+
+    untyped = _calculate(proc_state, _values(folders), *selection)
+    typed = _calculate(proc_state, _values(folders, "30"), *selection)
+
+    assert untyped.labels.shape[0] == len(RECORDINGS) * 10
+    assert typed.labels.shape[0] == (len(RECORDINGS) + 1) * 10
 
 
 def test_recordings_are_chosen_in_a_multiselect_dropdown(demo):
@@ -633,9 +701,7 @@ def test_the_metrics_tables_have_a_row_per_class_and_an_overall_footer():
 
 
 def _processor(classes, recordings):
-    return SimpleNamespace(
-        classes=tuple(classes), samples_df=pd.DataFrame({"filename": recordings})
-    )
+    return SimpleNamespace(classes=tuple(classes), recordings=tuple(recordings))
 
 
 @pytest.mark.parametrize(
@@ -651,7 +717,7 @@ def _processor(classes, recordings):
 def test_a_refresh_keeps_a_partial_selection_and_extends_a_full_one(
     previous, current_classes, current_recordings, classes, recordings
 ):
-    processor = _processor("abc", ["r1", "r1", "r2"])
+    processor = _processor("abc", ["r1", "r2"])
 
     assert evaluation._selection_choices(
         processor, previous, current_classes, current_recordings

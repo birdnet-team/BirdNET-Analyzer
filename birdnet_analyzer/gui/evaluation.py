@@ -84,7 +84,7 @@ class ProcessorState(typing.NamedTuple):
     """A DataProcessor together with the arguments it was built with."""
 
     processor: DataProcessor
-    arguments: dict | None
+    arguments: dict
 
 
 @dataclasses.dataclass
@@ -95,8 +95,8 @@ class _Listed:
 
 
 @dataclasses.dataclass
-class _Checked:
-    """The processor inputs the typed parameters were last checked with."""
+class _Entered:
+    """The processor inputs of the last Enter in a typed parameter not yet left."""
 
     inputs: tuple | None = None
 
@@ -270,7 +270,7 @@ def _column_updates(kind: str, files) -> list:
 
 
 def _offered(processor) -> tuple[list, list]:
-    return list(processor.classes), processor.samples_df["filename"].unique().tolist()
+    return list(processor.classes), list(processor.recordings)
 
 
 def _selection(offered, previously_offered, current):
@@ -606,11 +606,8 @@ def _lists_for(
         )
     except _MissingColumnError:
         # Folders are picked before their columns are mapped; calculating reports it.
-        # A reread's old processor only carries the selection over from here on.
-        if reread and proc_state is not None:
-            proc_state = proc_state._replace(arguments=None)
-
-        return gr.update(), gr.update(), proc_state
+        # An unmapped column keeps the lists, so mapping it again keeps the selection.
+        return _no_lists() if reread else (gr.update(), gr.update(), proc_state)
 
     (classes, selected_classes), (recordings, selected_recordings) = _selection_choices(
         built.processor,
@@ -660,13 +657,18 @@ def refresh_after_pick(
 
 @gu.gui_runtime_error_handler
 def check_parameters(
-    checked: _Checked, proc_state: ProcessorState | None, *processor_values
+    leaving: bool,
+    entered: _Entered,
+    proc_state: ProcessorState | None,
+    *processor_values,
 ):
-    # Enter and then leaving the field both check; the second would repeat an error.
-    if processor_values == checked.inputs:
+    # Leaving the field after Enter would repeat the error Enter reported.
+    repeated = leaving and processor_values == entered.inputs
+    entered.inputs = None if leaving else processor_values
+
+    if repeated:
         return proc_state
 
-    checked.inputs = processor_values
     arguments = _processor_arguments(*processor_values, strict=True)
 
     if arguments is None:
@@ -690,16 +692,15 @@ def _unlock_calculation(listed: _Listed, *processor_values):
     return gr.update(interactive=True)
 
 
-def _after_failure():
+def _no_lists():
     # Empty lists calculate with every class and recording, so none can be stale, and
     # without a processor calculating reads the files again.
     # One dict per output: gradio takes the value out of an update it applies.
-    return (
-        gr.update(choices=[], value=[]),
-        gr.update(choices=[], value=[]),
-        None,
-        gr.update(interactive=True),
-    )
+    return gr.update(choices=[], value=[]), gr.update(choices=[], value=[]), None
+
+
+def _after_failure():
+    return (*_no_lists(), gr.update(interactive=True))
 
 
 @gu.gui_runtime_error_handler
@@ -1053,7 +1054,7 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
     with gr.Tab(loc.localize("eval-tab-title")):
         processor_state = gr.State()
         listed = gr.State(_Listed())
-        checked = gr.State(_Checked())
+        entered = gr.State(_Entered())
         pa_state = gr.State()
         predictions_state = gr.State()
         labels_state = gr.State()
@@ -1197,16 +1198,17 @@ def build_evaluation_tab() -> gu.TAB_BUILDER_RESULT:
         # Building reads every file, so the typed parameters are checked once they are
         # entered, not per keystroke. They do not change the lists.
         typed_fields = tuple(getattr(parameters, name) for name in _TYPED_PARAMETERS)
-        gr.on(
-            [
-                *(field.blur for field in typed_fields),
-                *(field.submit for field in typed_fields),
-            ],
-            check_parameters,
-            inputs=[checked, processor_state, *processor_inputs],
-            outputs=[processor_state],
-            concurrency_id=processor_queue,
-        )
+        for leaving, triggers in (
+            (False, [field.submit for field in typed_fields]),
+            (True, [field.blur for field in typed_fields]),
+        ):
+            gr.on(
+                triggers,
+                check_parameters,
+                inputs=[gr.State(leaving), entered, processor_state, *processor_inputs],
+                outputs=[processor_state],
+                concurrency_id=processor_queue,
+            )
 
         calculate_button.click(
             calculate_metrics,

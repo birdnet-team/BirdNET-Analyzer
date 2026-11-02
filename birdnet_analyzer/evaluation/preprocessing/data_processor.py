@@ -138,6 +138,7 @@ class DataProcessor:
         self.unmatched_prediction_files: set[str] = set()
 
         self.classes: tuple[str, ...] = ()
+        self.recordings: tuple[str, ...] = ()
 
         self.samples_df: pd.DataFrame = pd.DataFrame()
         self.prediction_tensors: np.ndarray = np.array([])
@@ -397,6 +398,9 @@ class DataProcessor:
         annotations = _by_recording(self.annotations_df)
         no_predictions = self.predictions_df.iloc[:0]
         no_annotations = self.annotations_df.iloc[:0]
+        self.recordings = tuple(
+            sorted(predictions.keys() | annotations.keys(), key=str)
+        )
 
         frames = [
             self.process_recording(
@@ -404,7 +408,7 @@ class DataProcessor:
                 predictions.get(recording, no_predictions),
                 annotations.get(recording, no_annotations),
             )
-            for recording in sorted(predictions.keys() | annotations.keys(), key=str)
+            for recording in self.recordings
         ]
         self.samples_df = (
             pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
