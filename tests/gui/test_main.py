@@ -1,6 +1,5 @@
 """Starting the GUI through ``gui.main``, up to the window."""
 
-import ast
 import json
 import os
 import subprocess
@@ -188,16 +187,38 @@ def test_an_unavailable_model_directory_is_warned_about_when_the_page_loads(
     assert gu._show_startup_warnings in on_load
 
 
-def test_a_frozen_spawn_child_is_dispatched_before_main_imports_the_gui():
-    source = (Path(birdnet_analyzer.gui.__file__).parent / "__main__.py").read_text(
-        encoding="utf-8"
-    )
-    calls = [
-        node.value.func.id
-        for node in ast.parse(source).body
-        if isinstance(node, ast.Expr)
-        and isinstance(node.value, ast.Call)
-        and isinstance(node.value.func, ast.Name)
-    ]
+FROZEN_CHILD_PROBE = """
+import json
+import multiprocessing
+import multiprocessing.spawn
+import runpy
+import sys
 
-    assert calls == ["freeze_support", "main"]
+import birdnet_analyzer.gui
+
+
+def report(dispatched):
+    print(json.dumps({"dispatched": dispatched, "gradio": "gradio" in sys.modules}))
+
+
+multiprocessing.spawn.spawn_main = lambda **kwargs: report(True)
+birdnet_analyzer.gui.main = lambda: report(False)
+# What PyInstaller's runtime hook installs, so the dispatch happens on every platform.
+multiprocessing.freeze_support = multiprocessing.spawn.freeze_support
+sys.argv = ["BirdNET-Analyzer-GUI", "--multiprocessing-fork", "parent_pid=1"]
+runpy.run_module("birdnet_analyzer.gui", run_name="__main__", alter_sys=True)
+"""
+
+
+def test_a_frozen_spawn_child_is_dispatched_before_the_gui_is_imported():
+    result = subprocess.run(
+        [sys.executable, "-c", FROZEN_CHILD_PROBE],
+        capture_output=True,
+        text=True,
+        timeout=110,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    seen = json.loads(result.stdout.splitlines()[-1])
+
+    assert seen == {"dispatched": True, "gradio": False}

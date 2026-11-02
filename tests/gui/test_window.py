@@ -74,6 +74,7 @@ def fake_webview(monkeypatch):
                 handler()
 
     windows = []
+    forms = {}
 
     def create_window(title, url, **kwargs):
         window = SimpleNamespace(
@@ -83,6 +84,7 @@ def fake_webview(monkeypatch):
             events=SimpleNamespace(shown=Event(), loaded=Event()),
         )
         windows.append(window)
+        forms[window.uid] = SimpleNamespace(Handle=SimpleNamespace(ToInt32=lambda: 1))
 
         return window
 
@@ -94,7 +96,7 @@ def fake_webview(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "webview.platforms.winforms",
-        SimpleNamespace(BrowserView=SimpleNamespace(instances={})),
+        SimpleNamespace(BrowserView=SimpleNamespace(instances=forms)),
     )
 
     def launch(self, *args, **kwargs):
@@ -140,10 +142,48 @@ def test_the_splash_screen_stays_until_the_window_is_shown(
     assert closed == [True]
 
 
-def test_the_species_map_is_drawn_on_tab_selection_not_at_page_load(
+def test_the_window_opens_without_a_splash_screen(appdir, fake_webview, monkeypatch):
+    monkeypatch.delitem(sys.modules, "pyi_splash", raising=False)
+
+    gu.open_window([])
+
+    (window,) = fake_webview
+    window.events.shown.fire()
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32", reason="the title bar is colored through the Windows API"
+)
+def test_the_title_bar_follows_the_theme_when_the_page_reloads(
     appdir, fake_webview, monkeypatch
 ):
-    from birdnet_analyzer.gui import species
+    import ctypes
+
+    colored_dark = []
+
+    def set_window_attribute(handle, attribute, value, size):
+        colored_dark.append(value._obj.value)
+
+    dwmapi = SimpleNamespace(DwmSetWindowAttribute=set_window_attribute)
+    monkeypatch.setattr(
+        ctypes, "windll", SimpleNamespace(LoadLibrary=lambda name: dwmapi)
+    )
+    settings.set_setting("theme", "light")
+
+    gu.open_window([])
+
+    (window,) = fake_webview
+    window.events.shown.fire()
+    settings.set_setting("theme", "dark")
+    window.events.loaded.fire()
+
+    assert colored_dark == [False, True]
+
+
+def test_maps_are_drawn_when_their_tab_is_selected_not_at_page_load(
+    appdir, fake_webview, monkeypatch
+):
+    from birdnet_analyzer.gui import multi_file, single_file, species
 
     built = []
 
@@ -154,14 +194,20 @@ def test_the_species_map_is_drawn_on_tab_selection_not_at_page_load(
 
     monkeypatch.setattr(gr.Blocks, "launch", launch_instead)
 
-    gu.open_window([species.build_species_tab])
+    gu.open_window(
+        [
+            single_file.build_single_analysis_tab,
+            multi_file.build_multi_analysis_tab,
+            species.build_species_tab,
+        ]
+    )
 
     (demo,) = built
     maps = {
-        block._id
-        for block in demo.blocks.values()
-        if isinstance(block, gr.Plot)
-        and block.elem_id != "species-progress-placeholder"
+        output._id
+        for event in demo.fns.values()
+        if event.fn is gu.plot_map_scatter_mapbox
+        for output in event.outputs
     }
 
     def outputs_of(trigger):

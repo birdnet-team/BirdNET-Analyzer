@@ -1208,7 +1208,6 @@ def species_list_coordinates(state: TabState, show_map=False):
         map_plot = None
 
         if show_map:
-            # No initial figure: the tab draws it when first selected.
             map_plot = gr.Plot(show_label=False, scale=2)
 
             for coordinate in (lat_number, lon_number):
@@ -2048,7 +2047,6 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     import webview
 
     global _URL
-    multiprocessing.freeze_support()
 
     with (
         gr.Blocks(analytics_enabled=False) as demo,
@@ -2082,11 +2080,12 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
             allowed_paths=_get_win_drives() if sys.platform == "win32" else ["/"],
             footer_links=[],
         )[1]
-    dark = settings.theme() == "dark"
+    theme_mode = settings.theme()
+    dark = theme_mode == "dark"
     webview.settings["ALLOW_DOWNLOADS"] = True
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
-        _URL.rstrip("/") + f"?__theme={'dark' if dark else 'light'}",
+        _URL.rstrip("/") + f"?__theme={theme_mode}",
         width=1300,
         height=900,
         min_size=(1300, 900),
@@ -2104,12 +2103,17 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
         from webview.platforms.winforms import BrowserView
 
         dwmapi = ctypes.windll.LoadLibrary("dwmapi")
-        _WINDOW.events.loaded += lambda: dwmapi.DwmSetWindowAttribute(  # type: ignore
-            BrowserView.instances[_WINDOW.uid].Handle.ToInt32(),  # type: ignore
-            20,  # DWMWA_USE_IMMERSIVE_DARK_MODE
-            ctypes.byref(ctypes.c_bool(dark)),
-            ctypes.sizeof(wintypes.BOOL),
-        )
+
+        def color_title_bar():
+            dwmapi.DwmSetWindowAttribute(
+                BrowserView.instances[_WINDOW.uid].Handle.ToInt32(),  # type: ignore
+                20,  # DWMWA_USE_IMMERSIVE_DARK_MODE
+                ctypes.byref(ctypes.c_bool(settings.theme() == "dark")),
+                ctypes.sizeof(wintypes.BOOL),
+            )
+
+        _WINDOW.events.shown += color_title_bar
+        _WINDOW.events.loaded += color_title_bar
 
     webview.start(private_mode=False)
 
