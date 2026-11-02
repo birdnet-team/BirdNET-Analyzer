@@ -487,6 +487,7 @@ Negative samples cannot be used for binary classification, instead include these
 <p><strong>Multi-label data</strong></p>
 <p>To train with multi-label data separate the class labels with commas in the folder names (e.g., <code class="docutils literal notranslate"><span class="pre">Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee,Cardinalis</span> <span class="pre">cardinalis_Northern</span> <span class="pre">Cardinal</span></code>).
 This can also be combined with negative samples as described above.
+A negative sample also counts as not containing any other class, so a recording that does contain another trained species belongs in a combined folder (e.g., <code class="docutils literal notranslate"><span class="pre">Cardinalis</span> <span class="pre">cardinalis_Northern</span> <span class="pre">Cardinal,-Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee</span></code>).
 The validation split will be performed combination of classes, so you might want to ensure sufficient data for each combination of classes.
 When using multi-label data the upsampling mode will be limited to ‘repeat’.</p>
 <div class="admonition note">

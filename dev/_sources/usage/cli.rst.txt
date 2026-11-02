@@ -126,6 +126,7 @@ birdnet_analyzer.train
 
    To train with multi-label data separate the class labels with commas in the folder names (e.g., ``Poecile atricapillus_Black-capped Chickadee,Cardinalis cardinalis_Northern Cardinal``).
    This can also be combined with negative samples as described above.
+   A negative sample also counts as not containing any other class, so a recording that does contain another trained species belongs in a combined folder (e.g., ``Cardinalis cardinalis_Northern Cardinal,-Poecile atricapillus_Black-capped Chickadee``).
    The validation split will be performed combination of classes, so you might want to ensure sufficient data for each combination of classes.
    When using multi-label data the upsampling mode will be limited to 'repeat'.
 
