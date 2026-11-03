@@ -89,6 +89,28 @@ def test_classifier_version_reads_each_file_once(monkeypatch, tmp_path):
     assert len(calls) == 2, "a changed file is inspected again"
 
 
+def test_without_litert_the_tensorflow_interpreter_inspects_the_classifier(
+    monkeypatch, tmp_path
+):
+    import sys
+    from types import SimpleNamespace
+
+    calls = []
+
+    def fake_inspect(path, *, library):
+        calls.append(library)
+        return SimpleNamespace(version="2.4")
+
+    monkeypatch.setattr(model_utils.birdnet, "inspect_custom_tflite", fake_inspect)
+    monkeypatch.setitem(sys.modules, "ai_edge_litert", None)
+    model_utils._INSPECTIONS.clear()
+    classifier = tmp_path / "cc.tflite"
+    classifier.write_bytes(b"x")
+
+    assert model_utils.classifier_version(str(classifier)) == "2.4"
+    assert calls == ["tflite"]
+
+
 def test_an_unusable_classifier_is_inspected_once(monkeypatch, tmp_path):
     calls = []
 
