@@ -56,8 +56,9 @@ When using the `birdnet`-package, you can run BirdNET with:
 
    import birdnet
 
-   model = birdnet.load("acoustic", "3.0", "onnx")
-   predictions = model.predict("soundscape.wav")
+   if __name__ == "__main__":
+       model = birdnet.load("acoustic", "3.0", "onnx")
+       predictions = model.predict("soundscape.wav")
 
 For more examples and documentation, make sure to visit `pypi.org/project/birdnet/ <https://pypi.org/project/birdnet/>`_.
 
@@ -66,7 +67,7 @@ For any feature request or questions regarding `birdnet`, please add an issue or
 Command line installation
 -------------------------
 
-Requires Python 3.11 or newer.
+Requires Python 3.11 to 3.13.
 
 Clone the repository
 

@@ -59,7 +59,7 @@ Models can be found on [Zenodo](https://zenodo.org/records/15050749).
 
 ## Installation
 
-Install the package from PyPI (Python 3.11 or newer):
+Install the package from PyPI (Python 3.11 to 3.13):
 
 ```bash
 pip install birdnet_analyzer

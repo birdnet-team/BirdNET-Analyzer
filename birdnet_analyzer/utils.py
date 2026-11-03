@@ -202,15 +202,16 @@ def spectrogram_from_audio(
 
 
 def _pool_frames(S_db, hop_length: int, width_px: int):
-    """Keeps at most two frames per pixel of width, each the maximum of its block.
+    """Keeps at most one frame per pixel of width, each the maximum of its block.
 
     Drawing one frame per column costs seconds for an hour of audio and shows nothing
-    more; the maximum keeps short calls visible.
+    more, and a column narrower than a pixel is often not drawn at all; the maximum
+    keeps short calls visible.
     """
     import numpy as np
 
     frames = S_db.shape[1]
-    columns = 2 * width_px
+    columns = width_px
 
     if frames <= columns:
         return S_db, hop_length

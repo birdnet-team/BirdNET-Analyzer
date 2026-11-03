@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pytest
 
@@ -57,7 +59,16 @@ def test_a_short_clip_is_drawn_frame_by_frame():
     assert _mesh(figure).shape[1] == 1 + sr * 3 // 512
 
 
-def test_a_long_recording_is_drawn_with_two_frames_per_pixel_keeping_peaks():
+def test_a_folder_scan_offers_only_formats_the_analysis_reads(tmp_path):
+    for name in ("a.wav", "b.m4a", "c.wma", "d.flac"):
+        (tmp_path / name).write_bytes(b"")
+
+    found = utils.collect_audio_files(str(tmp_path))
+
+    assert [os.path.basename(f) for f in found] == ["a.wav", "d.flac"]
+
+
+def test_a_long_recording_is_drawn_at_pixel_resolution_keeping_peaks():
     sr = 48000
     signal = np.zeros(sr * 600, dtype="float32")
     signal[sr * 300 : sr * 300 + 480] = 1.0
@@ -65,6 +76,6 @@ def test_a_long_recording_is_drawn_with_two_frames_per_pixel_keeping_peaks():
     figure = utils.spectrogram_from_audio(signal, sr, fig_num="spec", fig_size=(20, 4))
     mesh = _mesh(figure)
 
-    assert mesh.shape[1] <= 2 * 20 * figure.dpi
+    assert 20 * figure.dpi / 2 < mesh.shape[1] <= 20 * figure.dpi
     assert mesh.max() == pytest.approx(0)
     assert mesh.max(axis=0).argmax() == pytest.approx(mesh.shape[1] / 2, abs=2)

@@ -122,12 +122,20 @@ def test_one_unreadable_network_shortcut_does_not_hide_the_others(
 
 
 def test_a_profile_without_network_shortcuts_has_none(monkeypatch, tmp_path):
+    def folder_path(hwnd, csidl, token, flags):
+        # The shell refuses to name a folder that does not exist unless told not
+        # to verify it.
+        if not csidl & 0x4000:
+            raise OSError("The system cannot find the path specified.")
+
+        return str(tmp_path / "gone")
+
     monkeypatch.setitem(sys.modules, "pythoncom", SimpleNamespace())
     monkeypatch.setitem(
         sys.modules,
         "win32com.shell",
         SimpleNamespace(
-            shell=SimpleNamespace(SHGetFolderPath=lambda *a: str(tmp_path / "gone")),
+            shell=SimpleNamespace(SHGetFolderPath=folder_path),
             shellcon=SimpleNamespace(CSIDL_NETHOOD=0),
         ),
     )
