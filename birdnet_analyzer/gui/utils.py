@@ -1860,10 +1860,15 @@ def _get_network_shortcuts():
     import pythoncom
     from win32com.shell import shell, shellcon  # type: ignore
 
+    # CSIDL_FLAG_DONT_VERIFY (0x4000): a profile without the folder gets its path
+    # back instead of a COM error, and the listing below decides.
+    folder = shellcon.CSIDL_NETHOOD | 0x4000
+
     try:
-        # CSIDL_NETHOOD: folder containing network shortcuts
-        network_shortcuts = shell.SHGetFolderPath(0, shellcon.CSIDL_NETHOOD, None, 0)  # pyright: ignore[reportArgumentType]
+        network_shortcuts = shell.SHGetFolderPath(0, folder, None, 0)  # pyright: ignore[reportArgumentType]
         items = os.listdir(network_shortcuts)
+    except FileNotFoundError:
+        return []
     except Exception as e:
         utils.write_error_log(e)
         return []
