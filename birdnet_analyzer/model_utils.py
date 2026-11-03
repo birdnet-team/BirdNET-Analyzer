@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import threading
@@ -364,10 +365,10 @@ def classifier_info(
         info = _INSPECTIONS.get(key)
 
         if info is None or (retry_failed and isinstance(info, Exception)):
-            # Opened in a subprocess: ~0.3 s with litert, ~3.5 s with TensorFlow's
-            # interpreter.
             try:
-                info = birdnet.inspect_custom_tflite(key[0], library="litert")
+                info = birdnet.inspect_custom_tflite(
+                    key[0], library=_inspection_library()
+                )
             except (OSError, ValueError) as e:
                 info = e
 
@@ -379,6 +380,17 @@ def classifier_info(
         raise info
 
     return info
+
+
+def _inspection_library() -> str:
+    """LiteRT opens a classifier in ~0.3 s, TensorFlow's interpreter in ~3.5 s; the
+    frozen Windows build ships only the latter."""
+    try:
+        litert = importlib.util.find_spec("ai_edge_litert") is not None
+    except ValueError:
+        litert = False
+
+    return "litert" if litert else "tflite"
 
 
 def classifier_version(classifier: str) -> ACOUSTIC_MODEL_VERSIONS:

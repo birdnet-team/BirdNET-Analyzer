@@ -45,8 +45,6 @@ ALLOWED_FILETYPES: list[str] = [
     "flac",
     "mp3",
     "ogg",
-    "m4a",
-    "wma",
     "aiff",
     "aif",
 ]

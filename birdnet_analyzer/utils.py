@@ -176,6 +176,7 @@ def spectrogram_from_audio(
 
     D = librosa.stft(s, n_fft=n_fft, hop_length=hop_length)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max, top_db=top_db)
+    S_db, hop_length = _pool_frames(S_db, hop_length, int(f.get_figwidth() * f.dpi))
 
     spec = librosa.display.specshow(
         S_db,
@@ -198,6 +199,29 @@ def spectrogram_from_audio(
         f.tight_layout(pad=0)
 
     return spec.figure
+
+
+def _pool_frames(S_db, hop_length: int, width_px: int):
+    """Keeps at most one frame per pixel of width, each the maximum of its block.
+
+    Drawing one frame per column costs seconds for an hour of audio and shows nothing
+    more, and a column narrower than a pixel is often not drawn at all; the maximum
+    keeps short calls visible.
+    """
+    import numpy as np
+
+    frames = S_db.shape[1]
+    columns = width_px
+
+    if frames <= columns:
+        return S_db, hop_length
+
+    factor = -(-frames // columns)
+    padding = -frames % factor
+    S_db = np.pad(S_db, ((0, 0), (0, padding)), constant_values=S_db.min())
+    pooled = S_db.reshape(S_db.shape[0], -1, factor).max(axis=2)
+
+    return pooled, hop_length * factor
 
 
 def collect_audio_files(path: str, max_files: int | None = None):

@@ -1,0 +1,41 @@
+name: Submit release to winget
+
+on:
+  release:
+    # Also fires when a pre-release is promoted, which `published` does not;
+    # never for a pre-release itself.
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to submit (for example v3.0.0)
+        required: true
+        type: string
+
+jobs:
+  publish-winget:
+    # wingetcreate is only supported on Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # A personal access token with public_repo scope on a fork of
+      # microsoft/winget-pkgs, see https://aka.ms/winget-create-token
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
+      # Read from the environment, not interpolated into the script: a tag with a
+      # quote in it must stay data.
+      RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+    steps:
+      # `update` needs the package to exist in winget-pkgs already: the first
+      # version is submitted by hand with `wingetcreate new <installer url>`.
+      - name: Submit the Windows installer with wingetcreate
+        shell: pwsh
+        run: |
+          if (-not $env:WINGET_CREATE_GITHUB_TOKEN) { throw "The WINGET_CREATE_GITHUB_TOKEN secret is not set." }
+          $tag = $env:RELEASE_TAG
+          $urls = @(gh release view $tag --repo '${{ github.repository }}' --json assets --jq '.assets[] | select(.name | endswith("-win_amd64.exe")) | .url')
+          if ($urls.Count -ne 1) { throw "Release $tag has $($urls.Count) *-win_amd64.exe assets, expected one." }
+          curl.exe -sSJLO https://aka.ms/wingetcreate/latest
+          .\wingetcreate.exe update BirdNET-Team.BirdNET-Analyzer --version $tag.TrimStart('v') --urls "$($urls[0])|x64" --submit

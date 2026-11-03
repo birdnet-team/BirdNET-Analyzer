@@ -109,7 +109,7 @@ def test_one_unreadable_network_shortcut_does_not_hide_the_others(
     monkeypatch.setitem(
         sys.modules,
         "win32com.shell",
-        SimpleNamespace(shell=shell, shellcon=SimpleNamespace(CSIDL_NETHOOD=None)),
+        SimpleNamespace(shell=shell, shellcon=SimpleNamespace(CSIDL_NETHOOD=0)),
     )
     unhandled = []
     monkeypatch.setattr(gu.utils, "write_error_log", unhandled.append)
@@ -119,6 +119,31 @@ def test_one_unreadable_network_shortcut_does_not_hide_the_others(
 
     assert unhandled == []
     assert [r.message for r in caplog.records if "unreadable" in r.message]
+
+
+def test_a_profile_without_network_shortcuts_has_none(monkeypatch, tmp_path):
+    def folder_path(hwnd, csidl, token, flags):
+        # The shell refuses to name a folder that does not exist unless told not
+        # to verify it.
+        if not csidl & 0x4000:
+            raise OSError("The system cannot find the path specified.")
+
+        return str(tmp_path / "gone")
+
+    monkeypatch.setitem(sys.modules, "pythoncom", SimpleNamespace())
+    monkeypatch.setitem(
+        sys.modules,
+        "win32com.shell",
+        SimpleNamespace(
+            shell=SimpleNamespace(SHGetFolderPath=folder_path),
+            shellcon=SimpleNamespace(CSIDL_NETHOOD=0),
+        ),
+    )
+    unhandled = []
+    monkeypatch.setattr(gu.utils, "write_error_log", unhandled.append)
+
+    assert gu._get_network_shortcuts() == []
+    assert unhandled == []
 
 
 def test_the_error_handler_keeps_the_handlers_signature():

@@ -336,3 +336,9 @@ Other changes
   many worker processes as fit the available memory, at most one per CPU core, where
   v2.4.0 started one per logical core. A count set in an earlier version is ignored
   until "Automatic worker count" is unchecked.
+* **m4a and wma files** are no longer offered, neither by the file dialog nor by the
+  folder scans of the analysis, training, segments and review tabs. The birdnet
+  library reads the formats libsndfile supports (wav, flac, mp3, ogg, aiff, ...);
+  v2.4.0 decoded the others through audioread, which needs a system decoder (CoreAudio
+  on macOS, ffmpeg elsewhere) that the installers never shipped. Convert such files to
+  wav or flac first.
