@@ -220,7 +220,16 @@ def test_the_saved_choices_do_not_change_with_the_language(appdir, language):
         (single_file.build_single_analysis_tab, "run_single_file_analysis"),
     ],
 )
-def test_the_analysis_reads_the_picked_species_list_itself(appdir, build, analysis):
+@pytest.mark.parametrize(
+    ("parameter", "picker"),
+    [
+        ("species_list_file", "on_species_file_selection_click"),
+        ("custom_classifier_file", "on_custom_classifier_selection_click"),
+    ],
+)
+def test_the_analysis_reads_the_picked_file_itself(
+    appdir, build, analysis, parameter, picker
+):
     with gr.Blocks() as demo:
         build()
 
@@ -228,7 +237,4 @@ def test_the_analysis_reads_the_picked_species_list_itself(appdir, build, analys
     run = events[analysis]
     parameters = list(inspect.signature(run.fn).parameters)
 
-    assert (
-        run.inputs[parameters.index("species_list_file")]
-        is events["on_species_file_selection_click"].outputs[0]
-    )
+    assert run.inputs[parameters.index(parameter)] is events[picker].outputs[0]
