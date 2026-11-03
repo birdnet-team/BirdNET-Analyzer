@@ -23,13 +23,16 @@ jobs:
       # A personal access token with public_repo scope on a fork of
       # microsoft/winget-pkgs, see https://aka.ms/winget-create-token
       WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
+      # Read from the environment, not interpolated into the script: a tag with a
+      # quote in it must stay data.
+      RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
     steps:
       # `update` needs the package to exist in winget-pkgs already: the first
       # version is submitted by hand with `wingetcreate new <installer url>`.
       - name: Submit the Windows installer with wingetcreate
         shell: pwsh
         run: |
-          $tag = '${{ inputs.release_tag || github.event.release.tag_name }}'
+          $tag = $env:RELEASE_TAG
           $url = gh release view $tag --repo '${{ github.repository }}' --json assets --jq '.assets[] | select(.name | endswith("-win_amd64.exe")) | .url'
           if (-not $url) { throw "Release $tag has no *-win_amd64.exe asset." }
           curl.exe -sSJLO https://aka.ms/wingetcreate/latest

@@ -37,7 +37,8 @@ def __getattr__(name: str) -> str:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-BROWSER_PLAYABLE = (".wav", ".flac", ".mp3", ".ogg")
+# What every embedded browser plays; WebKit before macOS 15.4 has no Ogg.
+BROWSER_PLAYABLE = (".wav", ".flac", ".mp3")
 
 
 def audio_preview(path: str):
@@ -47,6 +48,9 @@ def audio_preview(path: str):
     if path.lower().endswith(BROWSER_PLAYABLE):
         # An unreadable file fails here with its reason, not silently in the player.
         sf.info(path)
+        # Served from where it is; gradio would otherwise hash and copy it into its
+        # cache, seconds and a second copy on disk for a long recording.
+        gr.set_static_paths([path])
 
         return path
 

@@ -4,6 +4,8 @@ import soundfile as sf
 
 gr = pytest.importorskip("gradio")
 
+from gradio import processing_utils  # noqa: E402
+
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
 from birdnet_analyzer import utils  # noqa: E402
 from birdnet_analyzer.gui import single_file  # noqa: E402
@@ -66,12 +68,17 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     assert player["value"] == str(clip)
     assert player["label"] == "clip.wav"
     assert analyze["interactive"] is True
+    served = processing_utils.move_files_to_cache(
+        gr.Audio(type="filepath").postprocess(player["value"]).model_dump(), gr.Audio()
+    )
+    assert served["path"] == str(clip), "served in place, not copied into the cache"
 
 
+@pytest.mark.parametrize("name", ["clip.aiff", "clip.ogg"])
 def test_a_format_the_browser_cannot_play_is_decoded_for_it(
-    appdir, handler, monkeypatch, tmp_path
+    appdir, handler, monkeypatch, tmp_path, name
 ):
-    clip = tmp_path / "clip.aiff"
+    clip = tmp_path / name
     sf.write(clip, np.full(4800, 0.5, dtype="float32"), 48000)
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: str(clip))
 
@@ -82,7 +89,7 @@ def test_a_format_the_browser_cannot_play_is_decoded_for_it(
     rate, data = player["value"]
     assert rate == 48000
     assert data.shape == (4800,)
-    assert data.max() == pytest.approx(0.5)
+    assert data.max() == pytest.approx(0.5, abs=0.05)
 
 
 def test_a_failed_export_is_logged_and_shown(
