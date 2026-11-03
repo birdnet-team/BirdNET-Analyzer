@@ -1,0 +1,49 @@
+name: Submit release to Winget repo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to process (for example, v3.0.0)
+        required: true
+        type: string
+      package_version:
+        description: Package version override (defaults to release_tag without leading v)
+        required: false
+        type: string
+
+jobs:
+  publish-winget:
+    name: Submit to Winget repo
+
+    # GitHub token permissions needed for winget-create to submit a PR
+    permissions:
+      contents: read
+      pull-requests: write
+
+    # winget-create is only supported on Windows
+    runs-on: windows-latest
+
+    # winget-create will read the following environment variable to access the GitHub token needed for submitting a PR
+    # See https://aka.ms/winget-create-token
+    env:
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
+
+    # Only submit stable releases
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - name: Submit package using wingetcreate
+        run: |
+          # Get installer info from release event
+          $assets = '${{ toJSON(github.event.release.assets) }}' | ConvertFrom-Json
+          $x64InstallerUrl = $assets | Where-Object -Property name -like '*-win_amd64.exe' | Select-Object -ExpandProperty browser_download_url
+          $packageVersion = (${{ toJSON(github.event.release.tag_name) }}).TrimStart('v')
+
+          # Update package using wingetcreate
+          curl.exe -JLO https://aka.ms/wingetcreate/latest
+          .\wingetcreate.exe update BirdNET-Team.BirdNET-Analyzer `
+            --version $packageVersion `
+            --urls "$x64InstallerUrl|x64" `
+            --submit
