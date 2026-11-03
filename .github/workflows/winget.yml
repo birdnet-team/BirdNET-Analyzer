@@ -1,0 +1,36 @@
+name: Submit release to winget
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to submit (for example v3.0.0)
+        required: true
+        type: string
+
+jobs:
+  publish-winget:
+    # wingetcreate is only supported on Windows
+    runs-on: windows-latest
+    # Only stable releases; a dispatch run has no release event and goes through.
+    if: ${{ !github.event.release.prerelease }}
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # A personal access token with public_repo scope on a fork of
+      # microsoft/winget-pkgs, see https://aka.ms/winget-create-token
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
+    steps:
+      # `update` needs the package to exist in winget-pkgs already: the first
+      # version is submitted by hand with `wingetcreate new <installer url>`.
+      - name: Submit the Windows installer with wingetcreate
+        shell: pwsh
+        run: |
+          $tag = '${{ inputs.release_tag || github.event.release.tag_name }}'
+          $url = gh release view $tag --repo '${{ github.repository }}' --json assets --jq '.assets[] | select(.name | endswith("-win_amd64.exe")) | .url'
+          if (-not $url) { throw "Release $tag has no *-win_amd64.exe asset." }
+          curl.exe -sSJLO https://aka.ms/wingetcreate/latest
+          .\wingetcreate.exe update BirdNET-Team.BirdNET-Analyzer --version $tag.TrimStart('v') --urls "$url|x64" --submit

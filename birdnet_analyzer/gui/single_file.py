@@ -267,7 +267,7 @@ def build_single_analysis_tab() -> None:
 
             file_path = gu.select_file(
                 filetypes=(
-                    "Audio files (*.wav;*.flac;*.mp3;*.ogg;*.m4a;*.wma;*.aiff;*.aif)",
+                    "Audio files (*.wav;*.flac;*.mp3;*.ogg;*.aiff;*.aif)",
                 ),
                 state_key="single_file_audio",
             )
