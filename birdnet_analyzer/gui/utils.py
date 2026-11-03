@@ -2037,6 +2037,19 @@ def _close_splash():
         pyi_splash.close()
 
 
+def _prefer_theme_color_scheme(sender, _args):
+    """The page's first frame follows prefers-color-scheme, not the theme in the URL."""
+    from Microsoft.Web.WebView2.Core import (  # type: ignore
+        CoreWebView2PreferredColorScheme,
+    )
+
+    sender.CoreWebView2.Profile.PreferredColorScheme = (
+        CoreWebView2PreferredColorScheme.Dark
+        if settings.theme() == "dark"
+        else CoreWebView2PreferredColorScheme.Light
+    )
+
+
 def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
@@ -2100,7 +2113,18 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
         import ctypes
         from ctypes import wintypes
 
+        from webview.platforms.edgechromium import EdgeChrome
         from webview.platforms.winforms import BrowserView
+
+        on_webview_ready = EdgeChrome.on_webview_ready
+
+        def on_webview_ready_with_theme(self, sender, args):
+            # pywebview navigates from this handler, so subscribe before it runs.
+            if args.IsSuccess:
+                sender.NavigationStarting += _prefer_theme_color_scheme
+            on_webview_ready(self, sender, args)
+
+        EdgeChrome.on_webview_ready = on_webview_ready_with_theme
 
         dwmapi = ctypes.windll.LoadLibrary("dwmapi")
 
@@ -2115,7 +2139,9 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
         _WINDOW.events.shown += color_title_bar
         _WINDOW.events.loaded += color_title_bar
 
-    webview.start(private_mode=False)
+    # Own browser profile: the preferred colour scheme persists in it and would
+    # otherwise reach every other pywebview app on the machine.
+    webview.start(private_mode=False, storage_path=str(settings.APPDIR / "webview"))
 
     # Window closed: stop any analysis still running with no UI to control it.
     shutdown_running_analyses()
