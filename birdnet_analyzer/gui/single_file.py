@@ -37,6 +37,24 @@ def __getattr__(name: str) -> str:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
+BROWSER_PLAYABLE = (".wav", ".flac", ".mp3", ".ogg")
+
+
+def audio_preview(path: str):
+    """The player's value for a file: the file itself when the browser can play it."""
+    import soundfile as sf
+
+    if path.lower().endswith(BROWSER_PLAYABLE):
+        # An unreadable file fails here with its reason, not silently in the player.
+        sf.info(path)
+
+        return path
+
+    data, rate = sf.read(path, dtype="float32")
+
+    return rate, data
+
+
 @gu.gui_runtime_error_handler
 def run_single_file_analysis(
     input_path,
@@ -199,12 +217,15 @@ def build_single_analysis_tab() -> None:
             )
 
         audio_input = gr.Audio(
-            type="numpy",
+            type="filepath",
             label=loc.localize("single-audio-label"),
             interactive=False,
             visible=False,
             buttons=[],
             editable=False,
+            # The browser's own player streams the file; the waveform player downloads
+            # and decodes all of it before it shows anything.
+            waveform_options=gr.WaveformOptions(show_recording_waveform=False),
         )
 
         with gr.Group(visible=False) as spectrogram_group:
@@ -263,8 +284,6 @@ def build_single_analysis_tab() -> None:
         @gu.gui_runtime_error_handler
         def select_and_load_audio_file(generate_spectrogram=False):
             """Use webview dialog to select audio file and load it."""
-            from birdnet_analyzer import audio
-
             file_path = gu.select_file(
                 filetypes=(
                     "Audio files (*.wav;*.flac;*.mp3;*.ogg;*.aiff;*.aif)",
@@ -273,7 +292,7 @@ def build_single_analysis_tab() -> None:
             )
 
             if file_path:
-                data, sr = audio.open_audio_file(file_path)
+                preview = audio_preview(file_path)
 
                 if generate_spectrogram:
                     try:
@@ -297,7 +316,7 @@ def build_single_analysis_tab() -> None:
                     file_path,
                     gr.update(
                         visible=True,
-                        value=(sr, data),
+                        value=preview,
                         label=os.path.basename(file_path),
                     ),
                     gr.update(visible=generate_spectrogram),
