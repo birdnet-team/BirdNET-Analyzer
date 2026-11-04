@@ -9,7 +9,7 @@ on:
         description: Branch, tag or commit of BirdNET-Analyzer-build to build with
         default: master
       release_tag:
-        description: Existing release to attach the packages to (empty keeps them as artifacts)
+        description: Existing release to build from and attach the packages to (empty builds this ref and keeps the packages as artifacts)
         default: ""
 
 concurrency:
@@ -49,6 +49,8 @@ jobs:
             libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 libxcb-xkb1 \
             libxcomposite1 libxcursor1 libxdamage1 libxi6 libxinerama1 libxrandr2 libxtst6
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/checkout@v7
         with:
           repository: birdnet-team/BirdNET-Analyzer-build
