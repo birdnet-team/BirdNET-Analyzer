@@ -1,0 +1,128 @@
+name: Linux packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      build_tools_ref:
+        description: Branch, tag or commit of BirdNET-Analyzer-build to build with
+        default: master
+      release_tag:
+        description: Existing release to attach the packages to (empty keeps them as artifacts)
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  build:
+    name: Build AppImage and .deb
+    runs-on: ubuntu-latest
+    # The bundle runs on any distribution whose glibc is at least the build
+    # host's, so the container decides the floor, not the runner image: Ubuntu
+    # 22.04 is glibc 2.35, the oldest the PySide6 wheels (2.34) leave in practice.
+    container:
+      image: ubuntu:22.04
+      # Chromium's processes share memory through /dev/shm; Docker's 64 MB is too small.
+      options: --shm-size=1g
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      BIRDNET_APP_DATA: ${{ github.workspace }}/.birdnet-app-data
+      # The runner's disk is small, and the GPU TensorFlow wheel alone is 600 MB of cache.
+      UV_NO_CACHE: "1"
+    steps:
+      # Every library the bundle can carry has to be installed, or PyInstaller
+      # leaves it to the user's system; build-linux.sh checks the outcome
+      # against linux/deb-depends.txt.
+      - name: Install system packages
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates curl git binutils desktop-file-utils xvfb iproute2 fonts-dejavu-core zstd \
+            libgl1 libegl1 libgbm1 libglib2.0-0 libfontconfig1 libnss3 libdbus-1-3 libasound2 \
+            libgomp1 libudev1 libgtk-3-0 libcups2 libjpeg-turbo8 \
+            libxkbcommon0 libxkbcommon-x11-0 libxkbfile1 libx11-xcb1 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+            libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 libxcb-xkb1 \
+            libxcomposite1 libxcursor1 libxdamage1 libxi6 libxinerama1 libxrandr2 libxtst6
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: birdnet-team/BirdNET-Analyzer-build
+          ref: ${{ inputs.build_tools_ref || 'master' }}
+          # The build repository is private: BUILD_TOOLS_TOKEN is a fine-grained
+          # token with read access to its contents.
+          token: ${{ secrets.BUILD_TOOLS_TOKEN || github.token }}
+          path: build-tools
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: false
+      - name: Install appimagetool
+        run: |
+          curl -sSL -o /tmp/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          # No FUSE in the container: unpack the tool instead of mounting it.
+          (cd /opt && /tmp/appimagetool --appimage-extract >/dev/null)
+          ln -s /opt/squashfs-root/AppRun /usr/local/bin/appimagetool
+      # Must stay after checkout, which would clean the restored models away.
+      # The test workflow's entries are a superset, reachable through the prefix.
+      - name: Cache birdnet models
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.BIRDNET_APP_DATA }}
+          key: birdnet-models-Linux-packages-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            birdnet-models-Linux-
+      - name: Build
+        run: build-tools/build-linux.sh -y "$GITHUB_WORKSPACE" "$RUNNER_TEMP/venv"
+      # QtWebEngine refuses to run as root, and users are not root either.
+      - name: Create a test user
+        run: |
+          useradd -m smoke
+          mkdir -p "$BIRDNET_APP_DATA"
+          chown -R smoke:smoke "$BIRDNET_APP_DATA"
+      - name: Smoke test the AppDir
+        run: |
+          runuser -u smoke -- env HOME=/home/smoke BIRDNET_APP_DATA="$BIRDNET_APP_DATA" xvfb-run -a \
+            build-tools/linux/smoke-test.sh build-tools/build/linux/AppDir/usr/bin/birdnet-analyze \
+            build-tools/build/linux/AppDir/AppRun birdnet_analyzer/example
+      - name: Smoke test the AppImage
+        run: |
+          set -- build-tools/dist/linux/*.AppImage
+          "$1" --appimage-extract-and-run analyze --help >/dev/null
+      - name: Install and smoke test the .deb
+        run: |
+          rm -rf build-tools/build "$RUNNER_TEMP/venv"
+          apt-get install -y ./build-tools/dist/linux/*.deb
+          runuser -u smoke -- env HOME=/home/smoke BIRDNET_APP_DATA="$BIRDNET_APP_DATA" xvfb-run -a \
+            build-tools/linux/smoke-test.sh birdnet-analyze birdnet-analyzer-gui birdnet_analyzer/example
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: build-tools/dist/linux/*
+          retention-days: 7
+          compression-level: 0
+
+  release:
+    name: Attach to the release
+    needs: build
+    if: github.event_name == 'release' || inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: linux-packages
+      - name: Upload the packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: gh release upload "$TAG" linux-packages/* --clobber --repo "$GITHUB_REPOSITORY"

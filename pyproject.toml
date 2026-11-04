@@ -62,7 +62,7 @@ gui = [
     "psutil",
     "pywin32;platform_system=='Windows'",
     "qtpy;platform_system=='Linux'",
-    "PyGObject;platform_system=='Linux'",
+    "PySide6;platform_system=='Linux'",
 ]
 embeddings = ["perch-hoplite>=1.0.1,<2.0.0", "ml-collections"]
 all = ["birdnet-analyzer[gui]"]
