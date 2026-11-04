@@ -5,7 +5,6 @@ import io
 import logging
 import multiprocessing
 import os
-import platform
 import sys
 import threading
 from collections.abc import Callable
@@ -797,16 +796,10 @@ def birdnet_model_choices() -> list[tuple[str, str]]:
 
 
 def model_choices():
-    """The models that can be selected on the current platform, as ``(label, id)``."""
+    """The models that can be selected, as ``(label, id)``."""
     birdnet_models = [version for _, version in birdnet_model_choices()]
 
-    values = [*birdnet_models, CUSTOM_CLASSIFIER, USE_PERCH]
-
-    if platform.system() == "Darwin":
-        # TODO: Remove when tf 2.21+ is available on macOS
-        values.remove(USE_PERCH)
-
-    return _choices(*values)
+    return _choices(*birdnet_models, CUSTOM_CLASSIFIER, USE_PERCH)
 
 
 def default_model():
@@ -2036,6 +2029,9 @@ def _show_startup_warnings():
 
 
 def _close_splash():
+    if "_PYI_SPLASH_IPC" not in os.environ:
+        return
+
     with suppress(ModuleNotFoundError):
         import pyi_splash  # type: ignore
 

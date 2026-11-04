@@ -292,3 +292,18 @@ def test_an_unreadable_species_list_is_logged_and_shown(appdir, handler, monkeyp
         handler(_species_controls, "on_species_file_change")("species.txt")
 
     assert len(logged) == 1
+
+
+def test_the_splash_is_closed_only_when_the_bootloader_started_one(monkeypatch):
+    closed = []
+    monkeypatch.setitem(
+        sys.modules, "pyi_splash", SimpleNamespace(close=lambda: closed.append(True))
+    )
+
+    monkeypatch.delenv("_PYI_SPLASH_IPC", raising=False)
+    gu._close_splash()
+    assert closed == []
+
+    monkeypatch.setenv("_PYI_SPLASH_IPC", "1")
+    gu._close_splash()
+    assert closed == [True]
