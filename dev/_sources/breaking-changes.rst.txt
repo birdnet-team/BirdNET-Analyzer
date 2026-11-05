@@ -327,8 +327,6 @@ removed.
 Other changes
 -------------
 
-* **Perch** is not available on macOS — it needs a TensorFlow build that is not yet
-  published for that platform.
 * **Search** with a query longer than one segment (``--crop_mode segments``) ranks the
   results by their mean score over all query segments. v2.4.0 counted a result only for
   the query segments whose own top results contained it, so its rankings differ.
