@@ -60,6 +60,19 @@ MODEL_DIR_STARTUP_WARNING: str | None = None
 MODEL_DIR_FROM_ENV = False
 
 
+def apply_matplotlib_config_directory() -> None:
+    """Keeps matplotlib's font cache across launches of the frozen mac app.
+
+    PyInstaller's matplotlib runtime hook points MPLCONFIGDIR at a temporary
+    directory it deletes at exit, so every frozen process rebuilt the font cache
+    on its first matplotlib import; on macOS that is a system_profiler run of
+    about 15 s. Windows keeps the hook's behaviour: its scan is fast, and APPDIR
+    is the roaming profile.
+    """
+    if FROZEN and sys.platform == "darwin":
+        os.environ["MPLCONFIGDIR"] = str(APPDIR / "matplotlib")
+
+
 def default_model_directory() -> Path:
     """The model directory the frozen app uses when nothing is configured.
 

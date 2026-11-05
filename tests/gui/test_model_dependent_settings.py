@@ -20,9 +20,6 @@ from birdnet_analyzer.gui import utils as gu  # noqa: E402
 ONLY_3_0_LOCALE = "es_es"
 
 
-pytestmark = pytest.mark.usefixtures("perch_offered")
-
-
 class Tab(NamedTuple):
     demo: gr.Blocks
     state: gs.TabState

@@ -2,7 +2,6 @@ import csv
 import json
 import logging
 import os
-import platform
 import subprocess
 from pathlib import Path
 from typing import get_args
@@ -173,9 +172,6 @@ def test_analyze_with_real_custom_classifier_and_species_list(env):
             )
 
 
-@pytest.mark.skipif(
-    platform.system() == "Darwin", reason="Don't ask me why it times out on macOS."
-)
 @pytest.mark.parametrize(("audio_speed", "overlap"), [(5, 2), (0.2, 0)])
 def test_analyze_with_speed_up_and_overlap(env, audio_speed, overlap):
     file_length = 120

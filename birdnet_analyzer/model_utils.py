@@ -384,7 +384,7 @@ def classifier_info(
 
 def _inspection_library() -> str:
     """LiteRT opens a classifier in ~0.3 s, TensorFlow's interpreter in ~3.5 s; the
-    frozen Windows build ships only the latter."""
+    frozen builds ship only the latter."""
     try:
         litert = importlib.util.find_spec("ai_edge_litert") is not None
     except ValueError:

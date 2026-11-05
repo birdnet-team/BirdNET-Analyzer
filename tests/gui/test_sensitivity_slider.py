@@ -47,7 +47,7 @@ def test_slider_disabled_for_perch_and_restored_for_birdnet(appdir):
     assert to_custom["value"] == 1.25, "the user's sensitivity comes back"
 
 
-def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir, perch_offered):
+def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir):
     settings.set_tab_setting("multi", "sensitivity_slider", 1.25)
     settings.set_tab_setting("multi", "model_selection_radio", gu.USE_PERCH)
 
@@ -65,7 +65,7 @@ def test_slider_built_disabled_at_1_0_when_perch_is_persisted(appdir, perch_offe
     ],
 )
 def test_a_preset_shows_its_sensitivity_only_where_the_model_takes_one(
-    appdir, perch_offered, model, shown
+    appdir, model, shown
 ):
     settings.set_tab_setting("multi", "model_selection_radio", gu.USE_PERCH)
     state = gs.TabState("multi")
