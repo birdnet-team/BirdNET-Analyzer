@@ -51,6 +51,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Download &amp; Setup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#gui-installer">GUI installer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#windows-package-manager">Windows Package Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linux">Linux</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#raven-pro">Raven Pro</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-package">Python Package</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#command-line-installation">Command line installation</a></li>
@@ -114,6 +115,22 @@
 </pre></div>
 </div>
 </section>
+<section id="linux">
+<h2>Linux<a class="headerlink" href="#linux" title="Link to this heading"></a></h2>
+<p>Two packages are attached to each <a class="reference external" href="https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest">release</a>.
+Both need an x86_64 distribution with glibc 2.35 or newer, such as Ubuntu 22.04, Debian 12 or Fedora 36 and later.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">BirdNET-Analyzer-&lt;version&gt;-linux_x86_64.AppImage</span></code> runs without installation: make the file executable and start it.
+The command line tool is included, <code class="docutils literal notranslate"><span class="pre">./BirdNET-Analyzer-&lt;version&gt;-linux_x86_64.AppImage</span> <span class="pre">analyze</span> <span class="pre">--help</span></code> shows its options.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">birdnet-analyzer_&lt;version&gt;_amd64.deb</span></code> is for Debian, Ubuntu and their derivatives. It adds a menu entry and the
+<code class="docutils literal notranslate"><span class="pre">birdnet-analyzer-gui</span></code> and <code class="docutils literal notranslate"><span class="pre">birdnet-analyze</span></code> commands:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./birdnet-analyzer_&lt;version&gt;_amd64.deb
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Settings and the downloaded models are kept in <code class="docutils literal notranslate"><span class="pre">~/.local/share/BirdNET-Analyzer-GUI</span></code>.</p>
+</section>
 <section id="raven-pro">
 <h2>Raven Pro<a class="headerlink" href="#raven-pro" title="Link to this heading"></a></h2>
 <p>If you want to analyze audio files without any additional coding or package install, you can now use <a class="reference external" href="https://ravensoundsoftware.com/software/raven-pro/">Raven Pro software</a> to run BirdNET models.
@@ -161,8 +178,9 @@ On Windows, the models folder is <code class="docutils literal notranslate"><spa
 <p>If you also want to use the GUI, you need to install the additional packages with: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[gui]</span></code>.
 Same goes for the training tools and the embedding/search tools: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[train]</span></code> and <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[embeddings]</span></code>.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[all]</span></code> to install all packages.</p>
-<p>When building a GUI for systems using GTK with pywebview, you may need to install additional packages: qtpy and PyGObject.
-Use the following command: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">qtpy</span> <span class="pre">PyGObject</span></code>.</p>
+<p>On Linux, the <code class="docutils literal notranslate"><span class="pre">gui</span></code> extra installs PySide6 for the application window. Qt needs the system’s xcb
+libraries; on Debian and Ubuntu, <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libxcb-cursor0</span> <span class="pre">libxcb-icccm4</span> <span class="pre">libxcb-keysyms1</span>
+<span class="pre">libxcb-shape0</span> <span class="pre">libxkbcommon-x11-0</span></code> covers the ones a desktop installation may lack.</p>
 </div>
 <p>Verify the installation</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>&lt;some-audio-file.wav&gt;
