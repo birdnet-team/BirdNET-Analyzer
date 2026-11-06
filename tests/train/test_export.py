@@ -1,9 +1,10 @@
 """Real exports of a classifier head on each BirdNET base.
 
-They need the base model's SavedModel, which CI does not pre-download (the 3.0 one
-is a 500 MB zip), so each test skips unless that model is already cached.
+They need the base model's SavedModel, so each test skips unless that model is
+already cached. CI pre-downloads the 3.0 one only.
 """
 
+import csv
 import json
 
 import numpy as np
@@ -227,4 +228,17 @@ def test_raven_append_keeps_the_official_scores(tmp_path, version):
     scores = basic(inputs=audio)["scores"].numpy()
     assert scores.shape == (1, len(official) + len(LABELS))
     np.testing.assert_allclose(scores[:, : len(official)], expected, atol=1e-5)
-    assert _read_labels(tmp_path / "cc_Labels.txt") == [*official, *LABELS]
+    labels = [*official, *LABELS]
+    assert _read_labels(tmp_path / "cc_Labels.txt") == labels
+
+    with open(path / "labels" / "label_names.csv", encoding="utf-8", newline="") as f:
+        rows = list(csv.reader(f))
+    ids = [label_id for label_id, _ in rows]
+    assert [label for _, label in rows] == labels
+    assert len(set(ids)) == len(labels)
+    with open(path / "classes" / "classes.csv", encoding="utf-8", newline="") as f:
+        assert list(csv.reader(f)) == [
+            [label_id, "0.25", "0", "15000", "False"] for label_id in ids
+        ]
+    with open(path / "model_config.json", encoding="utf-8") as f:
+        assert json.load(f)["globalSemanticKeys"] == ids

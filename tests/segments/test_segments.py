@@ -9,6 +9,7 @@ from birdnet_analyzer.cli import segments_parser
 from birdnet_analyzer.segments.core import segments
 from birdnet_analyzer.segments.utils import (
     _find_segments,
+    _species_folder,
     parse_files,
     parse_folders,
 )
@@ -145,6 +146,19 @@ def test_a_species_name_no_folder_can_carry_still_gets_one_folder(tmp_path):
         "Bontebok-Blesbok/0.900_1_soundscape_0.00s_3.00s.wav",
         "vireó espetec-/0.800_2_soundscape_3.00s_6.00s.wav",
     ]
+
+
+@pytest.mark.parametrize("char", [*'<>:"/\\|?*', "\x00", "\x1f"])
+def test_no_character_a_folder_name_cannot_carry_is_kept(char):
+    assert _species_folder(f"Aaa{char}bbb") == "Aaa-bbb"
+
+
+@pytest.mark.parametrize(
+    ("species", "folder"),
+    [("Rævespurv sp.", "Rævespurv sp"), ("Name ", "Name"), ("Name. .", "Name")],
+)
+def test_a_folder_name_does_not_end_in_a_dot_or_a_space(species, folder):
+    assert _species_folder(species) == folder
 
 
 def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):

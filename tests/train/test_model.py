@@ -376,14 +376,20 @@ def test_embeddings_width_identifies_the_base_model():
         base_models.version_for_embeddings_dim(512)
 
 
-def test_the_raven_tables_take_a_name_outside_the_windows_code_page(tmp_path):
-    labels = ["Hemideina crassidens_Wellington Tree Wētā"]
+def test_the_raven_tables_take_names_outside_the_windows_code_page(tmp_path):
+    # The second label puts such characters into its id as well.
+    labels = ["Hemideina crassidens_Wellington Tree Wētā", "Wētā punga_Wētā punga"]
+    ids = ["Hemi1", "Wētā2"]
 
-    assert _write_raven_tables(str(tmp_path), labels, 0, 15000) == ["Hemi1"]
+    assert _write_raven_tables(str(tmp_path), labels, 150, 12000) == ids
 
     with open(
         tmp_path / "labels" / "label_names.csv", encoding="utf-8", newline=""
     ) as f:
-        assert list(csv.reader(f)) == [["Hemi1", labels[0]]]
+        assert list(csv.reader(f)) == [
+            list(row) for row in zip(ids, labels, strict=True)
+        ]
     with open(tmp_path / "classes" / "classes.csv", encoding="utf-8", newline="") as f:
-        assert list(csv.reader(f)) == [["Hemi1", "0.25", "0", "15000", "False"]]
+        assert list(csv.reader(f)) == [
+            [label_id, "0.25", "150", "12000", "False"] for label_id in ids
+        ]

@@ -81,7 +81,7 @@ def save_sample_counts(labels, y_train, output_dir: str):
 
     csv_file_path = output_dir + "_sample_counts.csv"
 
-    with open(csv_file_path, mode="w", newline="") as csv_file:
+    with open(csv_file_path, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(["Label", "Count"])
 
@@ -997,7 +997,7 @@ def train_model(
 
             eval_file_path = output + "_evaluation.csv"
 
-            with open(eval_file_path, "w", newline="") as f:
+            with open(eval_file_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
 
                 header = [

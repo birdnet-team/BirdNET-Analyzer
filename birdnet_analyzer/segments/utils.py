@@ -22,6 +22,12 @@ _RESULT_INFIX = re.compile(r"\.BirdNET\.", re.IGNORECASE)
 # A common name may hold what a folder name cannot, like "Bontebok/Blesbok".
 _UNSAFE_FOLDER_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
+
+def _species_folder(species: str) -> str:
+    # Windows also refuses a name that ends in a dot or a space.
+    return _UNSAFE_FOLDER_CHARS.sub("-", species).rstrip(" .")
+
+
 # As written by the 2.x releases.
 _LEGACY_KALEIDOSCOPE_COLUMNS = (
     "INDIR",
@@ -454,8 +460,7 @@ def extract_segments(
 
             if end > start:
                 seg_sig = sig[int(start) : int(end)]
-                folder = _UNSAFE_FOLDER_CHARS.sub("-", seg["species"]).rstrip(" .")
-                outpath = os.path.join(output_path, folder)
+                outpath = os.path.join(output_path, _species_folder(seg["species"]))
                 seg_name = "{:.3f}_{}_{}_{:.2f}s_{:.2f}s.wav".format(
                     seg["confidence"],
                     seg_cnt,
