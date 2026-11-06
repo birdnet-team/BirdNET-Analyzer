@@ -1,3 +1,5 @@
+import csv
+
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -5,6 +7,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 
 from birdnet_analyzer import base_models
 from birdnet_analyzer.model import (
+    _write_raven_tables,
     build_linear_classifier,
     custom_loss,
     focal_loss,
@@ -371,3 +374,16 @@ def test_embeddings_width_identifies_the_base_model():
 
     with pytest.raises(ValueError, match="512"):
         base_models.version_for_embeddings_dim(512)
+
+
+def test_the_raven_tables_take_a_name_outside_the_windows_code_page(tmp_path):
+    labels = ["Hemideina crassidens_Wellington Tree Wētā"]
+
+    assert _write_raven_tables(str(tmp_path), labels, 0, 15000) == ["Hemi1"]
+
+    with open(
+        tmp_path / "labels" / "label_names.csv", encoding="utf-8", newline=""
+    ) as f:
+        assert list(csv.reader(f)) == [["Hemi1", labels[0]]]
+    with open(tmp_path / "classes" / "classes.csv", encoding="utf-8", newline="") as f:
+        assert list(csv.reader(f)) == [["Hemi1", "0.25", "0", "15000", "False"]]

@@ -115,6 +115,38 @@ def test_segments_are_cut_from_a_result_table_of_the_example_soundscape(tmp_path
     assert [sf.info(out / clip).duration for clip in clips] == [3.0, 3.0]
 
 
+def test_a_species_name_no_folder_can_carry_still_gets_one_folder(tmp_path):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio_dir.mkdir()
+    results_dir.mkdir()
+    audio = audio_dir / "soundscape.wav"
+    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    sf.write(audio, sig[: 9 * rate], rate)
+    rows = [
+        _raven_row(1, 0, 3, "Bontebok/Blesbok", "Damaliscus pygargus", "x", 0.9, audio),
+        _raven_row(
+            2, 3, 6, "vireó espetec?", "Pteruthius intermedius", "y", 0.8, audio
+        ),
+        _raven_row(3, 6, 9, "American Robin", "Turdus migratorius", "z", 0.7, audio),
+    ]
+    (results_dir / "soundscape.BirdNET.selection.table.txt").write_text(
+        "\n".join([RAVEN_HEADER, *rows]) + "\n", encoding="utf-8"
+    )
+
+    done = segments(
+        str(audio_dir), str(out), str(results_dir), collection_mode="confidence"
+    )
+
+    assert done == [(str(audio), True)]
+    assert sorted(p.relative_to(out).as_posix() for p in out.rglob("*.wav")) == [
+        "American Robin/0.700_3_soundscape_6.00s_9.00s.wav",
+        "Bontebok-Blesbok/0.900_1_soundscape_0.00s_3.00s.wav",
+        "vireó espetec-/0.800_2_soundscape_3.00s_6.00s.wav",
+    ]
+
+
 def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):
     rfile = tmp_path / "BirdNET_Kaleidoscope.csv"
     rfile.write_text(

@@ -516,11 +516,12 @@ def summary(tab: Tab, updates: dict) -> dict:
 
 def test_the_summary_describes_the_built_model(appdir):
     tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+    thousands, rest = divmod(model_utils.class_count("3.0"), 1000)
 
     assert tab.facts_row.visible
     assert [(box.label, box.value) for box in tab.facts] == [
         ("Segment length", "3 s"),
-        ("Classes", "11\u202f560"),
+        ("Classes", f"{thousands}\u202f{rest:03d}"),
         ("Label languages", str(len(gu.model_languages(gu.USE_BIRDNET_3_0)))),
         ("Species by location", "Available"),
     ]
