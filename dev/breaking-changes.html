@@ -401,6 +401,11 @@ library reads the formats libsndfile supports (wav, flac, mp3, ogg, aiff, …);
 v2.4.0 decoded the others through audioread, which needs a system decoder (CoreAudio
 on macOS, ffmpeg elsewhere) that the installers never shipped. Convert such files to
 wav or flac first.</p></li>
+<li><p><strong>Segment folders</strong> are named after the detection’s common name with the characters a
+folder name cannot hold (<code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">&gt;</span> <span class="pre">:</span> <span class="pre">&quot;</span> <span class="pre">/</span> <span class="pre">\</span> <span class="pre">|</span> <span class="pre">?</span> <span class="pre">*</span></code>) replaced by <code class="docutils literal notranslate"><span class="pre">-</span></code> and a trailing dot or
+space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
+<code class="docutils literal notranslate"><span class="pre">/</span></code> (<code class="docutils literal notranslate"><span class="pre">Eurasian/Green-winged</span> <span class="pre">Teal</span></code>) and failed on Windows for a name with <code class="docutils literal notranslate"><span class="pre">?</span></code>.
+Segments extracted again into an existing output folder land in the new folder.</p></li>
 </ul>
 </section>
 </section>
