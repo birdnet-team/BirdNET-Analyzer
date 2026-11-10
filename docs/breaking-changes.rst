@@ -340,3 +340,8 @@ Other changes
   v2.4.0 decoded the others through audioread, which needs a system decoder (CoreAudio
   on macOS, ffmpeg elsewhere) that the installers never shipped. Convert such files to
   wav or flac first.
+* **Segment folders** are named after the detection's common name with the characters a
+  folder name cannot hold (``< > : " / \ | ? *``) replaced by ``-`` and a trailing dot or
+  space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
+  ``/`` (``Eurasian/Green-winged Teal``) and failed on Windows for a name with ``?``.
+  Segments extracted again into an existing output folder land in the new folder.

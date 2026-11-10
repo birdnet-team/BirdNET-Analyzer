@@ -722,6 +722,34 @@ def _write_labels(path: str, labels: list[str]) -> None:
         f.writelines(label + "\n" for label in labels)
 
 
+def _write_raven_tables(
+    model_path: str, labels: list[str], sig_fmin: int, sig_fmax: int
+) -> list[str]:
+    label_ids = [
+        label[:4].replace(" ", "") + str(i) for i, label in enumerate(labels, 1)
+    ]
+    labels_dir = os.path.join(model_path, "labels")
+    os.makedirs(labels_dir, exist_ok=True)
+
+    with open(
+        os.path.join(labels_dir, "label_names.csv"), "w", newline="", encoding="utf-8"
+    ) as labelsfile:
+        csv.writer(labelsfile).writerows(zip(label_ids, labels, strict=True))
+
+    classes_dir = os.path.join(model_path, "classes")
+    os.makedirs(classes_dir, exist_ok=True)
+
+    with open(
+        os.path.join(classes_dir, "classes.csv"), "w", newline="", encoding="utf-8"
+    ) as classesfile:
+        classeswriter = csv.writer(classesfile)
+
+        for label_id in label_ids:
+            classeswriter.writerow((label_id, 0.25, sig_fmin, sig_fmax, False))
+
+    return label_ids
+
+
 def save_raven_model(
     classifier,
     model_path: str,
@@ -791,31 +819,9 @@ def save_raven_model(
     if mode == "append":
         labels = [*original_labels, *labels]
 
-    # The species list birdnet reads; Raven itself uses label_names.csv below.
+    # The species list birdnet reads; Raven itself uses label_names.csv.
     _write_labels(model_path + "_Labels.txt", labels)
-
-    labelIds = [
-        label[:4].replace(" ", "") + str(i) for i, label in enumerate(labels, 1)
-    ]
-    labels_dir = os.path.join(model_path, "labels")
-
-    os.makedirs(labels_dir, exist_ok=True)
-
-    with open(
-        os.path.join(labels_dir, "label_names.csv"), "w", newline=""
-    ) as labelsfile:
-        labelwriter = csv.writer(labelsfile)
-        labelwriter.writerows(zip(labelIds, labels, strict=True))
-
-    classes_dir = os.path.join(model_path, "classes")
-
-    os.makedirs(classes_dir, exist_ok=True)
-
-    with open(os.path.join(classes_dir, "classes.csv"), "w", newline="") as classesfile:
-        classeswriter = csv.writer(classesfile)
-
-        for labelId in labelIds:
-            classeswriter.writerow((labelId, 0.25, sig_fmin, sig_fmax, False))
+    label_ids = _write_raven_tables(model_path, labels, sig_fmin, sig_fmax)
 
     model_config = os.path.join(model_path, "model_config.json")
 
@@ -842,7 +848,7 @@ def save_raven_model(
                     "modelOutputs": [{"outputName": "scores", "outputType": "SCORES"}],
                 }
             ],
-            "globalSemanticKeys": labelIds,
+            "globalSemanticKeys": label_ids,
         }
 
         json.dump(modelconfig, modelconfigfile, indent=2)

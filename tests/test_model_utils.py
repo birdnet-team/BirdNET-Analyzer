@@ -1,3 +1,4 @@
+import birdnet
 import pytest
 
 from birdnet_analyzer import model_utils
@@ -168,7 +169,7 @@ def test_each_model_has_a_segment_length():
 
 def test_each_model_has_a_class_count():
     assert model_utils.class_count("2.4") == 6522
-    assert model_utils.class_count("3.0") == 11560
+    assert model_utils.class_count("3.0") == birdnet.AcousticModelV3_0.get_n_classes()
     assert model_utils.class_count("perch") == 14795
 
 

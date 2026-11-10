@@ -1,3 +1,4 @@
+import csv
 import inspect
 from unittest.mock import MagicMock, patch
 
@@ -511,6 +512,28 @@ def test_the_params_file_records_the_autotune_metric(tmp_path):
     recorded = params.load_train_params(str(tmp_path / "cc") + TRAIN_PARAMS_SUFFIX)
 
     assert recorded["autotune_metric"] == "val_AUROC"
+
+
+def test_the_result_tables_take_a_label_outside_the_windows_code_page(
+    monkeypatch, tmp_path
+):
+    from birdnet_analyzer.train import utils as train_utils
+
+    x, y, *_ = _synthetic_training_data()
+    labels = ["Wellington Tree Wētā", "b"]
+    monkeypatch.setattr(
+        train_utils,
+        "_load_training_data",
+        lambda *a, **k: (x, y, x[::4], y[::4], labels, False, False, "3.0"),
+    )
+
+    train_utils.train_model(
+        "unused", output=str(tmp_path / "cc"), epochs=1, model_formats=[]
+    )
+
+    for suffix in ("_sample_counts.csv", "_evaluation.csv"):
+        with open(str(tmp_path / "cc") + suffix, encoding="utf-8", newline="") as f:
+            assert labels[0] in {row[0] for row in csv.reader(f)}
 
 
 @pytest.mark.usefixtures("synthetic_training_data")
