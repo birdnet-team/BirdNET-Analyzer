@@ -1,12 +1,14 @@
+import hashlib
 import os
+import tempfile
 from pathlib import Path
 
 import gradio as gr
+from signavis.gradio import VIEWER_TOOLBAR, SignaVisPlayer, player_value
 
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import utils
 from birdnet_analyzer.analyze.core import (
     result_dataframe,
     save_as_csv,
@@ -15,7 +17,6 @@ from birdnet_analyzer.analyze.core import (
 )
 from birdnet_analyzer.gui.state import TabState
 
-MATPLOTLIB_FIGURE_NUM = "single-file-tab-spectrogram-plot"
 MAX_TABLE_ROWS = 50
 _HEADER_LABELS = {
     "HEADER_START_LBL": "single-tab-output-header-start",
@@ -41,8 +42,8 @@ def __getattr__(name: str) -> str:
 BROWSER_PLAYABLE = (".wav", ".flac", ".mp3")
 
 
-def audio_preview(path: str):
-    """The player's value for a file: the file itself when the browser can play it."""
+def audio_preview(path: str) -> str:
+    """A file the browser can play: the file itself, or a WAV decoded from it."""
     import soundfile as sf
 
     # An unreadable file fails here with its reason, not silently in the player.
@@ -54,15 +55,65 @@ def audio_preview(path: str):
     )
 
     if path.lower().endswith(BROWSER_PLAYABLE) and not uncommon_wav:
-        # Served from where it is; gradio would otherwise hash and copy it into its
-        # cache, seconds and a second copy on disk for a long recording.
-        gr.set_static_paths([path])
-
         return path
 
-    data, rate = sf.read(path, dtype="float32")
+    stat = os.stat(path)
+    key = f"{os.path.abspath(path)}|{stat.st_size}|{stat.st_mtime_ns}".encode()
+    preview_dir = Path(tempfile.gettempdir()) / "birdnet-analyzer-preview"
+    preview_dir.mkdir(exist_ok=True)
+    preview = preview_dir / f"{hashlib.sha1(key).hexdigest()}.wav"
 
-    return rate, data
+    if not preview.exists():
+        data, rate = sf.read(path, dtype="float32")
+        # Written under a unique name and moved into place when complete: a
+        # failed conversion leaves no partial preview behind, and another
+        # instance never reads one that is still being written.
+        fd, partial = tempfile.mkstemp(suffix=".wav", dir=preview_dir)
+        os.close(fd)
+        try:
+            sf.write(partial, data, rate, subtype="PCM_16")
+            os.replace(partial, preview)
+        except BaseException:
+            Path(partial).unlink(missing_ok=True)
+            raise
+
+    return str(preview)
+
+
+def player_detections(detections) -> list[dict]:
+    """The detections of a result table as labels for the spectrogram player."""
+    labels = []
+
+    for i, row in enumerate(detections.itertuples(index=False)):
+        sci_name, _, common_name = row.species_name.partition("_")
+        labels.append(
+            {
+                "id": f"det-{i}",
+                "start": float(row.start_time),
+                "end": float(row.end_time),
+                "label": common_name or sci_name,
+                "scientificName": sci_name,
+                "commonName": common_name,
+                "confidence": round(float(row.confidence), 3),
+                "origin": "BirdNET",
+            }
+        )
+
+    return labels
+
+
+def detection_id(detections, start: float, end: float, sci_name: str) -> str | None:
+    """The player id of the detection a row of the results table shows."""
+    # The table shows the times to a tenth of a second.
+    for i, row in enumerate(detections.itertuples(index=False)):
+        if (
+            row.species_name.partition("_")[0] == sci_name
+            and abs(float(row.start_time) - start) < 0.1
+            and abs(float(row.end_time) - end) < 0.1
+        ):
+            return f"det-{i}"
+
+    return None
 
 
 @gu.gui_runtime_error_handler
@@ -226,33 +277,25 @@ def build_single_analysis_tab() -> None:
                 elem_classes="path-textbox",
             )
 
-        audio_input = gr.Audio(
-            type="filepath",
-            label=loc.localize("single-audio-label"),
-            interactive=False,
+        # The detections are listed in the results table below, not in a second one.
+        player = SignaVisPlayer(
             visible=False,
-            buttons=[],
-            editable=False,
-            # The browser's own player streams the file; the waveform player downloads
-            # and decodes all of it before it shows anything.
-            waveform_options=gr.WaveformOptions(show_recording_waveform=False),
+            elem_id="single-file-player",
+            label_table=False,
+            # BirdNET detections cover the whole band: strips along the top.
+            label_display="lanes",
+            toolbar=[*VIEWER_TOOLBAR, "follow", "fit", "contrast"],
+            options={"transportStyle": "hero"},
         )
-
-        with gr.Group(visible=False) as spectrogram_group:
-            spectrogram_output = gr.Plot(
-                label=loc.localize("review-tab-spectrogram-plot-label"),
-                show_label=False,
-            )
-        generate_spectrogram_cb = state.persist(
-            "generate_spectrogram_checkbox",
-            gr.Checkbox,
+        show_confidence_checkbox = gr.Checkbox(
+            label=loc.localize("single-tab-show-confidence-label"),
             value=False,
-            label=loc.localize("single-tab-spectrogram-checkbox-label"),
-            info=loc.localize("single-tab-spectrogram-checkbox-info"),
+            visible=False,
         )
         audio_path_state = gr.State()
-        spectrogram_request = gr.State()
+        player_src_state = gr.State()
         last_prediction_state = gr.State()
+        selection_state = gr.State()
         sample_settings, species_settings, model_settings = (
             gu.sample_species_model_settings(state, opened=False)
         )
@@ -264,23 +307,14 @@ def build_single_analysis_tab() -> None:
         )
 
         with gr.Row(visible=False) as action_row:
-            with gr.Group(), gr.Column():
-                rtable_download_button = gr.Button(
-                    loc.localize("single-tab-download-rtable-button-label")
-                )
-                csv_download_button = gr.Button(
-                    loc.localize("single-tab-download-csv-button-label")
-                )
-                kaleidoscope_download_button = gr.Button(
-                    loc.localize("single-tab-download-kaleidoscope-button-label")
-                )
-            segment_audio = gr.Audio(
-                autoplay=True,
-                type="numpy",
-                buttons=["download"],
-                show_label=False,
-                editable=False,
-                visible=False,
+            rtable_download_button = gr.Button(
+                loc.localize("single-tab-download-rtable-button-label")
+            )
+            csv_download_button = gr.Button(
+                loc.localize("single-tab-download-csv-button-label")
+            )
+            kaleidoscope_download_button = gr.Button(
+                loc.localize("single-tab-download-kaleidoscope-button-label")
             )
 
         output_dataframe = gr.Dataframe(
@@ -300,75 +334,69 @@ def build_single_analysis_tab() -> None:
                 state_key="single_file_audio",
             )
 
+            # The last value is the selection request: None tells the
+            # steps chained below that the dialog was cancelled.
             if not file_path:
-                return gr.skip(), gr.skip(), gr.skip(), gr.skip(), None
+                return (*(gr.skip(),) * 8, None)
+
+            # The player shows up right away: decoding an mp3/ogg into a
+            # preview below can take a while for long recordings.
+            return (
+                file_path,
+                file_path,
+                None,
+                gr.update(visible=True, value=player_value(None)),
+                gr.update(visible=True),
+                None,
+                # The results of the last recording go with its predictions.
+                gr.update(visible=False, value=None),
+                gr.update(visible=False),
+                file_path,
+            )
+
+        @gu.gui_runtime_error_handler
+        def lock_analyze(selection):
+            if not selection:
+                return gr.skip()
+
+            return gr.update(interactive=False)
+
+        @gu.gui_runtime_error_handler
+        def load_player(file_path, show_confidence):
+            if not file_path:
+                return gr.skip(), gr.skip(), gr.skip()
 
             preview = audio_preview(file_path)
 
             return (
-                file_path,
-                file_path,
-                gr.update(
-                    visible=True,
-                    value=preview,
-                    label=os.path.basename(file_path),
-                ),
+                preview,
+                player_value(preview, show_confidence=show_confidence),
                 gr.update(interactive=True),
-                file_path,
             )
 
-        def spectrogram_updates(audio_path, generate_spectrogram):
-            if not (audio_path and generate_spectrogram):
-                return gr.update(visible=False), None
-
-            try:
-                figure = utils.spectrogram_from_file(
-                    audio_path,
-                    fig_size=(20, 4),
-                    fig_num=MATPLOTLIB_FIGURE_NUM,
-                    **gu.spectrogram_settings(),
-                )
-            except Exception as e:
-                raise gr.Error(
-                    loc.localize("single-tab-generate-spectrogram-error")
-                ) from e
-
-            return gr.update(visible=True), gr.update(visible=True, value=figure)
-
-        @gu.gui_runtime_error_handler
-        def try_generate_spectrogram(audio_path, generate_spectrogram):
-            return spectrogram_updates(audio_path, generate_spectrogram)
-
-        @gu.gui_runtime_error_handler
-        def draw_spectrogram_for_selection(file_path, generate_spectrogram):
-            # None: the dialog was cancelled and the shown spectrogram stays.
-            if file_path is None:
-                return gr.skip(), gr.skip()
-
-            return spectrogram_updates(file_path, generate_spectrogram)
-
-        generate_spectrogram_cb.change(
-            try_generate_spectrogram,
-            inputs=[audio_path_state, generate_spectrogram_cb],
-            outputs=[spectrogram_group, spectrogram_output],
-            show_progress_on=generate_spectrogram_cb,
-        )
-
-        # The player first; the spectrogram follows and may fail on its own.
         select_file_button.click(
             select_and_load_audio_file,
             outputs=[
                 audio_path_state,
                 selected_file_label,
-                audio_input,
-                single_file_analyze,
-                spectrogram_request,
+                player_src_state,
+                player,
+                show_confidence_checkbox,
+                last_prediction_state,
+                output_dataframe,
+                action_row,
+                selection_state,
             ],
         ).then(
-            draw_spectrogram_for_selection,
-            inputs=[spectrogram_request, generate_spectrogram_cb],
-            outputs=[spectrogram_group, spectrogram_output],
-            show_progress_on=generate_spectrogram_cb,
+            lock_analyze,
+            inputs=selection_state,
+            outputs=single_file_analyze,
+            show_progress="hidden",
+        ).then(
+            load_player,
+            inputs=[selection_state, show_confidence_checkbox],
+            outputs=[player_src_state, player, single_file_analyze],
+            show_progress_on=player,
         )
 
         inputs = [
@@ -406,20 +434,38 @@ def build_single_analysis_tab() -> None:
                 ) from e
 
         @gu.gui_runtime_error_handler
-        def get_selected_audio(evt: gr.SelectData, audio_path):
-            from birdnet_analyzer import audio
+        def show_detections(prediction_state, player_src, show_confidence):
+            if not player_src:
+                return gr.skip()
 
-            if evt.index[1] == 0 and evt.row_value[1] and evt.row_value[2]:
-                start = time_to_seconds(evt.row_value[1])
-                end = time_to_seconds(evt.row_value[2])
+            return player_value(
+                player_src,
+                detections=player_detections(prediction_state["table"])
+                if prediction_state
+                else [],
+                show_confidence=show_confidence,
+            )
 
-                data, sr = audio.open_audio_file(
-                    audio_path, offset=start, duration=end - start
-                )
+        @gu.gui_runtime_error_handler
+        def play_selected_detection(
+            evt: gr.SelectData, prediction_state, player_src, show_confidence
+        ):
+            if not (prediction_state and player_src and evt.row_value[1]):
+                return gr.skip()
 
-                return gr.update(visible=True, value=(sr, data))
+            detections = prediction_state["table"]
+            start = time_to_seconds(evt.row_value[1])
+            end = time_to_seconds(evt.row_value[2])
 
-            return gr.update()
+            # The play column plays the detection, any other cell shows it.
+            return player_value(
+                player_src,
+                detections=player_detections(detections),
+                select=(start, end),
+                play=evt.index[1] == 0,
+                select_id=detection_id(detections, start, end, evt.row_value[3]),
+                show_confidence=show_confidence,
+            )
 
         @gu.gui_runtime_error_handler
         def download_rtable(prediction_state):
@@ -472,7 +518,15 @@ def build_single_analysis_tab() -> None:
                     )
 
         output_dataframe.select(
-            get_selected_audio, inputs=audio_path_state, outputs=segment_audio
+            play_selected_detection,
+            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
+            outputs=player,
+        )
+        show_confidence_checkbox.change(
+            show_detections,
+            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
+            outputs=player,
+            show_progress="hidden",
         )
         single_file_analyze.click(
             lambda: gr.update(visible=True),
@@ -482,6 +536,10 @@ def build_single_analysis_tab() -> None:
             run_single_file_analysis,
             inputs=inputs,
             outputs=[output_dataframe, action_row, last_prediction_state],
+        ).then(
+            show_detections,
+            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
+            outputs=player,
         )
         rtable_download_button.click(download_rtable, inputs=last_prediction_state)
         csv_download_button.click(download_csv, inputs=last_prediction_state)
