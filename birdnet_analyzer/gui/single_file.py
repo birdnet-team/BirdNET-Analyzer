@@ -65,7 +65,17 @@ def audio_preview(path: str) -> str:
 
     if not preview.exists():
         data, rate = sf.read(path, dtype="float32")
-        sf.write(preview, data, rate, subtype="PCM_16")
+        # Written under a unique name and moved into place when complete: a
+        # failed conversion leaves no partial preview behind, and another
+        # instance never reads one that is still being written.
+        fd, partial = tempfile.mkstemp(suffix=".wav", dir=preview_dir)
+        os.close(fd)
+        try:
+            sf.write(partial, data, rate, subtype="PCM_16")
+            os.replace(partial, preview)
+        except BaseException:
+            Path(partial).unlink(missing_ok=True)
+            raise
 
     return str(preview)
 
@@ -285,6 +295,7 @@ def build_single_analysis_tab() -> None:
         audio_path_state = gr.State()
         player_src_state = gr.State()
         last_prediction_state = gr.State()
+        selection_state = gr.State()
         sample_settings, species_settings, model_settings = (
             gu.sample_species_model_settings(state, opened=False)
         )
@@ -323,8 +334,10 @@ def build_single_analysis_tab() -> None:
                 state_key="single_file_audio",
             )
 
+            # The last value is the selection request: None tells the
+            # steps chained below that the dialog was cancelled.
             if not file_path:
-                return (gr.skip(),) * 6
+                return (*(gr.skip(),) * 8, None)
 
             # The player shows up right away: decoding an mp3/ogg into a
             # preview below can take a while for long recordings.
@@ -335,7 +348,18 @@ def build_single_analysis_tab() -> None:
                 gr.update(visible=True, value=player_value(None)),
                 gr.update(visible=True),
                 None,
+                # The results of the last recording go with its predictions.
+                gr.update(visible=False, value=None),
+                gr.update(visible=False),
+                file_path,
             )
+
+        @gu.gui_runtime_error_handler
+        def lock_analyze(selection):
+            if not selection:
+                return gr.skip()
+
+            return gr.update(interactive=False)
 
         @gu.gui_runtime_error_handler
         def load_player(file_path, show_confidence):
@@ -359,14 +383,18 @@ def build_single_analysis_tab() -> None:
                 player,
                 show_confidence_checkbox,
                 last_prediction_state,
+                output_dataframe,
+                action_row,
+                selection_state,
             ],
         ).then(
-            lambda: gr.update(interactive=False),
+            lock_analyze,
+            inputs=selection_state,
             outputs=single_file_analyze,
             show_progress="hidden",
         ).then(
             load_player,
-            inputs=[audio_path_state, show_confidence_checkbox],
+            inputs=[selection_state, show_confidence_checkbox],
             outputs=[player_src_state, player, single_file_analyze],
             show_progress_on=player,
         )

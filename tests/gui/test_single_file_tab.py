@@ -68,7 +68,14 @@ def test_cancelling_the_dialog_changes_nothing(appdir, handler, monkeypatch):
         single_file.build_single_analysis_tab, "select_and_load_audio_file"
     )()
 
-    assert list(result) == [gr.skip()] * 6
+    assert list(result) == [gr.skip()] * 8 + [None]
+
+
+def test_a_cancelled_dialog_stops_the_chained_steps(appdir, handler):
+    tab = single_file.build_single_analysis_tab
+
+    assert handler(tab, "lock_analyze")(None) == gr.skip()
+    assert handler(tab, "load_player")(None, False) == (gr.skip(),) * 3
 
 
 def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path):
@@ -76,15 +83,19 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: str(clip))
 
-    path, label, src, player, checkbox, predictions = handler(
-        single_file.build_single_analysis_tab, "select_and_load_audio_file"
-    )()
+    path, label, src, player, checkbox, predictions, table, actions, selection = (
+        handler(single_file.build_single_analysis_tab, "select_and_load_audio_file")()
+    )
 
     assert path == label == str(clip)
     assert src is None
     assert player["visible"] is True, "the player shows up before the audio is ready"
     assert checkbox["visible"] is True
     assert predictions is None, "a new file drops the last results"
+    assert table["visible"] is False
+    assert table["value"] is None
+    assert actions["visible"] is False
+    assert selection == str(clip)
 
     src, player, analyze = handler(
         single_file.build_single_analysis_tab, "load_player"
@@ -112,6 +123,18 @@ def test_a_format_the_browser_cannot_play_is_decoded_for_it(tmp_path, name, subt
     assert data.shape == (4800,)
     assert data.max() == pytest.approx(0.5, abs=0.05)
     assert single_file.audio_preview(str(clip)) == preview
+
+
+def test_a_failed_conversion_leaves_no_preview_behind(tmp_path, monkeypatch):
+    clip = tmp_path / "clip.ogg"
+    sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
+    monkeypatch.setattr(single_file.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(sf, "write", _fail(OSError("disk full")))
+
+    with pytest.raises(OSError, match="disk full"):
+        single_file.audio_preview(str(clip))
+
+    assert list((tmp_path / "birdnet-analyzer-preview").iterdir()) == []
 
 
 def test_detections_become_player_labels():
