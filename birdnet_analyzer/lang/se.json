@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "Start",
     "single-tab-results-truncated-warning": "Visar de {shown} detektioner med högst poäng av {total}. Använd nedladdningsknapparna för de fullständiga resultaten.",
     "single-tab-select-file-button-label": "Välj ljudfil",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "Enskild analys",
     "species-list-accordion-label": "Artval",
     "species-list-coordinates-lat-number-info": "Inspelningsplatsens latitud.",

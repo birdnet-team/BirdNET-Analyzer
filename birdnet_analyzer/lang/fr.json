@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "Commencer",
     "single-tab-results-truncated-warning": "Affichage des {shown} détections aux scores les plus élevés sur {total}. Utilisez les boutons de téléchargement pour les résultats complets.",
     "single-tab-select-file-button-label": "Sélectionner un fichier audio",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "Analyse rapide",
     "species-list-accordion-label": "Sélection des espèces",
     "species-list-coordinates-lat-number-info": "Latitude du lieu d'enregistrement.",

@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "开始",
     "single-tab-results-truncated-warning": "仅显示 {total} 条检测结果中分数最高的 {shown} 条。完整结果请使用下载按钮。",
     "single-tab-select-file-button-label": "选择音频文件",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "单文件分析",
     "species-list-accordion-label": "物种选择",
     "species-list-coordinates-lat-number-info": "录音地点的纬度。",

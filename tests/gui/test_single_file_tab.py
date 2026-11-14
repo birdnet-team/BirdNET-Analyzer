@@ -42,7 +42,7 @@ def test_an_unreadable_file_is_reported_as_such(appdir, handler, monkeypatch, lo
     monkeypatch.setattr(sf, "info", _fail(OSError("disk")))
 
     with pytest.raises(gr.Error) as raised:
-        handler(single_file.build_single_analysis_tab, "select_and_load_audio_file")()
+        handler(single_file.build_single_analysis_tab, "load_player")("clip.wav", False)
 
     assert "disk" in raised.value.message
     assert len(logged) == 1
@@ -76,15 +76,23 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: str(clip))
 
-    path, label, src, player, analyze, predictions = handler(
+    path, label, src, player, checkbox, predictions = handler(
         single_file.build_single_analysis_tab, "select_and_load_audio_file"
     )()
 
-    assert path == label == src == str(clip)
-    assert player["visible"] is True
-    assert player["value"] == {"src": str(clip)}
-    assert analyze["interactive"] is True
+    assert path == label == str(clip)
+    assert src is None
+    assert player["visible"] is True, "the player shows up before the audio is ready"
+    assert checkbox["visible"] is True
     assert predictions is None, "a new file drops the last results"
+
+    src, player, analyze = handler(
+        single_file.build_single_analysis_tab, "load_player"
+    )(path, True)
+
+    assert src == str(clip)
+    assert player == {"src": str(clip), "showConfidence": True}
+    assert analyze["interactive"] is True
 
 
 @pytest.mark.parametrize(
@@ -131,11 +139,20 @@ def test_a_table_row_finds_its_detection():
 
 def test_the_analysis_marks_its_detections_in_the_player(appdir, handler):
     value = handler(single_file.build_single_analysis_tab, "show_detections")(
-        {"table": _detections()}, "clip.wav"
+        {"table": _detections()}, "clip.wav", False
     )
 
     assert value["src"] == "clip.wav"
+    assert value["showConfidence"] is False
     assert [d["start"] for d in value["detections"]] == [3.0, 9.0]
+
+
+def test_the_confidence_can_be_shown_before_an_analysis(appdir, handler):
+    value = handler(single_file.build_single_analysis_tab, "show_detections")(
+        None, "clip.wav", True
+    )
+
+    assert value == {"src": "clip.wav", "detections": [], "showConfidence": True}
 
 
 @pytest.mark.parametrize(("column", "plays"), [(0, True), (3, False)])
@@ -150,7 +167,7 @@ def test_a_clicked_detection_is_shown_in_the_player(appdir, handler, column, pla
     )
 
     value = handler(single_file.build_single_analysis_tab, "play_selected_detection")(
-        evt, {"table": _detections()}, "clip.wav"
+        evt, {"table": _detections()}, "clip.wav", True
     )
 
     assert value["select"]["start"] == 9.0
@@ -158,6 +175,7 @@ def test_a_clicked_detection_is_shown_in_the_player(appdir, handler, column, pla
     assert value["select"]["play"] is plays
     assert value["select"]["id"] == "det-1"
     assert len(value["detections"]) == 2
+    assert value["showConfidence"] is True
 
 
 def test_a_failed_export_is_logged_and_shown(

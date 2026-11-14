@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "Старт (сек)",
     "single-tab-results-truncated-warning": "Показаны {shown} обнаружений с наивысшими оценками из {total}. Полные результаты доступны по кнопкам скачивания.",
     "single-tab-select-file-button-label": "Выбрать аудиофайл",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "Одиночный анализ",
     "species-list-accordion-label": "Выбор вида",
     "species-list-coordinates-lat-number-info": "Широта местоположения записи.",

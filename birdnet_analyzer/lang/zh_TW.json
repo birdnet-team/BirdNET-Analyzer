@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "開始",
     "single-tab-results-truncated-warning": "僅顯示 {total} 筆偵測結果中分數最高的 {shown} 筆。完整結果請使用下載按鈕。",
     "single-tab-select-file-button-label": "選擇音訊檔案",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "單筆音檔",
     "species-list-accordion-label": "物種清單",
     "species-list-coordinates-lat-number-info": "錄音地點緯度",

@@ -272,8 +272,15 @@ def build_single_analysis_tab() -> None:
             visible=False,
             elem_id="single-file-player",
             label_table=False,
-            label_display="boxes",
-            toolbar=[*VIEWER_TOOLBAR, "follow", "fit"],
+            # BirdNET detections cover the whole band: strips along the top.
+            label_display="lanes",
+            toolbar=[*VIEWER_TOOLBAR, "follow", "fit", "contrast"],
+            options={"transportStyle": "hero"},
+        )
+        show_confidence_checkbox = gr.Checkbox(
+            label=loc.localize("single-tab-show-confidence-label"),
+            value=False,
+            visible=False,
         )
         audio_path_state = gr.State()
         player_src_state = gr.State()
@@ -319,15 +326,28 @@ def build_single_analysis_tab() -> None:
             if not file_path:
                 return (gr.skip(),) * 6
 
-            preview = audio_preview(file_path)
-
+            # The player shows up right away: decoding an mp3/ogg into a
+            # preview below can take a while for long recordings.
             return (
                 file_path,
                 file_path,
-                preview,
-                gr.update(visible=True, value=player_value(preview)),
-                gr.update(interactive=True),
                 None,
+                gr.update(visible=True, value=player_value(None)),
+                gr.update(visible=True),
+                None,
+            )
+
+        @gu.gui_runtime_error_handler
+        def load_player(file_path, show_confidence):
+            if not file_path:
+                return gr.skip(), gr.skip(), gr.skip()
+
+            preview = audio_preview(file_path)
+
+            return (
+                preview,
+                player_value(preview, show_confidence=show_confidence),
+                gr.update(interactive=True),
             )
 
         select_file_button.click(
@@ -337,9 +357,18 @@ def build_single_analysis_tab() -> None:
                 selected_file_label,
                 player_src_state,
                 player,
-                single_file_analyze,
+                show_confidence_checkbox,
                 last_prediction_state,
             ],
+        ).then(
+            lambda: gr.update(interactive=False),
+            outputs=single_file_analyze,
+            show_progress="hidden",
+        ).then(
+            load_player,
+            inputs=[audio_path_state, show_confidence_checkbox],
+            outputs=[player_src_state, player, single_file_analyze],
+            show_progress_on=player,
         )
 
         inputs = [
@@ -377,16 +406,22 @@ def build_single_analysis_tab() -> None:
                 ) from e
 
         @gu.gui_runtime_error_handler
-        def show_detections(prediction_state, player_src):
-            if not (prediction_state and player_src):
+        def show_detections(prediction_state, player_src, show_confidence):
+            if not player_src:
                 return gr.skip()
 
             return player_value(
-                player_src, detections=player_detections(prediction_state["table"])
+                player_src,
+                detections=player_detections(prediction_state["table"])
+                if prediction_state
+                else [],
+                show_confidence=show_confidence,
             )
 
         @gu.gui_runtime_error_handler
-        def play_selected_detection(evt: gr.SelectData, prediction_state, player_src):
+        def play_selected_detection(
+            evt: gr.SelectData, prediction_state, player_src, show_confidence
+        ):
             if not (prediction_state and player_src and evt.row_value[1]):
                 return gr.skip()
 
@@ -401,6 +436,7 @@ def build_single_analysis_tab() -> None:
                 select=(start, end),
                 play=evt.index[1] == 0,
                 select_id=detection_id(detections, start, end, evt.row_value[3]),
+                show_confidence=show_confidence,
             )
 
         @gu.gui_runtime_error_handler
@@ -455,8 +491,14 @@ def build_single_analysis_tab() -> None:
 
         output_dataframe.select(
             play_selected_detection,
-            inputs=[last_prediction_state, player_src_state],
+            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
             outputs=player,
+        )
+        show_confidence_checkbox.change(
+            show_detections,
+            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
+            outputs=player,
+            show_progress="hidden",
         )
         single_file_analyze.click(
             lambda: gr.update(visible=True),
@@ -468,7 +510,7 @@ def build_single_analysis_tab() -> None:
             outputs=[output_dataframe, action_row, last_prediction_state],
         ).then(
             show_detections,
-            inputs=[last_prediction_state, player_src_state],
+            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
             outputs=player,
         )
         rtable_download_button.click(download_rtable, inputs=last_prediction_state)

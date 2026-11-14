@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "Start",
     "single-tab-results-truncated-warning": "Showing the {shown} highest-scoring of {total} detections. Use the download buttons for the complete results.",
     "single-tab-select-file-button-label": "Select Audio File",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "Single analysis",
     "species-list-accordion-label": "Species selection",
     "species-list-coordinates-lat-number-info": "Recording location latitude.",

@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "Start",
     "single-tab-results-truncated-warning": "Angezeigt werden die {shown} Erkennungen mit den höchsten Werten von insgesamt {total}. Die vollständigen Ergebnisse gibt es über die Download-Buttons.",
     "single-tab-select-file-button-label": "Audiodatei auswählen",
+    "single-tab-show-confidence-label": "Konfidenz im Spektrogramm anzeigen",
     "single-tab-title": "Einzelanalyse",
     "species-list-accordion-label": "Artenauswahl",
     "species-list-coordinates-lat-number-info": "Breitengrad des Aufnahmestandorts.",

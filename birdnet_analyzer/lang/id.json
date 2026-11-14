@@ -352,6 +352,7 @@
     "single-tab-output-header-start": "Mulai",
     "single-tab-results-truncated-warning": "Menampilkan {shown} deteksi dengan skor tertinggi dari {total}. Gunakan tombol unduh untuk hasil lengkap.",
     "single-tab-select-file-button-label": "Pilih Berkas Audio",
+    "single-tab-show-confidence-label": "Show confidence in the spectrogram",
     "single-tab-title": "Analisis tunggal",
     "species-list-accordion-label": "Pemilihan spesies",
     "species-list-coordinates-lat-number-info": "Latitude lokasi perekaman.",
