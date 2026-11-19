@@ -295,20 +295,29 @@ def test_analyze_defaults_to_birdnet_3_0_and_reconciles_geo_list(
 
 
 @pytest.mark.parametrize(
-    ("arguments", "geo_version"),
+    ("arguments", "classifier_base", "geo_version"),
     [
-        ({}, None),
-        ({"birdnet": "2.4"}, "2.4"),
-        ({"birdnet": "2.4", "classifier": "cc.tflite"}, None),
-        ({"birdnet": "2.4", "model": "perch"}, None),
+        ({}, None, None),
+        ({"birdnet": "2.4"}, None, "2.4"),
+        ({"classifier": "cc.tflite"}, "2.4", "2.4"),
+        ({"birdnet": "2.4", "classifier": "cc.tflite"}, "3.0", None),
+        ({"birdnet": "2.4", "model": "perch"}, None, None),
     ],
-    ids=["3.0", "2.4", "classifier", "perch"],
+    ids=["3.0", "2.4", "classifier on 2.4", "classifier on 3.0", "perch"],
 )
+@patch("birdnet_analyzer.model_utils.classifier_version")
 @patch("birdnet_analyzer.model_utils.run_geomodel")
 @patch("birdnet_analyzer.model_utils.run_inference")
-def test_only_birdnet_2_4_takes_the_location_from_the_geo_2_4_model(
-    mock_run_inference, mock_run_geomodel, arguments, geo_version, env
+def test_birdnet_2_4_and_its_classifiers_take_the_location_from_the_geo_2_4_model(
+    mock_run_inference,
+    mock_run_geomodel,
+    mock_classifier_version,
+    arguments,
+    classifier_base,
+    geo_version,
+    env,
 ):
+    mock_classifier_version.return_value = classifier_base
     mock_run_geomodel.return_value.to_set.return_value = {"Cardinalis cardinalis_x"}
     mock_run_inference.return_value = object()
 
@@ -787,6 +796,7 @@ def _mock_result(mock_run_inference, detections, inputs=(), unprocessable=()):
     [{"slist": "species_list.txt"}, {"lat": 50.83, "lon": 12.92, "week": 20}],
     ids=["species-list", "location"],
 )
+@patch("birdnet_analyzer.model_utils.classifier_version", new=lambda _: "2.4")
 @patch("birdnet_analyzer.model_utils.run_geomodel")
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_the_params_file_reads_back_as_the_arguments_of_the_analysis(

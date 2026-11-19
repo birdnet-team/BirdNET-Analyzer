@@ -176,6 +176,7 @@ def analyze(
     """
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
     from birdnet_analyzer.model_utils import (
+        classifier_version,
         effective_sensitivity,
         run_geomodel,
         run_inference,
@@ -239,7 +240,8 @@ def analyze(
         # name, so the geo labels have to be English. BirdNET 2.4 shares its labels
         # with the geo 2.4 model; the newest one has other names for about a hundred
         # of its species.
-        own_geo_model = model == "birdnet" and birdnet == "2.4" and not classifier
+        labels_version = classifier_version(classifier) if classifier else birdnet
+        own_geo_model = model == "birdnet" and labels_version == "2.4"
         slist = run_geomodel(
             lat,
             lon,
