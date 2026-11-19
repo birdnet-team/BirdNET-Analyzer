@@ -41,7 +41,9 @@ GLOBAL_PREFETCH_RATIO = 2
 
 
 def match_species_to_model(
-    requested_species: Collection[str], model_species: Collection[str]
+    requested_species: Collection[str],
+    model_species: Collection[str],
+    english_species: Collection[str] | None = None,
 ) -> tuple[set[str], list[str]]:
     """Reconcile requested species onto a model's own labels.
 
@@ -55,9 +57,14 @@ def match_species_to_model(
     common name (only when it maps to a single model label). Matched labels are taken
     verbatim from ``model_species``, so they are always valid for the model.
 
+    A reclassified species is only found by its common name, and a geo-model
+    prediction carries English ones. With ``english_species`` an entry that matched
+    nothing is therefore matched against the English labels the same way.
+
     Args:
         requested_species: Species to keep - a user list or a geo-model prediction.
         model_species: The model's own species labels.
+        english_species: The same labels in English, in the same order.
 
     Returns:
         ``(matched, unmatched)``: the set of model labels to use, and the requested
@@ -96,17 +103,26 @@ def match_species_to_model(
             continue
         unmatched.append(requested)
 
+    if english_species is not None and unmatched:
+        in_english, unmatched = match_species_to_model(unmatched, english_species)
+        model_label = dict(zip(english_species, model_species, strict=True))
+        matched.update(model_label[label] for label in in_english)
+
     return matched, unmatched
 
 
 def _reconcile_species_list(
-    species_list, model_species: Collection[str], *, strict: bool
+    species_list,
+    model_species: Collection[str],
+    *,
+    strict: bool,
+    english_species: Collection[str] | None = None,
 ) -> set[str]:
     """Reconcile a custom species list against a model's labels.
 
     ``species_list`` is either a path to a user ``--slist`` file/folder or an
     in-memory collection (e.g. a geo-model prediction). It is matched onto the model's
-    own labels via :func:`match_species_to_model`.
+    own labels via :func:`match_species_to_model`, which takes ``english_species``.
 
     For a user file, species the model does not know are reported - skipped with a
     warning, or raised when ``strict`` - because the user expects every entry to
@@ -128,7 +144,9 @@ def _reconcile_species_list(
     else:
         requested = species_list
 
-    matched, unmatched = match_species_to_model(requested, model_species)
+    matched, unmatched = match_species_to_model(
+        requested, model_species, english_species
+    )
 
     if not is_user_file and not matched:
         logger.warning(
@@ -479,6 +497,8 @@ def run_inference(
     callback: Callable[[AcousticProgressStats], None] | None = None,
     on_file_complete: Callable[[AcousticFilePredictionResult], None] | None = None,
 ) -> AcousticFilePredictionResult:
+    english_species = None
+
     if classifier:
         if not cc_species_list:
             cc_species_list = classifier.replace(".tflite", "_Labels.txt", 1)
@@ -503,6 +523,9 @@ def run_inference(
             acoustic_model = birdnet.load(
                 "acoustic", version, "tf", lang=cast("MODEL_LANGUAGES_V2_4", lang)
             )
+
+        if custom_species_list is not None and lang != "en_us":
+            english_species = acoustic_species_list(version)
     elif model == "perch":
         acoustic_model = birdnet.load_perch_v2("CPU")
     else:
@@ -519,6 +542,7 @@ def run_inference(
             custom_species_list,
             acoustic_model.species_list,
             strict=strict_species_list,
+            english_species=english_species,
         )
 
     from birdnet.acoustic.inference.configs import InferenceConfig
@@ -555,28 +579,41 @@ def run_inference(
 
 
 def run_geomodel(
-    lat, lon, week=None, language: MODEL_LANGUAGES = "en_us", threshold: float = 0.03
+    lat,
+    lon,
+    week=None,
+    language: MODEL_LANGUAGES = "en_us",
+    threshold: float = 0.03,
+    version: str | None = None,
 ) -> birdnet.GeoPredictionResult:
+    """Predict the species of a location with the geo model ``version``.
+
+    ``version`` defaults to the newest geo model. ``language`` only affects localized
+    names, so scientific-name matchers can leave it default.
+    """
     from birdnet_analyzer.config import DEFAULT_GEO_MODEL_VERSION
 
-    # The newest geo model always replaces the older ones; never a choice. ``language``
-    # only affects localized names, so scientific-name matchers can leave it default.
-    #
-    # ONNX backend, not tf/pb: imports no TensorFlow (kept out of this main-process
-    # call), loads faster, same species. (v3.0 geo tf needs TF 2.18/2.19; we need
-    # >=2.20.) The assert pins this to v3.0 so a future version fails loudly here
-    # instead of silently mismatching, and lets the type checker prove the casts sound.
-    assert DEFAULT_GEO_MODEL_VERSION == "3.0", (
-        f"run_geomodel targets geo v3.0, but the newest geo model is "
-        f"{DEFAULT_GEO_MODEL_VERSION}; update the backend/language handling for it."
-    )
-    language = _language_for_version(language, DEFAULT_GEO_MODEL_VERSION)
-    model = birdnet.load(
-        "geo",
-        DEFAULT_GEO_MODEL_VERSION,
-        "onnx",
-        lang=cast("MODEL_LANGUAGES_V3_0", language),
-    )
+    version = version or DEFAULT_GEO_MODEL_VERSION
+    language = _language_for_version(language, version)
+
+    if version == "2.4":
+        # 2.4 has no ONNX build, so this prediction imports TensorFlow.
+        model = birdnet.load(
+            "geo", "2.4", "tf", lang=cast("MODEL_LANGUAGES_V2_4", language)
+        )
+    else:
+        # ONNX backend, not tf/pb: imports no TensorFlow (kept out of this
+        # main-process call), loads faster, same species. (v3.0 geo tf needs TF
+        # 2.18/2.19; we need >=2.20.) The assert makes a future version fail loudly
+        # here instead of silently mismatching, and lets the type checker prove the
+        # cast sound.
+        assert version == "3.0", (
+            f"run_geomodel has no backend/language handling for geo v{version}."
+        )
+        model = birdnet.load(
+            "geo", "3.0", "onnx", lang=cast("MODEL_LANGUAGES_V3_0", language)
+        )
+
     return model.predict(lat, lon, week=week, min_confidence=threshold)
 
 

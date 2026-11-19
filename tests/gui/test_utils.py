@@ -279,6 +279,33 @@ def test_a_failing_species_match_is_logged_at_debug_and_swallowed(
     assert [str(r.exc_info[1]) for r in debug] == ["matcher bug"]
 
 
+def test_a_species_named_in_english_is_not_reported_in_another_locale(
+    appdir, handler, monkeypatch, tmp_path
+):
+    from birdnet_analyzer import model_utils
+    from birdnet_analyzer.gui import localization as loc
+
+    species_file = tmp_path / "species.txt"
+    species_file.write_text(
+        "Troglodytes troglodytes_Eurasian Wren\nPekania pennanti_Fisher\n"
+    )
+    labels = {
+        "de": ["Nannus troglodytes_Zaunkönig"],
+        "en_us": ["Nannus troglodytes_Eurasian Wren"],
+    }
+    monkeypatch.setattr(model_utils, "acoustic_model_downloaded", lambda version: True)
+    monkeypatch.setattr(
+        model_utils, "acoustic_species_list", lambda version, locale: labels[locale]
+    )
+    warnings = []
+    monkeypatch.setattr(gr, "Warning", lambda message, **_: warnings.append(message))
+    warn = handler(_species_controls, "warn_unmatched_species")
+
+    warn(str(species_file), gu.USE_BIRDNET_3_0, "de")
+
+    assert warnings == [loc.localize("species-list-unmatched-warning").format(count=1)]
+
+
 def test_an_unreadable_species_list_is_logged_and_shown(appdir, handler, monkeypatch):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)

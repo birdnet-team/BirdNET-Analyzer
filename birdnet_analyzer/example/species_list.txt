@@ -17,7 +17,7 @@ Corvus corax_Northern Raven
 Cyanocitta cristata_Blue Jay
 Cygnus olor_Mute Swan
 Dryobates pubescens_Downy Woodpecker
-Dryobates villosus_Hairy Woodpecker
+Leuconotopicus villosus_Hairy Woodpecker
 Dryocopus pileatus_Pileated Woodpecker
 Eremophila alpestris_Horned Lark
 Haemorhous mexicanus_House Finch
