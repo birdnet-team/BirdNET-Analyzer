@@ -130,4 +130,4 @@ birdnet_analyzer.train
    The validation split will be performed combination of classes, so you might want to ensure sufficient data for each combination of classes.
    When using multi-label data the upsampling mode will be limited to 'repeat'.
 
-   .. note:: Custom classifiers trained with BirdNET-Analyzer are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
+   .. note:: Custom classifiers trained with BirdNET-Analyzer are subject to the license terms of the model they were trained with: the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ with its `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_ for BirdNET 3.0, the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_ for BirdNET 2.4.

@@ -30,9 +30,9 @@ updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.
    birdnet-analyze INPUT --birdnet 2.4
 
 In the GUI, choose *BirdNET 2.4* under model selection. The 2.4 model remains fully
-supported, and a location (``--lat`` and ``--lon``) limits it with the 2.4 geolocation
-model, which has the same species. ``birdnet_analyzer.species`` writes its lists with
-the 3.0 geolocation model either way.
+supported, and a location (``--lat`` and ``--lon``) limits it, and a custom classifier
+trained on it, with the 2.4 geolocation model, which has the same species.
+``birdnet_analyzer.species`` writes its lists with the 3.0 geolocation model either way.
 
 
 Inference runs on ONNX, not TensorFlow, on the default path
@@ -60,8 +60,11 @@ Custom species lists and the 3.0 taxonomy
 **What changed.** The 3.0 model uses an updated taxonomy, so labels from a v2.4-era
 species list may no longer match verbatim — for example ``Accipiter cooperii`` became
 ``Astur cooperii``, and several common names changed (``Rock Pigeon`` → ``Rock Dove``,
-``Common Raven`` → ``Northern Raven``, ``Herring Gull`` → ``European Herring Gull``,
-``European Starling`` → ``Common Starling``).
+``Common Raven`` → ``Northern Raven``, ``European Starling`` → ``Common Starling``).
+Several dozen species were also split, and the scientific name stayed with one of the
+new species: ``Larus argentatus`` is now the European Herring Gull and the American
+Herring Gull is ``Larus smithsonianus``; ``Setophaga petechia`` is now the Mangrove
+Warbler and the American Yellow Warbler is ``Setophaga aestiva``.
 
 A species list passed with ``--slist`` is now **reconciled** to the loaded model
 instead of having to match it exactly: each entry is matched by its exact label, then
@@ -76,10 +79,15 @@ carries most legacy lists over automatically.
   produced no detections.
 * ``--slist`` together with ``--lat`` and ``--lon`` is an error; v2.4.0 ignored the
   list.
+* An entry for a species that was split keeps only the species that has its
+  scientific name now, **without a warning** and also with ``--strict``:
+  ``Larus argentatus_Herring Gull`` no longer covers the American Herring Gull, nor
+  ``Setophaga petechia_Yellow Warbler`` the American Yellow Warbler. Barn Owl,
+  Warbling Vireo and Cory's Shearwater are other examples.
 
-**What to do.** Legacy lists generally work unchanged. To require that every entry
-match — turning any unmatched species into a hard error — use the new ``--strict``
-flag:
+**What to do.** Most legacy lists work unchanged. Look through a list for species that
+were split and add the ones you mean. To require that every entry match — turning any
+unmatched species into a hard error — use the new ``--strict`` flag:
 
 .. code-block:: bash
 
