@@ -294,6 +294,36 @@ def test_analyze_defaults_to_birdnet_3_0_and_reconciles_geo_list(
     assert call_kwargs["strict_species_list"] is False
 
 
+@pytest.mark.parametrize(
+    ("arguments", "geo_version"),
+    [
+        ({}, None),
+        ({"birdnet": "2.4"}, "2.4"),
+        ({"birdnet": "2.4", "classifier": "cc.tflite"}, None),
+        ({"birdnet": "2.4", "model": "perch"}, None),
+    ],
+    ids=["3.0", "2.4", "classifier", "perch"],
+)
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_only_birdnet_2_4_takes_the_location_from_the_geo_2_4_model(
+    mock_run_inference, mock_run_geomodel, arguments, geo_version, env
+):
+    mock_run_geomodel.return_value.to_set.return_value = {"Cardinalis cardinalis_x"}
+    mock_run_inference.return_value = object()
+
+    analyze(
+        env["input_dir"],
+        env["output_dir"],
+        lat=42.5,
+        lon=-76.45,
+        _return_only=True,
+        **arguments,
+    )
+
+    assert mock_run_geomodel.call_args.kwargs["version"] == geo_version
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_without_location_passes_no_species_list(mock_run_inference, env):
     mock_run_inference.return_value = object()
@@ -399,6 +429,26 @@ def test_match_species_to_model_skips_ambiguous_common_name():
     )
     assert matched == set()
     assert unmatched == ["Other genus_Shared Name"]
+
+
+def test_match_species_to_model_takes_an_english_name_in_another_label_language():
+    from birdnet_analyzer.model_utils import match_species_to_model
+
+    model_species = ["Nannus troglodytes_Zaunkönig", "Parus major_Kohlmeise"]
+    english_species = ["Nannus troglodytes_Eurasian Wren", "Parus major_Great Tit"]
+    requested = [
+        "Troglodytes troglodytes_Eurasian Wren",
+        "Great Tit",
+        "Pekania pennanti_Fisher",
+    ]
+
+    matched, unmatched = match_species_to_model(
+        requested, model_species, english_species
+    )
+
+    assert matched == {"Nannus troglodytes_Zaunkönig", "Parus major_Kohlmeise"}
+    assert unmatched == ["Pekania pennanti_Fisher"]
+    assert match_species_to_model(requested, model_species) == (set(), requested)
 
 
 def test_reconcile_species_list_file_warns_and_skips(tmp_path, caplog):
@@ -579,6 +629,45 @@ def test_reconcile_species_list_warns_when_a_collection_matches_nothing(
 
     assert matched == set()
     assert "not filtered" in caplog.text
+
+
+def test_a_location_keeps_the_same_classes_in_another_label_language():
+    from birdnet_analyzer.model_utils import (
+        _reconcile_species_list,
+        acoustic_species_list,
+        run_geomodel,
+    )
+
+    english = acoustic_species_list("3.0")
+    german = acoustic_species_list("3.0", "de")
+    predicted = run_geomodel(50.83, 12.92, week=20).to_set()
+
+    in_english = _reconcile_species_list(predicted, english, strict=False)
+    in_german = _reconcile_species_list(
+        predicted, german, strict=False, english_species=english
+    )
+
+    assert {german.index(label) for label in in_german} == {
+        english.index(label) for label in in_english
+    }
+
+
+def test_birdnet_2_4_has_every_species_its_geo_model_predicts():
+    from birdnet_analyzer.model_utils import (
+        acoustic_species_list,
+        match_species_to_model,
+        run_geomodel,
+    )
+
+    predicted = run_geomodel(42.5, -76.45, week=24, version="2.4").to_set()
+
+    matched, unmatched = match_species_to_model(
+        predicted, acoustic_species_list("2.4", "de")
+    )
+
+    assert "Setophaga petechia_Yellow Warbler" in predicted
+    assert unmatched == []
+    assert len(matched) == len(predicted)
 
 
 def test_an_analysis_without_detections_writes_every_result_type(

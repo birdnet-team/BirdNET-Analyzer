@@ -955,8 +955,11 @@ def sample_species_model_settings(state: TabState, opened=True):
 
         try:
             model_species = model_utils.acoustic_species_list(version, locale)
+            english_species = model_utils.acoustic_species_list(version, "en_us")
             requested = [s for s in utils.read_lines(file, trim=True) if s]
-            _, unmatched = model_utils.match_species_to_model(requested, model_species)
+            _, unmatched = model_utils.match_species_to_model(
+                requested, model_species, english_species
+            )
         except Exception:
             logger.debug("Species list could not be matched", exc_info=True)
             return

@@ -39,8 +39,8 @@ RUN python3 -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.tom
 # birdnet_analyzer/model_utils.py), so the cache they populate under
 # /root/.local/share/birdnet is exactly what the container - also root - looks for
 # later. The geo model is only needed for --lat/--lon species filtering but is cheap
-# (~15 MB); the acoustic 3.0 ONNX model is large (~520 MB, fp32 - the only acoustic
-# ONNX precision), which the switch off TensorFlow trades for. 2.4/perch/custom and
+# (~15 MB); the acoustic 3.0 ONNX model is large (~345 MB at fp32, the precision the
+# analysis loads), which the switch off TensorFlow trades for. 2.4/perch/custom and
 # training still use the (installed) TensorFlow backend but are not baked - they fall
 # back to downloading on first use. "3.0"/"onnx"/en_us track the defaults in
 # birdnet_analyzer/config.py and model_utils.py; if those move, the image simply

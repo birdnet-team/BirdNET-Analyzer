@@ -248,6 +248,95 @@ def test_run_inference_keeps_the_sensitivity_for_3_0(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("version", "requested", "expected"),
+    [
+        (
+            "3.0",
+            "Troglodytes troglodytes_Eurasian Wren",
+            "Nannus troglodytes_Zaunkönig",
+        ),
+        ("2.4", "Coloeus monedula_Eurasian Jackdaw", "Corvus monedula_Dohle"),
+    ],
+)
+@pytest.mark.parametrize("as_file", [False, True], ids=["collection", "file"])
+def test_run_inference_matches_english_names_in_another_label_language(
+    monkeypatch, tmp_path, version, requested, expected, as_file
+):
+    from contextlib import contextmanager
+    from unittest.mock import MagicMock
+
+    seen = {}
+
+    @contextmanager
+    def fake_predict_session(**kwargs):
+        seen.update(kwargs)
+        session = MagicMock()
+        session.run.return_value = "result"
+        yield session
+
+    labels = {
+        ("3.0", "de"): ["Nannus troglodytes_Zaunkönig"],
+        ("3.0", "en_us"): ["Nannus troglodytes_Eurasian Wren"],
+        ("2.4", "de"): ["Bubulcus ibis_Kuhreiher", "Corvus monedula_Dohle"],
+        ("2.4", "en_us"): [
+            "Bubulcus ibis_Cattle Egret",
+            "Corvus monedula_Eurasian Jackdaw",
+        ],
+    }
+
+    def fake_load(model_type, loaded_version, backend, lang):
+        fake_model = MagicMock()
+        fake_model.predict_session = fake_predict_session
+        fake_model.species_list = labels[loaded_version, lang]
+        return fake_model
+
+    monkeypatch.setattr(model_utils.birdnet, "load", fake_load)
+
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"")
+    species_list = {requested}
+    if as_file:
+        species_list = tmp_path / "species_list.txt"
+        species_list.write_text(requested + "\n", encoding="utf-8")
+
+    model_utils.run_inference(
+        str(audio),
+        version=version,
+        label_language="de",
+        custom_species_list=species_list,
+    )
+
+    assert seen["custom_species_list"] == {expected}
+
+
+@pytest.mark.parametrize(
+    ("version", "language", "loaded"),
+    [
+        (None, "de", ("geo", "3.0", "onnx", "de")),
+        (None, "it", ("geo", "3.0", "onnx", "en_us")),
+        ("2.4", "it", ("geo", "2.4", "tf", "it")),
+        ("2.4", "pt_pt", ("geo", "2.4", "tf", "en_us")),
+    ],
+)
+def test_run_geomodel_loads_the_asked_version_in_a_language_it_has(
+    monkeypatch, version, language, loaded
+):
+    from unittest.mock import MagicMock
+
+    calls = []
+
+    def fake_load(model_type, loaded_version, backend, lang):
+        calls.append((model_type, loaded_version, backend, lang))
+        return MagicMock()
+
+    monkeypatch.setattr(model_utils.birdnet, "load", fake_load)
+
+    model_utils.run_geomodel(50.83, 12.92, week=20, language=language, version=version)
+
+    assert calls == [loaded]
+
+
+@pytest.mark.parametrize(
     ("version", "batch_size", "sensitivity"), [("2.4", 4, 1.25), ("3.0", 1, 1.25)]
 )
 def test_run_inference_loads_a_classifier_on_its_own_version(
