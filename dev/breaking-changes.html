@@ -144,9 +144,9 @@ updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.</p>
 </pre></div>
 </div>
 <p>In the GUI, choose <em>BirdNET 2.4</em> under model selection. The 2.4 model remains fully
-supported, and a location (<code class="docutils literal notranslate"><span class="pre">--lat</span></code> and <code class="docutils literal notranslate"><span class="pre">--lon</span></code>) limits it with the 2.4 geolocation
-model, which has the same species. <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code> writes its lists with
-the 3.0 geolocation model either way.</p>
+supported, and a location (<code class="docutils literal notranslate"><span class="pre">--lat</span></code> and <code class="docutils literal notranslate"><span class="pre">--lon</span></code>) limits it, and a custom classifier
+trained on it, with the 2.4 geolocation model, which has the same species.
+<code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code> writes its lists with the 3.0 geolocation model either way.</p>
 </section>
 <section id="inference-runs-on-onnx-not-tensorflow-on-the-default-path">
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Inference runs on ONNX, not TensorFlow, on the default path</a><a class="headerlink" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path" title="Link to this heading"></a></h2>
@@ -169,8 +169,11 @@ training paths.</p>
 <p><strong>What changed.</strong> The 3.0 model uses an updated taxonomy, so labels from a v2.4-era
 species list may no longer match verbatim — for example <code class="docutils literal notranslate"><span class="pre">Accipiter</span> <span class="pre">cooperii</span></code> became
 <code class="docutils literal notranslate"><span class="pre">Astur</span> <span class="pre">cooperii</span></code>, and several common names changed (<code class="docutils literal notranslate"><span class="pre">Rock</span> <span class="pre">Pigeon</span></code> → <code class="docutils literal notranslate"><span class="pre">Rock</span> <span class="pre">Dove</span></code>,
-<code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Raven</span></code> → <code class="docutils literal notranslate"><span class="pre">Northern</span> <span class="pre">Raven</span></code>, <code class="docutils literal notranslate"><span class="pre">Herring</span> <span class="pre">Gull</span></code> → <code class="docutils literal notranslate"><span class="pre">European</span> <span class="pre">Herring</span> <span class="pre">Gull</span></code>,
-<code class="docutils literal notranslate"><span class="pre">European</span> <span class="pre">Starling</span></code> → <code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Starling</span></code>).</p>
+<code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Raven</span></code> → <code class="docutils literal notranslate"><span class="pre">Northern</span> <span class="pre">Raven</span></code>, <code class="docutils literal notranslate"><span class="pre">European</span> <span class="pre">Starling</span></code> → <code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Starling</span></code>).
+Several dozen species were also split, and the scientific name stayed with one of the
+new species: <code class="docutils literal notranslate"><span class="pre">Larus</span> <span class="pre">argentatus</span></code> is now the European Herring Gull and the American
+Herring Gull is <code class="docutils literal notranslate"><span class="pre">Larus</span> <span class="pre">smithsonianus</span></code>; <code class="docutils literal notranslate"><span class="pre">Setophaga</span> <span class="pre">petechia</span></code> is now the Mangrove
+Warbler and the American Yellow Warbler is <code class="docutils literal notranslate"><span class="pre">Setophaga</span> <span class="pre">aestiva</span></code>.</p>
 <p>A species list passed with <code class="docutils literal notranslate"><span class="pre">--slist</span></code> is now <strong>reconciled</strong> to the loaded model
 instead of having to match it exactly: each entry is matched by its exact label, then
 its scientific name, then its common name in the label language or in English. This
@@ -183,10 +186,15 @@ are <strong>skipped with a warning</strong>; v2.4.0 skipped them silently.</p></
 produced no detections.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--slist</span></code> together with <code class="docutils literal notranslate"><span class="pre">--lat</span></code> and <code class="docutils literal notranslate"><span class="pre">--lon</span></code> is an error; v2.4.0 ignored the
 list.</p></li>
+<li><p>An entry for a species that was split keeps only the species that has its
+scientific name now, <strong>without a warning</strong> and also with <code class="docutils literal notranslate"><span class="pre">--strict</span></code>:
+<code class="docutils literal notranslate"><span class="pre">Larus</span> <span class="pre">argentatus_Herring</span> <span class="pre">Gull</span></code> no longer covers the American Herring Gull, nor
+<code class="docutils literal notranslate"><span class="pre">Setophaga</span> <span class="pre">petechia_Yellow</span> <span class="pre">Warbler</span></code> the American Yellow Warbler. Barn Owl,
+Warbling Vireo and Cory’s Shearwater are other examples.</p></li>
 </ul>
-<p><strong>What to do.</strong> Legacy lists generally work unchanged. To require that every entry
-match — turning any unmatched species into a hard error — use the new <code class="docutils literal notranslate"><span class="pre">--strict</span></code>
-flag:</p>
+<p><strong>What to do.</strong> Most legacy lists work unchanged. Look through a list for species that
+were split and add the ones you mean. To require that every entry match — turning any
+unmatched species into a hard error — use the new <code class="docutils literal notranslate"><span class="pre">--strict</span></code> flag:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>birdnet-analyze<span class="w"> </span>INPUT<span class="w"> </span>--slist<span class="w"> </span>my_list.txt<span class="w"> </span>--strict
 </pre></div>
 </div>
