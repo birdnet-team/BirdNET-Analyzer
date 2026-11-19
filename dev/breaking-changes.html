@@ -134,17 +134,19 @@ release (<strong>v2.4.0</strong>) and what to do about it.</p>
 <section id="default-model-is-now-birdnet-3-0">
 <h2><a class="toc-backref" href="#id1" role="doc-backlink">Default model is now BirdNET 3.0</a><a class="headerlink" href="#default-model-is-now-birdnet-3-0" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> Analyses use the BirdNET 3.0 acoustic model by default, and
-location-based species lists always use the 3.0 geolocation model. v2.4 was the
+location-based species lists use the 3.0 geolocation model. v2.4 was the
 previous default for both.</p>
 <p><strong>Consequence.</strong> Results are not directly comparable to v2.4 output: 3.0 is a different
-model with different confidence scores, a larger species set (11,560 labels) and an
+model with different confidence scores, a larger species set (11,725 labels) and an
 updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.</p>
 <p><strong>What to do.</strong> To keep the previous acoustic model, select the 2.4 model explicitly:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>birdnet-analyze<span class="w"> </span>INPUT<span class="w"> </span>--birdnet<span class="w"> </span><span class="m">2</span>.4
 </pre></div>
 </div>
 <p>In the GUI, choose <em>BirdNET 2.4</em> under model selection. The 2.4 model remains fully
-supported. Location-based species lists come from the 3.0 geolocation model either way.</p>
+supported, and a location (<code class="docutils literal notranslate"><span class="pre">--lat</span></code> and <code class="docutils literal notranslate"><span class="pre">--lon</span></code>) limits it with the 2.4 geolocation
+model, which has the same species. <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code> writes its lists with
+the 3.0 geolocation model either way.</p>
 </section>
 <section id="inference-runs-on-onnx-not-tensorflow-on-the-default-path">
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Inference runs on ONNX, not TensorFlow, on the default path</a><a class="headerlink" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path" title="Link to this heading"></a></h2>
@@ -155,7 +157,7 @@ supported. Location-based species lists come from the 3.0 geolocation model eith
 <li><p>Default analyses are faster on CPU and no longer load TensorFlow.</p></li>
 <li><p>TensorFlow is still required — and still installed — for the 2.4 model, the Perch
 model, custom classifiers, and training.</p></li>
-<li><p>The Docker image is substantially larger: it bakes the ~520 MB 3.0 ONNX model
+<li><p>The Docker image is substantially larger: it bakes the ~345 MB 3.0 ONNX model
 (the 2.4 TFLite model was ~120 MB).</p></li>
 </ul>
 <p><strong>What to do.</strong> Reinstall the package so <code class="docutils literal notranslate"><span class="pre">onnxruntime</span></code> is pulled in (your usual
@@ -171,8 +173,8 @@ species list may no longer match verbatim — for example <code class="docutils 
 <code class="docutils literal notranslate"><span class="pre">European</span> <span class="pre">Starling</span></code> → <code class="docutils literal notranslate"><span class="pre">Common</span> <span class="pre">Starling</span></code>).</p>
 <p>A species list passed with <code class="docutils literal notranslate"><span class="pre">--slist</span></code> is now <strong>reconciled</strong> to the loaded model
 instead of having to match it exactly: each entry is matched by its exact label, then
-its scientific name, then its common name. This carries most legacy lists over
-automatically.</p>
+its scientific name, then its common name in the label language or in English. This
+carries most legacy lists over automatically.</p>
 <p><strong>Consequence.</strong></p>
 <ul class="simple">
 <li><p>Species that still cannot be matched (genuinely absent from the model, or a typo)
@@ -252,19 +254,25 @@ not comparable.</p>
 Guinea, and <code class="docutils literal notranslate"><span class="pre">--week</span> <span class="pre">-1</span></code> with a location is an error. Leave an option out instead.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">analyze</span></code> and <code class="docutils literal notranslate"><span class="pre">species</span></code> reject only one of <code class="docutils literal notranslate"><span class="pre">--lat</span></code> and <code class="docutils literal notranslate"><span class="pre">--lon</span></code>; v2.4.0 used
 -1 for the missing one.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code> without a location writes every species of the default
-acoustic model (11,560 for BirdNET 3.0), in the model’s order. v2.4.0 wrote the few
-species the geo model predicted for latitude and longitude -1.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code> without a location writes every label of the default
+acoustic model (11,725 for BirdNET 3.0: 11,709 species and 16 sound classes), in the
+model’s order. v2.4.0 wrote the few species the geo model predicted for latitude and
+longitude -1.</p></li>
 <li><p>Lists for a location come from the 3.0 geolocation model and include species the
 acoustic model does not have, such as insects. They are sorted alphabetically; v2.4.0
 used the acoustic model’s labels and sorted them by occurrence frequency.</p></li>
 </ul>
 <p><strong>Consequence.</strong> Scripts that pass -1 get a filter for the wrong place or an error.
 Using a location list as <code class="docutils literal notranslate"><span class="pre">--slist</span></code> logs the species the model lacks as skipped, and
-fails with <code class="docutils literal notranslate"><span class="pre">--strict</span></code>. Lists without a location are much longer, and the first such
-run downloads the acoustic model.</p>
+fails with <code class="docutils literal notranslate"><span class="pre">--strict</span></code>. A species with another scientific name in the acoustic model
+is found by its common name, so it is skipped too when the list is neither in English
+nor in the language of the analysis, or when the 2.4 model also names it differently.
+Lists without a location are much longer, and the first such run downloads the acoustic
+model.</p>
 <p><strong>What to do.</strong> Omit <code class="docutils literal notranslate"><span class="pre">--lat</span></code>, <code class="docutils literal notranslate"><span class="pre">--lon</span></code> and <code class="docutils literal notranslate"><span class="pre">--week</span></code> rather than passing -1, and
-drop <code class="docutils literal notranslate"><span class="pre">--strict</span></code> for lists made by <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code>.</p>
+drop <code class="docutils literal notranslate"><span class="pre">--strict</span></code> for lists made by <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code>. Write a list in
+English or in the <code class="docutils literal notranslate"><span class="pre">--locale</span></code> of the analysis. With <code class="docutils literal notranslate"><span class="pre">--birdnet</span> <span class="pre">2.4</span></code>, pass <code class="docutils literal notranslate"><span class="pre">--lat</span></code>
+and <code class="docutils literal notranslate"><span class="pre">--lon</span></code> to the analysis instead of a list.</p>
 </section>
 <section id="top-n-results-keep-the-confidence-threshold">
 <h2><a class="toc-backref" href="#id8" role="doc-backlink">Top-N results keep the confidence threshold</a><a class="headerlink" href="#top-n-results-keep-the-confidence-threshold" title="Link to this heading"></a></h2>
