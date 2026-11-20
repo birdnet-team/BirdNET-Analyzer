@@ -290,7 +290,9 @@ def build_single_analysis_tab() -> None:
             # a button focused anywhere, in other tabs too.
             options={"transportStyle": "hero", "keyboardShortcuts": False},
         )
-        show_confidence_checkbox = gr.Checkbox(
+        show_confidence_checkbox = state.persist(
+            "show_confidence",
+            gr.Checkbox,
             label=loc.localize("single-tab-show-confidence-label"),
             value=False,
             visible=False,

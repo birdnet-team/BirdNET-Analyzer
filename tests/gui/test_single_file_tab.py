@@ -70,6 +70,22 @@ def test_the_player_leaves_the_keyboard_to_the_rest_of_the_gui(appdir):
     assert '"keyboardShortcuts": false' in player.js_on_load
 
 
+def test_the_confidence_choice_is_remembered(appdir):
+    from birdnet_analyzer import settings
+    from birdnet_analyzer.gui import localization as loc
+    from birdnet_analyzer.gui import state as gs
+
+    settings.set_tab_setting("single", "show_confidence", True)
+
+    with gr.Blocks():
+        single_file.build_single_analysis_tab()
+
+    label = loc.localize("single-tab-show-confidence-label")
+    checkbox = next(c for c in gs.persisted_components() if c.label == label)
+
+    assert checkbox.value is True
+
+
 def test_cancelling_the_dialog_changes_nothing(appdir, handler, monkeypatch):
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: None)
 
