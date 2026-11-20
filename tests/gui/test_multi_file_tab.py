@@ -53,3 +53,9 @@ def test_the_batch_analysis_lets_birdnet_pick_the_worker_count_by_default(
 
     assert start() is None
     assert start(workers_auto=False, workers_number=4) == 4
+
+
+def test_a_run_starts_without_the_result_of_the_run_before(appdir, handler):
+    *_, result_list = handler(mfa.build_multi_analysis_tab, "prepare_run_ui")()
+
+    assert (result_list["value"], result_list["headers"]) == ([], [""])

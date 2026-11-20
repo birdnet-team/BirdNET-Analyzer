@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import threading
+from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -25,6 +28,32 @@ def on_progress(update: AcousticProgressStats, progress: gr.Progress):
         )
     else:
         progress(update.progress_pct, desc=loc.localize("progress-analyzing"), unit="%")
+
+
+@contextmanager
+def _dropped_species_filter_shown():
+    """Shows the user when the analysis started in this thread drops its filter."""
+    from birdnet_analyzer import model_utils
+
+    thread = threading.get_ident()
+
+    class Notice(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            if record.thread == thread and getattr(
+                record, model_utils.SPECIES_FILTER_DROPPED, False
+            ):
+                gr.Warning(
+                    loc.localize("species-list-location-unmatched-warning"),
+                    duration=None,
+                )
+
+    notice = Notice()
+    model_utils.logger.addHandler(notice)
+
+    try:
+        yield
+    finally:
+        model_utils.logger.removeHandler(notice)
 
 
 def run_analysis(
@@ -134,7 +163,10 @@ def run_analysis(
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-starting')} ...")
 
-    with gu.download_progress(progress if callable(progress) else None):
+    with (
+        gu.download_progress(progress if callable(progress) else None),
+        _dropped_species_filter_shown(),
+    ):
         return analyze(
             audio_input=input_dir or input_path,  # type: ignore
             # TODO: workaround while lib is not ignoring confidence with top_n

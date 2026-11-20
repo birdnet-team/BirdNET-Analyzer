@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 GLOBAL_PREFETCH_RATIO = 2
+# Attribute of the log record that reports a species filter that matched nothing.
+SPECIES_FILTER_DROPPED = "species_filter_dropped"
 
 
 def match_species_to_model(
@@ -151,7 +153,8 @@ def _reconcile_species_list(
     if not is_user_file and not matched:
         logger.warning(
             "The location or species list names no species of the model, so the "
-            "analysis is not filtered by species."
+            "analysis is not filtered by species.",
+            extra={SPECIES_FILTER_DROPPED: True},
         )
 
     if is_user_file and unmatched:

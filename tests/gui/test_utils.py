@@ -230,6 +230,20 @@ def test_an_error_without_a_message_is_shown_by_its_repr(monkeypatch):
     assert raised.value.message == "EOFError()"
 
 
+def test_a_language_is_saved_and_announced_once_per_choice(
+    appdir, handler, monkeypatch
+):
+    warned = []
+    monkeypatch.setattr(gr, "Warning", lambda message, **_: warned.append(message))
+    on_language_change = handler(gu.build_settings, "on_language_change")
+
+    on_language_change("de")
+    on_language_change("de")
+
+    assert gu.settings.get_setting("language-id") == "de"
+    assert len(warned) == 1
+
+
 @pytest.mark.parametrize(
     ("name", "value"), [("on_theme_change", "dark"), ("on_language_change", "de")]
 )
