@@ -346,7 +346,12 @@ def build_single_analysis_tab() -> None:
             toolbar=[*VIEWER_TOOLBAR, "follow", "fit", "contrast"],
             # Its shortcuts listen on the whole window and would take Space from
             # a button focused anywhere, in other tabs too.
-            options={"transportStyle": "hero", "keyboardShortcuts": False},
+            options={
+                "transportStyle": "hero",
+                "keyboardShortcuts": False,
+                # A quarter of the spectrogram data of "classic", same look.
+                "defaultPreset": "classicSmall",
+            },
         )
         show_confidence_checkbox = state.persist(
             "show_confidence",
