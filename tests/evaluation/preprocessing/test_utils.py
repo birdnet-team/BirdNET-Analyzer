@@ -1,3 +1,4 @@
+import ntpath
 import warnings
 
 import numpy as np
@@ -28,6 +29,10 @@ from birdnet_analyzer.evaluation.preprocessing.utils import (
 )
 def test_a_result_table_and_its_recording_share_one_key(name, key):
     assert recording_key(name) == key
+
+
+def test_a_recording_path_written_on_windows_gives_the_same_key_everywhere():
+    assert recording_key(ntpath.join("field", "site_a", "rec.wav")) == "rec"
 
 
 def test_missing_names_pass_through_the_key_extraction():

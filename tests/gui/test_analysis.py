@@ -1,9 +1,12 @@
 import importlib
+import threading
 
 import pytest
 
 gr = pytest.importorskip("gradio")
 
+import birdnet_analyzer.gui.localization as loc  # noqa: E402
+from birdnet_analyzer import model_utils  # noqa: E402
 from birdnet_analyzer.gui import analysis as ga  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
@@ -103,3 +106,43 @@ def test_the_model_choice_decides_which_model_the_analysis_runs(
     )
 
     assert {key: seen[key] for key in expected} == expected
+
+
+def _location_without_species_of_the_model():
+    model_utils._reconcile_species_list(
+        {"Corvus corax_Common Raven"}, ["Poecile atricapillus_Chickadee"], strict=False
+    )
+
+
+def _in_another_analysis():
+    other = threading.Thread(target=_location_without_species_of_the_model)
+    other.start()
+    other.join()
+
+
+@pytest.mark.parametrize(
+    ("logs_a_warning", "shown"),
+    [
+        (
+            _location_without_species_of_the_model,
+            ["species-list-location-unmatched-warning"],
+        ),
+        (lambda: model_utils.effective_sensitivity(0.5, "perch"), []),
+        (_in_another_analysis, []),
+    ],
+    ids=["location", "sensitivity", "another analysis"],
+)
+def test_only_a_location_without_species_of_the_model_is_shown(
+    monkeypatch, logs_a_warning, shown
+):
+    warned = []
+    monkeypatch.setattr(gr, "Warning", lambda message, **_: warned.append(message))
+    monkeypatch.setattr(
+        importlib.import_module("birdnet_analyzer.analyze"),
+        "analyze",
+        lambda **kwargs: logs_a_warning(),
+    )
+
+    ga.run_analysis(**SETTINGS)
+
+    assert warned == [loc.localize(key) for key in shown]

@@ -42,6 +42,9 @@ _DEFAULT_COLUMNS = {
     },
 }
 
+# Preselected when the table lacks the default; BirdNET's own tables name it this way.
+_FALLBACK_COLUMNS = {"prediction": {"Recording": "Begin Path"}}
+
 _COLUMN_LABEL_KEYS = {
     "Start Time": "eval-tab-column-start-time-label",
     "End Time": "eval-tab-column-end-time-label",
@@ -245,8 +248,21 @@ def _column_updates(kind: str, files) -> list:
     columns = ["", *_columns_in(files)]
 
     return [
-        gr.update(choices=columns, value=default if default in columns else None)
-        for default in _DEFAULT_COLUMNS[kind].values()
+        gr.update(
+            choices=columns,
+            value=next(
+                (
+                    column
+                    for column in (
+                        default,
+                        _FALLBACK_COLUMNS.get(kind, {}).get(field),
+                    )
+                    if column in columns
+                ),
+                None,
+            ),
+        )
+        for field, default in _DEFAULT_COLUMNS[kind].items()
     ]
 
 

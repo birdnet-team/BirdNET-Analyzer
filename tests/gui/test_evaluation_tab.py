@@ -122,7 +122,10 @@ def _calculate(proc_state, values, classes=None, recordings=None, metrics=None):
     )
 
     return SimpleNamespace(
-        notes=outputs[3]["value"], labels=outputs[9], proc_state=outputs[10]
+        notes=outputs[3]["value"],
+        predictions=outputs[8],
+        labels=outputs[9],
+        proc_state=outputs[10],
     )
 
 
@@ -305,6 +308,41 @@ def test_mapping_the_missing_column_offers_the_classes_and_recordings(
     assert classes["value"] == ["Robin", "Wren"]
     assert recordings["value"] == list(RECORDINGS)
     assert _calculate(proc_state, mapped).labels.shape == (len(RECORDINGS) * 10, 2)
+
+
+def test_a_combined_result_table_is_matched_to_its_recordings_by_default(
+    tmp_path, monkeypatch
+):
+    folders = {kind: tmp_path / kind for kind in ("annotation", "prediction")}
+    for folder in folders.values():
+        folder.mkdir()
+    detections = []
+    for recording in RECORDINGS:
+        _write_table(
+            folders["annotation"] / f"{recording}.txt",
+            ["Begin Time (s)", "End Time (s)", "Class", "Begin Path"],
+            [[0, 3, "Robin", "annotated.wav"], [3, 6, "Wren", "annotated.wav"]],
+        )
+        audio = tmp_path / f"{recording}.wav"
+        detections += [[0, 3, "Robin", 0.9, audio], [3, 6, "Wren", 0.6, audio]]
+    _write_table(
+        folders["prediction"] / "BirdNET_SelectionTable.txt",
+        ["Begin Time (s)", "End Time (s)", "Common Name", "Confidence", "Begin Path"],
+        detections,
+    )
+    preselected = []
+    for kind, folder in folders.items():
+        monkeypatch.setattr(gu, "select_folder", lambda folder=folder, **_: str(folder))
+        columns = evaluation.select_directory(kind, None, None)[6:]
+        preselected += [column["value"] for column in columns]
+
+    result = _calculate(
+        None,
+        (*map(str, folders.values()), None, 3, 0.5, "", False, *preselected),
+    )
+
+    assert result.notes == ""
+    assert result.predictions.max() == pytest.approx(0.9)
 
 
 @pytest.mark.parametrize(

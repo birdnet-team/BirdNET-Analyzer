@@ -1,5 +1,6 @@
 """Helpers for extracting recording keys and reading result tables into DataFrames."""
 
+import ntpath
 import os
 
 import pandas as pd
@@ -40,7 +41,8 @@ def recording_key(name):
     if not isinstance(name, str):
         return name
 
-    key = os.path.splitext(os.path.basename(name))[0]
+    # ntpath splits on both separators: a table written on Windows is read anywhere.
+    key = os.path.splitext(ntpath.basename(name))[0]
 
     for suffix in _TABLE_SUFFIXES:
         if key.endswith(suffix):

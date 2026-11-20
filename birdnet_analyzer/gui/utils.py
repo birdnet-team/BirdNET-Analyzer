@@ -515,7 +515,6 @@ def build_footer():
         <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span
                 id="current-version">{os.environ["GUI_VERSION"] if settings.FROZEN else "main"}</span><span
                 style="display: none" id="update-available"><a>+</a></span></div>
-        <div>Model version: 2.4</div>
     </div>
     <div>K. Lisa Yang Center for Conservation Bioacoustics<br>Chemnitz University of Technology</div>
     <div>{loc.localize("footer-help")}:&nbsp;<a href='https://birdnet.cornell.edu/analyzer'
@@ -754,6 +753,10 @@ def build_settings():
 
         @gui_runtime_error_handler
         def on_language_change(value):
+            # A Dropdown fires .input again when it loses focus.
+            if value == settings.get_setting("language-id", loc.TARGET_LANGUAGE):
+                return
+
             loc.set_language(value)
             gr.Warning(loc.localize("settings-tab-language-dropdown-info"))
 
@@ -1757,7 +1760,9 @@ def species_lists(
                 species_file_input = gr.File(
                     value=species_file,
                     file_types=[".txt"],
-                    visible=species_file is not None,
+                    # Not False: created together with its first value, the box fires
+                    # .change several times.
+                    visible=species_file is not None or "hidden",
                     interactive=False,
                     show_label=False,
                 )
