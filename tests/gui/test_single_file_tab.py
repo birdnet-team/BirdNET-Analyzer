@@ -1,3 +1,6 @@
+import os
+import time
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -17,6 +20,23 @@ def logged(monkeypatch):
     records = []
     monkeypatch.setattr(gu.utils, "write_error_log", records.append)
     return records
+
+
+@pytest.fixture(autouse=True)
+def preview_dir(tmp_path, monkeypatch):
+    temp = tmp_path / "temp"
+    temp.mkdir()
+    monkeypatch.setattr(single_file.tempfile, "gettempdir", lambda: str(temp))
+    return temp / "birdnet-analyzer-preview"
+
+
+def _old_preview(directory, name, size, age_days):
+    directory.mkdir(exist_ok=True)
+    path = directory / f"{name * 40}.wav"
+    path.write_bytes(b"\0" * size)
+    then = time.time() - age_days * 86400
+    os.utime(path, (then, then))
+    return path
 
 
 def _fail(error):
@@ -150,16 +170,58 @@ def test_a_format_the_browser_cannot_play_is_decoded_for_it(tmp_path, name, subt
     assert single_file.audio_preview(str(clip)) == preview
 
 
-def test_a_failed_conversion_leaves_no_preview_behind(tmp_path, monkeypatch):
+def test_a_failed_conversion_leaves_no_preview_behind(
+    tmp_path, monkeypatch, preview_dir
+):
     clip = tmp_path / "clip.ogg"
     sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
-    monkeypatch.setattr(single_file.tempfile, "gettempdir", lambda: str(tmp_path))
     monkeypatch.setattr(sf, "write", _fail(OSError("disk full")))
 
     with pytest.raises(OSError, match="disk full"):
         single_file.audio_preview(str(clip))
 
-    assert list((tmp_path / "birdnet-analyzer-preview").iterdir()) == []
+    assert list(preview_dir.iterdir()) == []
+
+
+def test_old_previews_are_removed(tmp_path, preview_dir):
+    clip = tmp_path / "clip.ogg"
+    sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
+    stale = _old_preview(preview_dir, "a", 10, single_file.PREVIEW_MAX_AGE_DAYS + 1)
+    recent = _old_preview(preview_dir, "b", 10, 1)
+
+    preview = single_file.audio_preview(str(clip))
+
+    assert not stale.exists()
+    assert recent.exists()
+    assert os.path.exists(preview)
+
+
+def test_the_least_recently_used_previews_go_over_the_size_limit(
+    tmp_path, monkeypatch, preview_dir
+):
+    monkeypatch.setattr(single_file, "PREVIEW_MAX_BYTES", 250_000)
+    clip = tmp_path / "clip.ogg"
+    sf.write(clip, np.zeros(48000, dtype="float32"), 48000)
+    oldest = _old_preview(preview_dir, "a", 100_000, 3)
+    newer = _old_preview(preview_dir, "b", 100_000, 2)
+
+    preview = single_file.audio_preview(str(clip))
+
+    assert not oldest.exists()
+    assert newer.exists()
+    assert os.path.exists(preview)
+
+
+def test_a_reused_preview_counts_as_recently_used(tmp_path, preview_dir):
+    clip = tmp_path / "clip.ogg"
+    sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
+    preview = single_file.audio_preview(str(clip))
+    then = time.time() - 3 * 86400
+    os.utime(preview, (then, then))
+
+    single_file.audio_preview(str(clip))
+
+    assert os.path.getmtime(preview) > then + 86400
 
 
 def test_detections_become_player_labels():

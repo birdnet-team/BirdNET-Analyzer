@@ -1,6 +1,8 @@
 import hashlib
 import os
+import re
 import tempfile
+import time
 from pathlib import Path
 
 import gradio as gr
@@ -40,6 +42,36 @@ def __getattr__(name: str) -> str:
 
 # What every embedded browser plays; WebKit before macOS 15.4 has no Ogg.
 BROWSER_PLAYABLE = (".wav", ".flac", ".mp3")
+# Decoded previews are PCM WAV, about 340 MB per hour of 48 kHz mono.
+PREVIEW_MAX_BYTES = 2 * 1024**3
+PREVIEW_MAX_AGE_DAYS = 7
+_PREVIEW_NAME = re.compile(r"[0-9a-f]{40}\.wav")
+
+
+def _prune_previews(preview_dir: Path, keep: Path):
+    """Removes previews unused for a week, then the least recently used ones
+    until the folder fits PREVIEW_MAX_BYTES."""
+    previews = []
+    for entry in os.scandir(preview_dir):
+        # Partial files of a conversion still running elsewhere have other names.
+        if _PREVIEW_NAME.fullmatch(entry.name) and entry.path != str(keep):
+            try:
+                stat = entry.stat()
+            except OSError:
+                continue
+            previews.append((stat.st_mtime, stat.st_size, Path(entry.path)))
+
+    total = sum(size for _, size, _ in previews) + keep.stat().st_size
+    expired = time.time() - PREVIEW_MAX_AGE_DAYS * 86400
+
+    for mtime, size, path in sorted(previews):
+        if mtime >= expired and total <= PREVIEW_MAX_BYTES:
+            break
+        try:
+            path.unlink()
+            total -= size
+        except OSError:
+            pass
 
 
 def audio_preview(path: str) -> str:
@@ -76,6 +108,10 @@ def audio_preview(path: str) -> str:
         except BaseException:
             Path(partial).unlink(missing_ok=True)
             raise
+    else:
+        os.utime(preview)
+
+    _prune_previews(preview_dir, preview)
 
     return str(preview)
 
