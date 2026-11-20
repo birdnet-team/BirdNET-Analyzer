@@ -324,3 +324,24 @@ def test_info_text_names_the_select_button_as_labelled():
         label = texts["single-tab-select-file-button-label"]
 
         assert label in texts["single-tab-info-text"], lang_file.name
+
+
+def test_the_player_labels_are_translated():
+    import json
+    from pathlib import Path
+
+    from birdnet_analyzer.settings import LANG_DIR
+
+    def label(file):
+        return json.loads(file.read_text(encoding="utf-8"))[
+            "single-tab-show-confidence-label"
+        ]
+
+    english = label(Path(LANG_DIR) / "en.json")
+    untranslated = [
+        f.stem
+        for f in Path(LANG_DIR).glob("*.json")
+        if f.stem != "en" and label(f) == english
+    ]
+
+    assert untranslated == []
