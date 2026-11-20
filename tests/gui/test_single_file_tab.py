@@ -211,3 +211,16 @@ def test_a_failed_export_is_logged_and_shown(
         handler(single_file.build_single_analysis_tab, "download_csv")({"table": None})
 
     assert len(logged) == 1
+
+
+def test_info_text_names_the_select_button_as_labelled():
+    import json
+    from pathlib import Path
+
+    lang_dir = Path(__file__).parents[2] / "birdnet_analyzer" / "lang"
+
+    for lang_file in sorted(lang_dir.glob("*.json")):
+        texts = json.loads(lang_file.read_text(encoding="utf-8"))
+        label = texts["single-tab-select-file-button-label"]
+
+        assert label in texts["single-tab-info-text"], lang_file.name
