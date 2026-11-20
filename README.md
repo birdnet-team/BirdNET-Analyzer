@@ -52,7 +52,7 @@ You can download installers for Windows and macOS, and an AppImage or `.deb` pac
 On Windows, once the package is listed in the Windows Package Manager, you can also install it with:
 
 ```powershell
-winget install BirdNET-Team.BirdNET-Analyzer
+winget install BirdNETTeam.BirdNETAnalyzer
 ```
 
 Models can be found on [Zenodo](https://zenodo.org/records/15050749).
