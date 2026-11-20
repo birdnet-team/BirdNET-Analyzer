@@ -185,7 +185,7 @@ def test_a_long_recording_shows_its_spectrogram_on_request(
 
 def test_turning_on_the_spectrogram_keeps_the_detections(appdir, handler):
     value = handler(single_file.build_single_analysis_tab, "show_detections")(
-        {"table": _detections()}, "clip.wav", False, True, True
+        {"table": _detections(), "shown": _detections()}, "clip.wav", False, True, True
     )
 
     assert value["viewMode"] == "spectrogram"
@@ -319,7 +319,11 @@ def test_a_table_row_finds_its_detection_at_a_small_hop():
 
 def test_the_analysis_marks_its_detections_in_the_player(appdir, handler):
     value = handler(single_file.build_single_analysis_tab, "show_detections")(
-        {"table": _detections()}, "clip.wav", False, False, False
+        {"table": _detections(), "shown": _detections()},
+        "clip.wav",
+        False,
+        False,
+        False,
     )
 
     assert value["src"] == "clip.wav"
@@ -352,14 +356,14 @@ def test_a_clicked_detection_is_shown_in_the_player(appdir, handler, column, pla
     )
 
     value = handler(single_file.build_single_analysis_tab, "play_selected_detection")(
-        evt, {"table": _detections()}, "clip.wav", True
+        evt, {"table": _detections(), "shown": _detections()}, "clip.wav", True
     )
 
     assert value["select"]["start"] == 9.0
     assert value["select"]["end"] == 12.0
     assert value["select"]["play"] is plays
     assert value["select"]["id"] == "det-1"
-    assert len(value["detections"]) == 2
+    assert "detections" not in value, "the player keeps the labels it has"
     assert value["showConfidence"] is True
 
 

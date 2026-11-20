@@ -141,6 +141,18 @@ def player_detections(detections) -> list[dict]:
     return labels
 
 
+def time_to_seconds(time_str: str):
+    try:
+        hours, minutes, seconds = time_str.split(":")
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+    except ValueError as e:
+        raise ValueError(
+            "Input must be in the format hh:mm:ss or hh:mm:ss.ssssss "
+            "with numeric values."
+        ) from e
+
+
 def view_mode(long_recording: bool, show_long_spectrogram: bool) -> str:
     return "waveform" if long_recording and not show_long_spectrogram else "spectrogram"
 
@@ -244,6 +256,8 @@ def run_single_file_analysis(
             )
         )
 
+    # The player marks what the table lists: thousands of labels slow it down.
+    shown = table.reset_index(drop=True)
     n_rows = table.shape[0]
     start_lbl, end_lbl, sci_name_lbl, common_name_lbl, confidence_lbl = _header_labels()
 
@@ -286,6 +300,7 @@ def run_single_file_analysis(
         {
             "predictions": predictions,
             "table": detections,
+            "shown": shown,
             "fmin": fmin,
             "fmax": fmax,
             "overlap": overlap,
@@ -497,17 +512,6 @@ def build_single_analysis_tab() -> None:
             model_settings["locale_dropdown"],
         ]
 
-        def time_to_seconds(time_str: str):
-            try:
-                hours, minutes, seconds = time_str.split(":")
-                return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
-
-            except ValueError as e:
-                raise ValueError(
-                    "Input must be in the format hh:mm:ss or hh:mm:ss.ssssss "
-                    "with numeric values."
-                ) from e
-
         @gu.gui_runtime_error_handler
         def show_detections(
             prediction_state,
@@ -521,7 +525,7 @@ def build_single_analysis_tab() -> None:
 
             return player_value(
                 player_src,
-                detections=player_detections(prediction_state["table"])
+                detections=player_detections(prediction_state["shown"])
                 if prediction_state
                 else [],
                 show_confidence=show_confidence,
@@ -535,17 +539,16 @@ def build_single_analysis_tab() -> None:
             if not (prediction_state and player_src and evt.row_value[1]):
                 return gr.skip()
 
-            detections = prediction_state["table"]
             start = time_to_seconds(evt.row_value[1])
             end = time_to_seconds(evt.row_value[2])
+            shown = prediction_state["shown"]
 
             # The play column plays the detection, any other cell shows it.
             return player_value(
                 player_src,
-                detections=player_detections(detections),
                 select=(start, end),
                 play=evt.index[1] == 0,
-                select_id=detection_id(detections, start, end, evt.row_value[3]),
+                select_id=detection_id(shown, start, end, evt.row_value[3]),
                 show_confidence=show_confidence,
             )
 
