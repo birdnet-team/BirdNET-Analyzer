@@ -160,6 +160,19 @@ def test_a_table_row_finds_its_detection():
     assert single_file.detection_id(detections, 3.0, 6.0, "Parus major") is None
 
 
+def test_a_table_row_finds_its_detection_at_a_small_hop():
+    detections = pd.DataFrame(
+        {
+            "start_time": [0.2, 0.3],
+            "end_time": [3.2, 3.3],
+            "species_name": ["Turdus merula_Eurasian Blackbird"] * 2,
+            "confidence": [0.9, 0.8],
+        }
+    )
+
+    assert single_file.detection_id(detections, 0.3, 3.3, "Turdus merula") == "det-1"
+
+
 def test_the_analysis_marks_its_detections_in_the_player(appdir, handler):
     value = handler(single_file.build_single_analysis_tab, "show_detections")(
         {"table": _detections()}, "clip.wav", False

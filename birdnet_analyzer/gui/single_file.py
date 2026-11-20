@@ -104,16 +104,17 @@ def player_detections(detections) -> list[dict]:
 
 def detection_id(detections, start: float, end: float, sci_name: str) -> str | None:
     """The player id of the detection a row of the results table shows."""
-    # The table shows the times to a tenth of a second.
+    # The table shows the times to a tenth of a second, and at a small hop
+    # neighbouring detections are within that, so take the closest one.
+    best, best_distance = None, 0.2
     for i, row in enumerate(detections.itertuples(index=False)):
-        if (
-            row.species_name.partition("_")[0] == sci_name
-            and abs(float(row.start_time) - start) < 0.1
-            and abs(float(row.end_time) - end) < 0.1
-        ):
-            return f"det-{i}"
+        if row.species_name.partition("_")[0] != sci_name:
+            continue
+        distance = abs(float(row.start_time) - start) + abs(float(row.end_time) - end)
+        if distance < best_distance:
+            best, best_distance = f"det-{i}", distance
 
-    return None
+    return best
 
 
 @gu.gui_runtime_error_handler
