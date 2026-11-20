@@ -286,7 +286,9 @@ def build_single_analysis_tab() -> None:
             # BirdNET detections cover the whole band: strips along the top.
             label_display="lanes",
             toolbar=[*VIEWER_TOOLBAR, "follow", "fit", "contrast"],
-            options={"transportStyle": "hero"},
+            # Its shortcuts listen on the whole window and would take Space from
+            # a button focused anywhere, in other tabs too.
+            options={"transportStyle": "hero", "keyboardShortcuts": False},
         )
         show_confidence_checkbox = gr.Checkbox(
             label=loc.localize("single-tab-show-confidence-label"),

@@ -61,6 +61,15 @@ def test_the_file_is_shown_in_the_spectrogram_player(appdir):
     assert not any(isinstance(c, (gr.Audio, gr.Plot)) for c in demo.blocks.values())
 
 
+def test_the_player_leaves_the_keyboard_to_the_rest_of_the_gui(appdir):
+    with gr.Blocks() as demo:
+        single_file.build_single_analysis_tab()
+
+    player = next(c for c in demo.blocks.values() if isinstance(c, SignaVisPlayer))
+
+    assert '"keyboardShortcuts": false' in player.js_on_load
+
+
 def test_cancelling_the_dialog_changes_nothing(appdir, handler, monkeypatch):
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: None)
 
