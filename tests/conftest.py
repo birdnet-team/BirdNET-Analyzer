@@ -36,6 +36,19 @@ def two_inference_workers():
         yield
 
 
+@pytest.fixture(autouse=True)
+def default_certificate_store():
+    """Undoes the process-wide switch an entry point makes to the system's store."""
+    yield
+
+    import ssl
+
+    if ssl.SSLContext.__module__.startswith("truststore"):
+        import truststore
+
+        truststore.extract_from_ssl()
+
+
 @pytest.fixture(autouse=True, scope="session")
 def session_tempdir(tmp_path_factory):
     """Keeps the run's temporary files, e.g. the birdnet session logs, out of TEMP.

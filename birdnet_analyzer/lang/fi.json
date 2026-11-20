@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "Valittua hakemistoa ei voi luoda tai siihen ei voi kirjoittaa.",
     "model-dir-low-space-warning": "Vapaata tilaa alle 2 Gt: ensimmäinen mallilataus ei ehkä mahdu.",
     "model-dir-readonly-warning": "Hakemisto on vain luku -tilassa: siinä jo olevia malleja voi käyttää, mutta uusia malleja ei voi ladata.",
+    "model-download-failed-error": "Mallia ei voitu ladata ({reason}). Tarkista internetyhteys ja yritä uudelleen. Jos tämä verkko estää latauksen, kopioi mallit toiselta tietokoneelta mallihakemistoon: {directory}",
     "model-selection-accordion-label": "Mallin valinta",
     "model-selection-classifier-unreadable-warning": "Tiedostoa {file} ei voi käyttää luokittelijana: {error}",
     "model-selection-facts-base-model-label": "Perustuu malliin",

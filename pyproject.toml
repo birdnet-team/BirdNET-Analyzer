@@ -49,6 +49,7 @@ dependencies = [
     "pandas",
     "matplotlib",
     "birdnet>=1.5.0",
+    "truststore",
 ]
 
 [project.optional-dependencies]

@@ -262,6 +262,11 @@ def active_session_count() -> int:
         return len(_ACTIVE_SESSIONS)
 
 
+def shutting_down() -> bool:
+    """Whether the application is closing (see :func:`cancel_active_analyses`)."""
+    return _SHUTDOWN.is_set()
+
+
 def cancel_active_analyses() -> int:
     """Signal every in-flight analysis to cancel and latch shutdown.
 

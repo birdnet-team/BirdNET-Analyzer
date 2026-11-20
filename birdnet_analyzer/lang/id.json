@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "Direktori yang dipilih tidak dapat dibuat atau ditulisi.",
     "model-dir-low-space-warning": "Ruang kosong kurang dari 2 GB: unduhan model pertama mungkin tidak muat.",
     "model-dir-readonly-warning": "Direktori bersifat hanya-baca: model yang sudah ada dapat digunakan, tetapi model baru tidak dapat diunduh.",
+    "model-download-failed-error": "Model tidak dapat diunduh ({reason}). Periksa koneksi internet dan coba lagi. Jika jaringan ini memblokir unduhan, salin model dari komputer lain ke direktori model: {directory}",
     "model-selection-accordion-label": "Pemilihan model",
     "model-selection-classifier-unreadable-warning": "{file} tidak dapat digunakan sebagai pengklasifikasi: {error}",
     "model-selection-facts-base-model-label": "Berdasarkan",

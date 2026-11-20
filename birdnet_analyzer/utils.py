@@ -2,12 +2,13 @@
 
 import os
 import warnings
+from contextlib import suppress
 from functools import cache
 from pathlib import Path
 
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
 from birdnet_analyzer.logs import setup_logging
-from birdnet_analyzer.settings import write_error_log
+from birdnet_analyzer.settings import seed_bundled_models, write_error_log
 
 # Raised by gradio's own gr.List/gr.Matrix defaults and event loop helpers.
 _UNACTIONABLE_WARNINGS = [
@@ -30,6 +31,15 @@ def configure_runtime():
 
     for category, module, message in _UNACTIONABLE_WARNINGS:
         warnings.filterwarnings("ignore", message, category, module)
+
+    seed_bundled_models()
+
+    # Model downloads verify against the operating system's certificates, which is
+    # where the root of a TLS-inspecting company or campus proxy is installed.
+    with suppress(Exception):
+        import truststore
+
+        truststore.inject_into_ssl()
 
 
 def runtime_error_handler(f):

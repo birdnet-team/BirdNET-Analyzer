@@ -39,6 +39,37 @@ Both need an x86_64 distribution with glibc 2.35 or newer, such as Ubuntu 22.04,
 
 Settings and the downloaded models are kept in ``~/.local/share/BirdNET-Analyzer-GUI``.
 
+Models and the first start
+--------------------------
+
+The macOS installer contains the default BirdNET 3.0 model, including its species range model, so the first analysis
+works without an internet connection. Everything else is downloaded the first time it is used and kept for later
+runs, with the progress shown in the GUI: the other models (BirdNET 2.4, Perch), and the version of BirdNET 3.0 that
+training a custom classifier needs (about 320 MB). An installer without the default model downloads it the same way,
+about 380 MB, on the first analysis.
+
+The installed application keeps its models in
+
+- ``%LOCALAPPDATA%\BirdNET-Analyzer-GUI\models`` on Windows,
+- ``~/Library/Application Support/BirdNET-Analyzer-GUI/models`` on macOS,
+- ``~/.local/share/BirdNET-Analyzer-GUI/models`` on Linux.
+
+The settings tab of the GUI shows this directory and lets you choose another one, for example on a drive with more
+space; models that are already downloaded stay where they are and have to be moved by hand.
+Setting the environment variable ``BIRDNET_APP_DATA`` to a directory overrides both. A pip installation without
+either uses the directory of the ``birdnet`` library (``%APPDATA%\birdnet``,
+``~/Library/Application Support/birdnet`` or ``~/.local/share/birdnet``).
+
+**Computers without internet access.** For a model the installer does not contain, run one analysis with it on a
+computer that is online, then copy its model directory
+into the same place on the offline computer, or onto a drive and select that directory in the settings tab.
+With ``BIRDNET_OFFLINE=1`` set, a missing model is reported at once and nothing is downloaded.
+
+**Restricted networks.** The models come from ``zenodo.org``, ``github.com`` (which redirects to
+``githubusercontent.com``) and ``tuc.cloud``; a firewall has to allow these. The GUI and the command line tools
+verify downloads with the certificates of the operating system, so a company or campus proxy that inspects HTTPS
+works as long as its certificate is installed there, as it is for the browser.
+
 Raven Pro
 ---------
 

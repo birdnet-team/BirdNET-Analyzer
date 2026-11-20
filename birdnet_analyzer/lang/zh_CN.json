@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "无法创建所选目录或无法写入该目录。",
     "model-dir-low-space-warning": "可用空间不足 2 GB：首次模型下载可能无法容纳。",
     "model-dir-readonly-warning": "该目录为只读：可以使用其中已有的模型，但无法下载新模型。",
+    "model-download-failed-error": "无法下载模型（{reason}）。请检查网络连接后重试。如果当前网络阻止下载，请从另一台计算机将模型复制到模型目录：{directory}",
     "model-selection-accordion-label": "模型选择",
     "model-selection-classifier-unreadable-warning": "{file} 无法用作分类器：{error}",
     "model-selection-facts-base-model-label": "基础模型",
