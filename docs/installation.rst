@@ -19,8 +19,8 @@ On Windows, once the package is listed in the Windows Package Manager, you can a
 
 .. code-block:: powershell
 
-   winget install BirdNET-Team.BirdNET-Analyzer
-   winget upgrade BirdNET-Team.BirdNET-Analyzer
+   winget install BirdNETTeam.BirdNETAnalyzer
+   winget upgrade BirdNETTeam.BirdNETAnalyzer
 
 Linux
 -----

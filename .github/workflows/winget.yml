@@ -38,4 +38,5 @@ jobs:
           $urls = @(gh release view $tag --repo '${{ github.repository }}' --json assets --jq '.assets[] | select(.name | endswith("-win_amd64.exe")) | .url')
           if ($urls.Count -ne 1) { throw "Release $tag has $($urls.Count) *-win_amd64.exe assets, expected one." }
           curl.exe -sSJLO https://aka.ms/wingetcreate/latest
-          .\wingetcreate.exe update BirdNET-Team.BirdNET-Analyzer --version $tag.TrimStart('v') --urls "$($urls[0])|x64" --submit
+          $notes = "https://github.com/${{ github.repository }}/releases/tag/$tag"
+          .\wingetcreate.exe update BirdNETTeam.BirdNETAnalyzer --version $tag.TrimStart('v') --urls "$($urls[0])|x64" --release-notes-url $notes --submit
