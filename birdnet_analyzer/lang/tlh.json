@@ -344,6 +344,7 @@
     "single-tab-download-rtable-button-label": "nIqHom laHmey",
     "single-tab-info-text": "De'lIj yInejmeH 'ej puS Sammey lo'taHvIS choHmey QaQ yISammeH tabvam yIlo', law' poj tabDaq batch juv tIn Dataghpa'.\n\n«QoQ teywI' yIwIv» yI'uy, wa' ghogh teywI' DawIvmeH. spectrogram rur ghogh 'anglu'; Dachen 'ej DaQoylaH.\n\ninference choHmeyDaq threshold, ghogh, 'ej Ha'DIbaH choHmey yIchoH. pat qoj BirdNET (default) pImbogh model Dalo'meH, model wIv poHDaq yIwIv.\n\n«poj yItagh» yI'uy, teywI'Daq model vumHa'moHmeH. bIng tetlhDaq SammoHmey 'anglu', pa' Hoch ghach DaQoylaH 'ej Sammey yISo' Raven tetlh, CSV, qoj Kaleidoscope teywI' rur.",
     "single-tab-info-title": "De'",
+    "single-tab-long-spectrogram-label": "wab mIllogh yIcha' 10 tup ghap law' QIt wab qonta'",
     "single-tab-no-file-selected-placeholder": "teywI' wIvlu'be'",
     "single-tab-output-header-common-name": "motlh pong",
     "single-tab-output-header-confidence": "vIt (qel)",

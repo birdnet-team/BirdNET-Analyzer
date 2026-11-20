@@ -344,6 +344,7 @@
     "single-tab-download-rtable-button-label": "Lataa Raven-taulukko",
     "single-tab-info-text": "Käytä tätä välilehteä aineistosi tutkimiseen ja sopivien asetusten selvittämiseen muutamalla näytteellä ennen suuren eräanalyysin suorittamista Eräanalyysi-välilehdellä.\n\nNapsauta ”Valitse äänitiedosto” valitaksesi yksittäisen äänitiedoston. Äänite näytetään spektrogrammina, jota voit zoomata ja toistaa.\n\nKynnys-, ääni- ja lajiasetuksia voidaan säätää päättelyasetuksissa. Käyttääksesi mukautettua luokitinta tai muuta mallia kuin BirdNET (oletus), valitse se mallinvalintaosiossa.\n\nPaina Analysoi suorittaaksesi mallin tiedostolle. Havainnot näkyvät alla olevassa taulukossa, jossa voit toistaa kunkin segmentin ja ladata tulokset Raven-taulukkona, CSV- tai Kaleidoscope-tiedostona.",
     "single-tab-info-title": "Tietoja",
+    "single-tab-long-spectrogram-label": "Näytä spektrogrammi vähintään 10 minuutin äänitteille",
     "single-tab-no-file-selected-placeholder": "Tiedostoa ei valittu",
     "single-tab-output-header-common-name": "Yleisnimi",
     "single-tab-output-header-confidence": "Luotettavuus",

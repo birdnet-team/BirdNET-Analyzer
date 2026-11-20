@@ -344,6 +344,7 @@
     "single-tab-download-rtable-button-label": "Unduh tabel “Raven”",
     "single-tab-info-text": "Gunakan tab ini untuk menjelajahi data Anda dan menentukan pengaturan yang sesuai pada beberapa sampel sebelum menjalankan analisis batch besar di tab Analisis batch.\n\nKlik ”Pilih Berkas Audio” untuk memilih satu berkas audio. Rekaman ditampilkan sebagai spektrogram yang dapat Anda perbesar dan putar.\n\nOpsi ambang batas, audio, dan spesies dapat disesuaikan di pengaturan inferensi. Untuk menggunakan pengklasifikasi kustom atau model selain BirdNET (bawaan), pilih di bagian pemilihan model.\n\nTekan Analisis untuk menjalankan model pada berkas. Deteksi muncul di tabel di bawah, tempat Anda dapat memutar setiap segmen dan mengunduh hasil sebagai tabel Raven, CSV, atau berkas Kaleidoscope.",
     "single-tab-info-title": "Info",
+    "single-tab-long-spectrogram-label": "Tampilkan spektrogram untuk rekaman 10 menit atau lebih",
     "single-tab-no-file-selected-placeholder": "Tidak ada berkas yang dipilih",
     "single-tab-output-header-common-name": "Nama umum",
     "single-tab-output-header-confidence": "Tingkat kepercayaan",

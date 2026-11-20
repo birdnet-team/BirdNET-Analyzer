@@ -344,6 +344,7 @@
     "single-tab-download-rtable-button-label": "Baixe a tabela “Raven”",
     "single-tab-info-text": "Use esta aba para explorar os seus dados e descobrir configurações adequadas em algumas amostras antes de executar uma grande análise em lote na aba Análise em lote.\n\nClique em ”Selecionar Arquivo de Áudio” para escolher um único arquivo de áudio. A gravação é exibida como um espectrograma que você pode ampliar e reproduzir.\n\nAs opções de limiar, áudio e espécies podem ser ajustadas nas configurações de inferência. Para usar um classificador personalizado ou um modelo diferente do BirdNET (o padrão), selecione-o na seção de seleção de modelo.\n\nPressione Analisar para executar o modelo no arquivo. As detecções aparecem na tabela abaixo, onde você pode reproduzir cada segmento e baixar os resultados como tabela Raven, CSV ou arquivo Kaleidoscope.",
     "single-tab-info-title": "Informações",
+    "single-tab-long-spectrogram-label": "Mostrar o espectrograma de gravações com 10 minutos ou mais",
     "single-tab-no-file-selected-placeholder": "Nenhum arquivo selecionado",
     "single-tab-output-header-common-name": "Nome popular",
     "single-tab-output-header-confidence": "Nível de Confiança",

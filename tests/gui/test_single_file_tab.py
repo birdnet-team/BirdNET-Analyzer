@@ -62,7 +62,9 @@ def test_an_unreadable_file_is_reported_as_such(appdir, handler, monkeypatch, lo
     monkeypatch.setattr(sf, "info", _fail(OSError("disk")))
 
     with pytest.raises(gr.Error) as raised:
-        handler(single_file.build_single_analysis_tab, "load_player")("clip.wav", False)
+        handler(single_file.build_single_analysis_tab, "load_player")(
+            "clip.wav", False, False
+        )
 
     assert "disk" in raised.value.message
     assert len(logged) == 1
@@ -120,7 +122,7 @@ def test_a_cancelled_dialog_stops_the_chained_steps(appdir, handler):
     tab = single_file.build_single_analysis_tab
 
     assert handler(tab, "lock_analyze")(None) == gr.skip()
-    assert handler(tab, "load_player")(None, False) == (gr.skip(),) * 3
+    assert handler(tab, "load_player")(None, False, False) == (gr.skip(),) * 5
 
 
 def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path):
@@ -142,13 +144,68 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     assert actions["visible"] is False
     assert selection == str(clip)
 
-    src, player, analyze = handler(
+    src, player, analyze, long_recording, spectrogram_checkbox = handler(
         single_file.build_single_analysis_tab, "load_player"
-    )(path, True)
+    )(path, True, False)
 
     assert src == str(clip)
-    assert player == {"src": str(clip), "showConfidence": True}
+    assert player == {
+        "src": str(clip),
+        "showConfidence": True,
+        "viewMode": "spectrogram",
+    }
     assert analyze["interactive"] is True
+    assert long_recording is False
+    assert spectrogram_checkbox["visible"] is False
+
+
+@pytest.mark.parametrize(("show", "view"), [(False, "waveform"), (True, "spectrogram")])
+def test_a_long_recording_shows_its_spectrogram_on_request(
+    appdir, handler, monkeypatch, tmp_path, show, view
+):
+    clip = tmp_path / "clip.wav"
+    sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
+    real_info = sf.info
+
+    def long_info(path):
+        info = real_info(path)
+        info.duration = single_file.LONG_RECORDING_SECONDS
+        return info
+
+    monkeypatch.setattr(sf, "info", long_info)
+
+    _, player, _, long_recording, spectrogram_checkbox = handler(
+        single_file.build_single_analysis_tab, "load_player"
+    )(str(clip), False, show)
+
+    assert player["viewMode"] == view
+    assert long_recording is True
+    assert spectrogram_checkbox["visible"] is True
+
+
+def test_turning_on_the_spectrogram_keeps_the_detections(appdir, handler):
+    value = handler(single_file.build_single_analysis_tab, "show_detections")(
+        {"table": _detections()}, "clip.wav", False, True, True
+    )
+
+    assert value["viewMode"] == "spectrogram"
+    assert len(value["detections"]) == 2
+
+
+def test_the_spectrogram_choice_is_remembered(appdir):
+    from birdnet_analyzer import settings
+    from birdnet_analyzer.gui import localization as loc
+    from birdnet_analyzer.gui import state as gs
+
+    settings.set_tab_setting("single", "show_long_spectrogram", True)
+
+    with gr.Blocks():
+        single_file.build_single_analysis_tab()
+
+    label = loc.localize("single-tab-long-spectrogram-label")
+    checkbox = next(c for c in gs.persisted_components() if c.label == label)
+
+    assert checkbox.value is True
 
 
 @pytest.mark.parametrize(
@@ -262,7 +319,7 @@ def test_a_table_row_finds_its_detection_at_a_small_hop():
 
 def test_the_analysis_marks_its_detections_in_the_player(appdir, handler):
     value = handler(single_file.build_single_analysis_tab, "show_detections")(
-        {"table": _detections()}, "clip.wav", False
+        {"table": _detections()}, "clip.wav", False, False, False
     )
 
     assert value["src"] == "clip.wav"
@@ -272,10 +329,15 @@ def test_the_analysis_marks_its_detections_in_the_player(appdir, handler):
 
 def test_the_confidence_can_be_shown_before_an_analysis(appdir, handler):
     value = handler(single_file.build_single_analysis_tab, "show_detections")(
-        None, "clip.wav", True
+        None, "clip.wav", True, False, False
     )
 
-    assert value == {"src": "clip.wav", "detections": [], "showConfidence": True}
+    assert value == {
+        "src": "clip.wav",
+        "detections": [],
+        "showConfidence": True,
+        "viewMode": "spectrogram",
+    }
 
 
 @pytest.mark.parametrize(("column", "plays"), [(0, True), (3, False)])
@@ -326,16 +388,17 @@ def test_info_text_names_the_select_button_as_labelled():
         assert label in texts["single-tab-info-text"], lang_file.name
 
 
-def test_the_player_labels_are_translated():
+@pytest.mark.parametrize(
+    "key", ["single-tab-show-confidence-label", "single-tab-long-spectrogram-label"]
+)
+def test_the_player_labels_are_translated(key):
     import json
     from pathlib import Path
 
     from birdnet_analyzer.settings import LANG_DIR
 
     def label(file):
-        return json.loads(file.read_text(encoding="utf-8"))[
-            "single-tab-show-confidence-label"
-        ]
+        return json.loads(file.read_text(encoding="utf-8"))[key]
 
     english = label(Path(LANG_DIR) / "en.json")
     untranslated = [

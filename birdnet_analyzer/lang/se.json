@@ -344,6 +344,7 @@
     "single-tab-download-rtable-button-label": "Ladda ner tabellen ”Raven”",
     "single-tab-info-text": "Använd den här fliken för att utforska dina data och ta reda på lämpliga inställningar på några exempel innan du kör en stor batchanalys på fliken Batchanalys.\n\nKlicka på ”Välj ljudfil” för att välja en enskild ljudfil. Inspelningen visas som ett spektrogram som du kan zooma i och spela upp.\n\nTröskel-, ljud- och artalternativ kan justeras i inferensinställningarna. För att använda en anpassad klassificerare eller en annan modell än BirdNET (standard), välj den i avsnittet för modellval.\n\nTryck på Analysera för att köra modellen på filen. Detektionerna visas i tabellen nedan, där du kan spela upp varje segment och ladda ner resultaten som Raven-tabell, CSV eller Kaleidoscope-fil.",
     "single-tab-info-title": "Info",
+    "single-tab-long-spectrogram-label": "Visa spektrogrammet för inspelningar på 10 minuter eller längre",
     "single-tab-no-file-selected-placeholder": "Ingen fil vald",
     "single-tab-output-header-common-name": "Svenskt namn",
     "single-tab-output-header-confidence": "Konfidens",

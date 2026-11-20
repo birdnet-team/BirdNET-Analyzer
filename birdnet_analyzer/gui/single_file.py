@@ -20,6 +20,9 @@ from birdnet_analyzer.analyze.core import (
 from birdnet_analyzer.gui.state import TabState
 
 MAX_TABLE_ROWS = 50
+# A spectrogram of a longer recording takes long to compute and much memory,
+# so the player shows it only on request.
+LONG_RECORDING_SECONDS = 10 * 60
 _HEADER_LABELS = {
     "HEADER_START_LBL": "single-tab-output-header-start",
     "HEADER_END_LBL": "single-tab-output-header-end",
@@ -136,6 +139,10 @@ def player_detections(detections) -> list[dict]:
         )
 
     return labels
+
+
+def view_mode(long_recording: bool, show_long_spectrogram: bool) -> str:
+    return "waveform" if long_recording and not show_long_spectrogram else "spectrogram"
 
 
 def detection_id(detections, start: float, end: float, sci_name: str) -> str | None:
@@ -333,6 +340,14 @@ def build_single_analysis_tab() -> None:
             value=False,
             visible=False,
         )
+        long_spectrogram_checkbox = state.persist(
+            "show_long_spectrogram",
+            gr.Checkbox,
+            label=loc.localize("single-tab-long-spectrogram-label"),
+            value=False,
+            visible=False,
+        )
+        long_recording_state = gr.State(False)
         audio_path_state = gr.State()
         player_src_state = gr.State()
         last_prediction_state = gr.State()
@@ -403,16 +418,25 @@ def build_single_analysis_tab() -> None:
             return gr.update(interactive=False)
 
         @gu.gui_runtime_error_handler
-        def load_player(file_path, show_confidence):
+        def load_player(file_path, show_confidence, show_long_spectrogram):
             if not file_path:
-                return gr.skip(), gr.skip(), gr.skip()
+                return (gr.skip(),) * 5
+
+            import soundfile as sf
 
             preview = audio_preview(file_path)
+            long_recording = sf.info(file_path).duration >= LONG_RECORDING_SECONDS
 
             return (
                 preview,
-                player_value(preview, show_confidence=show_confidence),
+                player_value(
+                    preview,
+                    show_confidence=show_confidence,
+                    view_mode=view_mode(long_recording, show_long_spectrogram),
+                ),
                 gr.update(interactive=True),
+                long_recording,
+                gr.update(visible=long_recording),
             )
 
         select_file_button.click(
@@ -435,8 +459,18 @@ def build_single_analysis_tab() -> None:
             show_progress="hidden",
         ).then(
             load_player,
-            inputs=[selection_state, show_confidence_checkbox],
-            outputs=[player_src_state, player, single_file_analyze],
+            inputs=[
+                selection_state,
+                show_confidence_checkbox,
+                long_spectrogram_checkbox,
+            ],
+            outputs=[
+                player_src_state,
+                player,
+                single_file_analyze,
+                long_recording_state,
+                long_spectrogram_checkbox,
+            ],
             show_progress_on=player,
         )
 
@@ -475,7 +509,13 @@ def build_single_analysis_tab() -> None:
                 ) from e
 
         @gu.gui_runtime_error_handler
-        def show_detections(prediction_state, player_src, show_confidence):
+        def show_detections(
+            prediction_state,
+            player_src,
+            show_confidence,
+            long_recording,
+            show_long_spectrogram,
+        ):
             if not player_src:
                 return gr.skip()
 
@@ -485,6 +525,7 @@ def build_single_analysis_tab() -> None:
                 if prediction_state
                 else [],
                 show_confidence=show_confidence,
+                view_mode=view_mode(long_recording, show_long_spectrogram),
             )
 
         @gu.gui_runtime_error_handler
@@ -558,17 +599,25 @@ def build_single_analysis_tab() -> None:
                         Path(file_location),
                     )
 
+        detection_inputs = [
+            last_prediction_state,
+            player_src_state,
+            show_confidence_checkbox,
+            long_recording_state,
+            long_spectrogram_checkbox,
+        ]
         output_dataframe.select(
             play_selected_detection,
             inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
             outputs=player,
         )
-        show_confidence_checkbox.change(
-            show_detections,
-            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
-            outputs=player,
-            show_progress="hidden",
-        )
+        for checkbox in (show_confidence_checkbox, long_spectrogram_checkbox):
+            checkbox.change(
+                show_detections,
+                inputs=detection_inputs,
+                outputs=player,
+                show_progress="hidden",
+            )
         single_file_analyze.click(
             lambda: gr.update(visible=True),
             outputs=output_dataframe,
@@ -579,7 +628,7 @@ def build_single_analysis_tab() -> None:
             outputs=[output_dataframe, action_row, last_prediction_state],
         ).then(
             show_detections,
-            inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
+            inputs=detection_inputs,
             outputs=player,
         )
         rtable_download_button.click(download_rtable, inputs=last_prediction_state)
