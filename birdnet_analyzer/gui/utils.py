@@ -8,6 +8,7 @@ import os
 import sys
 import threading
 from collections.abc import Callable
+from concurrent.futures import Future
 from contextlib import contextmanager, suppress
 from html import escape
 from typing import TYPE_CHECKING, Literal, cast, get_args
@@ -1262,6 +1263,35 @@ def species_list_coordinates(state: TabState, show_map=False):
     )
 
 
+def _create_file_dialog(*args, **kwargs):
+    """Shows a pywebview file dialog and returns its result.
+
+    On Windows the dialog gets a thread that ends with it. WinForms makes the thread
+    showing it a COM apartment, and one that lives on without pumping messages, as a
+    Gradio worker does, blocks the .NET finalizers pythonnet waits for at exit.
+    """
+    assert _WINDOW is not None
+
+    if sys.platform != "win32":
+        return _WINDOW.create_file_dialog(*args, **kwargs)
+
+    create_file_dialog = _WINDOW.create_file_dialog
+    shown: Future = Future()
+
+    def show():
+        try:
+            shown.set_result(create_file_dialog(*args, **kwargs))
+        except BaseException as e:
+            shown.set_exception(e)
+
+    # A daemon, so a dialog still open at exit does not keep the process waiting.
+    thread = threading.Thread(target=show, daemon=True)
+    thread.start()
+    thread.join()
+
+    return shown.result()
+
+
 def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     """Creates a file save dialog.
 
@@ -1273,10 +1303,8 @@ def save_file_dialog(filetypes=(), state_key=None, default_filename=""):
     """
     import webview
 
-    assert _WINDOW is not None
-
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    file = _WINDOW.create_file_dialog(
+    file = _create_file_dialog(
         webview.FileDialog.SAVE,
         file_types=filetypes,
         directory=initial_selection,
@@ -1305,10 +1333,8 @@ def select_file(filetypes=(), state_key=None):
     """
     import webview
 
-    assert _WINDOW is not None
-
     initial_selection = settings.get_state(state_key, "") if state_key else ""
-    files = _WINDOW.create_file_dialog(
+    files = _create_file_dialog(
         webview.FileDialog.OPEN, file_types=filetypes, directory=initial_selection
     )
 
@@ -1814,7 +1840,7 @@ def download_plot(plot, filename=""):
     import webview
     from PIL import Image
 
-    res: str = _WINDOW.create_file_dialog(  # type: ignore
+    res: str = _create_file_dialog(  # type: ignore
         webview.FileDialog.SAVE,
         file_types=("PNG (*.png)", "Webp (*.webp)", "JPG (*.jpg)"),
         save_filename=filename,
@@ -2018,6 +2044,28 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
             child.join(timeout=5)
 
 
+# A clean exit took 8 to 20 s when measured, most of it pythonnet shutting down.
+EXIT_TIMEOUT_S = 60.0
+
+
+def _exit_within(seconds: float) -> None:
+    """Ends the process if it is still running after ``seconds``.
+
+    The timer is faulthandler's because it needs no GIL: an exit handler that blocks
+    while holding it stops every Python thread. The thread stacks written to stderr
+    first show what was stuck.
+    """
+    import faulthandler
+
+    try:
+        # Its own descriptor: the diverted log closes and reopens its file.
+        stream = os.dup(sys.stderr.fileno())
+    except (AttributeError, OSError, ValueError):
+        stream = os.open(os.devnull, os.O_WRONLY)
+
+    faulthandler.dump_traceback_later(seconds, exit=True, file=stream)
+
+
 def _show_startup_warnings():
     # Tabs sharing a setting fall back alike, so their warnings repeat.
     for message in dict.fromkeys(_STARTUP_WARNINGS):
@@ -2121,5 +2169,6 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
 
     webview.start(private_mode=False)
 
+    _exit_within(EXIT_TIMEOUT_S)
     # Window closed: stop any analysis still running with no UI to control it.
     shutdown_running_analyses()
