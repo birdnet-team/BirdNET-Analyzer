@@ -16,11 +16,11 @@ Default model is now BirdNET 3.0
 --------------------------------
 
 **What changed.** Analyses use the BirdNET 3.0 acoustic model by default, and
-location-based species lists always use the 3.0 geolocation model. v2.4 was the
+location-based species lists use the 3.0 geolocation model. v2.4 was the
 previous default for both.
 
 **Consequence.** Results are not directly comparable to v2.4 output: 3.0 is a different
-model with different confidence scores, a larger species set (11,560 labels) and an
+model with different confidence scores, a larger species set (11,725 labels) and an
 updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.
 
 **What to do.** To keep the previous acoustic model, select the 2.4 model explicitly:
@@ -30,7 +30,9 @@ updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.
    birdnet-analyze INPUT --birdnet 2.4
 
 In the GUI, choose *BirdNET 2.4* under model selection. The 2.4 model remains fully
-supported. Location-based species lists come from the 3.0 geolocation model either way.
+supported, and a location (``--lat`` and ``--lon``) limits it, and a custom classifier
+trained on it, with the 2.4 geolocation model, which has the same species.
+``birdnet_analyzer.species`` writes its lists with the 3.0 geolocation model either way.
 
 
 Inference runs on ONNX, not TensorFlow, on the default path
@@ -44,7 +46,7 @@ Inference runs on ONNX, not TensorFlow, on the default path
 * Default analyses are faster on CPU and no longer load TensorFlow.
 * TensorFlow is still required — and still installed — for the 2.4 model, the Perch
   model, custom classifiers, and training.
-* The Docker image is substantially larger: it bakes the ~520 MB 3.0 ONNX model
+* The Docker image is substantially larger: it bakes the ~345 MB 3.0 ONNX model
   (the 2.4 TFLite model was ~120 MB).
 
 **What to do.** Reinstall the package so ``onnxruntime`` is pulled in (your usual
@@ -58,13 +60,16 @@ Custom species lists and the 3.0 taxonomy
 **What changed.** The 3.0 model uses an updated taxonomy, so labels from a v2.4-era
 species list may no longer match verbatim — for example ``Accipiter cooperii`` became
 ``Astur cooperii``, and several common names changed (``Rock Pigeon`` → ``Rock Dove``,
-``Common Raven`` → ``Northern Raven``, ``Herring Gull`` → ``European Herring Gull``,
-``European Starling`` → ``Common Starling``).
+``Common Raven`` → ``Northern Raven``, ``European Starling`` → ``Common Starling``).
+Several dozen species were also split, and the scientific name stayed with one of the
+new species: ``Larus argentatus`` is now the European Herring Gull and the American
+Herring Gull is ``Larus smithsonianus``; ``Setophaga petechia`` is now the Mangrove
+Warbler and the American Yellow Warbler is ``Setophaga aestiva``.
 
 A species list passed with ``--slist`` is now **reconciled** to the loaded model
 instead of having to match it exactly: each entry is matched by its exact label, then
-its scientific name, then its common name. This carries most legacy lists over
-automatically.
+its scientific name, then its common name in the label language or in English. This
+carries most legacy lists over automatically.
 
 **Consequence.**
 
@@ -74,10 +79,15 @@ automatically.
   produced no detections.
 * ``--slist`` together with ``--lat`` and ``--lon`` is an error; v2.4.0 ignored the
   list.
+* An entry for a species that was split keeps only the species that has its
+  scientific name now, **without a warning** and also with ``--strict``:
+  ``Larus argentatus_Herring Gull`` no longer covers the American Herring Gull, nor
+  ``Setophaga petechia_Yellow Warbler`` the American Yellow Warbler. Barn Owl,
+  Warbling Vireo and Cory's Shearwater are other examples.
 
-**What to do.** Legacy lists generally work unchanged. To require that every entry
-match — turning any unmatched species into a hard error — use the new ``--strict``
-flag:
+**What to do.** Most legacy lists work unchanged. Look through a list for species that
+were split and add the ones you mean. To require that every entry match — turning any
+unmatched species into a hard error — use the new ``--strict`` flag:
 
 .. code-block:: bash
 
@@ -160,20 +170,26 @@ Locations and species lists
   Guinea, and ``--week -1`` with a location is an error. Leave an option out instead.
 * ``analyze`` and ``species`` reject only one of ``--lat`` and ``--lon``; v2.4.0 used
   -1 for the missing one.
-* ``birdnet_analyzer.species`` without a location writes every species of the default
-  acoustic model (11,560 for BirdNET 3.0), in the model's order. v2.4.0 wrote the few
-  species the geo model predicted for latitude and longitude -1.
+* ``birdnet_analyzer.species`` without a location writes every label of the default
+  acoustic model (11,725 for BirdNET 3.0: 11,709 species and 16 sound classes), in the
+  model's order. v2.4.0 wrote the few species the geo model predicted for latitude and
+  longitude -1.
 * Lists for a location come from the 3.0 geolocation model and include species the
   acoustic model does not have, such as insects. They are sorted alphabetically; v2.4.0
   used the acoustic model's labels and sorted them by occurrence frequency.
 
 **Consequence.** Scripts that pass -1 get a filter for the wrong place or an error.
 Using a location list as ``--slist`` logs the species the model lacks as skipped, and
-fails with ``--strict``. Lists without a location are much longer, and the first such
-run downloads the acoustic model.
+fails with ``--strict``. A species with another scientific name in the acoustic model
+is found by its common name, so it is skipped too when the list is neither in English
+nor in the language of the analysis, or when the 2.4 model also names it differently.
+Lists without a location are much longer, and the first such run downloads the acoustic
+model.
 
 **What to do.** Omit ``--lat``, ``--lon`` and ``--week`` rather than passing -1, and
-drop ``--strict`` for lists made by ``birdnet_analyzer.species``.
+drop ``--strict`` for lists made by ``birdnet_analyzer.species``. Write a list in
+English or in the ``--locale`` of the analysis. With ``--birdnet 2.4``, pass ``--lat``
+and ``--lon`` to the analysis instead of a list.
 
 
 Top-N results keep the confidence threshold

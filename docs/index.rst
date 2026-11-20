@@ -86,7 +86,7 @@ License
 
 **Source Code**: The source code for this project is licensed under the `MIT License <https://opensource.org/licenses/MIT>`_
 
-**Models**: The models used in this project are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
+**Models**: The BirdNET 3.0 acoustic model is licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and comes with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. The other BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
 
 Please ensure you review and adhere to the specific license terms provided with each model.
 

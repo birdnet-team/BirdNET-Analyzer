@@ -111,7 +111,7 @@ def run_batch_analysis(
         # error: the resume journal keeps progress so the next run continues it.
         if _PAUSE_REQUESTED.is_set():
             _PAUSE_REQUESTED.clear()
-            return gr.update()
+            return gr.update(visible=False)
 
         raise
 
@@ -415,7 +415,7 @@ def build_multi_analysis_tab() -> None:
             return (
                 gr.update(interactive=False),
                 gr.update(visible=True, interactive=True),
-                gr.update(visible=True),
+                gr.update(value=[], headers=[""], elem_classes=None, visible=True),
             )
 
         def restore_run_ui():

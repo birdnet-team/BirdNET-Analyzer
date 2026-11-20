@@ -176,6 +176,7 @@ def analyze(
     """
     from birdnet_analyzer.analyze.resume import ResumeJournal, RunMetadata
     from birdnet_analyzer.model_utils import (
+        classifier_version,
         effective_sensitivity,
         run_geomodel,
         run_inference,
@@ -235,9 +236,19 @@ def analyze(
             )
 
         # The geo model uses its own taxonomy; run_inference reconciles it to the
-        # acoustic model by scientific name (language-independent), so the geo label
-        # language is left at the default.
-        slist = run_geomodel(lat, lon, week=week, threshold=sf_thresh).to_set()
+        # acoustic model by scientific name and, where the two differ, by English
+        # name, so the geo labels have to be English. BirdNET 2.4 shares its labels
+        # with the geo 2.4 model; the newest one has other names for about a hundred
+        # of its species.
+        labels_version = classifier_version(classifier) if classifier else birdnet
+        own_geo_model = model == "birdnet" and labels_version == "2.4"
+        slist = run_geomodel(
+            lat,
+            lon,
+            week=week,
+            threshold=sf_thresh,
+            version="2.4" if own_geo_model else None,
+        ).to_set()
 
     # For directory analyses, journal per-file results so an interrupted run can
     # resume: already-stored files are skipped, the rest analyzed and persisted.

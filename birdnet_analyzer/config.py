@@ -20,7 +20,7 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 RANDOM_SEED: int = 42
 
 # Default model versions, derived from what the installed birdnet ships so they track
-# the newest. Geo is never a choice: its newest version always replaces the older ones.
+# the newest. The geo version is never the user's choice.
 DEFAULT_ACOUSTIC_MODEL_VERSION: str = _newest_version(get_args(ACOUSTIC_MODEL_VERSIONS))
 DEFAULT_GEO_MODEL_VERSION: str = _newest_version(get_args(GEO_MODEL_VERSIONS))
 
