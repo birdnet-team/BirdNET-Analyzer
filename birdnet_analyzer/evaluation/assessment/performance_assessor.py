@@ -205,6 +205,34 @@ class PerformanceAssessor:
             task,
         )
 
+    def _threshold_values(
+        self,
+        predictions: np.ndarray,
+        labels: np.ndarray,
+        metric_ids: list[str],
+        per_class_metrics: bool,
+        averaging: Literal["macro", "micro", "weighted"],
+        thresholds: np.ndarray,
+    ) -> np.ndarray:
+        """``_metric_values`` at each threshold, by threshold, metric and column."""
+        if per_class_metrics:
+            return metrics.threshold_metrics(
+                predictions, labels, thresholds, metric_ids, None
+            )
+
+        kept = np.flatnonzero(self.class_support(labels) > 0)
+
+        if kept.size == 0:
+            return np.full((len(thresholds), len(metric_ids), 1), np.nan)
+
+        return metrics.threshold_metrics(
+            predictions[:, kept],
+            labels[:, kept],
+            thresholds,
+            metric_ids,
+            None if kept.size == 1 else averaging,
+        )
+
     def class_support(self, labels: np.ndarray) -> np.ndarray:
         """Number of positive samples per class (the support of each class)."""
         return labels.astype(bool).sum(axis=0).astype(int)
@@ -339,24 +367,14 @@ class PerformanceAssessor:
 
         thresholds = np.arange(0.05, 1.0, 0.05)
         metrics_to_plot = [m for m in self.metrics_list if METRICS[m].needs_threshold]
-        columns = self.num_classes if per_class_metrics else 1
-
-        values = np.array(
-            [
-                list(
-                    self._metric_values(
-                        predictions,
-                        labels,
-                        metrics_to_plot,
-                        per_class_metrics,
-                        averaging,
-                        threshold,
-                    ).values()
-                )
-                for threshold in thresholds
-            ],
-            dtype=float,
-        ).reshape(len(thresholds), len(metrics_to_plot), columns)
+        values = self._threshold_values(
+            predictions,
+            labels,
+            metrics_to_plot,
+            per_class_metrics,
+            averaging,
+            thresholds,
+        )
 
         if per_class_metrics:
             class_names = self._class_names()

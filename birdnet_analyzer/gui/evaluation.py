@@ -115,10 +115,11 @@ _INFO = chr(0x2139) + chr(0xFE0F)
 
 
 class ProcessorState(typing.NamedTuple):
-    """A DataProcessor together with the arguments it was built with."""
+    """A DataProcessor, the arguments it was built with and the tables it read."""
 
     processor: DataProcessor
     arguments: dict
+    files: tuple
 
 
 class _InputProblem(gr.Error):
@@ -178,6 +179,13 @@ def _positive(value) -> float | None:
         return None
 
     return number if math.isfinite(number) and number > 0 else None
+
+
+def _is_number(value) -> bool:
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
 
 
 def _recording_duration(text: str | None, sample_duration: float) -> float | None:
@@ -292,7 +300,7 @@ def _explained(error) -> str:
             available=_names(available, 12) or "-",
         )
 
-        if 2 * sum(_positive(name) is not None for name in available) > len(available):
+        if 2 * sum(map(_is_number, available)) > len(available):
             message += " " + loc.localize("eval-tab-error-no-header")
 
         return message
@@ -310,21 +318,37 @@ def _explained(error) -> str:
 
         return message
 
-    if error.code == "duplicate-recording":
-        return loc.localize(f"eval-tab-error-duplicate-{side}-recording").format(
+    if error.code in ("duplicate-recording", "split-recording"):
+        kind = error.code.removesuffix("-recording")
+
+        return loc.localize(f"eval-tab-error-{kind}-{side}-recording").format(
             recording=details["recording"], places=", ".join(details["places"])
         )
+
+    if error.code == "same-tables":
+        return loc.localize("eval-tab-error-same-tables").format(file=details["file"])
 
     return f"{loc.localize('eval-tab-error-reading-tables')}: {error}"
 
 
-def _build_processor(arguments: dict) -> ProcessorState:
+def _tables(arguments: dict) -> tuple:
+    from birdnet_analyzer.evaluation.preprocessing.utils import tables_state
+
+    return tuple(
+        tables_state(arguments[key])
+        for key in ("annotation_directory_path", "prediction_directory_path")
+    )
+
+
+def _build_processor(arguments: dict, files: tuple | None = None) -> ProcessorState:
     """Builds a DataProcessor that reads the selected directories in place."""
     from birdnet_analyzer.evaluation.errors import EvaluationInputError
     from birdnet_analyzer.evaluation.preprocessing.data_processor import (
         DataProcessor,
     )
 
+    # Taken first, so a table changed while it is read differs from it afterwards.
+    files = _tables(arguments) if files is None else files
     class_mapping = _class_mapping(arguments["mapping_path"])
 
     try:
@@ -342,17 +366,30 @@ def _build_processor(arguments: dict) -> ProcessorState:
             f"{loc.localize('eval-tab-error-reading-tables')}: {e}"
         ) from None
 
-    return ProcessorState(processor, arguments)
+    return ProcessorState(processor, arguments, files)
 
 
 def _processor_for(
-    proc_state: ProcessorState | None, arguments: dict
+    proc_state: ProcessorState | None, arguments: dict, lists_follow: bool
 ) -> ProcessorState:
-    """The processor for the arguments, reusing the stored one if built with them."""
-    if proc_state is not None and proc_state.arguments == arguments:
+    """The processor for the arguments, reusing the stored one if built with them.
+
+    Tables changed on disk since the stored one read them are read again only for a
+    caller that renews the class and recording lists with it; for the others that
+    is an input problem, so no calculation runs on lists made from the old tables.
+    """
+    files = _tables(arguments)
+
+    if proc_state is not None and files != proc_state.files:
+        directories = ("annotation_directory_path", "prediction_directory_path")
+        same = all(proc_state.arguments[d] == arguments[d] for d in directories)
+
+        if same and not lists_follow:
+            raise _InputProblem(loc.localize("eval-tab-error-tables-changed"))
+    elif proc_state is not None and proc_state.arguments == arguments:
         return proc_state
 
-    return _build_processor(arguments)
+    return _build_processor(arguments, files)
 
 
 def _analysis_settings(directory) -> _Settings:
@@ -385,9 +422,7 @@ def _analysis_settings(directory) -> _Settings:
             else:
                 model = f"BirdNET {values.get('birdnet', '')}".strip()
 
-            # An analysis with top N records a placeholder minimum confidence.
-            min_conf = None if values.get("top_n") else values.get("min_conf")
-            found.append(_Settings(model, segment, min_conf))
+            found.append(_Settings(model, segment, values.get("min_conf")))
 
     if not found:
         return _Settings()
@@ -515,20 +550,42 @@ def _class_lines(processor: DataProcessor, suggestions) -> list[str]:
     ]
 
     if suggestions:
-        pairs = [
-            loc.localize("eval-tab-status-suggestion-pair").format(
-                annotated=annotated_name,
-                predicted=predicted_name,
-                hits=hits,
-                windows=windows,
-            )
-            for annotated_name, predicted_name, hits, windows in suggestions
-        ]
         lines.append(
-            loc.localize("eval-tab-status-suggestions").format(pairs=" · ".join(pairs))
+            loc.localize("eval-tab-status-suggestions-below").format(n=len(suggestions))
         )
 
     return lines
+
+
+def _suggestion_outputs(suggestions) -> list:
+    """The name matches, the visibility of their box, and their choices, all checked.
+
+    A choice is valued by its predicted class, which no other match has.
+    """
+    choices = [
+        (
+            loc.localize("eval-tab-status-suggestion-pair").format(
+                annotated=annotated, predicted=predicted, hits=hits, windows=windows
+            ),
+            predicted,
+        )
+        for annotated, predicted, hits, windows in suggestions
+    ]
+
+    return [
+        suggestions,
+        gr.update(visible=bool(suggestions)),
+        gr.update(choices=choices, value=[value for _, value in choices]),
+    ]
+
+
+def _scores_line(column: str | None) -> list[str]:
+    if not column:
+        return []
+
+    return [
+        loc.localize("eval-tab-status-annotations-have-scores").format(column=column)
+    ]
 
 
 def _file_lines(processor: DataProcessor) -> list[str]:
@@ -563,7 +620,11 @@ def _status(
     switched_to: str | None = None,
 ) -> str:
     settings = _analysis_settings(arguments["prediction_directory_path"])
-    checks = [*_recording_lines(processor), *_class_lines(processor, suggestions)]
+    checks = [
+        *_scores_line(processor.annotation_confidence_column),
+        *_recording_lines(processor),
+        *_class_lines(processor, suggestions),
+    ]
 
     if switched_to:
         checks.append(
@@ -589,7 +650,10 @@ def _status(
 def _one_side_status(processor_values) -> str:
     """What the one directory selected so far holds, read with its columns."""
     from birdnet_analyzer.evaluation.errors import EvaluationInputError
-    from birdnet_analyzer.evaluation.preprocessing.utils import read_tables
+    from birdnet_analyzer.evaluation.preprocessing.utils import (
+        detect_columns,
+        read_tables,
+    )
 
     n_ann = len(_DEFAULT_COLUMNS["annotation"])
     column_values = processor_values[-n_ann - len(_DEFAULT_COLUMNS["prediction"]) :]
@@ -612,6 +676,10 @@ def _one_side_status(processor_values) -> str:
             continue
 
         lines.append(_side_line(kind, tables, columns["Class"]))
+
+        if kind == "annotation":
+            scores = detect_columns("prediction", tables.table.columns)["Confidence"]
+            lines += _scores_line(scores)
 
     return "\n".join(lines)
 
@@ -758,17 +826,16 @@ def _display_names(pa: PerformanceAssessor, labels, averaging_value) -> str:
     return loc.localize(f"eval-tab-overall-{averaging_value}-label").format(n=scored)
 
 
-def _build_metrics_tables(pa, predictions, labels, averaging_value, export=False):
-    """The per-class table and the aggregate "Overall" footer row.
+def _build_metrics_tables(
+    pa, predictions, labels, averaging_value, export=False, classes=True
+):
+    """The per-class table (None without ``classes``) and the "Overall" footer row.
 
     The aggregate is computed with the selected averaging over the classes with
     annotations; its support is the total number of annotated windows. Both tables
     share the same column layout, so the returned widths keep them aligned. A class
     without annotations has no defined score, so it shows "n/a" (empty when exported).
     """
-    per_class_df = pa.calculate_metrics(
-        predictions, labels, per_class_metrics=True, include_support=True
-    )
     overall_df = pa.calculate_metrics(predictions, labels, averaging=averaging_value)
     overall_df.loc["Support"] = int(pa.class_support(labels).sum())
     overall_df.columns = pd.Index([_display_names(pa, labels, averaging_value)])
@@ -792,13 +859,19 @@ def _build_metrics_tables(pa, predictions, labels, averaging_value, export=False
 
         return table.rename(columns={"Support": support})
 
+    # The name column gets a fixed share, the metric columns split the rest.
+    n_metric_cols = len(overall_df.index)
+    widths = ["22%"] + [f"{round(78 / n_metric_cols, 2)}%"] * n_metric_cols
+
+    if not classes:
+        return None, display(overall_df), widths
+
+    per_class_df = pa.calculate_metrics(
+        predictions, labels, per_class_metrics=True, include_support=True
+    )
     class_table = display(per_class_df)
     annotated_first = class_table[support].eq(0).argsort(kind="stable")
     class_table = class_table.iloc[annotated_first].reset_index(drop=True)
-
-    # The name column gets a fixed share, the metric columns split the rest.
-    n_metric_cols = len(per_class_df.index)
-    widths = ["22%"] + [f"{round(78 / n_metric_cols, 2)}%"] * n_metric_cols
 
     return class_table, display(overall_df), widths
 
@@ -1080,7 +1153,7 @@ def download_data_table(proc_state: ProcessorState | None, *processor_values):
             loc.localize("eval-tab-error-select-folders"), print_exception=False
         )
 
-    proc_state = _processor_for(proc_state, arguments)
+    proc_state = _processor_for(proc_state, arguments, lists_follow=True)
 
     try:
         file_location = gu.save_file_dialog(
@@ -1184,7 +1257,7 @@ def _refreshed(
     missing column opens the column box it belongs to.
     """
     unchanged = [gr.update(), gr.update(), proc_state]
-    nothing_to_suggest = [[], gr.update(visible=False)]
+    nothing_to_suggest = _suggestion_outputs([])
     both = bool(processor_values[0] and processor_values[1])
 
     try:
@@ -1204,7 +1277,7 @@ def _refreshed(
         built = (
             _build_processor(arguments)
             if reread
-            else _processor_for(proc_state, arguments)
+            else _processor_for(proc_state, arguments, lists_follow=True)
         )
     except _InputProblem as e:
         return [
@@ -1247,8 +1320,7 @@ def _refreshed(
             value=_status(built.processor, arguments, suggestions, switched_to),
             visible=True,
         ),
-        suggestions,
-        gr.update(visible=bool(suggestions)),
+        *_suggestion_outputs(suggestions),
         *[gr.update(visible=True)] * 2,
         gr.update(value=switched_to) if switched_to else gr.update(),
         *[gr.update()] * 2,
@@ -1285,28 +1357,53 @@ def check_parameters(proc_state: ProcessorState | None, *processor_values):
     arguments = _processor_arguments(*processor_values, strict=True)
 
     if arguments is None:
-        return proc_state, gr.update()
+        return proc_state, gr.update(), *_suggestion_outputs([])
 
     try:
-        built = _processor_for(proc_state, arguments)
+        built = _processor_for(proc_state, arguments, lists_follow=False)
     except _InputProblem as e:
-        return proc_state, gr.update(value=f"⚠️ {e.message}", visible=True)
+        return (
+            proc_state,
+            gr.update(value=f"⚠️ {e.message}", visible=True),
+            *_suggestion_outputs([]),
+        )
 
-    return built, gr.update(
-        value=_status(built.processor, arguments, _name_suggestions(built.processor)),
-        visible=True,
+    suggestions = _name_suggestions(built.processor)
+
+    return (
+        built,
+        gr.update(value=_status(built.processor, arguments, suggestions), visible=True),
+        *_suggestion_outputs(suggestions),
     )
 
 
+def _same_label(a: str, b: str) -> bool:
+    return " ".join(a.split()).casefold() == " ".join(b.split()).casefold()
+
+
 @gu.gui_runtime_error_handler
-def apply_name_suggestions(suggestions, mapping_file_obj):
+def apply_name_suggestions(suggestions, checked, mapping_file_obj):
+    checked = set(checked or ())
+
+    if not checked:
+        return gr.update()
+
     if mapping_file_obj and hasattr(mapping_file_obj, "temp_files"):
         mapping_file_obj = next(iter(mapping_file_obj.temp_files))
 
     mapping = _class_mapping(mapping_file_obj) or {}
-    mapping.update(
-        {predicted: annotated for annotated, predicted, *_ in suggestions or ()}
-    )
+
+    for annotated, predicted, *_ in suggestions or ():
+        if predicted not in checked:
+            continue
+
+        # A suggestion names a class as mapped, but the mapping is applied once, to
+        # the names in the tables, so the names mapped to it are mapped on.
+        for raw, target in mapping.items():
+            if _same_label(target, predicted):
+                mapping[raw] = annotated
+
+        mapping.setdefault(predicted, annotated)
 
     with tempfile.NamedTemporaryFile(
         "w",
@@ -1368,7 +1465,7 @@ def calculate_metrics(
             loc.localize("eval-tab-error-select-folders"), print_exception=False
         )
 
-    proc_state = _processor_for(proc_state, arguments)
+    proc_state = _processor_for(proc_state, arguments, lists_follow=False)
     processor = proc_state.processor
 
     if not processor.matched_recordings:
@@ -1433,6 +1530,7 @@ def calculate_metrics(
         predictions,
         labels,
         proc_state,
+        class_wise_value,
     )
 
 
@@ -1445,7 +1543,7 @@ def recompute_overall(
 
     # Only the aggregate and the averaged plots depend on the averaging method.
     _, overall_row, widths = _build_metrics_tables(
-        pa, predictions, labels, averaging_value
+        pa, predictions, labels, averaging_value, classes=False
     )
 
     overall = gr.update(value=overall_row, column_widths=widths)
@@ -1726,6 +1824,7 @@ def build_evaluation_tab() -> None:
         pa_state = gr.State()
         predictions_state = gr.State()
         labels_state = gr.State()
+        plotted_class_wise = gr.State(False)
         suggestions_state = gr.State([])
         dir_states = {kind: gr.State() for kind in _DEFAULT_COLUMNS}
 
@@ -1738,11 +1837,14 @@ def build_evaluation_tab() -> None:
         status = gr.Markdown(
             visible=False, elem_classes="eval-status", padding=True, line_breaks=True
         )
-        apply_suggestions_button = gr.Button(
-            loc.localize("eval-tab-apply-suggestions-button-label"),
-            visible=False,
-            size="sm",
-        )
+        with gr.Group(visible=False) as suggestions_group:
+            suggestion_choices = gr.CheckboxGroup(
+                label=loc.localize("eval-tab-suggestions-label"),
+                info=loc.localize("eval-tab-suggestions-info"),
+            )
+            apply_suggestions_button = gr.Button(
+                loc.localize("eval-tab-apply-suggestions-button-label"), size="sm"
+            )
         column_boxes = {kind: _column_box(kind) for kind in _DEFAULT_COLUMNS}
         mapping_group, mapping_file, template_button = _mapping_controls()
         selection_group, classes, recordings = _selection_controls()
@@ -1779,16 +1881,23 @@ def build_evaluation_tab() -> None:
             processor_state,
             status,
             suggestions_state,
-            apply_suggestions_button,
+            suggestions_group,
+            suggestion_choices,
             mapping_group,
             selection_group,
             prediction_class_dropdown,
             *(accordion for _, accordion, _ in column_boxes.values()),
         ]
         picked_state = gr.State(False)
-        # One queue for everything that builds the processor, so a build under way is
-        # reused instead of run twice.
+        # One queue for everything that builds the processor or works on its results:
+        # a build under way is reused instead of run twice, and whatever is queued
+        # after a build or a calculation starts once it is done, from its outcome.
         processor_queue = "eval-processor"
+        unlock = {
+            "fn": _unlock_calculation,
+            "outputs": [calculate_button],
+            "concurrency_id": processor_queue,
+        }
 
         template_button.click(fn=download_class_mapping_template)
         results.download_results.click(
@@ -1804,8 +1913,9 @@ def build_evaluation_tab() -> None:
         for name, (plot, button) in results.plots.items():
             button.click(download_plot_guarded, inputs=[plot, gr.State(name), pa_state])
 
-        # Calculate is locked while the lists change, so it never sends a selection
-        # made from the old ones.
+        # Calculate is locked while the lists change and unlocked in the processor
+        # queue, behind every build queued before, so it never sends a selection made
+        # from old lists.
         for kind, (button, textbox) in pickers.items():
             group, _, dropdowns = column_boxes[kind]
             button.click(
@@ -1837,7 +1947,7 @@ def build_evaluation_tab() -> None:
                 inputs=[picked_state, *refresh_inputs],
                 outputs=refresh_outputs,
                 concurrency_id=processor_queue,
-            ).then(_unlock_calculation, outputs=[calculate_button])
+            ).then(**unlock)
 
         # Setting the column defaults on a pick fires ``.change`` but not ``.input``.
         gr.on(
@@ -1855,11 +1965,11 @@ def build_evaluation_tab() -> None:
             inputs=refresh_inputs,
             outputs=refresh_outputs,
             concurrency_id=processor_queue,
-        ).then(_unlock_calculation, outputs=[calculate_button])
+        ).then(**unlock)
 
         apply_suggestions_button.click(
             apply_name_suggestions,
-            inputs=[suggestions_state, mapping_file],
+            inputs=[suggestions_state, suggestion_choices, mapping_file],
             outputs=[mapping_file],
         )
 
@@ -1877,7 +1987,13 @@ def build_evaluation_tab() -> None:
             ],
             check_parameters,
             inputs=[processor_state, *processor_inputs],
-            outputs=[processor_state, status],
+            outputs=[
+                processor_state,
+                status,
+                suggestions_state,
+                suggestions_group,
+                suggestion_choices,
+            ],
             concurrency_id=processor_queue,
         )
 
@@ -1909,10 +2025,11 @@ def build_evaluation_tab() -> None:
                 predictions_state,
                 labels_state,
                 processor_state,
+                plotted_class_wise,
             ],
             concurrency_id=processor_queue,
             scroll_to_output=True,
-        ).then(_unlock_calculation, outputs=[calculate_button])
+        ).then(**unlock)
 
         averaging_radio.change(
             recompute_overall,
@@ -1921,13 +2038,14 @@ def build_evaluation_tab() -> None:
                 predictions_state,
                 labels_state,
                 averaging_radio,
-                parameters.class_wise,
+                plotted_class_wise,
             ],
             outputs=[
                 results.overall_table,
                 results.plots["metrics"][0],
                 results.plots["metrics_all_thresholds"][0],
             ],
+            concurrency_id=processor_queue,
         )
 
 

@@ -52,6 +52,14 @@ def _write_table(path, header, rows):
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _write_params(folder, rows):
+    (folder / "birdnet.analyze-params.csv").write_text(
+        "Parameter,Value\nSegment length,5.0\nSegment overlap,0.0\n"
+        f"Merge consecutive detections,1\nAudio speed,1.0\n{rows}",
+        encoding="utf-8",
+    )
+
+
 def _write_recording(
     folders, recording, class_column="Common Name", annotated=True, names=None
 ):
@@ -102,11 +110,20 @@ def _values(
     prediction_class=None,
     mapping=None,
     sample_duration=3,
+    annotation_class=None,
+    prediction_recording=None,
 ):
     """The processor inputs as the tab passes them after a pick of the folders."""
     duration = "File Duration (s)"
-    annotation_columns = [None, None, None, None, duration]
-    prediction_columns = [None, None, prediction_class, None, None, duration]
+    annotation_columns = [None, None, annotation_class, None, duration]
+    prediction_columns = [
+        None,
+        None,
+        prediction_class,
+        None,
+        prediction_recording,
+        duration,
+    ]
 
     return (
         str(folders["annotation"]),
@@ -127,7 +144,8 @@ _REFRESHED = (
     "proc_state",
     "status",
     "suggestions",
-    "apply_button",
+    "suggestions_group",
+    "suggestion_choices",
     "mapping_group",
     "selection_group",
     "class_column",
@@ -155,11 +173,12 @@ def _calculate(
     metrics=None,
     threshold=0.5,
     averaging="macro",
+    class_wise=False,
 ):
     outputs = evaluation.calculate_metrics(
         proc_state,
         threshold,
-        False,
+        class_wise,
         averaging,
         classes,
         recordings,
@@ -176,6 +195,8 @@ def _calculate(
         predictions=outputs[9],
         labels=outputs[10],
         proc_state=outputs[11],
+        class_wise=outputs[12],
+        widths=outputs[2]["column_widths"],
     )
 
 
@@ -230,6 +251,45 @@ def test_the_overall_row_follows_programmatic_averaging_changes(demo):
 
     assert event.targets == [(averaging_radio._id, "change")]
     assert event.fn(None, None, None, "micro", False) == (gr.update(),) * 3
+
+
+@pytest.mark.parametrize("class_wise", [False, True], ids=["overall", "per class"])
+def test_switching_the_averaging_after_a_calculation_renews_the_overall_scores(
+    folders, class_wise
+):
+    result = _calculate(None, _values(folders), class_wise=class_wise)
+
+    overall, metrics_plot, thresholds_plot = evaluation.recompute_overall(
+        result.pa, result.predictions, result.labels, "micro", result.class_wise
+    )
+
+    micro = result.pa.calculate_metrics(
+        result.predictions, result.labels, averaging="micro"
+    )
+    assert overall["value"][""].tolist() == [
+        loc.localize("eval-tab-overall-micro-label").format(n=2)
+    ]
+    assert overall["value"]["Recall"].tolist() == micro.loc["Recall"].round(3).tolist()
+    assert overall["column_widths"] == result.widths
+    assert len(result.widths) == len(result.table.columns)
+    if class_wise:
+        assert metrics_plot == thresholds_plot == gr.update()
+    else:
+        assert metrics_plot is not None
+        assert thresholds_plot is not None
+        assert not isinstance(metrics_plot, dict)
+
+
+def test_an_averaging_change_waits_for_a_running_calculation_and_follows_its_plots(
+    demo,
+):
+    recompute = _event(demo, "recompute_overall")
+    calculate = _event(demo, "calculate_metrics")
+
+    assert recompute.concurrency_id == calculate.concurrency_id
+    assert recompute.inputs[:3] == calculate.outputs[8:11]
+    assert recompute.inputs[4] in calculate.outputs
+    assert recompute.inputs[4] not in calculate.inputs
 
 
 @pytest.mark.parametrize(
@@ -308,13 +368,30 @@ def test_an_unusable_window_or_overlap_is_explained_before_reading(
 
 def test_the_processor_is_built_once_per_change_of_its_inputs(folders, built):
     proc_state = _refresh(None, _values(folders)).proc_state
-    proc_state, _ = evaluation.check_parameters(proc_state, *_values(folders))
+    proc_state, *_ = evaluation.check_parameters(proc_state, *_values(folders))
     proc_state = _calculate(proc_state, _values(folders)).proc_state
 
-    proc_state, _ = evaluation.check_parameters(proc_state, *_values(folders, "60"))
+    proc_state, *_ = evaluation.check_parameters(proc_state, *_values(folders, "60"))
     _calculate(proc_state, _values(folders, "60"))
 
     assert built == [None, 60.0]
+
+
+def test_tables_changed_on_disk_are_read_again_before_anything_is_calculated(folders):
+    proc_state = _refresh(None, _values(folders)).proc_state
+    _write_recording(folders, "rec4")
+    changed = loc.localize("eval-tab-error-tables-changed")
+
+    with pytest.raises(gr.Error) as raised:
+        _calculate(proc_state, _values(folders))
+    checked = evaluation.check_parameters(proc_state, *_values(folders, "60"))
+    picked = _refresh(proc_state, _values(folders), picked=True)
+    result = _calculate(picked.proc_state, _values(folders))
+
+    assert raised.value.message == changed
+    assert checked[1]["value"] == f"⚠️ {changed}"
+    assert picked.recordings["choices"] == [*RECORDINGS, "rec4"]
+    assert result.labels.shape == ((len(RECORDINGS) + 1) * 10, 2)
 
 
 def test_a_folder_picked_again_is_read_again_and_its_new_recordings_selected(
@@ -424,7 +501,16 @@ def test_the_status_reports_what_was_paired(folders):
     )
 
 
-def test_the_status_names_recordings_that_could_not_be_paired(folders):
+@pytest.mark.parametrize(
+    ("score_unannotated", "key"),
+    [
+        (False, "eval-tab-status-prediction-only-dropped"),
+        (True, "eval-tab-status-prediction-only-empty"),
+    ],
+)
+def test_the_status_names_recordings_that_could_not_be_paired(
+    folders, score_unannotated, key
+):
     _write_recording(folders, "rec9", annotated=False)
     _write_table(
         folders["annotation"] / "rec8.txt",
@@ -432,7 +518,9 @@ def test_the_status_names_recordings_that_could_not_be_paired(folders):
         [[0, 3, "Robin"]],
     )
 
-    status = _refresh(None, _values(folders)).status["value"]
+    status = _refresh(
+        None, _values(folders, score_unannotated=score_unannotated)
+    ).status["value"]
 
     assert (
         loc.localize("eval-tab-status-recordings-some").format(matched=3, total=5)
@@ -441,8 +529,200 @@ def test_the_status_names_recordings_that_could_not_be_paired(folders):
     assert (
         loc.localize("eval-tab-status-annotation-only").format(names="rec8") in status
     )
+    assert loc.localize(key).format(names="rec9") in status
+    assert loc.localize("eval-tab-status-pairing-rule") in status
+
+
+def test_the_status_says_what_was_read_left_out_and_how_the_analysis_ran(folders):
+    (folders["annotation"] / "README.txt").write_text("By J. Doe\n", encoding="utf-8")
+    (folders["annotation"] / "notes.txt").write_bytes(b"\x00\x01")
+    _write_recording(folders, "rec4", annotated=False)
+    _write_table(
+        folders["annotation"] / "rec4.txt",
+        ["Begin Time (s)", "End Time (s)", "Class"],
+        [],
+    )
+    for table in sorted(folders["prediction"].glob("*.txt")):
+        table.rename(table.with_name(f"{table.stem}.BirdNET.selection.table.txt"))
+    _write_table(folders["prediction"] / "BirdNET_SelectionTable.txt", ["x"], [])
+    _write_params(folders["prediction"], "Model,perch\nMinimum confidence,0.25\n")
+
+    status = _refresh(None, _values(folders, sample_duration=5)).status["value"]
+
+    settings = ", ".join(
+        [
+            "Perch",
+            loc.localize("eval-tab-status-segment").format(segment=5),
+            loc.localize("eval-tab-status-min-conf").format(min_conf=0.25),
+        ]
+    )
+    expected = [
+        loc.localize("eval-tab-status-annotations").format(tables=4, rows=6, classes=2),
+        loc.localize("eval-tab-status-empty-annotations").format(n=1),
+        loc.localize("eval-tab-status-predictions").format(
+            tables=4, rows=12, classes=2
+        ),
+        loc.localize("eval-tab-status-analysis").format(settings=settings),
+        loc.localize("eval-tab-status-recordings-all").format(n=4),
+        loc.localize("eval-tab-status-skipped-annotation").format(
+            n=2, names="README.txt, notes.txt"
+        ),
+        loc.localize("eval-tab-status-superseded").format(
+            n=1, names="BirdNET_SelectionTable.txt"
+        ),
+    ]
+    assert [line for line in status.split("\n") if line in expected] == expected
+
+
+def _move_predictions(folders, subfolders, columns=None):
+    tables = sorted(folders["prediction"].glob("*.txt"))
+    for table in tables:
+        frame = pd.read_csv(table, sep="\t")
+        for name, value in (columns or {}).items():
+            frame[name] = value.format(recording=table.stem)
+        for subfolder in subfolders:
+            (folders["prediction"] / subfolder).mkdir(exist_ok=True)
+            frame.to_csv(
+                folders["prediction"] / subfolder / table.name, sep="\t", index=False
+            )
+        table.unlink()
+
+
+def _two_analyses(folders):
+    _move_predictions(
+        folders, ["run_24", "run_30"], {"Begin Path": "/audio/{recording}.wav"}
+    )
+
+
+def _two_sites(folders):
+    _move_predictions(folders, ["site1", "site2"])
+
+
+def _decimal_comma(folders):
+    _write_table(
+        folders["annotation"] / "rec1.txt",
+        ["Begin Time (s)", "End Time (s)", "Class"],
+        [["0,5", 3, "Robin"]],
+    )
+
+
+def _audacity_labels(folders):
+    for table in folders["prediction"].glob("*.txt"):
+        table.write_text(
+            "0.0\t3.0\tRobin\t0.9\n9.0\t12.0\tWren\t0.6\n", encoding="utf-8"
+        )
+
+
+def _no_annotation_tables(folders):
+    for table in folders["annotation"].glob("*.txt"):
+        table.unlink()
+
+
+def _bad_mapping(folders):
+    (folders["annotation"].parent / "mapping.json").write_text(
+        '{"Robin": "Robin",}', encoding="utf-8"
+    )
+
+
+@pytest.mark.parametrize(
+    ("make", "options", "expected"),
+    [
+        (
+            _no_annotation_tables,
+            {},
+            lambda: loc.localize("eval-tab-status-no-annotation-tables"),
+        ),
+        (
+            _decimal_comma,
+            {},
+            lambda: (
+                loc.localize("eval-tab-error-not-a-number").format(
+                    file="rec1.txt", row=1, column="Begin Time (s)", value="0,5"
+                )
+                + " "
+                + loc.localize("eval-tab-error-decimal-comma")
+            ),
+        ),
+        (
+            _audacity_labels,
+            {},
+            lambda: (
+                loc.localize("eval-tab-error-missing-prediction-column").format(
+                    column="Begin Time (s)",
+                    field=loc.localize("eval-tab-column-start-time-label"),
+                    available="0.0, 0.9, 3.0, Robin",
+                )
+                + " "
+                + loc.localize("eval-tab-error-no-header")
+            ),
+        ),
+        (
+            _two_sites,
+            {},
+            lambda: loc.localize(
+                "eval-tab-error-duplicate-prediction-recording"
+            ).format(recording="rec1", places="site1, site2"),
+        ),
+        (
+            _two_analyses,
+            {"prediction_recording": "Begin Path"},
+            lambda: loc.localize("eval-tab-error-split-prediction-recording").format(
+                recording="rec1", places="run_24, run_30"
+            ),
+        ),
+        (
+            lambda folders: folders.update(annotation=folders["prediction"]),
+            {"annotation_class": "Common Name"},
+            lambda: loc.localize("eval-tab-error-same-tables").format(file="rec1.txt"),
+        ),
+        (
+            _bad_mapping,
+            {"mapping": "mapping.json"},
+            lambda: loc.localize("eval-tab-error-bad-mapping"),
+        ),
+    ],
+    ids=[
+        "no annotation tables",
+        "decimal comma",
+        "no header row",
+        "two sites",
+        "two analyses",
+        "one folder twice",
+        "bad class mapping",
+    ],
+)
+def test_a_problem_with_the_tables_is_explained_in_the_status(
+    tmp_path, make, options, expected
+):
+    folders = _folders(tmp_path)
+    make(folders)
+    if "mapping" in options:
+        options = {**options, "mapping": str(tmp_path / options["mapping"])}
+
+    refreshed = _refresh(None, _values(folders, **options))
+
+    assert refreshed.status["value"] == f"⚠️ {expected()}"
+    assert refreshed.suggestions == []
+
+
+@pytest.mark.parametrize("both", [False, True], ids=["annotations only", "both"])
+def test_annotation_tables_with_scores_are_pointed_out_as_predictions(folders, both):
+    for recording in RECORDINGS:
+        table = folders["annotation"] / f"{recording}.txt"
+        frame = pd.read_csv(table, sep="\t").assign(Confidence=0.9)
+        frame.to_csv(table, sep="\t", index=False)
+    values = list(_values(folders))
+    if not both:
+        values[1] = None
+
+    status = _refresh(None, values).status["value"]
+
+    warning = loc.localize("eval-tab-status-annotations-have-scores").format(
+        column="Confidence"
+    )
+    assert warning in status.split("\n")
     assert (
-        loc.localize("eval-tab-status-prediction-only-dropped").format(names="rec9")
+        loc.localize("eval-tab-status-annotations").format(tables=3, rows=6, classes=2)
         in status
     )
 
@@ -472,25 +752,125 @@ def test_a_pick_switches_to_the_prediction_column_with_the_annotated_names(tmp_p
     picked = _refresh(None, _values(folders), picked=True)
     typed = _refresh(None, _values(folders))
 
+    status = picked.status["value"]
     assert picked.class_column == gr.update(value="Scientific Name")
     assert picked.classes["value"] == ["Troglodytes troglodytes", "Turdus merula"]
-    assert "Scientific Name" in picked.status["value"]
+    assert (
+        picked.proc_state.processor.get_column_name("Class", prediction=True)
+        == "Scientific Name"
+    )
+    assert (
+        loc.localize("eval-tab-status-column-switched").format(column="Scientific Name")
+        in status
+    )
+    assert (
+        loc.localize("eval-tab-status-classes-all").format(
+            n=2, column="Scientific Name"
+        )
+        in status
+    )
     assert typed.class_column == gr.update()
+
+
+def _pair(annotated, predicted, hits, windows):
+    return loc.localize("eval-tab-status-suggestion-pair").format(
+        annotated=annotated, predicted=predicted, hits=hits, windows=windows
+    )
 
 
 def test_a_renamed_class_is_suggested_and_the_suggestion_scores_it(tmp_path):
     folders = _folders(tmp_path, names=("European Robin", "Wren"))
 
     refreshed = _refresh(None, _values(folders))
-    mapping = evaluation.apply_name_suggestions(refreshed.suggestions, None)
+    mapping = evaluation.apply_name_suggestions(
+        refreshed.suggestions, refreshed.suggestion_choices["value"], None
+    )
     result = _calculate(None, _values(folders, mapping=mapping), threshold=0.5)
 
+    status = refreshed.status["value"]
     assert refreshed.suggestions == [("European Robin", "Robin", 3, 3)]
-    assert refreshed.apply_button == gr.update(visible=True)
+    assert refreshed.suggestions_group == gr.update(visible=True)
+    assert refreshed.suggestion_choices == gr.update(
+        choices=[(_pair("European Robin", "Robin", 3, 3), "Robin")], value=["Robin"]
+    )
+    assert (
+        loc.localize("eval-tab-status-classes-some").format(
+            found=1, n=2, column="Common Name", names="European Robin"
+        )
+        in status
+    )
+    assert loc.localize("eval-tab-status-suggestions-below").format(n=1) in status
     with open(mapping, encoding="utf-8") as f:
         assert json.load(f) == {"Robin": "European Robin"}
     robin = result.table.set_index("").loc["European Robin"]
     assert robin["Recall"] == 1.0
+
+
+def test_only_the_checked_name_matches_are_used(tmp_path):
+    folders = _folders(tmp_path, names=("European Robin", "Winter Wren"))
+
+    refreshed = _refresh(None, _values(folders))
+    mapping = evaluation.apply_name_suggestions(refreshed.suggestions, ["Wren"], None)
+    applied = _refresh(None, _values(folders, mapping=mapping))
+    unchanged = evaluation.apply_name_suggestions(refreshed.suggestions, [], None)
+
+    assert refreshed.suggestion_choices["value"] == ["Robin", "Wren"]
+    with open(mapping, encoding="utf-8") as f:
+        assert json.load(f) == {"Wren": "Winter Wren"}
+    assert applied.suggestions == [("European Robin", "Robin", 3, 3)]
+    assert unchanged == gr.update()
+
+
+def test_the_name_matches_join_a_loaded_mapping_and_take_effect(tmp_path):
+    folders = _folders(tmp_path, names=("European Robin", "Winter Wren"))
+    loaded = tmp_path / "mapping.json"
+    loaded.write_text(
+        json.dumps({"Robin": "Robin (BirdNET)", "Dunnock": "Hedge Accentor"}),
+        encoding="utf-8",
+    )
+
+    refreshed = _refresh(None, _values(folders, mapping=str(loaded)))
+    mapping = evaluation.apply_name_suggestions(
+        refreshed.suggestions, refreshed.suggestion_choices["value"], str(loaded)
+    )
+    applied = _refresh(None, _values(folders, mapping=mapping))
+
+    assert refreshed.suggestions == [
+        ("European Robin", "Robin (BirdNET)", 3, 3),
+        ("Winter Wren", "Wren", 3, 3),
+    ]
+    with open(mapping, encoding="utf-8") as f:
+        assert json.load(f) == {
+            "Robin": "European Robin",
+            "Dunnock": "Hedge Accentor",
+            "Robin (BirdNET)": "European Robin",
+            "Wren": "Winter Wren",
+        }
+    assert applied.suggestions == []
+    assert (
+        loc.localize("eval-tab-status-classes-all").format(n=2, column="Common Name")
+        in applied.status["value"]
+    )
+
+
+def test_a_changed_parameter_renews_the_name_matches_with_the_summary(tmp_path):
+    folders = _folders(tmp_path, names=("European Robin", "Wren"))
+    proc_state = _refresh(None, _values(folders)).proc_state
+
+    built, status, suggestions, group, choices = evaluation.check_parameters(
+        proc_state, *_values(folders, sample_duration=1.5)
+    )
+
+    assert suggestions == [("European Robin", "Robin", 6, 6)]
+    assert group == gr.update(visible=True)
+    assert choices == gr.update(
+        choices=[(_pair("European Robin", "Robin", 6, 6), "Robin")], value=["Robin"]
+    )
+    assert (
+        loc.localize("eval-tab-status-suggestions-below").format(n=1)
+        in (status["value"])
+    )
+    assert built.processor.sample_duration == 1.5
 
 
 def test_a_class_detected_everywhere_is_not_suggested_for_a_renamed_one(tmp_path):
@@ -506,20 +886,29 @@ def test_a_class_detected_everywhere_is_not_suggested_for_a_renamed_one(tmp_path
     assert refreshed.suggestions == [("European Robin", "Robin", 3, 3)]
 
 
+@pytest.mark.parametrize(
+    ("rows", "threshold"),
+    [
+        ("Minimum confidence,0.25\n", 0.25),
+        ("Minimum confidence,0.25\nTop N,3\n", 0.25),
+        ("Minimum confidence,0\nTop N,3\n", None),
+    ],
+    ids=["minimum confidence", "top N as well", "top N alone"],
+)
 def test_the_analysis_settings_of_the_prediction_folder_are_applied_on_a_pick(
-    folders, monkeypatch
+    folders, monkeypatch, rows, threshold
 ):
-    (folders["prediction"] / "birdnet.analyze-params.csv").write_text(
-        "Parameter,Value\nModel,perch\nSegment length,5.0\nMinimum confidence,0.25\n"
-        "Segment overlap,0.0\nMerge consecutive detections,1\nAudio speed,1.0\n",
-        encoding="utf-8",
-    )
+    _write_params(folders["prediction"], f"Model,perch\n{rows}")
 
     picked = _pick(monkeypatch, "prediction", folders["prediction"], 3, 0.1)
+    higher = _pick(monkeypatch, "prediction", folders["prediction"], 3, 0.5)
     annotations = _pick(monkeypatch, "annotation", folders["annotation"], 3, 0.1)
 
     assert picked.sample_duration == gr.update(value=5.0)
-    assert picked.threshold == gr.update(value=0.25)
+    assert picked.threshold == (
+        gr.update() if threshold is None else gr.update(value=threshold)
+    )
+    assert higher.threshold == gr.update()
     assert annotations.sample_duration == annotations.threshold == gr.update()
     status = _refresh(None, _values(folders)).status["value"]
     assert (
@@ -638,26 +1027,38 @@ def test_the_data_table_is_exported_for_the_current_values(
         assert len(list(csv.DictReader(f))) == len(RECORDINGS) * 20
 
 
+@pytest.mark.parametrize(("name", "separator"), [("results.csv", ","), ("r.TSV", "\t")])
 def test_the_results_table_export_is_the_table_on_screen(
-    folders, monkeypatch, tmp_path
+    folders, monkeypatch, tmp_path, name, separator
 ):
-    target = tmp_path / "results.csv"
+    for recording in RECORDINGS:
+        table = folders["prediction"] / f"{recording}.txt"
+        frame = pd.read_csv(table, sep="\t")
+        frame.loc[len(frame)] = [9, 12, "Blackbird", 0.8, 30]
+        frame.to_csv(table, sep="\t", index=False)
+    target = tmp_path / name
     monkeypatch.setattr(gu, "save_file_dialog", lambda **k: str(target))
-    result = _calculate(None, _values(folders))
+    result = _calculate(None, _values(folders), classes=["Blackbird", "Robin", "Wren"])
 
     evaluation.download_results_table(
         result.pa, result.predictions, result.labels, "macro"
     )
 
-    exported = pd.read_csv(target)
+    exported = pd.read_csv(target, sep=separator)
     assert exported["Class"].tolist() == [
-        *result.table[""],
+        "Robin",
+        "Wren",
+        "Blackbird",
         *result.overall[""],
     ]
-    assert exported["Recall"].tolist() == [
-        *result.table["Recall"],
-        *result.overall["Recall"],
-    ]
+    assert exported["Class"].tolist() == [*result.table[""], *result.overall[""]]
+    assert exported["Recall"].tolist()[:2] == result.table["Recall"].tolist()[:2]
+    assert exported["Recall"].tolist()[3:] == result.overall["Recall"].tolist()
+    with open(target, newline="", encoding="utf-8") as f:
+        rows = {row["Class"]: row for row in csv.DictReader(f, delimiter=separator)}
+    blackbird = rows["Blackbird"]
+    assert {blackbird[c] for c in blackbird if c != "Class"} == {"", "0"}
+    assert blackbird["Annotated windows"] == "0"
 
 
 @pytest.mark.parametrize(
@@ -803,6 +1204,60 @@ def test_calculating_is_locked_while_the_lists_change(demo):
         assert chain_start(refresh).outputs == unlock.outputs
 
 
+def test_calculate_is_unlocked_only_behind_the_builds_queued_before(demo):
+    queue = _event(demo, "refresh_after_pick").concurrency_id
+    unlocks = [
+        event
+        for event in demo.fns.values()
+        if getattr(event.fn, "__name__", "") == "_unlock_calculation"
+    ]
+
+    assert len(unlocks) == len(evaluation._DEFAULT_COLUMNS) + 2
+    assert {event.concurrency_id for event in unlocks} == {queue}
+
+
+def test_a_new_mapping_file_or_column_refreshes_the_lists(demo):
+    events = demo.fns
+    refresh = _event(demo, "refresh_processor")
+    while refresh.trigger_after is not None:
+        refresh = events[refresh.trigger_after]
+    triggers = set(refresh.targets)
+    apply = _event(demo, "apply_name_suggestions")
+    mapping_file = next(
+        c
+        for c in demo.blocks.values()
+        if isinstance(c, gr.File)
+        and c.label == loc.localize("eval-tab-upload-mapping-file-label")
+    )
+    score_unannotated = _persisted(
+        gr.Checkbox, "eval-tab-score-unannotated-checkbox-label"
+    )
+    column_dropdowns = [
+        c
+        for c in demo.blocks.values()
+        if isinstance(c, gr.Dropdown) and not c.multiselect
+    ]
+
+    assert apply.outputs == [mapping_file]
+    assert (mapping_file._id, "change") in triggers
+    assert (score_unannotated._id, "change") in triggers
+    assert len(column_dropdowns) == sum(map(len, evaluation._DEFAULT_COLUMNS.values()))
+    for dropdown in column_dropdowns:
+        assert (dropdown._id, "input") in triggers
+        assert (dropdown._id, "change") not in triggers
+
+
+def test_the_name_matches_used_are_the_ones_listed_with_the_summary(demo):
+    apply = _event(demo, "apply_name_suggestions")
+    stored, checked = apply.inputs[:2]
+
+    assert isinstance(checked, gr.CheckboxGroup)
+    for name in ("refresh_processor", "refresh_after_pick", "check_parameters"):
+        outputs = _event(demo, name).outputs
+        assert stored in outputs
+        assert checked in outputs
+
+
 def test_recordings_are_chosen_in_a_multiselect_dropdown(demo):
     label = loc.localize("eval-tab-select-recordings-checkboxgroup-label")
     recordings = next(
@@ -817,7 +1272,50 @@ def test_the_tab_offers_every_registered_metric():
     assert set(evaluation._METRIC_CONTROLS) == set(performance_assessor.METRICS)
 
 
-def test_the_metrics_tables_have_a_row_per_class_and_an_overall_footer():
+def test_the_overall_row_counts_the_classes_it_combines():
+    labels = np.array([[1, 0], [0, 0], [1, 0]])
+    predictions = np.array([[0.9, 0.8], [0.1, 0.2], [0.7, 0.1]])
+    pa = PerformanceAssessor(
+        num_classes=2, threshold=0.5, classes=("a", "b"), metrics_list=("recall",)
+    )
+
+    _, overall_row, _ = evaluation._build_metrics_tables(
+        pa, predictions, labels, "macro"
+    )
+
+    assert overall_row[""].tolist() == [
+        loc.localize("eval-tab-overall-macro-label").format(n=1)
+    ]
+
+
+def test_more_classes_than_the_plots_can_show_are_noted_and_the_best_supported_drawn(
+    tmp_path,
+):
+    folders = {kind: tmp_path / kind for kind in ("annotation", "prediction")}
+    names = [f"Species {i:02d}" for i in range(evaluation._PLOTTED_CLASSES + 1)]
+    for folder in folders.values():
+        folder.mkdir()
+    _write_table(
+        folders["annotation"] / "rec1.txt",
+        ["Begin Time (s)", "End Time (s)", "Class"],
+        [[3 * i, 3 * i + 3, name] for i, name in enumerate(names)]
+        + [[0, 3, names[-1]]],
+    )
+    _write_table(
+        folders["prediction"] / "rec1.txt",
+        ["Begin Time (s)", "End Time (s)", "Common Name", "Confidence"],
+        [[3 * i, 3 * i + 3, name, 0.9] for i, name in enumerate(names)],
+    )
+    values = (*map(str, folders.values()), None, 3, 0.5, "", False, *[None] * 11)
+
+    result = _calculate(None, values)
+    panels, *_ = evaluation._plotted(result.pa, result.predictions, result.labels)
+
+    note = loc.localize("eval-tab-note-plot-limit").format(
+        limit=evaluation._PLOTTED_CLASSES
+    )
+    assert note in result.notes
+    assert panels.classes == (*names[: evaluation._PLOTTED_CLASSES - 1], names[-1])
     rng = np.random.default_rng(0)
     predictions = rng.random((50, 2))
     labels = rng.integers(0, 2, (50, 2))
@@ -860,8 +1358,17 @@ def _processor(classes, recordings, annotated=None):
         (_processor("ab", ["r1"]), ["a", "b"], ["r1"], ["a", "b"], ["r1", "r2"]),
         (_processor("ab", ["r1"]), ["a"], ["r1"], ["a"], ["r1", "r2"]),
         (_processor("abc", ["r1"], "ab"), ["a", "b", "c"], None, ["a", "b", "c"], None),
+        (_processor("ac", ["r1"], "a"), ["a", "c"], None, ["a", "b", "c"], None),
     ],
-    ids=["first", "kept", "invalid", "default-again", "partial", "everything"],
+    ids=[
+        "first",
+        "kept",
+        "invalid",
+        "default-again",
+        "partial",
+        "everything",
+        "everything-grows",
+    ],
 )
 def test_a_refresh_keeps_a_narrowed_selection_and_renews_a_default_one(
     previous, current_classes, current_recordings, classes, recordings

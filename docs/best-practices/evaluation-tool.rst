@@ -140,6 +140,12 @@ Because tables are paired by name, a recording name may occur in only one folder
 Recorders that name their files by date and time give the same names at every site, so tables for ``20240530_053000`` in both ``site1`` and ``site2`` are rejected.
 Evaluate one site or recorder at a time, or give the recordings unique names.
 
+For the same reason, all tables of a recording must be in one folder.
+A prediction directory that holds several analyses of the same recordings in its subfolders, such as ``results/v2.4`` and ``results/v3.0``, is rejected rather than pooled: select the folder of one analysis.
+The same applies to two sets of annotations of a recording in two folders.
+
+The two directories must hold different tables: a table that would be read as an annotation table and as a prediction table, as when the same folder is selected twice or the annotation directory contains the prediction directory, is rejected.
+
 .. _eval-class-names:
 
 Class names
@@ -153,7 +159,7 @@ Perch names its predictions by their scientific names only.
 If your annotations use other names, the summary lists the annotated classes it does not find in the predictions. There are three remedies:
 
 1. **The prediction class column switches automatically.** When you select a directory and no class mapping is loaded, the tab looks for the prediction column that holds the most annotated class names (``Common Name``, ``Scientific Name``, ``Species Code`` and the like) and uses it. You can also choose it yourself: **Prediction columns** → **Class**.
-2. **Use these name matches.** For an annotated class that does not occur in the predictions, the tab looks for a predicted class without annotations that occurs in at least a third of the class's annotated windows and scores there, on average, at least four times as high as in the other windows. That is usually the same species under another name, such as ``Common Chaffinch ← Eurasian Chaffinch``. Check the suggested pairs in the summary, then click **Use these name matches**: they are added to the class mapping under **Class mapping (optional)**, or written into a new one there.
+2. **Use these name matches.** For an annotated class that does not occur in the predictions, the tab looks for a predicted class without annotations that occurs in at least a third of the class's annotated windows and scores there, on average, at least four times as high as in the other windows. That is usually the same species under another name, such as ``Common Chaffinch ← Eurasian Chaffinch``, but not always: check each pair in **Name matches** below the summary and clear any that is not the same species. Then click **Use these name matches**: the checked pairs are added to the class mapping under **Class mapping (optional)**, or written into a new one there.
 3. **A class mapping file.** A JSON file that renames predicted classes to the names in your annotations, predicted name first:
 
    .. code-block:: json
@@ -179,6 +185,7 @@ Reading the summary
 ###################
 
 The summary is updated when you select a directory or change a column, the class mapping, **Window length (s)**, **Recording duration (s)**, **Minimum overlap (s)** or **Score recordings without annotation table as empty**.
+If you change, add or remove tables in the directories afterwards, select the directory again to read them: until then, **Calculate metrics** asks you to.
 Its first block says what was read, the second whether the two sides fit together, and the third which files were left out.
 
 .. list-table::
@@ -195,6 +202,8 @@ Its first block says what was read, the second whether the two sides fit togethe
      - The same for the predictions. One table is a combined result table.
    * - Analysis: BirdNET 3.0, 3 s segments, minimum confidence 0.25
      - Read from the analysis' ``birdnet.analyze-params.csv``: the model, its segment length and the minimum confidence of the analysis.
+   * - ⚠️ The annotation tables have a "Confidence" column, like prediction tables. …
+     - The annotation directory may hold BirdNET's results instead of your annotations; scored as annotations, they only compare BirdNET with itself. Detections you checked and corrected, used as annotations, are fine.
    * - ✅ Recordings with annotations and predictions: all 8
      - Every recording has both an annotation table and predictions.
    * - ⚠️ Recordings with annotations and predictions: 6 of 8
@@ -202,15 +211,15 @@ Its first block says what was read, the second whether the two sides fit togethe
    * - Annotations only, so all their annotations count as missed: site2_0530
      - No predictions belong to this recording. A combined table has no rows for a recording without any detection, so such a recording is listed here and still scored correctly. Otherwise, check that the analysis covered the recording and that the names pair.
    * - Predictions only, not scored: site3_0530
-     - No annotation table belongs to this recording, so it is left out. If you checked the recording, give it a table, with only the header row if it has no calls.
+     - No annotation table belongs to this recording, so it is left out. If you checked the recording, give it a table, with only the header row if it has no calls, and select the annotation directory again.
    * - Predictions only, scored as recordings without calls: site3_0530
      - As above, with **Score recordings without annotation table as empty** turned on: every prediction in the recording counts as a false positive.
    * - ✅ Annotated classes found in the predictions (column "Common Name"): all 10
      - Every annotated class occurs in the predictions, in the column named.
    * - ⚠️ Annotated classes found in the predictions (column "Common Name"): 7 of 10. Not found: …
      - The classes named never occur in the predictions under these names. Either the names differ (see :ref:`eval-class-names`) or the model never predicted them; such a class gets a recall of 0.
-   * - 💡 Probably the same classes under other names, detected in the annotated windows: Common Chaffinch ← Eurasian Chaffinch (17/21 windows) · …
-     - Suggested name matches: Eurasian Chaffinch occurs in 17 of the 21 windows annotated as Common Chaffinch. Check them, then click **Use these name matches** below the summary.
+   * - 💡 Annotated classes that probably occur in the predictions under another name: 3. Check the name matches below.
+     - The suggested pairs are listed under **Name matches**, each checked: ``Common Chaffinch ← Eurasian Chaffinch (17/21 windows)`` means that Eurasian Chaffinch was detected in 17 of the 21 windows annotated as Common Chaffinch. Clear any pair that is not the same species, then click **Use these name matches**.
    * - ℹ️ The prediction class column was set to "Scientific Name", which holds the most annotated classes.
      - The automatic switch of the class column. It is also shown under **Prediction columns** → **Class**.
    * - ⚠️ The window length (3 s) differs from the segment length of the analysis (5 s).
@@ -316,7 +325,7 @@ The table has one row per selected class, the classes with annotations first.
 It has a column for each selected metric, rounded to three decimals, and the **Annotated windows** column: the windows annotated with the class, the positives its scores rest on.
 Scores of a class with only a few annotated windows are uncertain.
 
-A selected class without annotated windows in the evaluated recordings has no defined scores: its row shows **n/a**, and it is left out of the overall row.
+A selected class without annotated windows in the evaluated recordings has no recall, F1, AP or AUROC, and its precision could only count false positives: its row shows **n/a**, and it is left out of the overall row.
 
 The overall row at the bottom combines the classes with annotations, as chosen under **Averaging** in **Select metrics**:
 
@@ -446,6 +455,15 @@ A problem found while the tables are read replaces the summary, marked ⚠️; o
    * - Two prediction tables belong to recordings named "20240530_053000" (site1, site2). Tables are paired by recording name, so the names must be unique: …
      - The same recording name occurs in two folders of the directory, typical for recorders that name files by date and time.
      - Evaluate one site or recorder at a time, or give the recordings unique names (see `Subfolders and unique names`_).
+   * - The prediction tables of the recording "site1_0530" are in two folders (v2.4, v3.0), for example from two analyses, so they would be pooled. …
+     - The directory holds several analyses of the same recordings in subfolders. For annotations, the message says the same about two sets of annotations.
+     - Select the folder of one analysis, or keep each recording's tables in one folder.
+   * - The same tables were selected as annotations and as predictions, e.g. site1_0530.BirdNET.selection.table.txt. …
+     - The same folder was selected twice, or the annotation directory contains the prediction directory.
+     - Select the folder with your annotations and the output folder of the analysis, two separate folders.
+   * - The tables changed since they were read. Select the annotation or prediction directory again to read them anew.
+     - Tables in a directory were changed, added or removed after it was selected.
+     - Select the directory again.
    * - None of the annotation tables could be paired with a prediction table, so there is nothing to compare. Tables are paired by recording name: …
      - No recording name occurs in both directories.
      - Compare the names the summary lists under "Annotations only" and "Predictions only", and name the annotation tables after the audio files. A combined prediction table needs its **Recording (optional)** column, such as ``Begin Path``.
