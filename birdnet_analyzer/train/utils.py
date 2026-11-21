@@ -749,6 +749,13 @@ def train_model(
     if len(x_test) > 0:
         logger.info(f"...Loaded {x_test.shape[0]} test samples.")
 
+    formats = [model_formats] if isinstance(model_formats, str) else model_formats
+    base = base_models.base_model(version)
+
+    # Ahead of the tuning and the fit, which a failed download would waste.
+    if "tflite" in formats or "raven" in formats:
+        base.fetch()
+
     if autotune:
         import gc
 
@@ -930,7 +937,6 @@ def train_model(
 
     # Remove activation from last layer before saving
     classifier.pop()
-    formats = [model_formats] if isinstance(model_formats, str) else model_formats
     classifier_path = output.removesuffix(".tflite")
 
     # The settings the classifier was trained with, saved next to it both as a

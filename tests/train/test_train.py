@@ -303,6 +303,23 @@ def synthetic_training_data(monkeypatch):
     )
 
 
+@pytest.fixture
+def export_model_in_place(monkeypatch):
+    from birdnet_analyzer import base_models
+
+    monkeypatch.setattr(base_models.BaseModel, "fetch", lambda self: None)
+
+
+@pytest.fixture
+def fit_refused(monkeypatch):
+    from birdnet_analyzer.train import utils as train_utils
+
+    def fit(*args, **kwargs):
+        pytest.fail("the classifier was fitted")
+
+    monkeypatch.setattr(train_utils.model, "train_linear_classifier", fit)
+
+
 def _autotune(monkeypatch, tmp_path, **kwargs):
     """Runs a real two-epoch autotune; returns the pruning monitors and the study."""
     import keras
@@ -536,7 +553,7 @@ def test_the_result_tables_take_a_label_outside_the_windows_code_page(
             assert labels[0] in {row[0] for row in csv.reader(f)}
 
 
-@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.usefixtures("synthetic_training_data", "export_model_in_place")
 def test_the_params_file_reads_back_as_the_arguments_of_the_training(
     monkeypatch, tmp_path
 ):
@@ -663,7 +680,7 @@ def test_only_the_first_split_of_a_trial_reports_to_the_pruner(monkeypatch, tmp_
     assert len(monitors) == 1
 
 
-@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.usefixtures("synthetic_training_data", "export_model_in_place")
 @pytest.mark.parametrize(
     "failing", ["train_linear_classifier", "save_linear_classifier"]
 )
@@ -683,3 +700,92 @@ def test_a_training_failure_reaches_the_caller_unchanged(
         train_utils.train_model("unused", output=str(tmp_path / "cc"), epochs=1)
 
     assert error.value is boom
+
+
+@pytest.mark.usefixtures("synthetic_training_data", "fit_refused")
+@pytest.mark.parametrize("autotune", [False, True])
+@pytest.mark.parametrize("model_formats", [["tflite"], ["raven"], "raven"])
+def test_a_missing_export_model_ends_training_before_the_fit(
+    monkeypatch, tmp_path, model_formats, autotune
+):
+    from birdnet.utils.downloads import DownloadError
+
+    from birdnet_analyzer.train.utils import train_model
+
+    monkeypatch.setenv("BIRDNET_APP_DATA", str(tmp_path / "models"))
+    monkeypatch.setenv("BIRDNET_OFFLINE", "1")
+
+    with pytest.raises(DownloadError):
+        train_model(
+            "unused",
+            output=str(tmp_path / "cc"),
+            model_formats=model_formats,
+            autotune=autotune,
+        )
+
+    assert not list(tmp_path.glob("cc*"))
+
+
+@pytest.mark.usefixtures("fit_refused")
+def test_the_export_model_is_fetched_for_the_version_of_the_cache(
+    monkeypatch, tmp_path
+):
+    from birdnet_analyzer import base_models
+    from birdnet_analyzer.train import utils as train_utils
+
+    *data, _ = _synthetic_training_data()
+    monkeypatch.setattr(
+        train_utils, "_load_training_data", lambda *a, **k: (*data, "2.4")
+    )
+    fetched = []
+
+    class Fetched(Exception):
+        pass
+
+    def fetch(base):
+        fetched.append(base.version)
+        raise Fetched
+
+    monkeypatch.setattr(base_models.BaseModel, "fetch", fetch)
+
+    with pytest.raises(Fetched):
+        train_utils.train_model("unused", output=str(tmp_path / "cc"), birdnet="3.0")
+
+    assert fetched == ["2.4"]
+
+
+@pytest.mark.usefixtures("fit_refused")
+def test_a_cache_of_an_unsupported_version_fails_before_the_fit(monkeypatch, tmp_path):
+    from birdnet_analyzer.train import utils as train_utils
+
+    *data, _ = _synthetic_training_data()
+    monkeypatch.setattr(
+        train_utils, "_load_training_data", lambda *a, **k: (*data, "9.9")
+    )
+
+    with pytest.raises(ValueError, match="Unsupported BirdNET version"):
+        train_utils.train_model("unused", output=str(tmp_path / "cc"), model_formats=[])
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.parametrize("model_formats", [["detached"], []])
+def test_training_without_a_tflite_or_raven_export_fetches_no_model(
+    monkeypatch, tmp_path, model_formats
+):
+    from birdnet_analyzer import base_models
+    from birdnet_analyzer.config import TRAIN_PARAMS_SUFFIX
+    from birdnet_analyzer.train import utils as train_utils
+
+    def fetch(base):
+        pytest.fail("the export model was fetched")
+
+    monkeypatch.setattr(base_models.BaseModel, "fetch", fetch)
+    monkeypatch.setattr(
+        train_utils.model, "save_detached_classifier", lambda *args, **kwargs: None
+    )
+
+    train_utils.train_model(
+        "unused", output=str(tmp_path / "cc"), epochs=1, model_formats=model_formats
+    )
+
+    assert (tmp_path / f"cc{TRAIN_PARAMS_SUFFIX}").is_file()

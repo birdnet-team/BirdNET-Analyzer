@@ -280,3 +280,93 @@ def test_probe_verdicts_follow_free_space(clean, monkeypatch):
 
     monkeypatch.setattr(shutil, "disk_usage", broken)
     assert settings.probe_model_directory(clean / "odd-share") == "ok"
+
+
+@pytest.fixture
+def shipped(clean, monkeypatch):
+    bundle = clean / "app" / settings.BUNDLED_MODELS_DIR_NAME
+    model = bundle / "acoustic-models" / "v3.0" / "onnx" / "model.onnx"
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"shipped")
+    monkeypatch.setattr(settings, "FROZEN", True)
+    monkeypatch.setattr(sys, "_MEIPASS", str(clean / "app"), raising=False)
+
+    return model.relative_to(bundle)
+
+
+def test_the_shipped_model_is_in_the_model_directory_without_a_download(clean, shipped):
+    models = clean / "models"
+    newer = models / "geo-models" / "downloaded.onnx"
+    newer.parent.mkdir(parents=True)
+    newer.write_bytes(b"downloaded")
+    settings.set_model_directory(str(models))
+
+    assert (models / shipped).read_bytes() == b"shipped"
+    assert newer.read_bytes() == b"downloaded"
+    assert [p.name for p in (models / shipped).parent.iterdir()] == ["model.onnx"]
+
+
+def test_a_model_already_in_the_directory_is_not_replaced_by_the_shipped_one(
+    clean, shipped
+):
+    models = clean / "models"
+    (models / shipped).parent.mkdir(parents=True)
+    (models / shipped).write_bytes(b"kept")
+
+    settings.set_model_directory(str(models))
+
+    assert (models / shipped).read_bytes() == b"kept"
+
+
+def test_a_model_directory_that_cannot_be_written_is_left_alone(
+    clean, shipped, monkeypatch
+):
+    def refuse(*args):
+        raise PermissionError
+
+    models = clean / "models"
+    monkeypatch.setattr(settings, "_clone_or_copy", refuse)
+
+    settings.set_model_directory(str(models))
+
+    assert list(models.rglob("*.onnx")) == []
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+def test_a_model_directory_with_an_unreadable_folder_does_not_stop_the_app(
+    clean, shipped
+):
+    models = clean / "models"
+    locked = models / shipped.parts[0]
+    locked.mkdir(parents=True)
+    locked.chmod(0)
+
+    try:
+        settings.set_model_directory(str(models))
+    finally:
+        locked.chmod(0o755)
+
+    assert list(models.rglob("*.onnx")) == []
+
+
+def test_the_copy_of_a_killed_start_is_removed_by_the_next_one(clean, shipped):
+    models = clean / "models"
+    leftover = models / shipped.with_name(shipped.name + ".123.seed")
+    leftover.parent.mkdir(parents=True)
+    leftover.write_bytes(b"half")
+    os.utime(leftover, (0, 0))
+
+    settings.set_model_directory(str(models))
+
+    assert [p.name for p in (models / shipped).parent.iterdir()] == ["model.onnx"]
+
+
+def test_starting_the_app_adds_the_shipped_model(clean, shipped, monkeypatch):
+    from birdnet_analyzer import utils
+
+    models = clean / "models"
+    monkeypatch.setenv(settings.MODEL_DIR_ENV_VAR, str(models))
+
+    utils.configure_runtime()
+
+    assert (models / shipped).read_bytes() == b"shipped"

@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "lulIgh wIvlu'bogh chenmoHlaHbe' pagh ghItlhlaHbe'.",
     "model-dir-low-space-warning": "2 GB puS chaw' Daq: model Download wa'DIch 'ellaHbe'.",
     "model-dir-readonly-warning": "laDlaH neH lulIgh: modelmey tu'lu'bogh lo'laH, 'ach model chu' DownloadlaHbe'.",
+    "model-download-failed-error": "model DownloadlaHbe' ({reason}). Internet rarwI' yI'ol 'ej yInIDqa'. Download botchugh rarwI'vam, De'wI' latlhvo' modelmey yIlIH 'ej model lulIghDaq yIlan: {directory}",
     "model-selection-accordion-label": "ghantoH wIv",
     "model-selection-classifier-unreadable-warning": "tu'law'vaD lo'laHbe' {file}: {error}",
     "model-selection-facts-base-model-label": "Hal ghantoH",
