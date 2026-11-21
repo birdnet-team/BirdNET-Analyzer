@@ -8,21 +8,29 @@ training or evaluation.
 """
 
 import logging
-import os
-from collections.abc import Sequence
+import ntpath
+import posixpath
+from collections import Counter
+from collections.abc import Callable, Sequence
 from typing import ClassVar
 
 import numpy as np
 import pandas as pd
 
+from birdnet_analyzer.evaluation.errors import EvaluationInputError
 from birdnet_analyzer.evaluation.preprocessing.utils import (
-    extract_recording_filename,
-    extract_recording_filename_from_filename,
-    read_and_concatenate_files_in_directory,
+    Tables,
+    read_tables,
     recording_key,
 )
 
 logger = logging.getLogger(__name__)
+
+_SKIP_REASONS = {
+    "missing-columns": "without the mapped columns",
+    "superseded": "that the per-recording BirdNET tables next to them supersede",
+    "unreadable": "that cannot be read as tables",
+}
 
 
 def _by_recording(table: pd.DataFrame) -> dict:
@@ -33,6 +41,80 @@ def _is_sorted(values: np.ndarray) -> bool:
     return bool(np.all(values[1:] >= values[:-1]))
 
 
+def _recording(value, source_file: str) -> tuple[str, str]:
+    """The recording of a row and the folder it is in.
+
+    A row without a value in the recording column belongs to its table file.
+    """
+    if not isinstance(value, str):
+        value = "" if pd.isna(value) else str(value)
+    value = value.strip()
+    folder = posixpath.dirname(source_file)
+
+    if not value:
+        return recording_key(source_file), folder
+
+    return recording_key(value), ntpath.dirname(value) or folder
+
+
+def _check_unique(side: str, places: set[tuple[str, str]]) -> None:
+    """Rejects a recording name that one side has in two folders."""
+    folders: dict[str, tuple[str, dict[str, str]]] = {}
+
+    for key, folder in sorted(places):
+        same = folder.replace("\\", "/").rstrip("/").casefold()
+        folders.setdefault(key.casefold(), (key, {}))[1].setdefault(same, folder)
+
+    for key, found in folders.values():
+        if len(found) > 1:
+            first, second = (found[same] or "." for same in sorted(found)[:2])
+            raise EvaluationInputError(
+                "duplicate-recording",
+                f"The {side} tables have the recording {key!r} in two folders, "
+                f"{first!r} and {second!r}. Recordings are matched by name, so a "
+                "name must not occur in more than one folder.",
+                side=side,
+                recording=key,
+                places=[first, second],
+            )
+
+
+def _annotation_spelling(annotation_recordings: set[str]) -> Callable:
+    """Gives a recording name the spelling of the annotations' name, if one fits."""
+    spellings: dict[str, str] = {}
+    for key in sorted(annotation_recordings):
+        spellings.setdefault(key.casefold(), key)
+
+    def spelled(key):
+        if key in annotation_recordings:
+            return key
+
+        return spellings.get(key.casefold(), key)
+
+    return spelled
+
+
+def _normalized_label(label):
+    if not isinstance(label, str):
+        return label
+
+    return " ".join(label.split()) or np.nan
+
+
+def _label_spellings(labels: pd.Series) -> dict[str, str]:
+    """The most frequent spelling of each label, by its casefold."""
+    spellings: dict[str, str] = {}
+    counts = Counter(label for label in labels if isinstance(label, str))
+    for label, _ in counts.most_common():
+        spellings.setdefault(label.casefold(), label)
+
+    return spellings
+
+
+def _classes(labels: pd.Series) -> tuple[str, ...]:
+    return tuple(sorted(label for label in labels.unique() if pd.notna(label)))
+
+
 class DataProcessor:
     """
     Processor for handling and transforming sample data with annotations and
@@ -40,6 +122,23 @@ class DataProcessor:
 
     This class processes prediction and annotation data, aligning them with sampled time
     intervals, and generates tensors for further model training or evaluation.
+
+    Attributes:
+        tables: The tables read, by side (``"annotation"``, ``"prediction"``).
+        classes: The classes of both sides, sorted.
+        annotated_classes: The classes in the annotation rows, sorted.
+        predicted_classes: The classes in the prediction rows that are scored, after
+            the class mapping, sorted.
+        matched_recordings: The recordings with both annotation and prediction tables;
+            every recording when both file names are given.
+        unmatched_prediction_files: The recordings with prediction tables only; none
+            when both file names are given.
+        unmatched_annotation_files: The recordings with annotation tables only; all
+            their annotations count as missed. None when both file names are given.
+        empty_annotation_recordings: The recordings whose annotation tables have no
+            rows: annotated, without calls.
+        empty_prediction_recordings: The recordings whose prediction tables have no
+            rows: analysed, without detections.
     """
 
     DEFAULT_COLUMNS_PREDICTIONS: ClassVar[dict[str, str]] = {
@@ -133,11 +232,18 @@ class DataProcessor:
 
         self.predictions_df: pd.DataFrame = pd.DataFrame()
         self.annotations_df: pd.DataFrame = pd.DataFrame()
+        self.tables: dict[str, Tables] = {}
 
-        # Recordings that have predictions but no matching annotation file.
+        self.matched_recordings: set[str] = set()
         self.unmatched_prediction_files: set[str] = set()
+        self.unmatched_annotation_files: set[str] = set()
+        self.empty_annotation_recordings: set[str] = set()
+        self.empty_prediction_recordings: set[str] = set()
+        self._recordings: set[str] = set()
 
         self.classes: tuple[str, ...] = ()
+        self.annotated_classes: tuple[str, ...] = ()
+        self.predicted_classes: tuple[str, ...] = ()
 
         self.samples_df: pd.DataFrame = pd.DataFrame()
         self.prediction_tensors: np.ndarray = np.array([])
@@ -211,201 +317,261 @@ class DataProcessor:
         """
         Loads the prediction and annotation data into DataFrames.
 
-        Depending on whether specific files are provided, this method either reads all
-        files in the given directories or reads the specified files. The method also
-        applies any specified class mapping and prepares the data for further
-        processing.
+        Depending on whether specific files are provided, this method either reads the
+        tables in the given directories and their subdirectories or reads the
+        specified files. It applies any specified class mapping, cleans the class
+        labels, and keys every row by the recording it belongs to.
 
         Raises:
-            ValueError: If file reading fails or data preparation encounters issues.
-            KeyError: If the predictions have rows but no confidence column.
+            EvaluationInputError: If a side has no usable table, a time or score is
+                not a number, or a recording name comes from two folders.
+            ValueError: If the predictions have rows but no confidence value.
         """
-
-        self.unmatched_prediction_files = set()
-
-        if self.prediction_file_name is None or self.annotation_file_name is None:
-            self.predictions_df = read_and_concatenate_files_in_directory(
-                self.prediction_directory_path
-            )
-            self.annotations_df = read_and_concatenate_files_in_directory(
-                self.annotation_directory_path
-            )
-
-            # Ensure 'source_file' column exists for traceability
-            if "source_file" not in self.predictions_df.columns:
-                self.predictions_df["source_file"] = ""
-
-            if "source_file" not in self.annotations_df.columns:
-                self.annotations_df["source_file"] = ""
-
-            self.predictions_df = self._prepare_dataframe(
-                self.predictions_df, prediction=True
-            )
-            self.annotations_df = self._prepare_dataframe(
-                self.annotations_df, prediction=False
-            )
-
-            if self.class_mapping:
-                class_col_pred = self.get_column_name("Class", prediction=True)
-                self.predictions_df[class_col_pred] = self.predictions_df[
-                    class_col_pred
-                ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
-        else:
-            prediction_file = os.path.join(
-                self.prediction_directory_path, self.prediction_file_name
-            )
-            annotation_file = os.path.join(
-                self.annotation_directory_path, self.annotation_file_name
-            )
-
-            self.predictions_df = pd.read_csv(prediction_file, sep="\t")
-            self.annotations_df = pd.read_csv(annotation_file, sep="\t")
-
-            self.predictions_df["source_file"] = self.prediction_file_name
-            self.annotations_df["source_file"] = self.annotation_file_name
-
-            self.predictions_df = self._prepare_dataframe(
-                self.predictions_df, prediction=True
-            )
-            self.annotations_df = self._prepare_dataframe(
-                self.annotations_df, prediction=False
-            )
-
-            if self.class_mapping:
-                class_col_pred = self.get_column_name("Class", prediction=True)
-                self.predictions_df[class_col_pred] = self.predictions_df[
-                    class_col_pred
-                ].apply(lambda x: self.class_mapping.get(x, x))  # ty:ignore[unresolved-attribute]
-
-            if not any(
-                self.get_column_name("Recording", prediction=prediction) in df.columns
-                for df, prediction in (
-                    (self.predictions_df, True),
-                    (self.annotations_df, False),
-                )
-            ):
-                # A named pair is one recording, whatever the two files are called.
-                recording = recording_key(self.annotation_file_name)
-                self.predictions_df["recording_filename"] = recording
-                self.annotations_df["recording_filename"] = recording
-
-        confidence_col = self.get_column_name("Confidence", prediction=True)
-        if (
-            not self.predictions_df.empty
-            and self.predictions_df[confidence_col].isna().all()
-        ):
-            raise ValueError(f"Confidence column {confidence_col!r} has no values.")
-
-        # Reconcile the two recording sets. A recording that only has predictions has no
-        # ground truth, so its predictions cannot be scored. By default those recordings
-        # are dropped; only when the caller opts in (exhaustive annotations) are they
-        # kept and their predictions counted as false positives. This only applies when
-        # matching whole directories -- an explicitly named single file pair is always a
-        # deliberate 1:1 comparison.
         directory_mode = (
             self.prediction_file_name is None or self.annotation_file_name is None
         )
-        if directory_mode and "recording_filename" in self.predictions_df.columns:
-            prediction_recordings = set(
-                self.predictions_df["recording_filename"].unique()
+        self.tables = {
+            side: self._read_tables(side, directory, None if directory_mode else name)
+            for side, directory, name in (
+                (
+                    "annotation",
+                    self.annotation_directory_path,
+                    self.annotation_file_name,
+                ),
+                (
+                    "prediction",
+                    self.prediction_directory_path,
+                    self.prediction_file_name,
+                ),
             )
-            annotation_recordings = set(
-                self.annotations_df["recording_filename"].unique()
-            )
+        }
+        self._log_skipped_files()
+
+        annotations = self._prepared(self.tables["annotation"].table, prediction=False)
+        predictions = self._prepared(self.tables["prediction"].table, prediction=True)
+
+        confidence_col = self.get_column_name("Confidence", prediction=True)
+        if not predictions.empty and predictions[confidence_col].isna().all():
+            raise ValueError(f"Confidence column {confidence_col!r} has no values.")
+
+        class_col_annot = self.get_column_name("Class", prediction=False)
+        class_col_pred = self.get_column_name("Class", prediction=True)
+        spellings = _label_spellings(annotations[class_col_annot])
+        for table, column in (
+            (annotations, class_col_annot),
+            (predictions, class_col_pred),
+        ):
+            table[column] = [
+                spellings.get(label.casefold(), label)
+                if isinstance(label, str)
+                else label
+                for label in table[column]
+            ]
+
+        named_pair = not directory_mode and not any(
+            self.get_column_name("Recording", prediction=prediction) in table.columns
+            for table, prediction in ((predictions, True), (annotations, False))
+        )
+        # A named pair is one recording, whatever the two files are called.
+        recording = recording_key(self.annotation_file_name) if named_pair else None
+        annotations["recording_filename"], annotation_empty = self._recordings_of(
+            "annotation", annotations, recording
+        )
+        predictions["recording_filename"], prediction_empty = self._recordings_of(
+            "prediction", predictions, recording
+        )
+
+        annotation_recordings = set(annotations["recording_filename"])
+        self.empty_annotation_recordings = annotation_empty - annotation_recordings
+        annotation_recordings |= annotation_empty
+
+        spelled = _annotation_spelling(annotation_recordings)
+        predictions["recording_filename"] = predictions["recording_filename"].map(
+            spelled
+        )
+        prediction_empty = {spelled(key) for key in prediction_empty}
+        prediction_recordings = set(predictions["recording_filename"])
+        self.empty_prediction_recordings = prediction_empty - prediction_recordings
+        prediction_recordings |= prediction_empty
+
+        # A recording that only has predictions has no ground truth, so its predictions
+        # cannot be scored. By default those recordings are dropped; only when the
+        # caller opts in (exhaustive annotations) are they kept and their predictions
+        # counted as false positives. This only applies when matching whole
+        # directories -- an explicitly named single file pair is always a deliberate
+        # 1:1 comparison.
+        if directory_mode:
+            self.matched_recordings = prediction_recordings & annotation_recordings
             self.unmatched_prediction_files = (
                 prediction_recordings - annotation_recordings
             )
-
-            if self.unmatched_prediction_files:
-                names = ", ".join(sorted(map(str, self.unmatched_prediction_files)))
-                if self.score_unannotated_as_empty:
-                    logger.warning(
-                        "Prediction files without matching annotation file: %s. Their "
-                        "annotations are assumed empty, so every prediction on them "
-                        "counts as a false positive.",
-                        names,
-                    )
-                else:
-                    logger.warning(
-                        "Prediction files without matching annotation file: %s. These "
-                        "recordings are dropped and not scored.",
-                        names,
-                    )
-                    self.predictions_df = self.predictions_df[
-                        self.predictions_df["recording_filename"].isin(
-                            annotation_recordings
-                        )
-                    ]
-
-            unpredicted_recordings = annotation_recordings - prediction_recordings
-            if unpredicted_recordings:
-                logger.warning(
-                    "Annotation files without matching prediction file: %s. Their "
-                    "predictions are assumed empty, so every annotation on them counts "
-                    "as a false negative.",
-                    ", ".join(sorted(map(str, unpredicted_recordings))),
-                )
-
-        class_col_pred = self.get_column_name("Class", prediction=True)
-        class_col_annot = self.get_column_name("Class", prediction=False)
-
-        pred_classes = set(self.predictions_df[class_col_pred].unique())
-        annot_classes = set(self.annotations_df[class_col_annot].unique())
-
-        all_classes = {
-            cls for cls in pred_classes.union(annot_classes) if pd.notna(cls)
-        }
-        self.classes = tuple(sorted(all_classes))
-
-    def _prepare_dataframe(self, df: pd.DataFrame, prediction: bool) -> pd.DataFrame:
-        """
-        Prepares a DataFrame by adding a 'recording_filename' column.
-
-        This method extracts the recording filename from either a specified 'Recording'
-        column or from the 'source_file' column to ensure traceability.
-
-        Args:
-            df (pd.DataFrame): The DataFrame to prepare.
-            prediction (bool): Whether the DataFrame is for predictions or annotations.
-
-        Returns:
-            pd.DataFrame: The prepared DataFrame with the added 'recording_filename'
-                column.
-        """
-        recording_col = self.get_column_name("Recording", prediction=prediction)
-
-        if recording_col in df.columns:
-            df["recording_filename"] = extract_recording_filename(df[recording_col])
-        elif "source_file" in df.columns:
-            df["recording_filename"] = extract_recording_filename_from_filename(
-                df["source_file"]
+            self.unmatched_annotation_files = (
+                annotation_recordings - prediction_recordings
             )
         else:
-            df["recording_filename"] = ""
+            self.matched_recordings = prediction_recordings | annotation_recordings
+            self.unmatched_prediction_files = set()
+            self.unmatched_annotation_files = set()
 
-        return df
+        if self.unmatched_prediction_files:
+            names = ", ".join(sorted(self.unmatched_prediction_files))
+            if self.score_unannotated_as_empty:
+                logger.warning(
+                    "Prediction files without matching annotation file: %s. Their "
+                    "annotations are assumed empty, so every prediction on them "
+                    "counts as a false positive.",
+                    names,
+                )
+            else:
+                logger.warning(
+                    "Prediction files without matching annotation file: %s. These "
+                    "recordings are dropped and not scored.",
+                    names,
+                )
+                predictions = predictions[
+                    predictions["recording_filename"].isin(annotation_recordings)
+                ]
+                prediction_recordings &= annotation_recordings
+
+        if self.unmatched_annotation_files:
+            logger.warning(
+                "Annotation files without matching prediction file: %s. Their "
+                "predictions are assumed empty, so every annotation on them counts "
+                "as a false negative.",
+                ", ".join(sorted(self.unmatched_annotation_files)),
+            )
+
+        self.annotations_df = annotations
+        self.predictions_df = predictions
+        self._recordings = annotation_recordings | prediction_recordings
+
+        self.annotated_classes = _classes(annotations[class_col_annot])
+        self.predicted_classes = _classes(predictions[class_col_pred])
+        self.classes = tuple(sorted({*self.annotated_classes, *self.predicted_classes}))
+
+    def _read_tables(self, side: str, directory: str, file_name: str | None) -> Tables:
+        prediction = side == "prediction"
+        fields = ["Start Time", "End Time", "Class", "Recording", "Duration"]
+        if prediction:
+            fields.append("Confidence")
+
+        return read_tables(
+            directory,
+            side,
+            {field: self.get_column_name(field, prediction) for field in fields},
+            file_name,
+        )
+
+    def _log_skipped_files(self) -> None:
+        for side, tables in self.tables.items():
+            for reason, explanation in _SKIP_REASONS.items():
+                files = [path for path, why in tables.skipped if why == reason]
+                if files:
+                    logger.warning(
+                        "Skipped %s files %s: %s", side, explanation, ", ".join(files)
+                    )
+
+    def _prepared(self, table: pd.DataFrame, prediction: bool) -> pd.DataFrame:
+        """A side's rows with per-recording times and mapped, cleaned class labels."""
+        table = table.copy()
+        self._shift_sequence_times(table, prediction)
+
+        column = self.get_column_name("Class", prediction=prediction)
+        mapping = self.class_mapping or {}
+        if prediction and mapping:
+            table[column] = table[column].map(lambda label: mapping.get(label, label))
+        table[column] = table[column].map(_normalized_label)
+
+        return table
+
+    def _shift_sequence_times(self, table: pd.DataFrame, prediction: bool) -> None:
+        """Makes the times of a file-sequence table count from each recording's start.
+
+        BirdNET's combined table and a Raven file sequence count ``Begin Time (s)``
+        from the start of the first file; ``File Offset (s)`` is the time in the file.
+        """
+        if not {"Begin Time (s)", "File Offset (s)"} <= set(table.columns):
+            return
+
+        shift = (
+            (
+                pd.to_numeric(table["Begin Time (s)"], errors="coerce")
+                - pd.to_numeric(table["File Offset (s)"], errors="coerce")
+            )
+            .fillna(0)
+            .to_numpy()
+        )
+        shifted = shift != 0
+
+        if not shifted.any():
+            return
+
+        for field in ("Start Time", "End Time"):
+            column = self.get_column_name(field, prediction=prediction)
+            if column != "File Offset (s)" and column in table.columns:
+                times = table[column].to_numpy(dtype=float, copy=True)
+                # Rounded so the times equal those in the per-recording tables, not
+                # just up to the float error of the subtraction.
+                times[shifted] = np.round(times[shifted] - shift[shifted], 9)
+                table[column] = times
+
+    def _recordings_of(
+        self, side: str, table: pd.DataFrame, recording: str | None
+    ) -> tuple[pd.Series, set[str]]:
+        """The recording of each row, and of each of the side's tables without rows.
+
+        Raises:
+            EvaluationInputError: If a recording name comes from two folders.
+        """
+        empty_files = self.tables[side].empty_files
+
+        if recording is not None:
+            return (
+                pd.Series(recording, index=table.index, dtype=object),
+                {recording} if empty_files else set(),
+            )
+
+        column = self.get_column_name("Recording", prediction=side == "prediction")
+        values = table[column] if column in table.columns else [None] * len(table)
+        found: dict[tuple, tuple[str, str]] = {}
+        keys = []
+        for row in zip(values, table["source_file"], strict=True):
+            place = found.get(row)
+            if place is None:
+                place = found[row] = _recording(*row)
+            keys.append(place[0])
+
+        empty = {_recording(None, name) for name in empty_files}
+        _check_unique(side, {*found.values(), *empty})
+
+        return pd.Series(keys, index=table.index, dtype=object), {
+            key for key, _ in empty
+        }
 
     def process_data(self) -> None:
         """
         Processes the loaded data, aligns predictions and annotations with sample
         intervals, and updates the samples DataFrame.
 
-        Every recording found in either table is processed once, in sorted order, and
-        the per-recording results are concatenated into the `samples_df` attribute.
+        Every recording of either side, including those whose tables have no rows, is
+        processed once, in sorted order, and the per-recording results are concatenated
+        into the `samples_df` attribute.
         """
         predictions = _by_recording(self.predictions_df)
         annotations = _by_recording(self.annotations_df)
         no_predictions = self.predictions_df.iloc[:0]
         no_annotations = self.annotations_df.iloc[:0]
 
+        recordings = self._recordings | predictions.keys() | annotations.keys()
         frames = [
             self.process_recording(
                 recording,
                 predictions.get(recording, no_predictions),
                 annotations.get(recording, no_annotations),
             )
-            for recording in sorted(predictions.keys() | annotations.keys(), key=str)
+            for recording in sorted(recordings, key=str)
         ]
+        frames = [frame for frame in frames if not frame.empty]
         self.samples_df = (
             pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
         )
@@ -695,13 +861,14 @@ class DataProcessor:
             dtype=np.int64
         )
 
-    def get_column_name(self, field_name: str, prediction: bool = True) -> str:
+    def get_column_name(self, field_name: str, prediction: bool = True) -> str | None:
         """
         Retrieves the appropriate column name for the specified field.
 
         This method checks the column mapping (for predictions or annotations) and
         returns the corresponding column name. If the field is not mapped, it returns
-        the field name directly.
+        the field name directly. The optional fields, Recording and Duration, have no
+        column when mapped to None.
 
         Args:
             field_name (str): The name of the field (e.g., "Class", "Start Time").
@@ -709,14 +876,16 @@ class DataProcessor:
                 (True) or annotations mapping (False).
 
         Returns:
-            str: The column name corresponding to the field.
+            Optional[str]: The column name corresponding to the field, None for an
+                optional field without a column.
         """
         mapping = self.columns_predictions if prediction else self.columns_annotations
+        column = mapping.get(field_name, field_name)
 
-        if field_name in mapping and mapping[field_name] is not None:
-            return mapping[field_name]
+        if column is None and field_name not in ("Recording", "Duration"):
+            return field_name
 
-        return field_name
+        return column
 
     def get_sample_data(self) -> pd.DataFrame:
         """
@@ -797,7 +966,11 @@ class DataProcessor:
         ):
             raise KeyError("Required confidence or annotation columns are missing.")
 
-        predictions = filtered_samples[confidence_columns].to_numpy(dtype=np.float32)
-        labels = filtered_samples[annotation_columns].to_numpy(dtype=np.int64)
+        predictions = np.ascontiguousarray(
+            filtered_samples[confidence_columns].to_numpy(dtype=np.float32)
+        )
+        labels = np.ascontiguousarray(
+            filtered_samples[annotation_columns].to_numpy(dtype=np.int64)
+        )
 
         return predictions, labels, classes

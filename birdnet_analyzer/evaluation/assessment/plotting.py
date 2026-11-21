@@ -60,6 +60,7 @@ def plot_overall_metrics(metrics_df: pd.DataFrame, colors: list[str]):
     plt.title("Overall Metric Scores", fontsize=16)
     plt.xlabel("Metrics", fontsize=12)
     plt.ylabel("Score", fontsize=12)
+    plt.ylim(0, 1)
     plt.xticks(rotation=45, ha="right", fontsize=10)
     plt.grid(axis="y", linestyle="--", alpha=0.7)
 

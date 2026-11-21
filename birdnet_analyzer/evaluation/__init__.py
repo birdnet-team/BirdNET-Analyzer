@@ -20,6 +20,11 @@ from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     PerformanceAssessor,
 )
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
+from birdnet_analyzer.evaluation.preprocessing.utils import (
+    detect_columns,
+    read_class_mapping,
+    table_columns,
+)
 from birdnet_analyzer.utils import runtime_error_handler
 
 if typing.TYPE_CHECKING:
@@ -38,8 +43,10 @@ class EvaluationResult(NamedTuple):
 
     Besides the metrics and the tensors the assessment ran on, it carries the context
     a caller needs to explain the numbers: which recordings had predictions but no
-    annotations, and which classes were empty (and therefore excluded from any
-    aggregate score). ``sample_data`` is the per-window matrix the metrics were derived
+    annotations (``unmatched_recordings``) or annotations but no predictions
+    (``annotation_only_recordings``), which classes were empty (and therefore excluded
+    from any aggregate score), and which files were skipped, as ``(side, path,
+    reason)``. ``sample_data`` is the per-window matrix the metrics were derived
     from -- the same table the GUI offers as the "data table" download.
     """
 
@@ -51,6 +58,8 @@ class EvaluationResult(NamedTuple):
     unmatched_recordings: tuple[str, ...]
     empty_classes: tuple[str, ...]
     sample_data: "pd.DataFrame"
+    annotation_only_recordings: tuple[str, ...] = ()
+    skipped_files: tuple[tuple[str, str, str], ...] = ()
 
 
 def build_assessor(
@@ -140,13 +149,14 @@ def process_data(
     Returns:
         EvaluationResult: The metrics DataFrame, the ``PerformanceAssessor``, the
             prediction and label tensors, and the context (classes, unmatched
-            recordings, empty classes).
+            recordings, empty classes, skipped files).
+
+    Raises:
+        EvaluationInputError: If an input cannot be evaluated; its ``code`` and
+            ``details`` say why.
+        ValueError: If a parameter is invalid.
     """
-    if mapping_path:
-        with open(mapping_path) as f:
-            class_mapping = json.load(f)
-    else:
-        class_mapping = None
+    class_mapping = read_class_mapping(mapping_path) if mapping_path else None
 
     annotation_dir, annotation_file = (
         (os.path.dirname(annotation_path), os.path.basename(annotation_path))
@@ -194,7 +204,25 @@ def process_data(
         unmatched_recordings=tuple(sorted(processor.unmatched_prediction_files)),
         empty_classes=pa.empty_classes(labels),
         sample_data=processor.get_sample_data(),
+        annotation_only_recordings=tuple(sorted(processor.unmatched_annotation_files)),
+        skipped_files=tuple(
+            (side, path, reason)
+            for side, tables in processor.tables.items()
+            for path, reason in tables.skipped
+        ),
     )
+
+
+def _detected_columns(kind: str, path: str) -> dict[str, str | None]:
+    """The columns detected in the tables at a path.
+
+    A required field without a column keeps its default name, so the error names
+    the columns that were found.
+    """
+    return {
+        field: column or (None if field in ("Recording", "Duration") else field)
+        for field, column in detect_columns(kind, table_columns(path)).items()
+    }
 
 
 def _threshold_arg(value: str) -> float:
@@ -216,33 +244,38 @@ def _threshold_arg(value: str) -> float:
     return number
 
 
-@runtime_error_handler
-def main():
-    """
-    Entry point for the script. Parses command-line arguments and orchestrates the
-    performance assessment pipeline.
-    """
-    import matplotlib.pyplot as plt
-
+def evaluation_parser():
+    """Build the argument parser for the evaluation CLI."""
     from birdnet_analyzer.cli import verbosity_args
 
     parser = argparse.ArgumentParser(
-        description="Performance Assessor Core Script", parents=[verbosity_args()]
+        description="Evaluate BirdNET predictions against annotations",
+        parents=[verbosity_args()],
     )
     parser.add_argument(
-        "--annotation_path", required=True, help="Path to annotation file or folder"
+        "--annotation_path",
+        required=True,
+        help="Path to an annotation table, or a folder searched for them (.txt, .csv)",
     )
     parser.add_argument(
-        "--prediction_path", required=True, help="Path to prediction file or folder"
+        "--prediction_path",
+        required=True,
+        help="Path to a prediction table, or a folder searched for them (.txt, .csv)",
     )
     parser.add_argument(
-        "--mapping_path", help="Path to class mapping JSON file (optional)"
+        "--mapping_path",
+        help="Path to a JSON file mapping predicted class names to annotated ones "
+        "(optional)",
     )
     parser.add_argument(
         "--sample_duration", type=float, default=3.0, help="Sample duration in seconds"
     )
     parser.add_argument(
-        "--min_overlap", type=float, default=0.5, help="Minimum overlap in seconds"
+        "--min_overlap",
+        type=float,
+        default=0.5,
+        help="Seconds an annotation or prediction must overlap a window to count "
+        "for it",
     )
     parser.add_argument(
         "--recording_duration", type=float, help="Recording duration in seconds"
@@ -250,18 +283,25 @@ def main():
     parser.add_argument(
         "--columns_annotations",
         type=json.loads,
-        help="JSON string for columns_annotations",
+        help='JSON object naming the annotation tables\' column for "Start Time", '
+        '"End Time", "Class", "Recording" and "Duration"; detected from the tables\' '
+        "headers when not given",
     )
     parser.add_argument(
         "--columns_predictions",
         type=json.loads,
-        help="JSON string for columns_predictions",
+        help='JSON object naming the prediction tables\' column for "Start Time", '
+        '"End Time", "Class", "Confidence", "Recording" and "Duration"; detected from '
+        "the tables' headers when not given",
     )
     parser.add_argument(
         "--selected_classes", nargs="+", help="List of selected classes"
     )
     parser.add_argument(
-        "--selected_recordings", nargs="+", help="List of selected recordings"
+        "--selected_recordings",
+        nargs="+",
+        help="Recordings to score, named as their files are without the extension and "
+        "the BirdNET or Raven suffix (rec for rec.BirdNET.selection.table.txt)",
     )
     parser.add_argument(
         "--metrics",
@@ -289,10 +329,8 @@ def main():
     parser.add_argument(
         "--score_unannotated_as_empty",
         action="store_true",
-        help=(
-            "Keep recordings that have predictions but no annotation file and score "
-            "them as all-negative, instead of dropping them (default)"
-        ),
+        help="Score recordings that have predictions but no annotation table as "
+        "all-negative; without this option they are dropped",
     )
     parser.add_argument("--plot_metrics", action="store_true", help="Plot metrics")
     parser.add_argument(
@@ -303,9 +341,24 @@ def main():
         action="store_true",
         help="Plot metrics for all thresholds",
     )
-    parser.add_argument("--output_dir", help="Directory to save plots")
+    parser.add_argument(
+        "--output_dir",
+        help="Folder to write results_table.csv, data_table.csv and the requested "
+        "plots to; without it the plots are shown",
+    )
 
-    args = parser.parse_args()
+    return parser
+
+
+@runtime_error_handler
+def main():
+    """
+    Entry point for the script. Parses command-line arguments and orchestrates the
+    performance assessment pipeline.
+    """
+    import matplotlib.pyplot as plt
+
+    args = evaluation_parser().parse_args()
 
     result = process_data(
         annotation_path=args.annotation_path,
@@ -314,8 +367,12 @@ def main():
         sample_duration=args.sample_duration,
         min_overlap=args.min_overlap,
         recording_duration=args.recording_duration,
-        columns_annotations=args.columns_annotations,
-        columns_predictions=args.columns_predictions,
+        columns_annotations=args.columns_annotations
+        if args.columns_annotations is not None
+        else _detected_columns("annotation", args.annotation_path),
+        columns_predictions=args.columns_predictions
+        if args.columns_predictions is not None
+        else _detected_columns("prediction", args.prediction_path),
         selected_classes=args.selected_classes,
         selected_recordings=args.selected_recordings,
         metrics_list=args.metrics,
@@ -350,7 +407,12 @@ def main():
         logger.info("Saved data table to %s", data_table_path)
 
     if args.plot_metrics:
-        pa.plot_metrics(predictions, labels, per_class_metrics=args.class_wise)
+        pa.plot_metrics(
+            predictions,
+            labels,
+            per_class_metrics=args.class_wise,
+            averaging=args.averaging,
+        )
         if args.output_dir:
             plt.savefig(os.path.join(args.output_dir, "metrics_plot.png"))
         else:
@@ -365,7 +427,10 @@ def main():
 
     if args.plot_metrics_all_thresholds:
         pa.plot_metrics_all_thresholds(
-            predictions, labels, per_class_metrics=args.class_wise
+            predictions,
+            labels,
+            per_class_metrics=args.class_wise,
+            averaging=args.averaging,
         )
         if args.output_dir:
             plt.savefig(os.path.join(args.output_dir, "metrics_all_thresholds.png"))

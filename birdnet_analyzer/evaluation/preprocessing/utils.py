@@ -1,22 +1,113 @@
-"""Helpers for extracting recording keys and reading result tables into DataFrames."""
+"""Find the result tables of a folder, read them, and derive recording keys."""
 
+import codecs
+import contextlib
+import io
+import json
 import ntpath
 import os
+import re
+from collections.abc import Iterable, Mapping
+from typing import NamedTuple
 
+import numpy as np
 import pandas as pd
 
-# Suffixes BirdNET appends to a recording name when it writes a selection/result table,
-# e.g. ``soundscape.BirdNET.selection.table.txt``. Stripped so the table matches the
-# annotation file (and audio file) it belongs to.
-_TABLE_SUFFIXES = (
-    ".BirdNET.selection.table",
-    ".BirdNET.results",
-    ".BirdNET",
+from birdnet_analyzer import config
+from birdnet_analyzer.evaluation.errors import EvaluationInputError
+
+# A match starts as far left as possible, so it is the longest suffix that fits.
+_TABLE_SUFFIX = re.compile(
+    r"\.(birdnet\.results\.kaleidoscope|birdnet\.selection\.table|birdnet\.results"
+    r"|birdnet|table\.\d+\.selections|selections)$",
+    re.IGNORECASE,
+)
+_AUDIO_EXTENSIONS = frozenset(
+    f".{extension}".casefold()
+    for extension in (*config.ALLOWED_FILETYPES, "wave", "m4a", "aac")
 )
 
-# Audio extensions that may still cling to a name after the table suffix is removed,
-# e.g. ``soundscape.wav.BirdNET.selection.table.txt`` -> ``soundscape.wav`` -> key.
-_AUDIO_EXTENSIONS = (".wav", ".flac", ".mp3", ".ogg", ".m4a", ".aac", ".wave")
+_REQUIRED_FIELDS = {
+    "annotation": ("Start Time", "End Time", "Class"),
+    "prediction": ("Start Time", "End Time", "Class", "Confidence"),
+}
+_NUMERIC_FIELDS = ("Start Time", "End Time", "Confidence", "Duration")
+
+_START = ("Begin Time (s)", "Start (s)", "Start Time", "Begin Time", "Start")
+_END = ("End Time (s)", "End (s)", "End Time", "End")
+_DURATION = ("File Duration (s)",)
+_COLUMN_CANDIDATES = {
+    "annotation": {
+        "Start Time": _START,
+        "End Time": _END,
+        "Class": (
+            "Class",
+            "Species",
+            "Label",
+            "Annotation",
+            "Common Name",
+            "Common name",
+            "Scientific Name",
+            "Scientific name",
+            "Species Code",
+            "Sound Type",
+            "Call type",
+        ),
+        "Recording": (
+            "Begin File",
+            "Begin Path",
+            "File",
+            "Filename",
+            "File Name",
+            "Recording",
+        ),
+        "Duration": _DURATION,
+    },
+    "prediction": {
+        "Start Time": _START,
+        "End Time": _END,
+        "Class": (
+            "Common Name",
+            "Common name",
+            "Class",
+            "Scientific Name",
+            "Scientific name",
+            "Species Code",
+            "Label",
+            "Species",
+        ),
+        "Confidence": ("Confidence", "confidence", "Score"),
+        "Recording": (
+            "Begin Path",
+            "Begin File",
+            "File",
+            "Filename",
+            "File Name",
+            "Recording",
+        ),
+        "Duration": _DURATION,
+    },
+}
+
+
+class Tables(NamedTuple):
+    """The tables read for one side of an evaluation.
+
+    ``table`` holds the rows of the used files, with a ``source_file`` column naming
+    the file relative to the folder (POSIX separators). ``files`` are all used files
+    and ``empty_files`` the used ones without rows, both sorted. ``skipped`` pairs
+    each file left out with its reason: ``"missing-columns"``, ``"superseded"`` or
+    ``"unreadable"``.
+    """
+
+    table: pd.DataFrame
+    files: tuple[str, ...]
+    empty_files: tuple[str, ...]
+    skipped: tuple[tuple[str, str], ...]
+
+
+class _UnreadableError(Exception):
+    pass
 
 
 def recording_key(name):
@@ -24,9 +115,9 @@ def recording_key(name):
 
     This is the single source of truth for matching prediction files to annotation
     files. It takes the base name (dropping any directory and the final extension),
-    then removes a BirdNET table suffix and a residual audio extension, so that a
-    Raven selection table, a plain annotation file, and the ``Begin File`` column of
-    the same recording all collapse to the same key.
+    then removes one BirdNET or Raven table suffix and one audio extension, ignoring
+    case, so that a Raven selection table, a plain annotation file, and the
+    ``Begin File`` column of the same recording all collapse to the same key.
 
     A dot inside the recording name (dates such as ``2023.05.01_dawn``) is preserved,
     so distinct recordings never collide.
@@ -43,87 +134,343 @@ def recording_key(name):
 
     # ntpath splits on both separators: a table written on Windows is read anywhere.
     key = os.path.splitext(ntpath.basename(name))[0]
-
-    for suffix in _TABLE_SUFFIXES:
-        if key.endswith(suffix):
-            key = key[: -len(suffix)]
-            break
+    key = _TABLE_SUFFIX.sub("", key, count=1)
 
     root, ext = os.path.splitext(key)
-    if ext.lower() in _AUDIO_EXTENSIONS:
+    if ext.casefold() in _AUDIO_EXTENSIONS:
         key = root
 
     return key
 
 
-def extract_recording_filename(path_column: pd.Series) -> pd.Series:
-    """Extract the recording key from a column of file paths (e.g. ``Begin File``).
+def _is_candidate(name: str) -> bool:
+    folded = name.casefold()
 
-    Args:
-        path_column (pd.Series): A pandas Series containing file paths.
-
-    Returns:
-        pd.Series: The recording key for each entry.
-    """
-    return path_column.apply(recording_key)
+    return (
+        not name.startswith(".")
+        and folded.endswith((".txt", ".csv"))
+        and not folded.endswith("params.csv")
+    )
 
 
-def extract_recording_filename_from_filename(filename_series: pd.Series) -> pd.Series:
-    """Extract the recording key from a column of selection-table file names.
+def _superseded(names: Iterable[str]) -> set[str]:
+    """The files of a folder that its per-recording BirdNET tables make redundant."""
+    folded = {name: name.casefold() for name in names}
+    stale = set()
 
-    Args:
-        filename_series (pd.Series): A pandas Series containing file names.
+    if any(name.endswith(".birdnet.selection.table.txt") for name in folded.values()):
+        stale |= {
+            config.OUTPUT_RAVEN_FILENAME.casefold(),
+            config.OUTPUT_AUDACITY_FILENAME.casefold(),
+        }
+        stale |= {
+            name for name in folded.values() if name.endswith(".birdnet.results.txt")
+        }
 
-    Returns:
-        pd.Series: The recording key for each entry.
-    """
-    return filename_series.apply(recording_key)
+    if any(name.endswith(".birdnet.results.csv") for name in folded.values()):
+        stale.add(config.OUTPUT_CSV_FILENAME.casefold())
+
+    return {name for name, folded_name in folded.items() if folded_name in stale}
 
 
-def read_and_concatenate_files_in_directory(directory_path: str) -> pd.DataFrame:
-    """
-    Read and concatenate all .txt files in a directory into a single DataFrame.
+def _discover(directory: str) -> tuple[list[str], list[tuple[str, str]]]:
+    """The candidate tables below a folder and the superseded ones, by relative path."""
+    candidates, superseded = [], []
 
-    This function scans the specified directory for all .txt files, reads each file into
-    a DataFrame, appends a 'source_file' column containing the filename, and
-    concatenates all DataFrames into one.
-    If the files have inconsistent columns, a ValueError is raised.
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = sorted(name for name in dirs if not name.startswith("."))
+        names = sorted(filter(_is_candidate, files))
+        stale = _superseded(names)
+        folder = os.path.relpath(root, directory)
+        prefix = "" if folder == os.curdir else folder.replace(os.sep, "/") + "/"
 
-    Args:
-        directory_path (str): Path to the directory containing the .txt files.
+        for name in names:
+            if name in stale:
+                superseded.append((prefix + name, "superseded"))
+            else:
+                candidates.append(prefix + name)
 
-    Returns:
-        pd.DataFrame: A concatenated DataFrame containing the data from all .txt files,
-        or an empty DataFrame if no files are found.
+    return candidates, superseded
 
-    Raises:
-        ValueError: If the columns in the files are inconsistent.
-    """
-    df_list: list[pd.DataFrame] = []
-    columns_set = None
 
-    for filename in sorted(os.listdir(directory_path)):
-        if filename.endswith(".txt"):
-            filepath = os.path.join(directory_path, filename)
+def _decoded(raw: bytes) -> str:
+    encodings = ["utf-8-sig", "cp1252"]
+    if raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        encodings.insert(0, "utf-16")
 
-            try:
-                df = pd.read_csv(filepath, sep="\t", encoding="utf-8")
-            except UnicodeDecodeError:
-                df = pd.read_csv(filepath, sep="\t", encoding="latin-1")
+    for encoding in encodings:
+        with contextlib.suppress(UnicodeDecodeError):
+            return raw.decode(encoding)
 
-            if columns_set is None:
-                columns_set = set(df.columns)
-            elif set(df.columns) != columns_set:
-                raise ValueError(
-                    f"File {filename} has different columns than the previous files."
-                )
+    return raw.decode("latin-1")
 
-            df["source_file"] = filename
 
-            df_list.append(df)
+def _text(path: str) -> str:
+    try:
+        with open(path, "rb") as f:
+            text = _decoded(f.read())
+    except OSError as e:
+        raise _UnreadableError from e
 
-    if not df_list:
+    if "\x00" in text:
+        raise _UnreadableError
+
+    return text
+
+
+def _frame(text: str, nrows: int | None = None) -> pd.DataFrame:
+    """The table in a file's text; one without columns if the text has no header."""
+    header = next((line for line in io.StringIO(text) if line.strip()), None)
+
+    if header is None:
         return pd.DataFrame()
 
-    non_empty = [df for df in df_list if not df.empty]
-    return pd.concat(non_empty or df_list[:1], ignore_index=True)
+    separator = next((sep for sep in ("\t", ";", ",") if sep in header), "\t")
+
+    try:
+        frame = pd.read_csv(
+            io.StringIO(text),
+            sep=separator,
+            index_col=False,
+            nrows=nrows,
+            low_memory=False,
+        )
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
+    except pd.errors.ParserError as e:
+        raise _UnreadableError from e
+
+    names = [
+        str(column).replace("\N{BYTE ORDER MARK}", "").strip()
+        for column in frame.columns
+    ]
+    if len(set(names)) == len(names):
+        frame.columns = pd.Index(names)
+
+    return frame
+
+
+def _numbers(values: pd.Series, side: str, file: str, column: str) -> pd.Series:
+    if pd.api.types.is_numeric_dtype(values):
+        return values
+
+    blank = values.isna() | values.astype(str).str.strip().eq("")
+    numbers = pd.to_numeric(values.where(~blank), errors="coerce")
+    wrong = (numbers.isna() & ~blank).to_numpy()
+
+    if wrong.any():
+        row = int(np.argmax(wrong))
+        value = str(values.iloc[row])
+        raise EvaluationInputError(
+            "not-a-number",
+            f"Row {row + 1} of the {side} table {file} has {value!r} in column "
+            f"{column!r}, which is not a number.",
+            side=side,
+            file=file,
+            column=column,
+            row=row + 1,
+            value=value,
+        )
+
+    return numbers
+
+
+def _missing_column(
+    side: str,
+    required: Mapping[str, str],
+    headers: list[pd.Index],
+    incomplete: pd.Index,
+) -> EvaluationInputError:
+    available = sorted(set().union(*headers))
+    field = next(
+        (field for field, column in required.items() if column not in available),
+        None,
+    ) or next(field for field, column in required.items() if column not in incomplete)
+    column = required[field]
+
+    return EvaluationInputError(
+        "missing-column",
+        f"No {side} table has all the mapped columns: {column!r} ({field}) is "
+        f"missing. The columns found are: {', '.join(available)}.",
+        side=side,
+        field=field,
+        column=column,
+        available=available,
+    )
+
+
+def read_tables(
+    directory: str,
+    side: str,
+    columns: Mapping[str, str | None],
+    file_name: str | None = None,
+) -> Tables:
+    """Reads the tables of one side of an evaluation.
+
+    The folder is searched recursively for ``.txt`` and ``.csv`` files. Hidden ones,
+    parameter files and BirdNET tables made redundant by the per-recording tables
+    next to them are left out, and so is every file that lacks a required column.
+
+    Args:
+        directory: The folder of the tables.
+        side: ``"annotation"`` or ``"prediction"``.
+        columns: The column of each field, ``None`` for a field without one.
+        file_name: Read only this file of the folder.
+
+    Returns:
+        The rows and the files used and skipped.
+
+    Raises:
+        EvaluationInputError: ``"no-tables"`` if there is no table to read,
+            ``"missing-column"`` if no table has the required columns, and
+            ``"not-a-number"`` for a time or score that is not a number.
+    """
+    if file_name is None:
+        names, skipped = _discover(directory)
+    else:
+        names, skipped = [file_name], []
+
+    required = {field: columns[field] for field in _REQUIRED_FIELDS[side]}
+    numeric = [columns[field] for field in _NUMERIC_FIELDS if columns.get(field)]
+    headers: list[pd.Index] = []
+    incomplete: list[pd.Index] = []
+    frames: dict[str, pd.DataFrame] = {}
+    has_header = False
+
+    for name in names:
+        try:
+            text = _text(os.path.join(directory, name))
+            frame = _frame(text, nrows=0)
+
+            if not frame.columns.empty:
+                headers.append(frame.columns)
+
+                if not all(column in frame.columns for column in required.values()):
+                    incomplete.append(frame.columns)
+                    skipped.append((name, "missing-columns"))
+                    continue
+
+                frame = _frame(text)
+                has_header = True
+        except _UnreadableError:
+            skipped.append((name, "unreadable"))
+            continue
+
+        for column in numeric:
+            if column in frame.columns:
+                frame[column] = _numbers(frame[column], side, name, column)
+
+        frames[name] = frame.assign(source_file=name)
+
+    # 0-byte files alone are no evaluation when the other tables lack the columns.
+    if not has_header and incomplete:
+        raise _missing_column(side, required, headers, incomplete[0])
+
+    if not frames:
+        raise EvaluationInputError(
+            "no-tables",
+            f"No {side} tables (.txt or .csv files) were found in {directory}.",
+            side=side,
+            folder=directory,
+        )
+
+    with_rows = [frame for frame in frames.values() if not frame.empty]
+    if with_rows:
+        table = pd.concat(with_rows, ignore_index=True)
+    else:
+        seen = [column for frame in frames.values() for column in frame.columns]
+        table = pd.DataFrame(columns=list(dict.fromkeys([*seen, *required.values()])))
+
+    return Tables(
+        table=table,
+        files=tuple(sorted(frames)),
+        empty_files=tuple(sorted(name for name, f in frames.items() if f.empty)),
+        skipped=tuple(sorted(skipped)),
+    )
+
+
+def table_columns(path: str) -> list[str]:
+    """The column names of the tables at a path, in the order they are first seen.
+
+    A folder contributes every table :func:`read_tables` would consider before it
+    checks the columns, a file only itself. Files that cannot be read contribute
+    nothing.
+    """
+    if os.path.isfile(path):
+        directory, names = os.path.dirname(path), [os.path.basename(path)]
+    else:
+        directory, names = path, _discover(path)[0]
+
+    columns: dict[str, None] = {}
+
+    for name in names:
+        with contextlib.suppress(_UnreadableError):
+            frame = _frame(_text(os.path.join(directory, name)), nrows=0)
+            columns.update(dict.fromkeys(frame.columns))
+
+    return list(columns)
+
+
+def detect_columns(kind: str, available: Iterable[str]) -> dict[str, str | None]:
+    """The column of each field among the available ones, ``None`` if none fits.
+
+    Each field takes its first candidate that is available, an exact match before a
+    case-insensitive one. The fields are ordered as the GUI shows them: annotations
+    Start Time, End Time, Class, Recording, Duration; predictions Start Time,
+    End Time, Class, Confidence, Recording, Duration.
+
+    Args:
+        kind: ``"annotation"`` or ``"prediction"``.
+        available: The column names to choose from.
+    """
+    available = list(available)
+    exact = set(available)
+    folded: dict[str, str] = {}
+    for column in available:
+        folded.setdefault(column.casefold(), column)
+
+    return {
+        field: next((column for column in candidates if column in exact), None)
+        or next(
+            (
+                folded[column.casefold()]
+                for column in candidates
+                if column.casefold() in folded
+            ),
+            None,
+        )
+        for field, candidates in _COLUMN_CANDIDATES[kind].items()
+    }
+
+
+def read_class_mapping(path: str) -> dict[str, str]:
+    """The class mapping in a JSON file: predicted class name to annotated one.
+
+    Raises:
+        EvaluationInputError: ``"bad-mapping"`` with the ``reason`` ``"not-json"``
+            (the parser's ``message`` included) or ``"not-an-object"``.
+    """
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            mapping = json.load(f)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise EvaluationInputError(
+            "bad-mapping",
+            f"The class mapping {path} is not valid JSON: {e}",
+            file=path,
+            reason="not-json",
+            message=str(e),
+        ) from e
+
+    if not isinstance(mapping, dict) or not all(
+        isinstance(value, str) for value in mapping.values()
+    ):
+        raise EvaluationInputError(
+            "bad-mapping",
+            f"The class mapping {path} is not a JSON object of class names, such as "
+            '{"predicted name": "annotated name"}.',
+            file=path,
+            reason="not-an-object",
+        )
+
+    return mapping

@@ -47,6 +47,31 @@ birdnet_analyzer.embeddings
 
       python -m birdnet_analyzer.embeddings -i example/ -db example_db/ --batch_size 16
 
+.. _cli-evaluation:
+
+birdnet_analyzer.evaluation
+---------------------------
+
+.. argparse::
+   :ref: birdnet_analyzer.evaluation.evaluation_parser
+   :prog: birdnet_analyzer.evaluation
+
+   Run ``birdnet_analyzer.evaluation``, installed as the ``birdnet-evaluate`` command, to compare the result tables of an analysis with your annotations of the same recordings, as the Evaluation tab of the GUI does.
+   :doc:`../best-practices/evaluation-tool` explains how the recordings are cut into windows (``--sample_duration``), how tables and classes are paired and what the metrics mean.
+
+   The columns are detected from the tables' headers, so BirdNET's result tables, and Raven selection tables with a class column such as ``Class`` or ``Species``, need no column options. Here is an example:
+
+   .. code:: bash
+
+      python -m birdnet_analyzer.evaluation --annotation_path annotations/ --prediction_path results/ --class_wise --output_dir evaluation/ --plot_metrics_all_thresholds
+
+   For tables with other column names, name the columns in a JSON object, for example ``--columns_annotations '{"Start Time": "onset", "End Time": "offset", "Class": "species"}'``, and likewise with ``--columns_predictions``, which also takes a ``"Confidence"`` column.
+   Such an object replaces the detection for its side: for BirdNET's combined result table, it also needs ``"Recording": "Begin Path"`` (``"File"`` in CSV files).
+   The prediction class column detected is the common name; if your annotations use scientific names, name ``"Scientific Name"`` (``"Scientific name"`` in CSV files) as ``"Class"``.
+
+   Unlike the GUI, the command does not read the analysis' parameters file: pass ``--sample_duration 5`` for Perch results.
+   Without ``--selected_classes``, every class of both sides is scored, and the classes without annotations are left out of the overall score.
+
 .. _cli-segments:
 
 birdnet_analyzer.segments

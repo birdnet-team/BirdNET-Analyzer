@@ -1,14 +1,12 @@
 import ntpath
-import warnings
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from birdnet_analyzer.evaluation.preprocessing.utils import (
-    extract_recording_filename,
-    read_and_concatenate_files_in_directory,
+    detect_columns,
     recording_key,
+    table_columns,
 )
 
 
@@ -19,10 +17,18 @@ from birdnet_analyzer.evaluation.preprocessing.utils import (
         ("rec.txt", "rec"),
         ("rec.BirdNET.selection.table.txt", "rec"),
         ("rec.BirdNET.results.csv", "rec"),
+        ("rec.BirdNET.results.kaleidoscope.csv", "rec"),
         ("rec.BirdNET.txt", "rec"),
+        ("rec.birdnet.selection.table.txt", "rec"),
         ("rec.wav.BirdNET.selection.table.txt", "rec"),
         ("2023.05.01_dawn.txt", "2023.05.01_dawn"),
-        ("S19_20180214.Table.1.selections.txt", "S19_20180214.Table.1.selections"),
+        ("S19_20180214.Table.1.selections.txt", "S19_20180214"),
+        ("rec.Table.12.selections.txt", "rec"),
+        ("rec.wav.Table.1.selections.txt", "rec"),
+        ("rec.WAV.Table.1.selections.txt", "rec"),
+        ("rec.selections.txt", "rec"),
+        ("rec.aiff.txt", "rec"),
+        ("REC.Wav", "REC"),
         ("rec", "rec"),
         (".hidden", ".hidden"),
     ],
@@ -36,71 +42,119 @@ def test_a_recording_path_written_on_windows_gives_the_same_key_everywhere():
 
 
 def test_missing_names_pass_through_the_key_extraction():
-    pd.testing.assert_series_equal(
-        extract_recording_filename(pd.Series([None, np.nan, "/data/rec.wav"])),
-        pd.Series([None, np.nan, "rec"]),
-    )
+    assert recording_key(None) is None
+    assert np.isnan(recording_key(np.nan))
 
 
-def test_the_tables_of_a_folder_are_stacked_with_their_file_names(tmp_path):
-    pd.DataFrame({"A": [1, 2], "B": [3, 4]}).to_csv(
-        tmp_path / "file1.txt", sep="\t", index=False
-    )
-    pd.DataFrame({"A": [5], "B": [6]}).to_csv(
-        tmp_path / "file2.txt", sep="\t", index=False
-    )
-    (tmp_path / "notes.csv").write_text("A,B\n9,9\n", encoding="utf-8")
-    (tmp_path / "empty").mkdir()
+def test_the_column_choices_are_the_columns_of_every_table_in_first_seen_order(
+    tmp_path,
+):
+    (tmp_path / "site").mkdir()
+    (tmp_path / ".cache").mkdir()
+    (tmp_path / "a.txt").write_text("Class\tBegin Time (s)\nX\t0\n", encoding="utf-8")
+    (tmp_path / "site" / "b.csv").write_text("Begin Time (s),Notes\n", encoding="utf-8")
+    (tmp_path / "README.txt").write_text("Annotated by J. Doe\n", encoding="utf-8")
+    (tmp_path / "empty.txt").write_bytes(b"")
+    (tmp_path / "binary.txt").write_bytes(b"PK\x03\x04\x00\x00junk")
+    (tmp_path / "birdnet.analyze-params.csv").write_text("Param,Value\n")
+    (tmp_path / ".cache" / "c.txt").write_text("Hidden\n", encoding="utf-8")
 
-    table = read_and_concatenate_files_in_directory(str(tmp_path))
+    assert table_columns(str(tmp_path)) == [
+        "Annotated by J. Doe",
+        "Class",
+        "Begin Time (s)",
+        "Notes",
+    ]
+    assert table_columns(str(tmp_path / "a.txt")) == ["Class", "Begin Time (s)"]
 
-    pd.testing.assert_frame_equal(
-        table,
-        pd.DataFrame(
+
+@pytest.mark.parametrize(
+    ("kind", "available", "detected"),
+    [
+        pytest.param(
+            "prediction",
+            [
+                "Selection",
+                "Begin Time (s)",
+                "End Time (s)",
+                "Common Name",
+                "Scientific Name",
+                "Species Code",
+                "Confidence",
+                "File Offset (s)",
+                "Begin Path",
+            ],
             {
-                "A": [1, 2, 5],
-                "B": [3, 4, 6],
-                "source_file": ["file1.txt", "file1.txt", "file2.txt"],
-            }
+                "Start Time": "Begin Time (s)",
+                "End Time": "End Time (s)",
+                "Class": "Common Name",
+                "Confidence": "Confidence",
+                "Recording": "Begin Path",
+                "Duration": None,
+            },
+            id="birdnet selection table",
         ),
-    )
-    assert read_and_concatenate_files_in_directory(str(tmp_path / "empty")).empty
-
-
-def test_header_only_tables_are_skipped_but_their_columns_are_kept(tmp_path):
-    full = pd.DataFrame({"A": [1, 2], "B": [3.5, 4.5]})
-    full.to_csv(tmp_path / "file1.txt", sep="\t", index=False)
-    full.iloc[:0].to_csv(tmp_path / "file2.txt", sep="\t", index=False)
-    only_headers = tmp_path / "headers"
-    only_headers.mkdir()
-    full.iloc[:0].to_csv(only_headers / "file1.txt", sep="\t", index=False)
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        table = read_and_concatenate_files_in_directory(str(tmp_path))
-        empty = read_and_concatenate_files_in_directory(str(only_headers))
-
-    pd.testing.assert_frame_equal(table, full.assign(source_file="file1.txt"))
-    assert empty.columns.tolist() == ["A", "B", "source_file"]
-    assert empty.empty
-
-
-def test_a_table_with_other_columns_is_rejected_by_name(tmp_path):
-    pd.DataFrame({"A": [1]}).to_csv(tmp_path / "file1.txt", sep="\t", index=False)
-    pd.DataFrame({"C": [1]}).to_csv(tmp_path / "file2.txt", sep="\t", index=False)
-
-    with pytest.raises(ValueError, match=r"file2\.txt has different columns"):
-        read_and_concatenate_files_in_directory(str(tmp_path))
-
-
-def test_a_latin_1_table_is_read_next_to_utf_8_ones(tmp_path):
-    pd.DataFrame({"A": ["Mönchsgrasmücke"]}).to_csv(
-        tmp_path / "latin1.txt", sep="\t", index=False, encoding="latin-1"
-    )
-    pd.DataFrame({"A": ["Grünfink"]}).to_csv(
-        tmp_path / "utf8.txt", sep="\t", index=False, encoding="utf-8"
-    )
-
-    table = read_and_concatenate_files_in_directory(str(tmp_path))
-
-    assert table["A"].tolist() == ["Mönchsgrasmücke", "Grünfink"]
+        pytest.param(
+            "prediction",
+            [
+                "Start (s)",
+                "End (s)",
+                "Scientific name",
+                "Common name",
+                "Confidence",
+                "File",
+            ],
+            {
+                "Start Time": "Start (s)",
+                "End Time": "End (s)",
+                "Class": "Common name",
+                "Confidence": "Confidence",
+                "Recording": "File",
+                "Duration": None,
+            },
+            id="birdnet csv",
+        ),
+        pytest.param(
+            "annotation",
+            [
+                "Selection",
+                "Begin Time (s)",
+                "End Time (s)",
+                "Species",
+                "Begin File",
+                "Begin Path",
+                "File Duration (s)",
+            ],
+            {
+                "Start Time": "Begin Time (s)",
+                "End Time": "End Time (s)",
+                "Class": "Species",
+                "Recording": "Begin File",
+                "Duration": "File Duration (s)",
+            },
+            id="raven",
+        ),
+        pytest.param(
+            "annotation",
+            ["begin time (s)", "END TIME (S)", "class", "Species"],
+            {
+                "Start Time": "begin time (s)",
+                "End Time": "END TIME (S)",
+                "Class": "Species",
+                "Recording": None,
+                "Duration": None,
+            },
+            id="exact matches before case-insensitive ones",
+        ),
+        pytest.param(
+            "annotation",
+            ["INDIR", "FOLDER", "IN FILE", "DURATION", "OFFSET", "MANUAL ID"],
+            dict.fromkeys(["Start Time", "End Time", "Class", "Recording", "Duration"]),
+            id="kaleidoscope",
+        ),
+    ],
+)
+def test_columns_are_detected_from_the_headers_of_common_tables(
+    kind, available, detected
+):
+    assert list(detect_columns(kind, available).items()) == list(detected.items())
