@@ -7,7 +7,7 @@ import json
 import ntpath
 import os
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from typing import NamedTuple
 
 import numpy as np
@@ -193,6 +193,25 @@ def _discover(directory: str) -> tuple[list[str], list[tuple[str, str]]]:
     return candidates, superseded
 
 
+def tables_state(directory: str) -> tuple[tuple[str, int, int], ...]:
+    """Each table file below a folder with its size and modification time.
+
+    A table changed, added or removed since gives another state.
+    """
+    candidates, superseded = _discover(directory)
+    state = []
+
+    for name in (*candidates, *(name for name, _ in superseded)):
+        try:
+            stat = os.stat(os.path.join(directory, name))
+        except OSError:
+            state.append((name, -1, -1))
+        else:
+            state.append((name, stat.st_size, stat.st_mtime_ns))
+
+    return tuple(sorted(state))
+
+
 def _decoded(raw: bytes) -> str:
     encodings = ["utf-8-sig", "cp1252"]
     if raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
@@ -218,8 +237,18 @@ def _text(path: str) -> str:
     return text
 
 
-def _frame(text: str, nrows: int | None = None) -> pd.DataFrame:
-    """The table in a file's text; one without columns if the text has no header."""
+def _column_name(column) -> str:
+    return str(column).replace("\N{BYTE ORDER MARK}", "").strip()
+
+
+def _frame(
+    text: str, nrows: int | None = None, text_columns: Collection[str] = ()
+) -> pd.DataFrame:
+    """The table in a file's text; one without columns if the text has no header.
+
+    The values of ``text_columns`` stay as written: class ``1`` is not a number, and
+    recording ``01`` not ``1``.
+    """
     header = next((line for line in io.StringIO(text) if line.strip()), None)
 
     if header is None:
@@ -227,23 +256,32 @@ def _frame(text: str, nrows: int | None = None) -> pd.DataFrame:
 
     separator = next((sep for sep in ("\t", ";", ",") if sep in header), "\t")
 
-    try:
-        frame = pd.read_csv(
+    def read(**options):
+        return pd.read_csv(
             io.StringIO(text),
             sep=separator,
             index_col=False,
-            nrows=nrows,
             low_memory=False,
+            **options,
         )
+
+    try:
+        dtype = None
+
+        if text_columns:
+            dtype = {
+                column: str
+                for column in read(nrows=0).columns
+                if _column_name(column) in text_columns
+            }
+
+        frame = read(nrows=nrows, dtype=dtype)
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
     except pd.errors.ParserError as e:
         raise _UnreadableError from e
 
-    names = [
-        str(column).replace("\N{BYTE ORDER MARK}", "").strip()
-        for column in frame.columns
-    ]
+    names = [_column_name(column) for column in frame.columns]
     if len(set(names)) == len(names):
         frame.columns = pd.Index(names)
 
@@ -332,6 +370,9 @@ def read_tables(
 
     required = {field: columns[field] for field in _REQUIRED_FIELDS[side]}
     numeric = [columns[field] for field in _NUMERIC_FIELDS if columns.get(field)]
+    names_columns = {
+        column for field in ("Class", "Recording") if (column := columns.get(field))
+    }
     headers: list[pd.Index] = []
     incomplete: list[pd.Index] = []
     frames: dict[str, pd.DataFrame] = {}
@@ -350,7 +391,7 @@ def read_tables(
                     skipped.append((name, "missing-columns"))
                     continue
 
-                frame = _frame(text)
+                frame = _frame(text, text_columns=names_columns)
                 has_header = True
         except _UnreadableError:
             skipped.append((name, "unreadable"))
@@ -446,14 +487,17 @@ def detect_columns(kind: str, available: Iterable[str]) -> dict[str, str | None]
 def read_class_mapping(path: str) -> dict[str, str]:
     """The class mapping in a JSON file: predicted class name to annotated one.
 
+    The file is decoded like the tables, so one saved in the Windows ANSI code page
+    reads as it did with that locale.
+
     Raises:
         EvaluationInputError: ``"bad-mapping"`` with the ``reason`` ``"not-json"``
             (the parser's ``message`` included) or ``"not-an-object"``.
     """
     try:
-        with open(path, encoding="utf-8-sig") as f:
-            mapping = json.load(f)
-    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        with open(path, "rb") as f:
+            mapping = json.loads(_decoded(f.read()))
+    except json.JSONDecodeError as e:
         raise EvaluationInputError(
             "bad-mapping",
             f"The class mapping {path} is not valid JSON: {e}",

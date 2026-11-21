@@ -335,14 +335,13 @@ def test_annotation_only_recording_is_kept_without_recording_duration(tmp_path, 
     _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
     _write_table(ann / "rec2.txt", ANN_HEADER, [[3, 6, "X"]])
 
-    processor = DataProcessor(
-        prediction_directory_path=str(pred), annotation_directory_path=str(ann)
-    )
+    result = process_data(str(ann), str(pred), metrics_list=("recall",))
 
-    rec2 = processor.samples_df[processor.samples_df["filename"] == "rec2"]
+    rec2 = result.sample_data[result.sample_data["filename"] == "rec2"]
     assert rec2["X_annotation"].tolist() == [0, 1]
     assert rec2["X_confidence"].tolist() == [0.0, 0.0]
-    assert processor.unmatched_annotation_files == {"rec2"}
+    assert result.annotation_only_recordings == ("rec2",)
+    assert result.metrics_df.loc["Recall", "Overall"] == 0.5
     assert "rec2" in caplog.text
     assert "false negative" in caplog.text
 
@@ -539,6 +538,129 @@ def test_a_named_prediction_file_is_scored_against_the_named_annotation_file(tmp
 
     assert result.sample_data["filename"].tolist() == ["site_a", "site_a"]
     assert result.metrics_df.loc["Recall", "Overall"] == 0.5
+
+
+def _selection_table(path, rows):
+    """A BirdNET selection table; rows are (start, end, class, confidence, path)."""
+    _write_table(
+        path,
+        [
+            "Selection",
+            "Begin Time (s)",
+            "End Time (s)",
+            "Common Name",
+            "Scientific Name",
+            "Confidence",
+            "File Offset (s)",
+            "Begin Path",
+        ],
+        [
+            [i, start, end, name, f"{name} sci", confidence, start, audio]
+            for i, (start, end, name, confidence, audio) in enumerate(rows, 1)
+        ],
+    )
+
+
+def test_a_named_pair_is_compared_whatever_the_names_of_its_files(tmp_path, cli):
+    ann, pred = _dirs(tmp_path)
+    selections = ["Begin Time (s)", "End Time (s)", "Class"]
+    _write_table(ann / "labels_site1.txt", selections, [[0, 3, "Wren"], [3, 6, "Wren"]])
+    _selection_table(
+        pred / "site1_0530.BirdNET.selection.table.txt",
+        [(0, 3, "Wren", 0.9, "/audio/site1_0530.wav")],
+    )
+    out = tmp_path / "out"
+
+    cli(
+        "--annotation_path",
+        str(ann / "labels_site1.txt"),
+        "--prediction_path",
+        str(pred / "site1_0530.BirdNET.selection.table.txt"),
+        "--recording_duration",
+        "6",
+        "--metrics",
+        "recall",
+        "--output_dir",
+        str(out),
+    )
+
+    results = pd.read_csv(out / "results_table.csv", index_col=0)
+    assert results.loc["Recall", "Overall"] == 0.5
+    assert len(pd.read_csv(out / "data_table.csv")) == 2
+
+
+def test_a_named_combined_table_is_scored_for_the_recording_of_the_named_annotations(
+    tmp_path, caplog
+):
+    caplog.set_level(logging.WARNING, logger=DataProcessor.__module__)
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "site1_0530.txt", ANN_HEADER, [[0, 3, "Wren"]])
+    _selection_table(
+        pred / "BirdNET_SelectionTable.txt",
+        [
+            (0, 3, "Wren", 0.9, "/audio/site1_0530.wav"),
+            (0, 3, "Wren", 0.8, "/audio/site2_0530.wav"),
+        ],
+    )
+
+    result = process_data(
+        str(ann / "site1_0530.txt"),
+        str(pred / "BirdNET_SelectionTable.txt"),
+        recording_duration=3,
+        columns_predictions=BIRDNET_COLUMNS,
+        metrics_list=("precision",),
+    )
+
+    assert result.sample_data["filename"].tolist() == ["site1_0530"]
+    assert result.unmatched_recordings == ("site2_0530",)
+    assert result.metrics_df.loc["Precision", "Overall"] == 1.0
+    assert "site2_0530" in caplog.text
+
+
+def test_tables_that_pair_no_recording_are_an_error(tmp_path):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
+    _write_table(pred / "rec2.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+
+    with pytest.raises(EvaluationInputError) as error:
+        process_data(str(ann), str(pred), recording_duration=3)
+
+    assert error.value.code == "nothing-paired"
+
+
+def test_a_column_object_names_some_columns_and_the_others_are_detected(tmp_path, cli):
+    ann, pred = _dirs(tmp_path)
+    selections = ["Begin Time (s)", "End Time (s)", "Class"]
+    _write_table(ann / "rec1.txt", selections, [[0, 3, "Wren sci"]])
+    _selection_table(
+        pred / "rec1.BirdNET.selection.table.txt",
+        [
+            (0, 3, "Wren", 0.9, "/audio/rec1.wav"),
+            (3, 6, "Robin", 0.8, "/audio/rec1.wav"),
+        ],
+    )
+    out = tmp_path / "out"
+
+    cli(
+        "--annotation_path",
+        str(ann),
+        "--prediction_path",
+        str(pred),
+        "--columns_predictions",
+        '{"Class": "Scientific Name"}',
+        "--recording_duration",
+        "6",
+        "--metrics",
+        "precision",
+        "recall",
+        "--class_wise",
+        "--output_dir",
+        str(out),
+    )
+
+    results = pd.read_csv(out / "results_table.csv", index_col=0)
+    assert results.loc["Recall", "Wren sci"] == 1.0
+    assert results.loc["Precision", "Wren sci"] == 1.0
 
 
 def test_a_day_of_predictions_is_binned_without_a_pairwise_matrix(tmp_path):
@@ -1147,6 +1269,131 @@ def test_a_recording_name_in_two_folders_is_rejected(
         "recording": recording,
         "places": places,
     }
+
+
+@pytest.mark.parametrize(
+    ("side", "folders"),
+    [("prediction", ["run_24", "run_30"]), ("annotation", ["alice", "bob"])],
+    ids=["two analyses", "two sets of annotations"],
+)
+def test_the_tables_of_one_recording_in_two_folders_are_rejected(
+    tmp_path, side, folders
+):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec.txt", ANN_HEADER, [[0, 3, "X"]])
+    _write_table(pred / "rec.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+    folder = ann if side == "annotation" else pred
+    header = ANN_HEADER if side == "annotation" else PRED_HEADER
+    (folder / "rec.txt").unlink()
+    for name in folders:
+        _write_table(
+            folder / name / "rec.txt",
+            [*header, "Begin Path"],
+            [[*[0, 3, "X", 0.9][: len(header)], "/audio/rec.wav"]],
+        )
+    columns = {"Recording": "Begin Path"}
+
+    with pytest.raises(EvaluationInputError, match="pooled") as error:
+        DataProcessor(
+            str(pred),
+            str(ann),
+            recording_duration=3,
+            columns_predictions={
+                **DataProcessor.DEFAULT_COLUMNS_PREDICTIONS,
+                **columns,
+            },
+            columns_annotations={
+                **DataProcessor.DEFAULT_COLUMNS_ANNOTATIONS,
+                **columns,
+            },
+        )
+
+    assert error.value.code == "split-recording"
+    assert error.value.details == {"side": side, "recording": "rec", "places": folders}
+
+
+@pytest.mark.parametrize("layout", ["same folder", "annotations around predictions"])
+def test_a_table_read_as_annotation_and_as_prediction_is_rejected(tmp_path, layout):
+    project = tmp_path / "project"
+    pred = project / "predictions"
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+    if layout == "same folder":
+        ann = pred
+    else:
+        ann = project
+        _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
+
+    with pytest.raises(EvaluationInputError) as error:
+        DataProcessor(str(pred), str(ann), recording_duration=3)
+
+    assert error.value.code == "same-tables"
+    assert error.value.details == {
+        "file": "rec1.txt" if layout == "same folder" else "predictions/rec1.txt"
+    }
+
+
+def test_annotation_tables_with_a_confidence_column_are_pointed_out(tmp_path, caplog):
+    caplog.set_level(logging.WARNING, logger=DataProcessor.__module__)
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+    _write_table(ann / "rec2.txt", ANN_HEADER, [[0, 3, "X"]])
+    _write_table(pred / "rec2.txt", PRED_HEADER, [[0, 3, "X", 0.9]])
+
+    with_scores = DataProcessor(str(pred), str(ann), recording_duration=3)
+    (ann / "rec1.txt").unlink()
+    without = DataProcessor(str(pred), str(ann), recording_duration=3)
+
+    assert with_scores.annotation_confidence_column == "Confidence"
+    assert without.annotation_confidence_column is None
+    assert caplog.text.count("'Confidence' column") == 1
+
+
+def test_class_and_recording_names_made_of_digits_stay_names(tmp_path):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "01.txt", ANN_HEADER, [[0, 3, 1], [3, 6, 2]])
+    _write_table(
+        pred / "results.txt",
+        [*PRED_HEADER, "Recording"],
+        [[0, 3, 1, 0.9, "01"], [3, 6, 3, 0.8, "01"]],
+    )
+
+    processor = DataProcessor(
+        str(pred),
+        str(ann),
+        recording_duration=6,
+        columns_predictions={
+            **DataProcessor.DEFAULT_COLUMNS_PREDICTIONS,
+            "Recording": "Recording",
+        },
+    )
+
+    assert processor.classes == ("1", "2", "3")
+    assert processor.matched_recordings == {"01"}
+    assert processor.samples_df["1_confidence"].tolist() == [0.9, 0.0]
+
+
+@pytest.mark.parametrize("encoding", ["utf-8", "utf-8-sig", "cp1252", "utf-16"])
+def test_a_class_mapping_is_read_in_the_common_encodings(tmp_path, encoding):
+    ann, pred = _dirs(tmp_path)
+    _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "Grünfink"]])
+    _write_table(pred / "rec1.txt", PRED_HEADER, [[0, 3, "European Greenfinch", 0.9]])
+    mapping = tmp_path / "mapping.json"
+    mapping.write_text(
+        json.dumps({"European Greenfinch": "Grünfink"}, ensure_ascii=False),
+        encoding=encoding,
+    )
+
+    result = process_data(
+        str(ann),
+        str(pred),
+        mapping_path=str(mapping),
+        recording_duration=3,
+        metrics_list=("recall",),
+    )
+
+    assert result.classes == ("Grünfink",)
+    assert result.metrics_df.loc["Recall", "Overall"] == 1.0
 
 
 def test_the_tables_of_one_recording_in_one_folder_are_merged(tmp_path):

@@ -9,6 +9,7 @@ training or evaluation.
 
 import logging
 import ntpath
+import os
 import posixpath
 from collections import Counter
 from collections.abc import Callable, Sequence
@@ -20,6 +21,7 @@ import pandas as pd
 from birdnet_analyzer.evaluation.errors import EvaluationInputError
 from birdnet_analyzer.evaluation.preprocessing.utils import (
     Tables,
+    detect_columns,
     read_tables,
     recording_key,
 )
@@ -41,8 +43,8 @@ def _is_sorted(values: np.ndarray) -> bool:
     return bool(np.all(values[1:] >= values[:-1]))
 
 
-def _recording(value, source_file: str) -> tuple[str, str]:
-    """The recording of a row and the folder it is in.
+def _recording(value, source_file: str) -> tuple[str, str, str]:
+    """The recording of a row, the folder it is in, and the folder of its table.
 
     A row without a value in the recording column belongs to its table file.
     """
@@ -52,31 +54,52 @@ def _recording(value, source_file: str) -> tuple[str, str]:
     folder = posixpath.dirname(source_file)
 
     if not value:
-        return recording_key(source_file), folder
+        return recording_key(source_file), folder, folder
 
-    return recording_key(value), ntpath.dirname(value) or folder
+    return recording_key(value), ntpath.dirname(value) or folder, folder
 
 
-def _check_unique(side: str, places: set[tuple[str, str]]) -> None:
-    """Rejects a recording name that one side has in two folders."""
-    folders: dict[str, tuple[str, dict[str, str]]] = {}
+# Per code, the position in a place of the folder that must be the same, and why.
+_CONFLICTS = {
+    "duplicate-recording": (
+        1,
+        "The {side} tables have the recording {key!r} in two folders, {first!r} and "
+        "{second!r}. Recordings are matched by name, so a name must not occur in "
+        "more than one folder.",
+    ),
+    "split-recording": (
+        2,
+        "The {side} tables of the recording {key!r} are in two folders, {first!r} and "
+        "{second!r}, so two analyses or sets of annotations of it would be pooled. "
+        "The tables of a recording must be in one folder.",
+    ),
+}
 
-    for key, folder in sorted(places):
-        same = folder.replace("\\", "/").rstrip("/").casefold()
-        folders.setdefault(key.casefold(), (key, {}))[1].setdefault(same, folder)
 
-    for key, found in folders.values():
-        if len(found) > 1:
-            first, second = (found[same] or "." for same in sorted(found)[:2])
-            raise EvaluationInputError(
-                "duplicate-recording",
-                f"The {side} tables have the recording {key!r} in two folders, "
-                f"{first!r} and {second!r}. Recordings are matched by name, so a "
-                "name must not occur in more than one folder.",
-                side=side,
-                recording=key,
-                places=[first, second],
-            )
+def _check_unique(side: str, places: set[tuple[str, str, str]]) -> None:
+    """Rejects a recording name that one side has in two folders.
+
+    Two recordings of one name cannot be told apart, and the tables of one recording
+    in two folders cannot be told from two analyses of it.
+    """
+    for code, (position, message) in _CONFLICTS.items():
+        folders: dict[str, tuple[str, dict[str, str]]] = {}
+
+        for place in sorted(places):
+            key, folder = place[0], place[position]
+            same = folder.replace("\\", "/").rstrip("/").casefold()
+            folders.setdefault(key.casefold(), (key, {}))[1].setdefault(same, folder)
+
+        for key, found in folders.values():
+            if len(found) > 1:
+                first, second = (found[same] or "." for same in sorted(found)[:2])
+                raise EvaluationInputError(
+                    code,
+                    message.format(side=side, key=key, first=first, second=second),
+                    side=side,
+                    recording=key,
+                    places=[first, second],
+                )
 
 
 def _annotation_spelling(annotation_recordings: set[str]) -> Callable:
@@ -129,16 +152,19 @@ class DataProcessor:
         annotated_classes: The classes in the annotation rows, sorted.
         predicted_classes: The classes in the prediction rows that are scored, after
             the class mapping, sorted.
-        matched_recordings: The recordings with both annotation and prediction tables;
-            every recording when both file names are given.
-        unmatched_prediction_files: The recordings with prediction tables only; none
-            when both file names are given.
+        matched_recordings: The recordings with both annotation and prediction tables.
+            Two named files that hold one recording each are one recording, whatever
+            their names.
+        unmatched_prediction_files: The recordings with prediction tables only.
         unmatched_annotation_files: The recordings with annotation tables only; all
-            their annotations count as missed. None when both file names are given.
+            their annotations count as missed.
         empty_annotation_recordings: The recordings whose annotation tables have no
             rows: annotated, without calls.
         empty_prediction_recordings: The recordings whose prediction tables have no
             rows: analysed, without detections.
+        annotation_confidence_column: The annotation tables' column named like a
+            confidence column, if they have one: a sign that predictions were selected
+            as annotations.
     """
 
     DEFAULT_COLUMNS_PREDICTIONS: ClassVar[dict[str, str]] = {
@@ -239,6 +265,7 @@ class DataProcessor:
         self.unmatched_annotation_files: set[str] = set()
         self.empty_annotation_recordings: set[str] = set()
         self.empty_prediction_recordings: set[str] = set()
+        self.annotation_confidence_column: str | None = None
         self._recordings: set[str] = set()
 
         self.classes: tuple[str, ...] = ()
@@ -324,7 +351,8 @@ class DataProcessor:
 
         Raises:
             EvaluationInputError: If a side has no usable table, a time or score is
-                not a number, or a recording name comes from two folders.
+                not a number, a recording name comes from two folders, or both sides
+                read the same table.
             ValueError: If the predictions have rows but no confidence value.
         """
         directory_mode = (
@@ -345,7 +373,19 @@ class DataProcessor:
                 ),
             )
         }
+        self._check_sides_differ()
         self._log_skipped_files()
+
+        self.annotation_confidence_column = detect_columns(
+            "prediction", self.tables["annotation"].table.columns
+        )["Confidence"]
+        if self.annotation_confidence_column:
+            logger.warning(
+                "The annotation tables have a %r column, like prediction tables. Make "
+                "sure they are annotations: BirdNET's results selected as annotations "
+                "only compare BirdNET with itself.",
+                self.annotation_confidence_column,
+            )
 
         annotations = self._prepared(self.tables["annotation"].table, prediction=False)
         predictions = self._prepared(self.tables["prediction"].table, prediction=True)
@@ -368,18 +408,22 @@ class DataProcessor:
                 for label in table[column]
             ]
 
-        named_pair = not directory_mode and not any(
-            self.get_column_name("Recording", prediction=prediction) in table.columns
-            for table, prediction in ((predictions, True), (annotations, False))
-        )
-        # A named pair is one recording, whatever the two files are called.
-        recording = recording_key(self.annotation_file_name) if named_pair else None
         annotations["recording_filename"], annotation_empty = self._recordings_of(
-            "annotation", annotations, recording
+            "annotation", annotations
         )
         predictions["recording_filename"], prediction_empty = self._recordings_of(
-            "prediction", predictions, recording
+            "prediction", predictions
         )
+
+        if not directory_mode:
+            annotated = {*annotations["recording_filename"], *annotation_empty}
+            predicted = {*predictions["recording_filename"], *prediction_empty}
+
+            # Two named files of one recording each are a pair, whatever their names.
+            if len(annotated) == len(predicted) == 1:
+                (recording,) = annotated
+                predictions["recording_filename"] = recording
+                prediction_empty = {recording} if prediction_empty else set()
 
         annotation_recordings = set(annotations["recording_filename"])
         self.empty_annotation_recordings = annotation_empty - annotation_recordings
@@ -397,21 +441,10 @@ class DataProcessor:
         # A recording that only has predictions has no ground truth, so its predictions
         # cannot be scored. By default those recordings are dropped; only when the
         # caller opts in (exhaustive annotations) are they kept and their predictions
-        # counted as false positives. This only applies when matching whole
-        # directories -- an explicitly named single file pair is always a deliberate
-        # 1:1 comparison.
-        if directory_mode:
-            self.matched_recordings = prediction_recordings & annotation_recordings
-            self.unmatched_prediction_files = (
-                prediction_recordings - annotation_recordings
-            )
-            self.unmatched_annotation_files = (
-                annotation_recordings - prediction_recordings
-            )
-        else:
-            self.matched_recordings = prediction_recordings | annotation_recordings
-            self.unmatched_prediction_files = set()
-            self.unmatched_annotation_files = set()
+        # counted as false positives.
+        self.matched_recordings = prediction_recordings & annotation_recordings
+        self.unmatched_prediction_files = prediction_recordings - annotation_recordings
+        self.unmatched_annotation_files = annotation_recordings - prediction_recordings
 
         if self.unmatched_prediction_files:
             names = ", ".join(sorted(self.unmatched_prediction_files))
@@ -461,6 +494,30 @@ class DataProcessor:
             {field: self.get_column_name(field, prediction) for field in fields},
             file_name,
         )
+
+    def _check_sides_differ(self) -> None:
+        """Rejects a table that both sides read, such as one folder selected twice."""
+        paths = [
+            {
+                os.path.realpath(os.path.join(directory, name)): name
+                for name in self.tables[side].files
+            }
+            for side, directory in (
+                ("annotation", self.annotation_directory_path),
+                ("prediction", self.prediction_directory_path),
+            )
+        ]
+        shared = sorted(paths[0].keys() & paths[1].keys())
+
+        if shared:
+            name = paths[0][shared[0]]
+            raise EvaluationInputError(
+                "same-tables",
+                f"{name} is read both as an annotation table and as a prediction "
+                "table. The annotations and the results of the analysis must be "
+                "different tables.",
+                file=name,
+            )
 
     def _log_skipped_files(self) -> None:
         for side, tables in self.tables.items():
@@ -516,24 +573,16 @@ class DataProcessor:
                 table[column] = times
 
     def _recordings_of(
-        self, side: str, table: pd.DataFrame, recording: str | None
+        self, side: str, table: pd.DataFrame
     ) -> tuple[pd.Series, set[str]]:
         """The recording of each row, and of each of the side's tables without rows.
 
         Raises:
             EvaluationInputError: If a recording name comes from two folders.
         """
-        empty_files = self.tables[side].empty_files
-
-        if recording is not None:
-            return (
-                pd.Series(recording, index=table.index, dtype=object),
-                {recording} if empty_files else set(),
-            )
-
         column = self.get_column_name("Recording", prediction=side == "prediction")
         values = table[column] if column in table.columns else [None] * len(table)
-        found: dict[tuple, tuple[str, str]] = {}
+        found: dict[tuple, tuple[str, str, str]] = {}
         keys = []
         for row in zip(values, table["source_file"], strict=True):
             place = found.get(row)
@@ -541,11 +590,11 @@ class DataProcessor:
                 place = found[row] = _recording(*row)
             keys.append(place[0])
 
-        empty = {_recording(None, name) for name in empty_files}
+        empty = {_recording(None, name) for name in self.tables[side].empty_files}
         _check_unique(side, {*found.values(), *empty})
 
         return pd.Series(keys, index=table.index, dtype=object), {
-            key for key, _ in empty
+            key for key, *_ in empty
         }
 
     def process_data(self) -> None:

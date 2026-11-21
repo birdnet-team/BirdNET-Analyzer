@@ -66,8 +66,11 @@ birdnet_analyzer.evaluation
       python -m birdnet_analyzer.evaluation --annotation_path annotations/ --prediction_path results/ --class_wise --output_dir evaluation/ --plot_metrics_all_thresholds
 
    For tables with other column names, name the columns in a JSON object, for example ``--columns_annotations '{"Start Time": "onset", "End Time": "offset", "Class": "species"}'``, and likewise with ``--columns_predictions``, which also takes a ``"Confidence"`` column.
-   Such an object replaces the detection for its side: for BirdNET's combined result table, it also needs ``"Recording": "Begin Path"`` (``"File"`` in CSV files).
-   The prediction class column detected is the common name; if your annotations use scientific names, name ``"Scientific Name"`` (``"Scientific name"`` in CSV files) as ``"Class"``.
+   The fields an object leaves out are still detected, and ``null`` means no column, such as ``{"Recording": null}`` to pair by file names only.
+   The prediction class column detected is the common name; if your annotations use scientific names, pass ``--columns_predictions '{"Class": "Scientific Name"}'`` (``"Scientific name"`` in CSV files).
+
+   With a file instead of a folder for both paths, the two files are compared as one recording if each holds one recording, whatever their names.
+   A combined result table holds several recordings: then only the one named like the annotation file is scored.
 
    Unlike the GUI, the command does not read the analysis' parameters file: pass ``--sample_duration 5`` for Perch results.
    Without ``--selected_classes``, every class of both sides is scored, and the classes without annotations are left out of the overall score.

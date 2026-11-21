@@ -19,6 +19,7 @@ from birdnet_analyzer.evaluation.assessment.performance_assessor import (
     METRICS,
     PerformanceAssessor,
 )
+from birdnet_analyzer.evaluation.errors import EvaluationInputError
 from birdnet_analyzer.evaluation.preprocessing.data_processor import DataProcessor
 from birdnet_analyzer.evaluation.preprocessing.utils import (
     detect_columns,
@@ -183,6 +184,14 @@ def process_data(
         score_unannotated_as_empty=score_unannotated_as_empty,
     )
 
+    if not processor.matched_recordings:
+        raise EvaluationInputError(
+            "nothing-paired",
+            "None of the annotation tables could be paired with a prediction table. "
+            "Tables are paired by recording name: the file name without its extension "
+            "and BirdNET or Raven suffixes, or the value in the Recording column.",
+        )
+
     pa, predictions, labels, classes = build_assessor(
         processor, selected_classes, selected_recordings, threshold, metrics_list
     )
@@ -213,16 +222,35 @@ def process_data(
     )
 
 
-def _detected_columns(kind: str, path: str) -> dict[str, str | None]:
-    """The columns detected in the tables at a path.
+def _columns(kind: str, path: str, given: dict | None) -> dict[str, str | None]:
+    """The columns detected in the tables at a path, with the given ones instead.
 
     A required field without a column keeps its default name, so the error names
     the columns that were found.
     """
-    return {
+    detected = {
         field: column or (None if field in ("Recording", "Duration") else field)
         for field, column in detect_columns(kind, table_columns(path)).items()
     }
+
+    return {**detected, **(given or {})}
+
+
+def _columns_arg(value: str) -> dict[str, str | None]:
+    """argparse type for ``--columns_*``: a JSON object of column names."""
+    try:
+        columns = json.loads(value)
+    except json.JSONDecodeError as e:
+        raise argparse.ArgumentTypeError(f"not valid JSON: {e}") from e
+
+    if not isinstance(columns, dict) or not all(
+        column is None or isinstance(column, str) for column in columns.values()
+    ):
+        raise argparse.ArgumentTypeError(
+            'must be a JSON object of column names, such as {"Class": "Species"}'
+        )
+
+    return columns
 
 
 def _threshold_arg(value: str) -> float:
@@ -282,17 +310,17 @@ def evaluation_parser():
     )
     parser.add_argument(
         "--columns_annotations",
-        type=json.loads,
+        type=_columns_arg,
         help='JSON object naming the annotation tables\' column for "Start Time", '
-        '"End Time", "Class", "Recording" and "Duration"; detected from the tables\' '
-        "headers when not given",
+        '"End Time", "Class", "Recording" and "Duration"; the fields it leaves out '
+        "are detected from the tables' headers, null means no column",
     )
     parser.add_argument(
         "--columns_predictions",
-        type=json.loads,
+        type=_columns_arg,
         help='JSON object naming the prediction tables\' column for "Start Time", '
-        '"End Time", "Class", "Confidence", "Recording" and "Duration"; detected from '
-        "the tables' headers when not given",
+        '"End Time", "Class", "Confidence", "Recording" and "Duration"; the fields it '
+        "leaves out are detected from the tables' headers, null means no column",
     )
     parser.add_argument(
         "--selected_classes", nargs="+", help="List of selected classes"
@@ -367,12 +395,12 @@ def main():
         sample_duration=args.sample_duration,
         min_overlap=args.min_overlap,
         recording_duration=args.recording_duration,
-        columns_annotations=args.columns_annotations
-        if args.columns_annotations is not None
-        else _detected_columns("annotation", args.annotation_path),
-        columns_predictions=args.columns_predictions
-        if args.columns_predictions is not None
-        else _detected_columns("prediction", args.prediction_path),
+        columns_annotations=_columns(
+            "annotation", args.annotation_path, args.columns_annotations
+        ),
+        columns_predictions=_columns(
+            "prediction", args.prediction_path, args.columns_predictions
+        ),
         selected_classes=args.selected_classes,
         selected_recordings=args.selected_recordings,
         metrics_list=args.metrics,
@@ -394,7 +422,6 @@ def main():
             ", ".join(result.empty_classes),
         )
 
-    # Mirror the GUI's "results table" and "data table" downloads.
     if args.output_dir:
         os.makedirs(args.output_dir, exist_ok=True)
 

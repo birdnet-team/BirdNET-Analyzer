@@ -172,26 +172,32 @@ def test_metrics_at_another_threshold_match_an_assessor_built_with_it(per_class)
     assert assessor.threshold == 0.5
 
 
-@pytest.mark.parametrize("averaging", ["macro", "micro"])
-@pytest.mark.parametrize("empty_class", [False, True])
+@pytest.mark.parametrize("averaging", ["macro", "micro", "weighted"])
+@pytest.mark.parametrize("empty_classes", [0, 1, 2])
 @pytest.mark.parametrize("per_class", [False, True])
 def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
-    monkeypatch, per_class, empty_class, averaging
+    monkeypatch, per_class, empty_classes, averaging
 ):
     predictions, labels = _tensors()
-    if empty_class:
-        labels[:, 1] = 0
+    labels[:, 3 - empty_classes :] = 0
+    predictions[:20] = 0.25
     assessor = PerformanceAssessor(
         num_classes=3,
         classes=("a", "b", "c"),
-        metrics_list=("auroc", "f1", "ap", "recall"),
+        metrics_list=("auroc", "f1", "ap", "recall", "accuracy", "precision"),
     )
 
     thresholds, values, plotted, *_ = _recorded_sweep(
         monkeypatch, assessor, predictions, labels, per_class, averaging
     )
 
-    assert plotted == ["f1", "recall"]
+    rows = {
+        "f1": "F1",
+        "recall": "Recall",
+        "accuracy": "Accuracy",
+        "precision": "Precision",
+    }
+    assert plotted == list(rows)
     assert assessor.threshold == 0.5
     expected = [
         assessor.calculate_metrics(
@@ -203,7 +209,7 @@ def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
         )
         for threshold in thresholds
     ]
-    for metric, row in (("f1", "F1"), ("recall", "Recall")):
+    for metric, row in rows.items():
         if per_class:
             for name in ("a", "b", "c"):
                 np.testing.assert_array_equal(
