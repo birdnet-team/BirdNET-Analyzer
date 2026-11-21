@@ -30,6 +30,7 @@ PROBE = f"""
 import json
 import sys
 
+import birdnet_analyzer.base_models
 import birdnet_analyzer.gui.multi_file as mfa
 import birdnet_analyzer.gui.segments as gseg
 import birdnet_analyzer.gui.single_file as sfa

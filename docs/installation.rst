@@ -9,8 +9,7 @@ GUI installer
 You can download the latest BirdNET-Analyzer installer for Windows and MacOS from our `Releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_. This installer provides an easy setup process for running BirdNET-Analyzer on your system. Make sure to check to select the correct installer for your system.
 
 .. note::
-    | Installation was only tested on M1 and M2 chips.
-    | Feedback on older Intel CPUs or newer M3 chips is welcome!
+    The macOS installer needs a Mac with Apple silicon (M1 or newer) and macOS 15 or later.
 
 Windows Package Manager
 -----------------------
@@ -44,9 +43,11 @@ Models and the first start
 
 The macOS installer contains the default BirdNET 3.0 model, including its species range model, so the first analysis
 works without an internet connection. Everything else is downloaded the first time it is used and kept for later
-runs, with the progress shown in the GUI: the other models (BirdNET 2.4, Perch), and the version of BirdNET 3.0 that
-training a custom classifier needs (about 320 MB). An installer without the default model downloads it the same way,
-about 380 MB, on the first analysis.
+runs, with the progress shown in the GUI: the other models (BirdNET 2.4, Perch), and the model that training needs to
+export a custom classifier as a TFLite or Raven model (about 320 MB for BirdNET 3.0, about 125 MB for 2.4). The first
+training with one of these exports downloads it as soon as the training data are loaded. An analysis never does, and
+neither does a training that saves only the detached classifier. An installer without the default model downloads it
+the same way, about 380 MB, on the first analysis or training.
 
 The installed application keeps its models in
 
@@ -60,10 +61,21 @@ Setting the environment variable ``BIRDNET_APP_DATA`` to a directory overrides b
 either uses the directory of the ``birdnet`` library (``%APPDATA%\birdnet``,
 ``~/Library/Application Support/birdnet`` or ``~/.local/share/birdnet``).
 
-**Computers without internet access.** For a model the installer does not contain, run one analysis with it on a
-computer that is online, then copy its model directory
-into the same place on the offline computer, or onto a drive and select that directory in the settings tab.
-With ``BIRDNET_OFFLINE=1`` set, a missing model is reported at once and nothing is downloaded.
+**Computers without internet access.** Models the installer does not contain have to come from a computer that is
+online and runs the same BirdNET-Analyzer version. There, run one analysis with each model you need. For training,
+also run one training with a TFLite or Raven export, on the BirdNET version (2.4 or 3.0) you will train on. Then copy
+the whole model directory, hidden files included, into the same place on the offline computer, or onto a drive and
+select that directory in the settings tab.
+
+A pip installation can fetch the export model without a training run, in its own environment (``'2.4'`` for BirdNET
+2.4):
+
+.. code-block:: bash
+
+   python -c "import birdnet_analyzer, birdnet; birdnet.load('acoustic', '3.0', 'pb')"
+
+With ``BIRDNET_OFFLINE=1`` set, nothing is downloaded and a missing model is reported at once. Training reports a
+missing export model once the training data are loaded, before the tuning and the training itself.
 
 **Restricted networks.** The models come from ``zenodo.org``, ``github.com`` (which redirects to
 ``githubusercontent.com``) and ``tuc.cloud``; a firewall has to allow these. The GUI and the command line tools

@@ -26,10 +26,8 @@ class BaseModel:
     # (and with it the sensitivity setting) applies to those.
     outputs_probabilities: bool
 
-    def load(self):
-        """The SavedModel and its English labels; downloads the model on first use."""
-        import tensorflow as tf
-
+    def fetch(self):
+        """The SavedModel's path and its English labels; downloads it on first use."""
         downloader = (
             AcousticPBDownloaderV2_4
             if self.version == "2.4"
@@ -37,7 +35,15 @@ class BaseModel:
         )
         path, labels = downloader.get_model_path_and_labels("en_us")
 
-        return tf.saved_model.load(str(path)), list(labels)
+        return path, list(labels)
+
+    def load(self):
+        """The SavedModel and its English labels; downloads the model on first use."""
+        import tensorflow as tf
+
+        path, labels = self.fetch()
+
+        return tf.saved_model.load(str(path)), labels
 
 
 _BASE_MODELS = {
