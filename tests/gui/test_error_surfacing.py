@@ -23,12 +23,7 @@ TABS = {
     "search": (search.build_search_tab, {"on_crop_mode_change"}),
     "evaluation": (
         evaluation.build_evaluation_tab,
-        {
-            "_lock_calculation",
-            "_unlock_calculation",
-            "recompute_overall",
-            "toggle_after_selection",
-        },
+        {"_busy_calculating", "_lock_calculation", "_unlock_calculation"},
     ),
     "single_file": (
         single_file.build_single_analysis_tab,

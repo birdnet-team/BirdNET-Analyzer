@@ -137,7 +137,7 @@ def test_the_plots_hold_one_panel_per_class_and_one_line_per_threshold_metric(
     assert len(confusion.axes) == len(classes)
 
 
-def _recorded_sweep(monkeypatch, assessor, predictions, labels, per_class):
+def _recorded_sweep(monkeypatch, assessor, predictions, labels, per_class, averaging):
     recorded = []
     for name in (
         "plot_metrics_across_thresholds",
@@ -146,7 +146,7 @@ def _recorded_sweep(monkeypatch, assessor, predictions, labels, per_class):
         monkeypatch.setattr(plotting, name, lambda *args: recorded.append(args))
 
     assessor.plot_metrics_all_thresholds(
-        predictions, labels, per_class_metrics=per_class
+        predictions, labels, per_class_metrics=per_class, averaging=averaging
     )
     (args,) = recorded
 
@@ -172,10 +172,11 @@ def test_metrics_at_another_threshold_match_an_assessor_built_with_it(per_class)
     assert assessor.threshold == 0.5
 
 
+@pytest.mark.parametrize("averaging", ["macro", "micro"])
 @pytest.mark.parametrize("empty_class", [False, True])
 @pytest.mark.parametrize("per_class", [False, True])
 def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
-    monkeypatch, per_class, empty_class
+    monkeypatch, per_class, empty_class, averaging
 ):
     predictions, labels = _tensors()
     if empty_class:
@@ -187,14 +188,18 @@ def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
     )
 
     thresholds, values, plotted, *_ = _recorded_sweep(
-        monkeypatch, assessor, predictions, labels, per_class
+        monkeypatch, assessor, predictions, labels, per_class, averaging
     )
 
     assert plotted == ["f1", "recall"]
     assert assessor.threshold == 0.5
     expected = [
         assessor.calculate_metrics(
-            predictions, labels, per_class_metrics=per_class, threshold=threshold
+            predictions,
+            labels,
+            per_class_metrics=per_class,
+            averaging=averaging,
+            threshold=threshold,
         )
         for threshold in thresholds
     ]
@@ -208,6 +213,54 @@ def test_the_sweep_plots_each_threshold_dependent_metric_at_each_threshold(
             np.testing.assert_array_equal(
                 values[metric], [df.loc[row, "Overall"] for df in expected]
             )
+
+
+@pytest.mark.parametrize("averaging", ["macro", "micro", "weighted"])
+def test_the_only_class_with_positives_scores_overall_as_in_its_own_row(averaging):
+    predictions, labels = _tensors(2)
+    labels[:, 1] = 0
+    assessor = PerformanceAssessor(
+        num_classes=2,
+        classes=("a", "b"),
+        metrics_list=tuple(performance_assessor.METRICS),
+    )
+
+    per_class = assessor.calculate_metrics(predictions, labels, per_class_metrics=True)
+    overall = assessor.calculate_metrics(predictions, labels, averaging=averaging)
+
+    np.testing.assert_allclose(overall["Overall"], per_class["a"])
+
+
+@pytest.mark.parametrize(
+    ("classes", "task"), [(("a",), "binary"), (("a", "b"), "multilabel")]
+)
+def test_a_class_without_positives_or_detections_has_a_confusion_matrix(classes, task):
+    predictions = np.full((10, len(classes)), 0.1)
+    labels = np.zeros((10, len(classes)), dtype=int)
+    if task == "multilabel":
+        predictions[:4, 0] = 0.9
+        labels[:4, 0] = 1
+    assessor = PerformanceAssessor(num_classes=len(classes), classes=classes, task=task)
+
+    figure = assessor.plot_confusion_matrix(predictions, labels)
+
+    shown = [text.get_text() for text in figure.axes[len(classes) - 1].texts]
+    assert shown == ["1.00", "0.00", "0.00", "0.00"]
+
+
+@pytest.mark.parametrize("averaging", ["macro", "micro", "weighted"])
+def test_the_overall_bar_chart_shows_the_chosen_averaging_on_a_fixed_scale(averaging):
+    predictions, labels = _tensors()
+    assessor = PerformanceAssessor(
+        num_classes=3, metrics_list=("recall", "precision", "f1")
+    )
+
+    figure = assessor.plot_metrics(predictions, labels, averaging=averaging)
+
+    expected = assessor.calculate_metrics(predictions, labels, averaging=averaging)
+    bars = [bar.get_height() for bar in figure.axes[0].patches]
+    assert bars == pytest.approx(expected["Overall"].tolist())
+    assert figure.axes[0].get_ylim() == (0, 1)
 
 
 def test_the_cli_offers_the_metrics_the_assessor_registers():

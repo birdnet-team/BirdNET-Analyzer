@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import os
+import re
+import tempfile
 import typing
-from pathlib import Path
 
 import gradio as gr
 import pandas as pd
@@ -23,27 +26,25 @@ logger = logging.getLogger(__name__)
 # Averaging methods offered for the overall score, with their stable ids.
 AVERAGING_IDS = ("macro", "micro", "weighted")
 
-# Per kind of selection table, the default column of each field, in display order.
+# Per kind of table, in display order, the column a field falls back to when its
+# dropdown is empty; the optional fields then have none.
 _DEFAULT_COLUMNS = {
     "annotation": {
         "Start Time": "Begin Time (s)",
         "End Time": "End Time (s)",
         "Class": "Class",
-        "Recording": "Begin File",
-        "Duration": "File Duration (s)",
+        "Recording": None,
+        "Duration": None,
     },
     "prediction": {
         "Start Time": "Begin Time (s)",
         "End Time": "End Time (s)",
         "Class": "Common Name",
         "Confidence": "Confidence",
-        "Recording": "Begin File",
-        "Duration": "File Duration (s)",
+        "Recording": None,
+        "Duration": None,
     },
 }
-
-# Preselected when the table lacks the default; BirdNET's own tables name it this way.
-_FALLBACK_COLUMNS = {"prediction": {"Recording": "Begin Path"}}
 
 _COLUMN_LABEL_KEYS = {
     "Start Time": "eval-tab-column-start-time-label",
@@ -53,6 +54,27 @@ _COLUMN_LABEL_KEYS = {
     "Duration": "eval-tab-column-duration-label",
     "Confidence": "eval-tab-column-confidence-label",
 }
+
+_COLUMN_INFO_KEYS = {
+    "Start Time": "eval-tab-column-time-info",
+    "End Time": "eval-tab-column-time-info",
+    "Class": "eval-tab-column-class-info",
+    "Recording": "eval-tab-column-recording-info",
+    "Duration": "eval-tab-column-duration-info",
+    "Confidence": "eval-tab-column-confidence-info",
+}
+
+# Prediction columns that may hold the class names the annotations use.
+_CLASS_COLUMNS = (
+    "Common Name",
+    "Scientific Name",
+    "Species Code",
+    "Common name",
+    "Scientific name",
+    "Class",
+    "Label",
+    "Species",
+)
 
 # The labels are translated, so the metrics are keyed by the id the
 # PerformanceAssessor expects, which does not change with the GUI language.
@@ -81,6 +103,16 @@ _PLOTS = {
     "metrics_all_thresholds": "eval-tab-plot-tab-thresholds-label",
 }
 
+# Beyond this many classes a grid of per-class panels is unreadable.
+_PLOTTED_CLASSES = 25
+
+_LISTED_NAMES = 6
+
+_TRUNCATION_NOTE_FROM = 0.05
+
+# From code points, as ruff rejects the literal symbol as ambiguous (RUF001).
+_INFO = chr(0x2139) + chr(0xFE0F)
+
 
 class ProcessorState(typing.NamedTuple):
     """A DataProcessor together with the arguments it was built with."""
@@ -89,8 +121,20 @@ class ProcessorState(typing.NamedTuple):
     arguments: dict
 
 
-class _MissingColumnError(gr.Error):
-    pass
+class _InputProblem(gr.Error):
+    """A problem with the user's input, explained in the status or a toast."""
+
+    def __init__(self, message: str, column_side: str | None = None):
+        super().__init__(message, print_exception=False)
+        self.column_side = column_side
+
+
+class _Settings(typing.NamedTuple):
+    """What the parameters files in a prediction directory say about the analysis."""
+
+    model: str | None = None
+    segment_length: float | None = None
+    min_conf: float | None = None
 
 
 class _Parameters(typing.NamedTuple):
@@ -104,6 +148,7 @@ class _Parameters(typing.NamedTuple):
 
 class _Results(typing.NamedTuple):
     column: gr.Column
+    header: gr.Markdown
     metrics_table: gr.Dataframe
     overall_table: gr.Dataframe
     notes: gr.Markdown
@@ -112,22 +157,45 @@ class _Results(typing.NamedTuple):
     download_data: gr.DownloadButton
 
 
-def _recording_duration(text: str | None, sample_duration) -> float | None:
+def _names(names, limit=_LISTED_NAMES) -> str:
+    names = list(names)
+    shown = ", ".join(map(str, names[:limit]))
+
+    if len(names) > limit:
+        shown += " " + loc.localize("eval-tab-names-more").format(n=len(names) - limit)
+
+    return shown
+
+
+def _number(value) -> str:
+    return f"{value:g}"
+
+
+def _positive(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    return number if math.isfinite(number) and number > 0 else None
+
+
+def _recording_duration(text: str | None, sample_duration: float) -> float | None:
     """The typed recording duration; ``ValueError`` if the processor cannot use it."""
     text = (text or "").strip()
 
     if not text:
         return None
 
-    duration = float(text)
+    duration = _positive(text.replace(",", "."))
 
-    if not 0 < (sample_duration or 0) <= duration:
+    if duration is None or duration < sample_duration:
         raise ValueError(text)
 
     return duration
 
 
-def _columns(kind: str, values) -> dict[str, str]:
+def _columns(kind: str, values) -> dict[str, str | None]:
     return {
         field: value or default
         for (field, default), value in zip(
@@ -147,7 +215,7 @@ def _processor_arguments(
     *column_values,
     strict: bool,
 ) -> dict | None:
-    """The processor arguments of the inputs, ``None`` while a folder is missing.
+    """The processor arguments of the inputs, ``None`` while a directory is missing.
 
     A recording duration the processor cannot use is an error if ``strict``, and is
     left out otherwise.
@@ -155,11 +223,21 @@ def _processor_arguments(
     if not annotation_dir or not prediction_dir:
         return None
 
+    sample_duration = _positive(sample_duration_value)
+
+    if sample_duration is None:
+        raise _InputProblem(loc.localize("eval-tab-error-window-length"))
+
+    min_overlap = _positive(min_overlap_value)
+
+    if min_overlap is None or min_overlap > sample_duration:
+        raise _InputProblem(loc.localize("eval-tab-error-min-overlap"))
+
     try:
-        rec_dur = _recording_duration(recording_duration_value, sample_duration_value)
+        rec_dur = _recording_duration(recording_duration_value, sample_duration)
     except ValueError:
         if strict:
-            raise gr.Error(
+            raise _InputProblem(
                 loc.localize("eval-tab-error-no-valid-recording-duration")
             ) from None
 
@@ -176,8 +254,8 @@ def _processor_arguments(
         "prediction_directory_path": prediction_dir,
         "annotation_directory_path": annotation_dir,
         "mapping_path": mapping_path,
-        "sample_duration": sample_duration_value,
-        "min_overlap": min_overlap_value,
+        "sample_duration": sample_duration,
+        "min_overlap": min_overlap,
         "columns_predictions": _columns("prediction", column_values[n_ann:]),
         "columns_annotations": _columns("annotation", column_values[:n_ann]),
         "recording_duration": rec_dur,
@@ -185,30 +263,84 @@ def _processor_arguments(
     }
 
 
+def _class_mapping(path) -> dict[str, str] | None:
+    from birdnet_analyzer.evaluation.errors import EvaluationInputError
+    from birdnet_analyzer.evaluation.preprocessing.utils import read_class_mapping
+
+    if not path:
+        return None
+
+    try:
+        return read_class_mapping(path)
+    except (OSError, EvaluationInputError):
+        raise _InputProblem(loc.localize("eval-tab-error-bad-mapping")) from None
+
+
+def _explained(error) -> str:
+    """The user's-language text of an ``EvaluationInputError``."""
+    details = error.details
+    side = details.get("side")
+
+    if error.code == "no-tables":
+        return loc.localize(f"eval-tab-status-no-{side}-tables")
+
+    if error.code == "missing-column":
+        available = details["available"]
+        message = loc.localize(f"eval-tab-error-missing-{side}-column").format(
+            column=details["column"],
+            field=loc.localize(_COLUMN_LABEL_KEYS[details["field"]]),
+            available=_names(available, 12) or "-",
+        )
+
+        if 2 * sum(_positive(name) is not None for name in available) > len(available):
+            message += " " + loc.localize("eval-tab-error-no-header")
+
+        return message
+
+    if error.code == "not-a-number":
+        message = loc.localize("eval-tab-error-not-a-number").format(
+            file=details["file"],
+            row=details["row"],
+            column=details["column"],
+            value=details["value"],
+        )
+
+        if re.fullmatch(r"-?\d+,\d+", details["value"].strip()):
+            message += " " + loc.localize("eval-tab-error-decimal-comma")
+
+        return message
+
+    if error.code == "duplicate-recording":
+        return loc.localize(f"eval-tab-error-duplicate-{side}-recording").format(
+            recording=details["recording"], places=", ".join(details["places"])
+        )
+
+    return f"{loc.localize('eval-tab-error-reading-tables')}: {error}"
+
+
 def _build_processor(arguments: dict) -> ProcessorState:
     """Builds a DataProcessor that reads the selected directories in place."""
+    from birdnet_analyzer.evaluation.errors import EvaluationInputError
     from birdnet_analyzer.evaluation.preprocessing.data_processor import (
         DataProcessor,
     )
 
-    mapping_path = arguments["mapping_path"]
-    class_mapping = None
-    if mapping_path:
-        with open(mapping_path) as f:
-            class_mapping = json.load(f)
+    class_mapping = _class_mapping(arguments["mapping_path"])
 
     try:
         processor = DataProcessor(
             class_mapping=class_mapping,
             **{key: value for key, value in arguments.items() if key != "mapping_path"},
         )
-    except KeyError as e:
-        raise _MissingColumnError(
-            f"{loc.localize('eval-tab-error-missing-col')}: {e}. "
-            f"{loc.localize('eval-tab-error-missing-col-info')}"
-        ) from e
-    except Exception as e:
-        raise gr.Error(f"{loc.localize('eval-tab-error-init-processor')}: {e}") from e
+    except EvaluationInputError as e:
+        raise _InputProblem(
+            _explained(e),
+            e.details.get("side") if e.code == "missing-column" else None,
+        ) from None
+    except ValueError as e:
+        raise _InputProblem(
+            f"{loc.localize('eval-tab-error-reading-tables')}: {e}"
+        ) from None
 
     return ProcessorState(processor, arguments)
 
@@ -223,119 +355,521 @@ def _processor_for(
     return _build_processor(arguments)
 
 
-def _selection_tables(directory) -> list[Path]:
-    return list(Path(directory).glob("*.txt"))
+def _analysis_settings(directory) -> _Settings:
+    """The settings the analyses in a prediction directory agree on."""
+    from birdnet_analyzer import config as cfg
+    from birdnet_analyzer.params import load_analysis_params, read_params
 
+    names = {cfg.ANALYSIS_PARAMS_FILENAME.casefold(), "birdnet_analysis_params.csv"}
+    found = []
 
-def _columns_in(files) -> list[str]:
-    columns = set()
+    for root, dirs, files in os.walk(directory or ""):
+        dirs[:] = sorted(d for d in dirs if not d.startswith("."))
 
-    if files:
-        for file_obj in files:
+        for name in files:
+            if name.casefold() not in names:
+                continue
+
+            path = os.path.join(root, name)
+
             try:
-                df = pd.read_csv(file_obj, sep=None, engine="python", nrows=0)
-                columns.update(df.columns)
-            except Exception as e:
-                logger.error(f"Error reading file {file_obj}: {e}", exc_info=e)
-                gr.Warning(
-                    f"{loc.localize('eval-tab-warning-error-reading-file')} {file_obj}"
-                )
+                values = load_analysis_params(path)
+                segment = _positive(read_params(path).get("Segment length"))
+            except ValueError:
+                continue
 
-    return sorted(columns)
+            if values.get("classifier"):
+                model = os.path.basename(values["classifier"])
+            elif values.get("model") == "perch":
+                model = "Perch"
+            else:
+                model = f"BirdNET {values.get('birdnet', '')}".strip()
 
+            # An analysis with top N records a placeholder minimum confidence.
+            min_conf = None if values.get("top_n") else values.get("min_conf")
+            found.append(_Settings(model, segment, min_conf))
 
-def _column_updates(kind: str, files) -> list:
-    columns = ["", *_columns_in(files)]
+    if not found:
+        return _Settings()
 
-    return [
-        gr.update(
-            choices=columns,
-            value=next(
-                (
-                    column
-                    for column in (
-                        default,
-                        _FALLBACK_COLUMNS.get(kind, {}).get(field),
-                    )
-                    if column in columns
-                ),
-                None,
-            ),
+    return _Settings(
+        *(
+            values[0] if len(set(values)) == 1 else None
+            for values in zip(*found, strict=True)
         )
-        for field, default in _DEFAULT_COLUMNS[kind].items()
+    )
+
+
+def _side_line(kind: str, tables, class_column: str) -> str:
+    labels = tables.table[class_column].dropna().astype(str).str.split().str.join(" ")
+    labels = labels[labels != ""].str.casefold()
+
+    return loc.localize(f"eval-tab-status-{kind}s").format(
+        tables=len(tables.files), rows=len(tables.table), classes=labels.nunique()
+    )
+
+
+def _side_lines(processor: DataProcessor, settings: _Settings) -> list[str]:
+    lines = [
+        _side_line(
+            kind,
+            processor.tables[kind],
+            processor.get_column_name("Class", prediction=kind == "prediction"),
+        )
+        for kind in _DEFAULT_COLUMNS
     ]
 
+    if processor.empty_annotation_recordings:
+        lines.insert(
+            1,
+            loc.localize("eval-tab-status-empty-annotations").format(
+                n=len(processor.empty_annotation_recordings)
+            ),
+        )
 
-def _offered(processor) -> tuple[list, list]:
-    return list(processor.classes), processor.samples_df["filename"].unique().tolist()
+    analysis = [
+        part
+        for part in (
+            settings.model,
+            settings.segment_length
+            and loc.localize("eval-tab-status-segment").format(
+                segment=_number(settings.segment_length)
+            ),
+            settings.min_conf
+            and loc.localize("eval-tab-status-min-conf").format(
+                min_conf=_number(settings.min_conf)
+            ),
+        )
+        if part
+    ]
+
+    if analysis:
+        lines.append(
+            loc.localize("eval-tab-status-analysis").format(
+                settings=", ".join(analysis)
+            )
+        )
+
+    return lines
 
 
-def _selection(offered, previously_offered, current):
+def _recording_lines(processor: DataProcessor) -> list[str]:
+    matched = processor.matched_recordings
+    annotation_only = sorted(processor.unmatched_annotation_files)
+    prediction_only = sorted(processor.unmatched_prediction_files)
+    total = len(matched) + len(annotation_only) + len(prediction_only)
+
+    if not annotation_only and not prediction_only:
+        return [loc.localize("eval-tab-status-recordings-all").format(n=len(matched))]
+
+    lines = [
+        loc.localize("eval-tab-status-recordings-some").format(
+            matched=len(matched), total=total
+        )
+    ]
+
+    if annotation_only:
+        lines.append(
+            loc.localize("eval-tab-status-annotation-only").format(
+                names=_names(annotation_only)
+            )
+        )
+
+    if prediction_only:
+        key = (
+            "eval-tab-status-prediction-only-empty"
+            if processor.score_unannotated_as_empty
+            else "eval-tab-status-prediction-only-dropped"
+        )
+        lines.append(loc.localize(key).format(names=_names(prediction_only)))
+
+    lines.append(loc.localize("eval-tab-status-pairing-rule"))
+
+    return lines
+
+
+def _class_lines(processor: DataProcessor, suggestions) -> list[str]:
+    annotated = processor.annotated_classes
+
+    if not annotated:
+        return []
+
+    predicted = set(processor.predicted_classes)
+    missing = [c for c in annotated if c not in predicted]
+    column = processor.get_column_name("Class", prediction=True)
+
+    if not missing:
+        return [
+            loc.localize("eval-tab-status-classes-all").format(
+                n=len(annotated), column=column
+            )
+        ]
+
+    lines = [
+        loc.localize("eval-tab-status-classes-some").format(
+            found=len(annotated) - len(missing),
+            n=len(annotated),
+            column=column,
+            names=_names(missing),
+        )
+    ]
+
+    if suggestions:
+        pairs = [
+            loc.localize("eval-tab-status-suggestion-pair").format(
+                annotated=annotated_name,
+                predicted=predicted_name,
+                hits=hits,
+                windows=windows,
+            )
+            for annotated_name, predicted_name, hits, windows in suggestions
+        ]
+        lines.append(
+            loc.localize("eval-tab-status-suggestions").format(pairs=" · ".join(pairs))
+        )
+
+    return lines
+
+
+def _file_lines(processor: DataProcessor) -> list[str]:
+    lines = []
+
+    for kind in _DEFAULT_COLUMNS:
+        skipped = processor.tables[kind].skipped
+        superseded = [path for path, reason in skipped if reason == "superseded"]
+        other = [path for path, reason in skipped if reason != "superseded"]
+
+        if other:
+            lines.append(
+                loc.localize(f"eval-tab-status-skipped-{kind}").format(
+                    n=len(other), names=_names(other)
+                )
+            )
+
+        if superseded:
+            lines.append(
+                loc.localize("eval-tab-status-superseded").format(
+                    n=len(superseded), names=_names(superseded)
+                )
+            )
+
+    return lines
+
+
+def _status(
+    processor: DataProcessor,
+    arguments: dict,
+    suggestions=(),
+    switched_to: str | None = None,
+) -> str:
+    settings = _analysis_settings(arguments["prediction_directory_path"])
+    checks = [*_recording_lines(processor), *_class_lines(processor, suggestions)]
+
+    if switched_to:
+        checks.append(
+            loc.localize("eval-tab-status-column-switched").format(column=switched_to)
+        )
+
+    if (
+        settings.segment_length
+        and abs(settings.segment_length - arguments["sample_duration"]) > 1e-9
+    ):
+        checks.append(
+            loc.localize("eval-tab-status-window-differs").format(
+                window=_number(arguments["sample_duration"]),
+                segment=_number(settings.segment_length),
+            )
+        )
+
+    groups = (_side_lines(processor, settings), checks, _file_lines(processor))
+
+    return "\n\n".join("\n".join(group) for group in groups if group)
+
+
+def _one_side_status(processor_values) -> str:
+    """What the one directory selected so far holds, read with its columns."""
+    from birdnet_analyzer.evaluation.errors import EvaluationInputError
+    from birdnet_analyzer.evaluation.preprocessing.utils import read_tables
+
+    n_ann = len(_DEFAULT_COLUMNS["annotation"])
+    column_values = processor_values[-n_ann - len(_DEFAULT_COLUMNS["prediction"]) :]
+    sides = (
+        ("annotation", processor_values[0], column_values[:n_ann]),
+        ("prediction", processor_values[1], column_values[n_ann:]),
+    )
+    lines = []
+
+    for kind, directory, values in sides:
+        if not directory:
+            continue
+
+        columns = _columns(kind, values)
+
+        try:
+            tables = read_tables(directory, kind, columns)
+        except EvaluationInputError as e:
+            lines.append(f"⚠️ {_explained(e)}")
+            continue
+
+        lines.append(_side_line(kind, tables, columns["Class"]))
+
+    return "\n".join(lines)
+
+
+def _name_suggestions(processor: DataProcessor) -> list[tuple[str, str, int, int]]:
+    """Predicted classes that are probably an annotated class under another name.
+
+    For each annotated class that never occurs in the predictions, of the classes
+    without annotations that are detected in at least a third of its annotated windows
+    and score at least four times as high there as elsewhere, the one scoring highest
+    there. Each predicted class goes to one annotated class at most.
+
+    Returns:
+        (annotated class, predicted class, windows with a detection, annotated
+        windows) per suggestion.
+    """
+    import numpy as np
+
+    predicted = set(processor.predicted_classes)
+    annotated = set(processor.annotated_classes)
+    missing = [c for c in processor.annotated_classes if c not in predicted]
+    candidates = [c for c in processor.predicted_classes if c not in annotated]
+
+    if not missing or not candidates or processor.samples_df.empty:
+        return []
+
+    samples = processor.samples_df
+    scores = samples[[f"{c}_confidence" for c in candidates]].to_numpy(dtype=float)
+    positive = samples[[f"{c}_annotation" for c in missing]].to_numpy() > 0
+    windows = positive.sum(axis=0)
+    hits = positive.T.astype(int) @ (scores > 0)
+    inside = positive.T.astype(float) @ scores
+    mean_inside = inside / np.maximum(windows, 1)[:, None]
+    # A class detected everywhere at low confidence scores about as high outside the
+    # windows as inside them; the same species under another name does not.
+    mean_outside = (scores.sum(axis=0) - inside) / np.maximum(
+        len(samples) - windows, 1
+    )[:, None]
+    fitting = (3 * hits >= windows[:, None]) & (mean_inside >= 4 * mean_outside)
+    best = {}
+
+    for i, name in enumerate(missing):
+        j = int(np.where(fitting[i], mean_inside[i], -1.0).argmax())
+
+        if windows[i] and fitting[i, j]:
+            candidate = candidates[j]
+
+            if candidate not in best or best[candidate][4] < mean_inside[i, j]:
+                best[candidate] = (
+                    name,
+                    candidate,
+                    int(hits[i, j]),
+                    int(windows[i]),
+                    mean_inside[i, j],
+                )
+
+    return sorted(entry[:4] for entry in best.values())
+
+
+def _best_class_column(processor: DataProcessor) -> str | None:
+    """The prediction column holding the most annotated classes, if not the one used."""
+    if processor.class_mapping or not processor.annotated_classes:
+        return None
+
+    annotated = {c.casefold() for c in processor.annotated_classes}
+    current = processor.get_column_name("Class", prediction=True)
+    table = processor.predictions_df
+
+    def found(column):
+        values = table[column].dropna().astype(str).str.strip().str.casefold()
+        return len(annotated & set(values))
+
+    scores = {column: found(column) for column in _CLASS_COLUMNS if column in table}
+    best = max(scores, key=scores.get, default=None)
+
+    if best is None or best == current or scores[best] <= scores.get(current, 0):
+        return None
+
+    return best
+
+
+def _offered(processor: DataProcessor) -> tuple[list, list, list]:
+    """The classes, annotated first, the default class selection, and the recordings."""
+    annotated = list(processor.annotated_classes)
+    others = [c for c in processor.classes if c not in set(annotated)]
+    recordings = (
+        processor.samples_df["filename"].unique().tolist()
+        if "filename" in processor.samples_df
+        else []
+    )
+
+    return annotated + others, annotated or others, recordings
+
+
+def _selection(offered, default, previous_offered, previous_default, current):
     kept = [choice for choice in current or [] if choice in offered]
-    everything = previously_offered and set(previously_offered) <= set(current or [])
 
-    return offered if everything or not kept else kept
+    if not kept or (
+        previous_default is not None and set(current) == set(previous_default)
+    ):
+        return default
+
+    if previous_offered and set(previous_offered) <= set(current):
+        return offered
+
+    return kept
 
 
 def _selection_choices(processor, previous, current_classes, current_recordings):
     """The classes and the recordings to offer, each with the selection to show.
 
-    If everything the previous processor offered was selected, everything is
-    selected again; otherwise the still-valid selection is kept, or everything if
-    none of it is.
+    The annotated classes and all recordings are selected unless the user narrowed
+    the selection: a selection still equal to the previous default becomes the new
+    default, a full one stays full, and any other still-valid one is kept.
     """
-    classes, recordings = _offered(processor)
-    old_classes, old_recordings = (
-        _offered(previous) if previous is not None else ([], [])
+    classes, default_classes, recordings = _offered(processor)
+    old_classes, old_default, old_recordings = (
+        _offered(previous) if previous is not None else ([], None, [])
     )
 
     return (
-        (classes, _selection(classes, old_classes, current_classes)),
-        (recordings, _selection(recordings, old_recordings, current_recordings)),
+        (
+            classes,
+            _selection(
+                classes, default_classes, old_classes, old_default, current_classes
+            ),
+        ),
+        (
+            recordings,
+            _selection(
+                recordings,
+                recordings,
+                old_recordings,
+                old_recordings if previous is not None else None,
+                current_recordings,
+            ),
+        ),
     )
 
 
-def _build_metrics_tables(pa, predictions, labels, averaging_value):
+def _display_names(pa: PerformanceAssessor, labels, averaging_value) -> str:
+    scored = int((pa.class_support(labels) > 0).sum())
+
+    return loc.localize(f"eval-tab-overall-{averaging_value}-label").format(n=scored)
+
+
+def _build_metrics_tables(pa, predictions, labels, averaging_value, export=False):
     """The per-class table and the aggregate "Overall" footer row.
 
-    The aggregate is computed with the selected averaging; its support is the
-    total number of positive samples across classes. Both tables share the
-    same column layout, so the returned widths keep them aligned.
+    The aggregate is computed with the selected averaging over the classes with
+    annotations; its support is the total number of annotated windows. Both tables
+    share the same column layout, so the returned widths keep them aligned. A class
+    without annotations has no defined score, so it shows "n/a" (empty when exported).
     """
     per_class_df = pa.calculate_metrics(
         predictions, labels, per_class_metrics=True, include_support=True
     )
     overall_df = pa.calculate_metrics(predictions, labels, averaging=averaging_value)
     overall_df.loc["Support"] = int(pa.class_support(labels).sum())
-    overall_df.columns = pd.Index([loc.localize("eval-tab-overall-row-label")])
+    overall_df.columns = pd.Index([_display_names(pa, labels, averaging_value)])
+
+    support = (
+        "Annotated windows" if export else loc.localize("eval-tab-support-column-label")
+    )
 
     def display(df):
         # One row per class/aggregate, one column per metric.
-        table = df.T.reset_index(names=[""]).round(3)
+        table = df.T.reset_index(names=["Class" if export else ""]).round(3)
         table["Support"] = table["Support"].astype(int)
+        undefined = table["Support"] == 0
+        metric_columns = [c for c in df.index if c != "Support"]
 
-        return table
+        if undefined.any():
+            table[metric_columns] = table[metric_columns].astype(object)
+            table.loc[undefined, metric_columns] = (
+                float("nan") if export else loc.localize("eval-tab-not-available")
+            )
+
+        return table.rename(columns={"Support": support})
+
+    class_table = display(per_class_df)
+    annotated_first = class_table[support].eq(0).argsort(kind="stable")
+    class_table = class_table.iloc[annotated_first].reset_index(drop=True)
 
     # The name column gets a fixed share, the metric columns split the rest.
     n_metric_cols = len(per_class_df.index)
     widths = ["22%"] + [f"{round(78 / n_metric_cols, 2)}%"] * n_metric_cols
 
-    return display(per_class_df), display(overall_df), widths
+    return class_table, display(overall_df), widths
 
 
-def _build_figures(pa, predictions, labels, class_wise_value):
-    """Builds the three result plots, tolerating individual failures.
+def _plotted(pa, predictions, labels):
+    """The assessor and tensors for per-class panels, limited to the best-supported."""
+    import numpy as np
 
-    A plot that cannot be drawn (e.g. a degenerate confusion matrix) must not
-    take down the whole calculation, so each failure is reported as a warning
-    and its pane is simply left empty.
+    from birdnet_analyzer.evaluation.assessment.performance_assessor import (
+        PerformanceAssessor,
+    )
+
+    if pa.num_classes <= _PLOTTED_CLASSES:
+        return pa, predictions, labels
+
+    support = pa.class_support(labels)
+    keep = np.sort(np.argsort(-support, kind="stable")[:_PLOTTED_CLASSES])
+    subset = PerformanceAssessor(
+        num_classes=len(keep),
+        threshold=pa.threshold,
+        classes=tuple(pa.classes[i] for i in keep),
+        task="multilabel",
+        metrics_list=pa.metrics_list,
+    )
+
+    return subset, predictions[:, keep], labels[:, keep]
+
+
+def _build_figures(
+    pa, predictions, labels, class_wise_value, averaging_value, names=tuple(_PLOTS)
+):
+    """Builds the named result plots, tolerating individual failures.
+
+    A plot that cannot be drawn must not take down the whole calculation, so each
+    failure is reported as a warning and its pane is simply left empty.
     """
     import matplotlib
     import matplotlib.pyplot as plt
 
     matplotlib.use("agg")
 
-    def safe(build, error_key):
+    panels = _plotted(pa, predictions, labels)
+    lines = panels if class_wise_value else (pa, predictions, labels)
+    builders = {
+        "metrics": (
+            lambda: lines[0].plot_metrics(
+                lines[1],
+                lines[2],
+                per_class_metrics=class_wise_value,
+                averaging=averaging_value,
+            ),
+            "eval-tab-error-plotting-metrics",
+        ),
+        "confusion_matrix": (
+            lambda: panels[0].plot_confusion_matrix(panels[1], panels[2]),
+            "eval-tab-error-plotting-confusion-matrix",
+        ),
+        "metrics_all_thresholds": (
+            lambda: lines[0].plot_metrics_all_thresholds(
+                lines[1],
+                lines[2],
+                per_class_metrics=class_wise_value,
+                averaging=averaging_value,
+            ),
+            "eval-tab-error-plotting-metrics-all-thresholds",
+        ),
+    }
+
+    def safe(name):
+        build, error_key = builders[name]
+
         try:
             fig = build()
             plt.close(fig)
@@ -347,45 +881,135 @@ def _build_figures(pa, predictions, labels, class_wise_value):
 
             return None
 
-    return (
-        safe(
-            lambda: pa.plot_metrics(
-                predictions, labels, per_class_metrics=class_wise_value
-            ),
-            "eval-tab-error-plotting-metrics",
-        ),
-        safe(
-            lambda: pa.plot_confusion_matrix(predictions, labels),
-            "eval-tab-error-plotting-confusion-matrix",
-        ),
-        safe(
-            lambda: pa.plot_metrics_all_thresholds(
-                predictions, labels, per_class_metrics=class_wise_value
-            ),
-            "eval-tab-error-plotting-metrics-all-thresholds",
-        ),
-    )
+    return tuple(safe(name) for name in names)
 
 
-def _build_notes(unmatched_recordings, empty_classes, score_unannotated: bool) -> str:
-    lines = []
-    unmatched = sorted(unmatched_recordings)
+def _lowest_score(processor: DataProcessor, settings: _Settings) -> float | None:
+    if settings.min_conf:
+        return settings.min_conf
 
-    if unmatched:
+    confidence = processor.get_column_name("Confidence", prediction=True)
+    scores = pd.to_numeric(
+        processor.predictions_df.get(confidence, pd.Series(dtype=float)),
+        errors="coerce",
+    ).dropna()
+
+    return round(float(scores.min()), 2) if len(scores) else None
+
+
+def _build_notes(
+    processor: DataProcessor,
+    pa: PerformanceAssessor,
+    labels,
+    threshold: float,
+    metric_ids,
+    settings: _Settings,
+) -> str:
+    notes = []
+    prediction_only = sorted(processor.unmatched_prediction_files)
+    annotation_only = sorted(processor.unmatched_annotation_files)
+
+    if prediction_only:
         key = (
             "eval-tab-note-unmatched-empty"
-            if score_unannotated
+            if processor.score_unannotated_as_empty
             else "eval-tab-note-unmatched-dropped"
         )
-        lines.append(f"⚠️ {loc.localize(key)} {', '.join(unmatched)}")
-
-    if empty_classes:
-        lines.append(
-            f"📊 {loc.localize('eval-tab-note-empty-classes')} "
-            f"{', '.join(empty_classes)}"
+        notes.append(
+            (
+                "⚠️",
+                loc.localize(key).format(
+                    n=len(prediction_only), names=_names(prediction_only)
+                ),
+            )
         )
 
-    return "\n\n".join(lines)
+    if annotation_only:
+        notes.append(
+            (
+                "⚠️",
+                loc.localize("eval-tab-note-annotation-only").format(
+                    n=len(annotation_only), names=_names(annotation_only)
+                ),
+            )
+        )
+
+    empty = pa.empty_classes(labels)
+
+    if empty:
+        notes.append(
+            (
+                "📊",
+                loc.localize("eval-tab-note-empty-classes").format(
+                    n=len(empty), names=_names(empty)
+                ),
+            )
+        )
+
+    selected = set(pa.classes or ())
+    unselected = [
+        c
+        for c in processor.predicted_classes
+        if c not in selected and c not in set(processor.annotated_classes)
+    ]
+
+    if unselected:
+        class_col = processor.get_column_name("Class", prediction=True)
+        detections = int(processor.predictions_df[class_col].isin(unselected).sum())
+        notes.append(
+            (
+                _INFO,
+                loc.localize("eval-tab-note-unselected-detections").format(
+                    n=len(unselected),
+                    detections=detections,
+                    names=_names(unselected, 3),
+                ),
+            )
+        )
+
+    lowest = _lowest_score(processor, settings)
+
+    if lowest and threshold < lowest:
+        notes.append(
+            (
+                _INFO,
+                loc.localize("eval-tab-note-threshold-below-scores").format(
+                    min_conf=_number(lowest)
+                ),
+            )
+        )
+
+    if lowest and lowest > _TRUNCATION_NOTE_FROM and {"auroc", "ap"} & set(metric_ids):
+        notes.append(
+            (
+                _INFO,
+                loc.localize("eval-tab-note-truncated-scores").format(
+                    min_conf=_number(lowest)
+                ),
+            )
+        )
+
+    if pa.num_classes > _PLOTTED_CLASSES:
+        notes.append(
+            (
+                _INFO,
+                loc.localize("eval-tab-note-plot-limit").format(limit=_PLOTTED_CLASSES),
+            )
+        )
+
+    return "\n\n".join(f"{symbol} {text}" for symbol, text in notes)
+
+
+def _header(processor: DataProcessor, recordings, predictions, pa, threshold) -> str:
+    names = set(processor.samples_df["filename"])
+
+    return loc.localize("eval-tab-results-header").format(
+        recordings=len(names & set(recordings)) if recordings else len(names),
+        windows=len(predictions),
+        window=_number(processor.sample_duration),
+        classes=pa.num_classes,
+        threshold=_number(threshold),
+    )
 
 
 @gu.gui_runtime_error_handler
@@ -406,7 +1030,7 @@ def download_class_mapping_template():
         )
 
         if file_location:
-            with open(file_location, "w") as f:
+            with open(file_location, "w", encoding="utf-8") as f:
                 json.dump(template_mapping, f, indent=4)
 
             gr.Info(loc.localize("eval-tab-info-mapping-template-saved"))
@@ -418,7 +1042,7 @@ def download_class_mapping_template():
 
 @gu.gui_runtime_error_handler
 def download_results_table(
-    pa: PerformanceAssessor, predictions, labels, class_wise_value, averaging_value
+    pa: PerformanceAssessor, predictions, labels, averaging_value
 ):
     if pa is None or predictions is None or labels is None:
         raise gr.Error(
@@ -433,18 +1057,12 @@ def download_results_table(
         )
 
         if file_location:
-            metrics_df = pa.calculate_metrics(
-                predictions,
-                labels,
-                per_class_metrics=class_wise_value,
-                averaging=averaging_value,
-                include_support=class_wise_value,
+            class_table, overall_row, _ = _build_metrics_tables(
+                pa, predictions, labels, averaging_value, export=True
             )
-
-            if file_location.split(".")[-1].lower() == "tsv":
-                metrics_df.to_csv(file_location, sep="\t", index=True)
-            else:
-                metrics_df.to_csv(file_location, index=True)
+            table = pd.concat([class_table, overall_row], ignore_index=True)
+            separator = "\t" if file_location.lower().endswith(".tsv") else ","
+            table.to_csv(file_location, sep=separator, index=False)
 
             gr.Info(loc.localize("eval-tab-info-results-table-saved"))
     except Exception as e:
@@ -459,7 +1077,7 @@ def download_data_table(proc_state: ProcessorState | None, *processor_values):
 
     if arguments is None:
         raise gr.Error(
-            loc.localize("eval-tab-error-calc-metrics-first"), print_exception=False
+            loc.localize("eval-tab-error-select-folders"), print_exception=False
         )
 
     proc_state = _processor_for(proc_state, arguments)
@@ -486,10 +1104,14 @@ def download_data_table(proc_state: ProcessorState | None, *processor_values):
 
 
 @gu.gui_runtime_error_handler
-def download_plot_guarded(plot, plot_name):
+def download_plot_guarded(plot, plot_name, pa):
     if plot is None:
         raise gr.Error(
-            loc.localize("eval-tab-error-calc-metrics-first"),
+            loc.localize(
+                "eval-tab-error-calc-metrics-first"
+                if pa is None
+                else "eval-tab-error-plot-unavailable"
+            ),
             print_exception=False,
         )
 
@@ -497,59 +1119,56 @@ def download_plot_guarded(plot, plot_name):
 
 
 @gu.gui_runtime_error_handler
-def select_directory(kind: str, current_files, current_dir):
+def select_directory(kind: str, current_dir, sample_duration, threshold):
     folder = gu.select_folder(state_key=f"eval-{kind}s-dir")
+    unchanged = [gr.update() for _ in _DEFAULT_COLUMNS[kind]]
 
     if not folder:
         # Keep everything as it was when the dialog is cancelled.
         return [
             False,
-            current_files,
             current_dir,
             gr.update(),
             gr.update(),
+            *unchanged,
             gr.update(),
-            *[gr.update() for _ in _DEFAULT_COLUMNS[kind]],
+            gr.update(),
+            gr.update(),
         ]
 
-    files = _selection_tables(folder)
+    from birdnet_analyzer.evaluation.preprocessing.utils import (
+        detect_columns,
+        table_columns,
+    )
 
-    if not files:
-        # Folder has no selection tables: tell the user and leave the tab
-        # unarmed (no directory stored, column box hidden).
-        return [
-            True,
-            [],
-            "",
-            folder,
-            gr.update(
-                value=[[loc.localize("eval-tab-no-files-found")]],
-                visible=True,
-            ),
-            gr.update(visible=False),
-            *_column_updates(kind, []),
-        ]
+    columns = table_columns(folder)
+    detected = detect_columns(kind, columns)
+    choices = ["", *sorted(columns)]
+    sample_update = threshold_update = gr.update()
 
-    # gr.Matrix expects 2D data: one row per file in the single column.
-    rows = [[f.name] for f in files[:100]]
-    if len(files) > 100:
-        rows.append([f"{len(files) - 100} more..."])
+    if kind == "prediction":
+        settings = _analysis_settings(folder)
+
+        if settings.segment_length and settings.segment_length != sample_duration:
+            sample_update = gr.update(value=settings.segment_length)
+
+        # Thresholds below the analysis' minimum confidence all score the same.
+        if settings.min_conf and (threshold or 0) < settings.min_conf:
+            threshold_update = gr.update(value=settings.min_conf)
 
     return [
         True,
-        files,
         folder,
         folder,
-        gr.update(value=rows, visible=True),
         gr.update(visible=True),
-        *_column_updates(kind, files),
+        *(
+            gr.update(choices=choices, value=detected.get(field))
+            for field in _DEFAULT_COLUMNS[kind]
+        ),
+        sample_update,
+        threshold_update,
+        gr.update(value=loc.localize("eval-tab-status-reading"), visible=True),
     ]
-
-
-def toggle_after_selection(annotation_dir, prediction_dir):
-    visible = bool(annotation_dir and prediction_dir)
-
-    return [gr.update(visible=visible)] * 2
 
 
 def _refreshed(
@@ -559,21 +1178,60 @@ def _refreshed(
     processor_values,
     reread: bool,
 ):
-    arguments = _processor_arguments(*processor_values, strict=False)
+    """The lists, processor, status and suggestions for the current inputs.
 
-    if arguments is None:
-        return gr.update(), gr.update(), None
+    An input problem is shown in the status, and the lists stay as they are; a
+    missing column opens the column box it belongs to.
+    """
+    unchanged = [gr.update(), gr.update(), proc_state]
+    nothing_to_suggest = [[], gr.update(visible=False)]
+    both = bool(processor_values[0] and processor_values[1])
 
     try:
+        arguments = _processor_arguments(*processor_values, strict=False)
+
+        if arguments is None:
+            status = _one_side_status(processor_values)
+
+            return [
+                *unchanged,
+                gr.update(value=status, visible=bool(status)),
+                *nothing_to_suggest,
+                *[gr.update(visible=False)] * 2,
+                *[gr.update()] * 3,
+            ]
+
         built = (
             _build_processor(arguments)
             if reread
             else _processor_for(proc_state, arguments)
         )
-    except _MissingColumnError:
-        # Folders are picked before their columns are mapped; calculating reports it.
-        return gr.update(), gr.update(), proc_state
+    except _InputProblem as e:
+        return [
+            *unchanged,
+            gr.update(value=f"⚠️ {e.message}", visible=True),
+            *nothing_to_suggest,
+            *[gr.update(visible=both)] * 2,
+            gr.update(),
+            *(
+                gr.update(open=True) if e.column_side == kind else gr.update()
+                for kind in _DEFAULT_COLUMNS
+            ),
+        ]
 
+    switched_to = _best_class_column(built.processor) if reread else None
+
+    if switched_to:
+        arguments = {
+            **arguments,
+            "columns_predictions": {
+                **arguments["columns_predictions"],
+                "Class": switched_to,
+            },
+        }
+        built = _build_processor(arguments)
+
+    suggestions = _name_suggestions(built.processor)
     (classes, selected_classes), (recordings, selected_recordings) = _selection_choices(
         built.processor,
         proc_state.processor if proc_state is not None else None,
@@ -581,11 +1239,20 @@ def _refreshed(
         current_recordings,
     )
 
-    return (
+    return [
         gr.update(choices=classes, value=selected_classes),
         gr.update(choices=recordings, value=selected_recordings),
         built,
-    )
+        gr.update(
+            value=_status(built.processor, arguments, suggestions, switched_to),
+            visible=True,
+        ),
+        suggestions,
+        gr.update(visible=bool(suggestions)),
+        *[gr.update(visible=True)] * 2,
+        gr.update(value=switched_to) if switched_to else gr.update(),
+        *[gr.update()] * 2,
+    ]
 
 
 @gu.gui_runtime_error_handler
@@ -618,20 +1285,57 @@ def check_parameters(proc_state: ProcessorState | None, *processor_values):
     arguments = _processor_arguments(*processor_values, strict=True)
 
     if arguments is None:
-        return proc_state
+        return proc_state, gr.update()
 
     try:
-        return _processor_for(proc_state, arguments)
-    except _MissingColumnError:
-        return proc_state
+        built = _processor_for(proc_state, arguments)
+    except _InputProblem as e:
+        return proc_state, gr.update(value=f"⚠️ {e.message}", visible=True)
+
+    return built, gr.update(
+        value=_status(built.processor, arguments, _name_suggestions(built.processor)),
+        visible=True,
+    )
+
+
+@gu.gui_runtime_error_handler
+def apply_name_suggestions(suggestions, mapping_file_obj):
+    if mapping_file_obj and hasattr(mapping_file_obj, "temp_files"):
+        mapping_file_obj = next(iter(mapping_file_obj.temp_files))
+
+    mapping = _class_mapping(mapping_file_obj) or {}
+    mapping.update(
+        {predicted: annotated for annotated, predicted, *_ in suggestions or ()}
+    )
+
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        prefix="class_mapping_",
+        suffix=".json",
+        delete=False,
+    ) as f:
+        json.dump(mapping, f, indent=4, ensure_ascii=False)
+
+    return f.name
 
 
 def _lock_calculation():
-    return gr.update(interactive=False)
+    return gr.update(
+        interactive=False, value=loc.localize("eval-tab-reading-busy-label")
+    )
+
+
+def _busy_calculating():
+    return gr.update(
+        interactive=False, value=loc.localize("eval-tab-calculate-busy-label")
+    )
 
 
 def _unlock_calculation():
-    return gr.update(interactive=True)
+    return gr.update(
+        interactive=True, value=loc.localize("eval-tab-calculate-metrics-button-label")
+    )
 
 
 @gu.gui_runtime_error_handler
@@ -661,15 +1365,24 @@ def calculate_metrics(
 
     if arguments is None:
         raise gr.Error(
-            loc.localize("eval-tab-error-init-processor"),
-            print_exception=False,
+            loc.localize("eval-tab-error-select-folders"), print_exception=False
         )
 
     proc_state = _processor_for(proc_state, arguments)
     processor = proc_state.processor
 
-    if not selected_classes_list:
-        selected_classes_list = list(processor.classes)
+    if not processor.matched_recordings:
+        raise _InputProblem(
+            f"{loc.localize('eval-tab-error-nothing-paired')} "
+            f"{loc.localize('eval-tab-status-pairing-rule')}"
+        )
+
+    selected_classes_list = (
+        selected_classes_list
+        or list(processor.annotated_classes)
+        or list(processor.classes)
+    )
+
     if not selected_classes_list:
         raise gr.Error(loc.localize("eval-tab-error-no-class-selected"))
 
@@ -686,9 +1399,15 @@ def calculate_metrics(
             pa, predictions, labels, averaging_value
         )
         notes = _build_notes(
-            processor.unmatched_prediction_files,
-            pa.empty_classes(labels),
-            processor.score_unannotated_as_empty,
+            processor,
+            pa,
+            labels,
+            threshold_value,
+            metric_ids,
+            _analysis_settings(arguments["prediction_directory_path"]),
+        )
+        header = _header(
+            processor, selected_recordings_list, predictions, pa, threshold_value
         )
     except gr.Error:
         raise
@@ -698,11 +1417,12 @@ def calculate_metrics(
         ) from e
 
     fig_metrics, fig_confusion, fig_thresholds = _build_figures(
-        pa, predictions, labels, class_wise_value
+        pa, predictions, labels, class_wise_value, averaging_value
     )
 
     return (
         gr.update(visible=True),
+        header,
         gr.update(value=class_table, column_widths=widths),
         gr.update(value=overall_row, column_widths=widths),
         gr.update(value=notes, visible=bool(notes)),
@@ -716,16 +1436,31 @@ def calculate_metrics(
     )
 
 
-def recompute_overall(pa: PerformanceAssessor, predictions, labels, averaging_value):
+@gu.gui_runtime_error_handler
+def recompute_overall(
+    pa: PerformanceAssessor, predictions, labels, averaging_value, class_wise_value
+):
     if pa is None or predictions is None or labels is None:
-        return gr.update()
+        return gr.update(), gr.update(), gr.update()
 
-    # Only the aggregate depends on the averaging method.
+    # Only the aggregate and the averaged plots depend on the averaging method.
     _, overall_row, widths = _build_metrics_tables(
         pa, predictions, labels, averaging_value
     )
 
-    return gr.update(value=overall_row, column_widths=widths)
+    overall = gr.update(value=overall_row, column_widths=widths)
+
+    if class_wise_value:
+        return overall, gr.update(), gr.update()
+
+    return overall, *_build_figures(
+        pa,
+        predictions,
+        labels,
+        class_wise_value,
+        averaging_value,
+        ("metrics", "metrics_all_thresholds"),
+    )
 
 
 def _directory_picker(kind: str):
@@ -744,30 +1479,27 @@ def _directory_picker(kind: str):
             elem_classes="path-textbox",
         )
 
-    files_table = gr.Matrix(
-        interactive=False,
-        visible=False,
-        headers=[
-            loc.localize("eval-tab-selections-column-file-header"),
-        ],
-        buttons=[],
-    )
-
-    return button, textbox, files_table
+    return button, textbox
 
 
 def _column_box(kind: str):
     with (
         gr.Group(visible=False) as group,
-        gr.Accordion(loc.localize(f"eval-tab-{kind}-col-accordion-label"), open=True),
+        gr.Accordion(
+            loc.localize(f"eval-tab-{kind}-col-accordion-label"), open=False
+        ) as accordion,
         gr.Row(),
     ):
         dropdowns = [
-            gr.Dropdown(choices=[], label=loc.localize(_COLUMN_LABEL_KEYS[field]))
+            gr.Dropdown(
+                choices=[],
+                label=loc.localize(_COLUMN_LABEL_KEYS[field]),
+                info=loc.localize(_COLUMN_INFO_KEYS[field]),
+            )
             for field in _DEFAULT_COLUMNS[kind]
         ]
 
-    return group, dropdowns
+    return group, accordion, dropdowns
 
 
 def _mapping_controls():
@@ -776,16 +1508,21 @@ def _mapping_controls():
         gr.Accordion(
             loc.localize("eval-tab-class-mapping-accordion-label"), open=False
         ),
-        gr.Row(),
     ):
-        mapping_file = gr.File(
-            label=loc.localize("eval-tab-upload-mapping-file-label"),
-            file_count="single",
-            file_types=[".json"],
-        )
-        template_button = gr.DownloadButton(
-            label=loc.localize("eval-tab-mapping-file-template-download-button-label")
-        )
+        gr.Markdown(loc.localize("eval-tab-class-mapping-info"), padding=True)
+
+        with gr.Row():
+            mapping_file = gr.File(
+                label=loc.localize("eval-tab-upload-mapping-file-label"),
+                file_count="single",
+                file_types=[".json"],
+                height=120,
+            )
+            template_button = gr.DownloadButton(
+                label=loc.localize(
+                    "eval-tab-mapping-file-template-download-button-label"
+                )
+            )
 
     return group, mapping_file, template_button
 
@@ -835,7 +1572,6 @@ def _parameter_controls(state: TabState) -> _Parameters:
                 gr.Number,
                 value=3,
                 label=loc.localize("eval-tab-sample-duration-number-label"),
-                precision=0,
                 info=loc.localize("eval-tab-sample-duration-number-info"),
             )
             recording_duration = state.persist(
@@ -926,6 +1662,8 @@ def _metric_controls(state: TabState):
 
 def _results_panel() -> _Results:
     with gr.Column(visible=False) as column:
+        header = gr.Markdown()
+
         # Aggregate goes in a separate one-row footer table that stays visible while
         # the class rows scroll: the virtualized gradio Dataframe can't pin one, so
         # the footer is its own component; shared column widths keep them aligned.
@@ -970,6 +1708,7 @@ def _results_panel() -> _Results:
 
     return _Results(
         column,
+        header,
         metrics_table,
         overall_table,
         notes,
@@ -987,7 +1726,7 @@ def build_evaluation_tab() -> None:
         pa_state = gr.State()
         predictions_state = gr.State()
         labels_state = gr.State()
-        files_states = {kind: gr.State() for kind in _DEFAULT_COLUMNS}
+        suggestions_state = gr.State([])
         dir_states = {kind: gr.State() for kind in _DEFAULT_COLUMNS}
 
         gu.info_box(
@@ -996,6 +1735,14 @@ def build_evaluation_tab() -> None:
         )
 
         pickers = {kind: _directory_picker(kind) for kind in _DEFAULT_COLUMNS}
+        status = gr.Markdown(
+            visible=False, elem_classes="eval-status", padding=True, line_breaks=True
+        )
+        apply_suggestions_button = gr.Button(
+            loc.localize("eval-tab-apply-suggestions-button-label"),
+            visible=False,
+            size="sm",
+        )
         column_boxes = {kind: _column_box(kind) for kind in _DEFAULT_COLUMNS}
         mapping_group, mapping_file, template_button = _mapping_controls()
         selection_group, classes, recordings = _selection_controls()
@@ -1008,7 +1755,12 @@ def build_evaluation_tab() -> None:
         results = _results_panel()
 
         column_dropdowns = [
-            dropdown for _, dropdowns in column_boxes.values() for dropdown in dropdowns
+            dropdown
+            for _, _, dropdowns in column_boxes.values()
+            for dropdown in dropdowns
+        ]
+        prediction_class_dropdown = column_boxes["prediction"][2][
+            list(_DEFAULT_COLUMNS["prediction"]).index("Class")
         ]
         processor_inputs = [
             dir_states["annotation"],
@@ -1021,7 +1773,18 @@ def build_evaluation_tab() -> None:
             *column_dropdowns,
         ]
         refresh_inputs = [processor_state, classes, recordings, *processor_inputs]
-        refresh_outputs = [classes, recordings, processor_state]
+        refresh_outputs = [
+            classes,
+            recordings,
+            processor_state,
+            status,
+            suggestions_state,
+            apply_suggestions_button,
+            mapping_group,
+            selection_group,
+            prediction_class_dropdown,
+            *(accordion for _, accordion, _ in column_boxes.values()),
+        ]
         picked_state = gr.State(False)
         # One queue for everything that builds the processor, so a build under way is
         # reused instead of run twice.
@@ -1030,13 +1793,7 @@ def build_evaluation_tab() -> None:
         template_button.click(fn=download_class_mapping_template)
         results.download_results.click(
             fn=download_results_table,
-            inputs=[
-                pa_state,
-                predictions_state,
-                labels_state,
-                parameters.class_wise,
-                averaging_radio,
-            ],
+            inputs=[pa_state, predictions_state, labels_state, averaging_radio],
         )
         results.download_data.click(
             fn=download_data_table,
@@ -1045,12 +1802,12 @@ def build_evaluation_tab() -> None:
             concurrency_id=processor_queue,
         )
         for name, (plot, button) in results.plots.items():
-            button.click(download_plot_guarded, inputs=[plot, gr.State(name)])
+            button.click(download_plot_guarded, inputs=[plot, gr.State(name), pa_state])
 
         # Calculate is locked while the lists change, so it never sends a selection
         # made from the old ones.
-        for kind, (button, textbox, files_table) in pickers.items():
-            group, dropdowns = column_boxes[kind]
+        for kind, (button, textbox) in pickers.items():
+            group, _, dropdowns = column_boxes[kind]
             button.click(
                 _lock_calculation,
                 outputs=[calculate_button],
@@ -1058,32 +1815,31 @@ def build_evaluation_tab() -> None:
                 show_progress="hidden",
             ).then(
                 select_directory,
-                inputs=[gr.State(kind), files_states[kind], dir_states[kind]],
+                inputs=[
+                    gr.State(kind),
+                    dir_states[kind],
+                    parameters.sample_duration,
+                    parameters.threshold,
+                ],
                 outputs=[
                     picked_state,
-                    files_states[kind],
                     dir_states[kind],
                     textbox,
-                    files_table,
                     group,
                     *dropdowns,
+                    parameters.sample_duration,
+                    parameters.threshold,
+                    status,
                 ],
-                show_progress="full",
+                show_progress="hidden",
             ).then(
                 refresh_after_pick,
                 inputs=[picked_state, *refresh_inputs],
                 outputs=refresh_outputs,
                 concurrency_id=processor_queue,
             ).then(_unlock_calculation, outputs=[calculate_button])
-            files_table.change(
-                toggle_after_selection,
-                inputs=[dir_states["annotation"], dir_states["prediction"]],
-                outputs=[mapping_group, selection_group],
-                show_progress="hidden",
-            )
 
-        # Setting the column defaults on a folder pick fires ``.change`` but not
-        # ``.input``.
+        # Setting the column defaults on a pick fires ``.change`` but not ``.input``.
         gr.on(
             [
                 mapping_file.change,
@@ -1101,6 +1857,12 @@ def build_evaluation_tab() -> None:
             concurrency_id=processor_queue,
         ).then(_unlock_calculation, outputs=[calculate_button])
 
+        apply_suggestions_button.click(
+            apply_name_suggestions,
+            inputs=[suggestions_state, mapping_file],
+            outputs=[mapping_file],
+        )
+
         # Building reads every file, so the typed parameters are checked once they are
         # entered, not per keystroke. They do not change the lists.
         typed_fields = (
@@ -1115,11 +1877,16 @@ def build_evaluation_tab() -> None:
             ],
             check_parameters,
             inputs=[processor_state, *processor_inputs],
-            outputs=[processor_state],
+            outputs=[processor_state, status],
             concurrency_id=processor_queue,
         )
 
         calculate_button.click(
+            _busy_calculating,
+            outputs=[calculate_button],
+            queue=False,
+            show_progress="hidden",
+        ).then(
             calculate_metrics,
             inputs=[
                 processor_state,
@@ -1133,6 +1900,7 @@ def build_evaluation_tab() -> None:
             ],
             outputs=[
                 results.column,
+                results.header,
                 results.metrics_table,
                 results.overall_table,
                 results.notes,
@@ -1143,12 +1911,23 @@ def build_evaluation_tab() -> None:
                 processor_state,
             ],
             concurrency_id=processor_queue,
-        )
+            scroll_to_output=True,
+        ).then(_unlock_calculation, outputs=[calculate_button])
 
         averaging_radio.change(
             recompute_overall,
-            inputs=[pa_state, predictions_state, labels_state, averaging_radio],
-            outputs=[results.overall_table],
+            inputs=[
+                pa_state,
+                predictions_state,
+                labels_state,
+                averaging_radio,
+                parameters.class_wise,
+            ],
+            outputs=[
+                results.overall_table,
+                results.plots["metrics"][0],
+                results.plots["metrics_all_thresholds"][0],
+            ],
         )
 
 

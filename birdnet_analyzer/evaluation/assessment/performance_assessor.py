@@ -130,6 +130,7 @@ class PerformanceAssessor:
         averaging_method,
         metric_ids: list[str] | tuple[str, ...],
         threshold: float | None = None,
+        task: Literal["binary", "multilabel"] | None = None,
     ) -> dict[str, np.ndarray]:
         """Compute the given metrics, keyed by their display names.
 
@@ -141,6 +142,8 @@ class PerformanceAssessor:
             metric_ids: The ids of the metrics to compute, in output order.
             threshold (Optional[float]): The threshold for binarizing probabilities,
                 ``self.threshold`` if not given.
+            task (Optional[Literal["binary", "multilabel"]]): The task to score,
+                ``self.task`` if not given.
 
         Returns:
             An ordered mapping of display name to a 1D array of metric values.
@@ -154,7 +157,7 @@ class PerformanceAssessor:
             value = metric.function(
                 predictions=predictions,
                 labels=labels,
-                task=self.task,
+                task=task or self.task,
                 averaging_method=averaging_method,
                 **extra,
             )
@@ -186,18 +189,20 @@ class PerformanceAssessor:
             # Nothing scoreable -- report NaN rather than a misleading zero.
             return {METRICS[m].display_name: np.array([np.nan]) for m in metric_ids}
 
-        # For a binary task the metric functions want no averaging (they use the
-        # positive-class value). For multilabel we always aggregate across the kept
-        # classes -- even a single kept column, where ``average=None`` would wrongly
-        # return one value per binary outcome instead of a single score.
-        averaging_method = None if self.task == "binary" else averaging
+        # scikit-learn reads a single column as a binary target and would average the
+        # absent label into macro, micro and weighted, so it is scored as binary.
+        task = "binary" if kept.size == 1 else self.task
+        averaging_method = None if task == "binary" else averaging
 
+        # scikit-learn scores row-major tensors several times faster than the
+        # column-major copy that column indexing returns.
         return self._compute_metrics_dict(
-            predictions[:, kept],
-            labels[:, kept],
+            np.ascontiguousarray(predictions[:, kept]),
+            np.ascontiguousarray(labels[:, kept]),
             averaging_method,
             metric_ids,
             threshold,
+            task,
         )
 
     def class_support(self, labels: np.ndarray) -> np.ndarray:
@@ -275,6 +280,7 @@ class PerformanceAssessor:
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
+        averaging: Literal["macro", "micro", "weighted"] = "macro",
     ):
         """
         Plot performance metrics for the given predictions and labels.
@@ -285,6 +291,8 @@ class PerformanceAssessor:
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
             per_class_metrics (bool): If True, plots metrics for each class
                 individually.
+            averaging (Literal["macro", "micro", "weighted"]): How the overall scores
+                aggregate the classes. Ignored when ``per_class_metrics`` is True.
 
         Raises:
             ValueError: If the metrics cannot be calculated or plotting fails.
@@ -292,7 +300,9 @@ class PerformanceAssessor:
         Returns:
             None
         """
-        metrics_df = self.calculate_metrics(predictions, labels, per_class_metrics)
+        metrics_df = self.calculate_metrics(
+            predictions, labels, per_class_metrics, averaging=averaging
+        )
 
         return (
             plotting.plot_metrics_per_class(metrics_df, self.colors)
@@ -305,6 +315,7 @@ class PerformanceAssessor:
         predictions: np.ndarray,
         labels: np.ndarray,
         per_class_metrics: bool = False,
+        averaging: Literal["macro", "micro", "weighted"] = "macro",
     ):
         """
         Plot performance metrics across thresholds for the given predictions and labels.
@@ -315,6 +326,8 @@ class PerformanceAssessor:
             labels (np.ndarray): Ground truth labels as a 2D NumPy array.
             per_class_metrics (bool): If True, plots metrics for each class
                 individually.
+            averaging (Literal["macro", "micro", "weighted"]): How the overall scores
+                aggregate the classes. Ignored when ``per_class_metrics`` is True.
 
         Raises:
             ValueError: If metrics calculation or plotting fails.
@@ -336,7 +349,7 @@ class PerformanceAssessor:
                         labels,
                         metrics_to_plot,
                         per_class_metrics,
-                        "macro",
+                        averaging,
                         threshold,
                     ).values()
                 )
@@ -396,7 +409,7 @@ class PerformanceAssessor:
             y_pred = (predictions >= self.threshold).astype(int).flatten()
             y_true = labels.astype(int).flatten()
 
-            conf_mat = confusion_matrix(y_true, y_pred, normalize="true")
+            conf_mat = confusion_matrix(y_true, y_pred, labels=[0, 1], normalize="true")
             conf_mat = np.round(conf_mat, 2)
 
             return plotting.plot_confusion_matrices(conf_mat, self.task, self.classes)  # ty:ignore[invalid-argument-type]
@@ -412,7 +425,7 @@ class PerformanceAssessor:
 
             for i in range(self.num_classes):
                 conf_mat = confusion_matrix(
-                    y_true[:, i], y_pred[:, i], normalize="true"
+                    y_true[:, i], y_pred[:, i], labels=[0, 1], normalize="true"
                 )
                 conf_mat = np.round(conf_mat, 2)
                 conf_mats.append(conf_mat)
