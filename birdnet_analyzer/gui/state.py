@@ -13,7 +13,7 @@ tab from starting up.
 """
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from typing import Any, NamedTuple
 
 import gradio as gr
@@ -105,6 +105,8 @@ class TabState:
         self._values = settings.get_tab_settings(tab)
         self._fields: dict[str, _Field] = {}
         self._fitters: list[tuple[Callable, list, list]] = []
+        self._retired: set[str] = set()
+        self._retired_values: dict[str, dict] = {}
 
     def get(
         self,
@@ -131,7 +133,7 @@ class TabState:
             return default
 
         return _validate(
-            self._values[key],
+            self._replace_retired(key, self._values[key]),
             default,
             choices=choices,
             minimum=minimum,
@@ -219,7 +221,7 @@ class TabState:
             return field.default
 
         return _validate(
-            values[key],
+            self._replace_retired(key, values[key]),
             field.default,
             choices=field.choices,
             minimum=field.minimum,
@@ -235,6 +237,28 @@ class TabState:
         """
         settings.update_tab_settings(self.tab, values)
         self._values.update(values)
+
+    def retire(self, *keys: str) -> None:
+        """Declares settings of an older version that no component of the tab takes.
+
+        `updates_for` ignores them instead of reporting them as skipped, so presets
+        saved before they were removed apply without a warning.
+        """
+        self._retired.update(keys)
+
+    def retire_value(self, key: str, value, replacement) -> None:
+        """Declares a value of a setting that only an older version offered.
+
+        Restored values, presets and parameters files holding it apply ``replacement``
+        instead, without a warning.
+        """
+        self._retired_values.setdefault(key, {})[value] = replacement
+
+    def _replace_retired(self, key: str, value):
+        if not isinstance(value, Hashable):
+            return value
+
+        return self._retired_values.get(key, {}).get(value, value)
 
     def add_fitter(self, fn: Callable, inputs: list, outputs: list) -> None:
         """Registers a handler that fits components to the values of others.
@@ -265,10 +289,11 @@ class TabState:
 
         Every value is validated against the component it belongs to, exactly like a
         value restored from a previous session, or against what the component
-        ``accepts``. A value that does not fit -- or a key no component was built for --
-        is skipped and the component keeps its current value. The applied values are
-        persisted, so they survive a restart just like user edits. The handlers
-        registered with `add_fitter` then fit the updates to each other.
+        ``accepts``. A value that does not fit -- or a key no component was built for,
+        unless it is retired -- is skipped and the component keeps its current value.
+        A retired value applies as its replacement. The applied values are persisted,
+        so they survive a restart just like user edits. The handlers registered with
+        `add_fitter` then fit the updates to each other.
 
         Args:
             values: The values to show, by setting key. E.g. a saved preset.
@@ -280,14 +305,18 @@ class TabState:
         """
         updates = {}
         applied = {}
-        skipped = [key for key in values if key not in self._fields]
+        skipped = [
+            key
+            for key in values
+            if key not in self._fields and key not in self._retired
+        ]
 
         for key, field in self._fields.items():
             if key not in values:
                 updates[key] = gr.update()
                 continue
 
-            value = values[key]
+            value = self._replace_retired(key, values[key])
             accepted = _validate(
                 value,
                 field.default,

@@ -388,7 +388,8 @@ def load_train_params(path: str) -> dict[str, Any]:
     """Reads the settings of a previous training run back from its parameters file.
 
     Maps the parameters read by :func:`birdnet_analyzer.params.load_train_params`
-    onto the settings of the train tab.
+    onto the settings of the train tab. The hyperparameters are left out: the tab
+    trains with the defaults.
 
     Args:
         path: The path to the parameters file.
@@ -412,22 +413,6 @@ def load_train_params(path: str) -> dict[str, Any]:
             "fmax": "fmax_number",
             "crop_mode": "crop_mode_radio",
             "overlap": "crop_overlap_slider",
-            "autotune": "autotune_checkbox",
-            "autotune_trials": "autotune_trials_number",
-            "autotune_n_splits": "autotune_folds_number",
-            "autotune_n_repeats": "autotune_repeats_number",
-            "epochs": "epochs_number",
-            "batch_size": "batch_size_number",
-            "learning_rate": "learning_rate_number",
-            "hidden_units": "hidden_units_number",
-            "dropout": "dropout_number",
-            "label_smoothing": "use_label_smoothing_checkbox",
-            "mixup": "use_mixup_checkbox",
-            "use_focal_loss": "use_focal_loss_checkbox",
-            "focal_loss_gamma": "focal_loss_gamma_slider",
-            "focal_loss_alpha": "focal_loss_alpha_slider",
-            "upsampling_mode": "upsampling_mode_radio",
-            "upsampling_ratio": "upsampling_ratio_slider",
             "birdnet": "birdnet_version_radio",
         },
     )
