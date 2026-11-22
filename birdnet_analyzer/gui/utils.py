@@ -276,10 +276,16 @@ def _shown_path(textbox: gr.Textbox, value: str | None) -> str | None:
     return f"{_LEFT_TO_RIGHT_MARK}{value}{_LEFT_TO_RIGHT_MARK}" if value else value
 
 
-def _path(textbox: gr.Textbox, payload: str | None) -> str | None:
-    value = gr.Textbox.preprocess(textbox, payload)
+def plain_path(shown: str | None) -> str | None:
+    """The path of a PathTextbox value as the page holds it.
 
-    return value.strip(_LEFT_TO_RIGHT_MARK) if value else value
+    A listener with preprocess=False gets that value, marks included.
+    """
+    return shown.strip(_LEFT_TO_RIGHT_MARK) if shown else shown
+
+
+def _path(textbox: gr.Textbox, payload: str | None) -> str | None:
+    return plain_path(gr.Textbox.preprocess(textbox, payload))
 
 
 # The textbox for a path, used with rtl=True, which keeps the end of a long path in

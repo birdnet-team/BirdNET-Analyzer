@@ -123,6 +123,27 @@ def test_the_query_spectrogram_uses_the_database_settings(
     assert hoplite_connections.still_open() == []
 
 
+def test_the_query_spectrogram_is_drawn_from_the_paths_as_the_page_holds_them(
+    appdir, handler, monkeypatch, hoplite_database, hoplite_connections
+):
+    opened = []
+
+    def open_audio_file(path, **kwargs):
+        opened.append(path)
+        return np.zeros(48000 * 6, np.float32), 48000
+
+    monkeypatch.setattr(audio, "open_audio_file", open_audio_file)
+    monkeypatch.setattr(utils, "spectrogram_from_audio", lambda *a, **k: "spec")
+    shown = gu.PathTextbox(rtl=True).postprocess
+
+    spectrogram, *_ = handler(gui_search.build_search_tab, "update_query_spectrogram")(
+        shown("query (1).wav"), shown(hoplite_database(DB_SETTINGS)), "center", 0.0
+    )
+
+    assert spectrogram["value"] == "spec"
+    assert opened == ["query (1).wav"]
+
+
 def test_the_query_spectrogram_reports_a_missing_database_without_creating_it(
     appdir, handler, tmp_path
 ):
