@@ -323,6 +323,124 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
 </dl>
 </section>
 </section>
+<section id="birdnet-analyzer-evaluation">
+<span id="cli-evaluation"></span><h2>birdnet_analyzer.evaluation<a class="headerlink" href="#birdnet-analyzer-evaluation" title="Link to this heading"></a></h2>
+<p>Run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.evaluation</span></code>, installed as the <code class="docutils literal notranslate"><span class="pre">birdnet-evaluate</span></code> command, to compare the result tables of an analysis with your annotations of the same recordings, as the Evaluation tab of the GUI does.
+<a class="reference internal" href="../best-practices/evaluation-tool.html"><span class="doc">Evaluation Tool</span></a> explains how the recordings are cut into windows (<code class="docutils literal notranslate"><span class="pre">--sample_duration</span></code>), how tables and classes are paired and what the metrics mean.</p>
+<p>The columns are detected from the tables’ headers, so BirdNET’s result tables, and Raven selection tables with a class column such as <code class="docutils literal notranslate"><span class="pre">Class</span></code> or <code class="docutils literal notranslate"><span class="pre">Species</span></code>, need no column options. Here is an example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.evaluation<span class="w"> </span>--annotation_path<span class="w"> </span>annotations/<span class="w"> </span>--prediction_path<span class="w"> </span>results/<span class="w"> </span>--class_wise<span class="w"> </span>--output_dir<span class="w"> </span>evaluation/<span class="w"> </span>--plot_metrics_all_thresholds
+</pre></div>
+</div>
+<p>For tables with other column names, name the columns in a JSON object, for example <code class="docutils literal notranslate"><span class="pre">--columns_annotations</span> <span class="pre">'{&quot;Start</span> <span class="pre">Time&quot;:</span> <span class="pre">&quot;onset&quot;,</span> <span class="pre">&quot;End</span> <span class="pre">Time&quot;:</span> <span class="pre">&quot;offset&quot;,</span> <span class="pre">&quot;Class&quot;:</span> <span class="pre">&quot;species&quot;}'</span></code>, and likewise with <code class="docutils literal notranslate"><span class="pre">--columns_predictions</span></code>, which also takes a <code class="docutils literal notranslate"><span class="pre">&quot;Confidence&quot;</span></code> column.
+The fields an object leaves out are still detected, and <code class="docutils literal notranslate"><span class="pre">null</span></code> means no column, such as <code class="docutils literal notranslate"><span class="pre">{&quot;Recording&quot;:</span> <span class="pre">null}</span></code> to pair by file names only.
+The prediction class column detected is the common name; if your annotations use scientific names, pass <code class="docutils literal notranslate"><span class="pre">--columns_predictions</span> <span class="pre">'{&quot;Class&quot;:</span> <span class="pre">&quot;Scientific</span> <span class="pre">Name&quot;}'</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;Scientific</span> <span class="pre">name&quot;</span></code> in CSV files).</p>
+<p>With a file instead of a folder for both paths, the two files are compared as one recording if each holds one recording, whatever their names.
+A combined result table holds several recordings: then only the one named like the annotation file is scored.</p>
+<p>Unlike the GUI, the command does not read the analysis’ parameters file: pass <code class="docutils literal notranslate"><span class="pre">--sample_duration</span> <span class="pre">5</span></code> for Perch results.
+Without <code class="docutils literal notranslate"><span class="pre">--selected_classes</span></code>, every class of both sides is scored, and the classes without annotations are left out of the overall score.</p>
+<p><p>Evaluate BirdNET predictions against annotations</p>
+</p>
+<div class="highlight-default notranslate" id="birdnet_analyzer.evaluation"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">evaluation</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span> <span class="o">|</span> <span class="o">--</span><span class="n">quiet</span><span class="p">]</span>
+                                   <span class="o">--</span><span class="n">annotation_path</span> <span class="n">ANNOTATION_PATH</span>
+                                   <span class="o">--</span><span class="n">prediction_path</span> <span class="n">PREDICTION_PATH</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">mapping_path</span> <span class="n">MAPPING_PATH</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">sample_duration</span> <span class="n">SAMPLE_DURATION</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">min_overlap</span> <span class="n">MIN_OVERLAP</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">recording_duration</span> <span class="n">RECORDING_DURATION</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">columns_annotations</span> <span class="n">COLUMNS_ANNOTATIONS</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">columns_predictions</span> <span class="n">COLUMNS_PREDICTIONS</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">selected_classes</span> <span class="n">SELECTED_CLASSES</span> <span class="p">[</span><span class="n">SELECTED_CLASSES</span> <span class="o">...</span><span class="p">]]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">selected_recordings</span> <span class="n">SELECTED_RECORDINGS</span> <span class="p">[</span><span class="n">SELECTED_RECORDINGS</span> <span class="o">...</span><span class="p">]]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">metrics</span> <span class="p">{</span><span class="n">accuracy</span><span class="p">,</span><span class="n">recall</span><span class="p">,</span><span class="n">precision</span><span class="p">,</span><span class="n">f1</span><span class="p">,</span><span class="n">ap</span><span class="p">,</span><span class="n">auroc</span><span class="p">}</span> <span class="p">[{</span><span class="n">accuracy</span><span class="p">,</span><span class="n">recall</span><span class="p">,</span><span class="n">precision</span><span class="p">,</span><span class="n">f1</span><span class="p">,</span><span class="n">ap</span><span class="p">,</span><span class="n">auroc</span><span class="p">}</span> <span class="o">...</span><span class="p">]]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">threshold</span> <span class="n">THRESHOLD</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">class_wise</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">averaging</span> <span class="p">{</span><span class="n">macro</span><span class="p">,</span><span class="n">micro</span><span class="p">,</span><span class="n">weighted</span><span class="p">}]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">score_unannotated_as_empty</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">plot_metrics</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">plot_confusion_matrix</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">plot_metrics_all_thresholds</span><span class="p">]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">output_dir</span> <span class="n">OUTPUT_DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.evaluation-named-arguments">
+<span id="birdnet_analyzer.evaluation-evaluation_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.evaluation-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>-v, --verbose</kbd></dt>
+<dd><p>Also show debug messages and stacktraces on the console.</p>
+</dd>
+<dt><kbd>--quiet</kbd></dt>
+<dd><p>Only show warnings and errors on the console.</p>
+</dd>
+<dt><kbd>--annotation_path</kbd></dt>
+<dd><p>Path to an annotation table, or a folder searched for them (.txt, .csv)</p>
+</dd>
+<dt><kbd>--prediction_path</kbd></dt>
+<dd><p>Path to a prediction table, or a folder searched for them (.txt, .csv)</p>
+</dd>
+<dt><kbd>--mapping_path</kbd></dt>
+<dd><p>Path to a JSON file mapping predicted class names to annotated ones (optional)</p>
+</dd>
+<dt><kbd>--sample_duration</kbd></dt>
+<dd><p>Sample duration in seconds</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">3.0</span></code></p>
+</dd>
+<dt><kbd>--min_overlap</kbd></dt>
+<dd><p>Seconds an annotation or prediction must overlap a window to count for it</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.5</span></code></p>
+</dd>
+<dt><kbd>--recording_duration</kbd></dt>
+<dd><p>Recording duration in seconds</p>
+</dd>
+<dt><kbd>--columns_annotations</kbd></dt>
+<dd><p>JSON object naming the annotation tables’ column for “Start Time”, “End Time”, “Class”, “Recording” and “Duration”; the fields it leaves out are detected from the tables’ headers, null means no column</p>
+</dd>
+<dt><kbd>--columns_predictions</kbd></dt>
+<dd><p>JSON object naming the prediction tables’ column for “Start Time”, “End Time”, “Class”, “Confidence”, “Recording” and “Duration”; the fields it leaves out are detected from the tables’ headers, null means no column</p>
+</dd>
+<dt><kbd>--selected_classes</kbd></dt>
+<dd><p>List of selected classes</p>
+</dd>
+<dt><kbd>--selected_recordings</kbd></dt>
+<dd><p>Recordings to score, named as their files are without the extension and the BirdNET or Raven suffix (rec for rec.BirdNET.selection.table.txt)</p>
+</dd>
+<dt><kbd>--metrics</kbd></dt>
+<dd><p>Possible choices: accuracy, recall, precision, f1, ap, auroc</p>
+<p>List of metrics (accuracy is excluded by default; in this sample-based multilabel setting it is dominated by true negatives and misleadingly high)</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">['auroc',</span> <span class="pre">'precision',</span> <span class="pre">'recall',</span> <span class="pre">'f1',</span> <span class="pre">'ap']</span></code></p>
+</dd>
+<dt><kbd>--threshold</kbd></dt>
+<dd><p>Threshold value, strictly between 0 and 1</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.1</span></code></p>
+</dd>
+<dt><kbd>--class_wise</kbd></dt>
+<dd><p>Calculate class-wise metrics</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--averaging</kbd></dt>
+<dd><p>Possible choices: macro, micro, weighted</p>
+<p>How to aggregate per-class metrics into the overall score</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'macro'</span></code></p>
+</dd>
+<dt><kbd>--score_unannotated_as_empty</kbd></dt>
+<dd><p>Score recordings that have predictions but no annotation table as all-negative; without this option they are dropped</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--plot_metrics</kbd></dt>
+<dd><p>Plot metrics</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--plot_confusion_matrix</kbd></dt>
+<dd><p>Plot confusion matrix</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--plot_metrics_all_thresholds</kbd></dt>
+<dd><p>Plot metrics for all thresholds</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--output_dir</kbd></dt>
+<dd><p>Folder to write results_table.csv, data_table.csv and the requested plots to; without it the plots are shown</p>
+</dd>
+</dl>
+</section>
+</section>
 <section id="birdnet-analyzer-segments">
 <span id="cli-segments"></span><h2>birdnet_analyzer.segments<a class="headerlink" href="#birdnet-analyzer-segments" title="Link to this heading"></a></h2>
 <p>After the analysis, run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.segments</span></code> to extract short audio segments for species detections to verify results.

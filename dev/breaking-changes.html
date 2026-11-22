@@ -65,6 +65,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#custom-classifiers-must-be-tflite-files">Custom classifiers must be tflite files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#search-needs-the-audio-root-and-a-new-database">Search needs the audio root and a new database</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording">Evaluation needs a confidence column and scores every annotated recording</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#evaluation-reads-tables-differently">Evaluation reads tables differently</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#removed-options-and-parameters">Removed options and parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#other-changes">Other changes</a></li>
 </ul>
@@ -129,8 +130,9 @@ release (<strong>v2.4.0</strong>) and what to do about it.</p>
 <li><p><a class="reference internal" href="#custom-classifiers-must-be-tflite-files" id="id13">Custom classifiers must be tflite files</a></p></li>
 <li><p><a class="reference internal" href="#search-needs-the-audio-root-and-a-new-database" id="id14">Search needs the audio root and a new database</a></p></li>
 <li><p><a class="reference internal" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" id="id15">Evaluation needs a confidence column and scores every annotated recording</a></p></li>
-<li><p><a class="reference internal" href="#removed-options-and-parameters" id="id16">Removed options and parameters</a></p></li>
-<li><p><a class="reference internal" href="#other-changes" id="id17">Other changes</a></p></li>
+<li><p><a class="reference internal" href="#evaluation-reads-tables-differently" id="id16">Evaluation reads tables differently</a></p></li>
+<li><p><a class="reference internal" href="#removed-options-and-parameters" id="id17">Removed options and parameters</a></p></li>
+<li><p><a class="reference internal" href="#other-changes" id="id18">Other changes</a></p></li>
 </ul>
 </nav>
 <section id="default-model-is-now-birdnet-3-0">
@@ -401,8 +403,46 @@ than in v2.4.0.</p>
 <code class="docutils literal notranslate"><span class="pre">--score_unannotated_as_empty</span></code> to count unannotated recordings, and <code class="docutils literal notranslate"><span class="pre">--metrics</span></code> for
 the v2.4.0 metrics.</p>
 </section>
+<section id="evaluation-reads-tables-differently">
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">Evaluation reads tables differently</a><a class="headerlink" href="#evaluation-reads-tables-differently" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong></p>
+<ul class="simple">
+<li><p>The columns are detected from the tables’ headers. <code class="docutils literal notranslate"><span class="pre">--columns_annotations</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--columns_predictions</span></code> name only the columns that differ; v2.4.0 took every column
+it was not given by its literal field name. A column named <code class="docutils literal notranslate"><span class="pre">Duration</span></code> is no longer
+read as the recording length (BirdNET’s <code class="docutils literal notranslate"><span class="pre">File</span> <span class="pre">Duration</span> <span class="pre">(s)</span></code> is).</p></li>
+<li><p>The annotation and prediction paths are searched with their subfolders, for <code class="docutils literal notranslate"><span class="pre">.txt</span></code>
+and <code class="docutils literal notranslate"><span class="pre">.csv</span></code> tables; v2.4.0 read the <code class="docutils literal notranslate"><span class="pre">.txt</span></code> files directly in the folder. A recording
+name in two subfolders, and the tables of one recording in two subfolders, such as two
+analyses, are errors, and so is a table read on both sides.</p></li>
+<li><p>Two named files (<code class="docutils literal notranslate"><span class="pre">--annotation_path</span></code> and <code class="docutils literal notranslate"><span class="pre">--prediction_path</span></code> both naming a file)
+are compared as one recording when each holds one recording, whatever their names;
+v2.4.0 paired them only if their names matched. When the prediction file is a
+combined table of several recordings, only the recording named like the annotation
+file is scored, as with folders; v2.4.0 also scored the others, as recordings without
+calls.</p></li>
+<li><p>Tables of which no recording pairs are an error; v2.4.0 scored their annotations as
+missed and their predictions as false positives.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_data()</span></code> returns an <code class="docutils literal notranslate"><span class="pre">EvaluationResult</span></code> instead of the 4-tuple
+<code class="docutils literal notranslate"><span class="pre">(metrics_df,</span> <span class="pre">pa,</span> <span class="pre">predictions,</span> <span class="pre">labels)</span></code>; its first four fields are those values.
+<code class="docutils literal notranslate"><span class="pre">read_and_concatenate_files_in_directory</span></code>, <code class="docutils literal notranslate"><span class="pre">extract_recording_filename</span></code> and
+<code class="docutils literal notranslate"><span class="pre">extract_recording_filename_from_filename</span></code> were removed from
+<code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.evaluation.preprocessing.utils</span></code>; use <code class="docutils literal notranslate"><span class="pre">read_tables</span></code> and
+<code class="docutils literal notranslate"><span class="pre">recording_key</span></code>.</p></li>
+<li><p>The GUI’s <strong>Download results table</strong> has one row per class and the overall row last,
+with the metrics as columns; v2.4.0 had the metrics as rows. The command line’s
+<code class="docutils literal notranslate"><span class="pre">results_table.csv</span></code> keeps the metrics as rows.</p></li>
+</ul>
+<p><strong>Consequence.</strong> Command lines and scripts that relied on the literal column names, on
+the folder holding only top-level <code class="docutils literal notranslate"><span class="pre">.txt</span></code> tables, or on the removed functions read other
+tables or fail, and file pairs of a combined table score other values than in v2.4.0.</p>
+<p><strong>What to do.</strong> Name only the columns that are not detected, and select folders that hold
+one analysis or one set of annotations each. For a recording length column named
+<code class="docutils literal notranslate"><span class="pre">Duration</span></code>, pass <code class="docutils literal notranslate"><span class="pre">--columns_annotations</span> <span class="pre">'{&quot;Duration&quot;:</span> <span class="pre">&quot;Duration&quot;}'</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">--columns_predictions</span></code>), or <code class="docutils literal notranslate"><span class="pre">--recording_duration</span></code>.</p>
+</section>
 <section id="removed-options-and-parameters">
-<h2><a class="toc-backref" href="#id16" role="doc-backlink">Removed options and parameters</a><a class="headerlink" href="#removed-options-and-parameters" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Removed options and parameters</a><a class="headerlink" href="#removed-options-and-parameters" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> These v2.4.0 command-line options no longer exist, so command lines
 that use them fail with “unrecognized arguments”. The Python functions lost the
 matching parameters.</p>
@@ -424,7 +464,7 @@ removed.</p>
 <p><strong>What to do.</strong> Update scripts as listed.</p>
 </section>
 <section id="other-changes">
-<h2><a class="toc-backref" href="#id17" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id18" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong>Search</strong> with a query longer than one segment (<code class="docutils literal notranslate"><span class="pre">--crop_mode</span> <span class="pre">segments</span></code>) ranks the
 results by their mean score over all query segments. v2.4.0 counted a result only for
