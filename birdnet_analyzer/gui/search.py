@@ -450,6 +450,9 @@ def build_search_tab() -> None:
 
         from birdnet_analyzer import audio, utils
 
+        audiofilepath = gu.plain_path(audiofilepath)
+        db_selection = gu.plain_path(db_selection)
+
         if audiofilepath and db_selection:
             try:
                 settings = read_database_settings(db_selection)

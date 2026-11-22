@@ -1,7 +1,10 @@
 """The desktop window the GUI opens."""
 
 import ast
+import base64
+import io
 import os
+import re
 import string
 import sys
 from pathlib import Path
@@ -54,30 +57,50 @@ def test_window_is_not_opened_in_debug_mode():
     )
 
 
-def test_every_font_file_of_the_theme_has_the_latin_letters():
+def _font_faces() -> dict[tuple[str, int], bytes]:
+    """The font file of every (family, weight) the theme's stylesheets declare."""
     pytest.importorskip("gradio")
-    from fontTools.ttLib import TTFont
     from gradio.themes.utils import fonts
 
     from birdnet_analyzer.gui import utils as gu
 
     theme = gu._theme()
-    faces = [
-        (font.name, weight)
-        for font in (*theme._font, *theme._font_mono)
-        if isinstance(font, fonts.LocalFont)
-        for weight in font.weights
-    ]
+    frontend = fonts.STATIC_FONTS_DIR.parents[1]
+    faces = {}
+
+    for font in (*theme._font, *theme._font_mono):
+        css = font.stylesheet()["css"] if isinstance(font, fonts.Font) else None
+
+        for rule in re.findall(r"@font-face\s*{(.*?)}", css or "", re.DOTALL):
+            source = re.search(r"url\('(.*?)'\)", rule)[1]
+            weight = int(re.search(r"font-weight:\s*(\d+)", rule)[1])
+            faces[font.name, weight] = (
+                base64.b64decode(source.partition(",")[2])
+                if source.startswith("data:")
+                else (frontend / source).read_bytes()
+            )
+
+    return faces
+
+
+def test_every_font_file_of_the_theme_has_the_latin_letters():
+    from fontTools.ttLib import TTFont
+
+    faces = _font_faces()
     assert faces
 
     letters = {ord(char) for char in string.ascii_letters + string.digits}
     incomplete = [
         face
-        for face in faces
-        if not letters <= TTFont(fonts.font_file_path(*face)).getBestCmap().keys()
+        for face, file in faces.items()
+        if not letters <= TTFont(io.BytesIO(file)).getBestCmap().keys()
     ]
 
     assert not incomplete
+
+
+def test_semibold_text_has_a_face_of_its_own():
+    assert ("Source Sans Pro", 600) in _font_faces()
 
 
 @pytest.mark.skipif(sys.platform == "darwin", reason="macOS takes no storage path")

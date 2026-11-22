@@ -276,10 +276,16 @@ def _shown_path(textbox: gr.Textbox, value: str | None) -> str | None:
     return f"{_LEFT_TO_RIGHT_MARK}{value}{_LEFT_TO_RIGHT_MARK}" if value else value
 
 
-def _path(textbox: gr.Textbox, payload: str | None) -> str | None:
-    value = gr.Textbox.preprocess(textbox, payload)
+def plain_path(shown: str | None) -> str | None:
+    """The path of a PathTextbox value as the page holds it.
 
-    return value.strip(_LEFT_TO_RIGHT_MARK) if value else value
+    A listener with preprocess=False gets that value, marks included.
+    """
+    return shown.strip(_LEFT_TO_RIGHT_MARK) if shown else shown
+
+
+def _path(textbox: gr.Textbox, payload: str | None) -> str | None:
+    return plain_path(gr.Textbox.preprocess(textbox, payload))
 
 
 # The textbox for a path, used with rtl=True, which keeps the end of a long path in
@@ -2197,16 +2203,32 @@ def _loopback_bypasses_proxy():
                 os.environ[name] = value
 
 
+class _SourceSansPro(gr.themes.LocalFont):
+    def __init__(self):
+        super().__init__("Source Sans Pro", weights=(400, 700))
+
+    def stylesheet(self) -> dict:
+        sheet = super().stylesheet()
+        semibold = utils.img2base64(
+            os.path.join(SCRIPT_DIR, "assets/fonts/SourceSans3-SemiBold.woff2")
+        )
+        sheet["css"] += f"""
+@font-face {{
+    font-family: '{self.name}';
+    src: url('data:font/woff2;base64,{semibold}') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+}}
+"""
+
+        return sheet
+
+
 def _theme() -> gr.themes.Base:
-    # Gradio's font files for weight 600 hold a few glyphs only; with 400 and 700
-    # declared alone, semibold text takes the complete bold face.
+    # Gradio's font files for weight 600 hold a few glyphs only. The sans font has
+    # a complete one in the package; semibold mono text takes the bold face.
     return gr.themes.Default(
-        font=[
-            gr.themes.LocalFont("Source Sans Pro", weights=(400, 700)),
-            "ui-sans-serif",
-            "system-ui",
-            "sans-serif",
-        ],
+        font=[_SourceSansPro(), "ui-sans-serif", "system-ui", "sans-serif"],
         font_mono=[
             gr.themes.LocalFont("IBM Plex Mono", weights=(400, 700)),
             "ui-monospace",
