@@ -94,6 +94,35 @@ def test_download_progress_survives_ui_failures(monkeypatch):
     assert "(2/3)" in warnings[0]
 
 
+def test_the_progress_bar_says_that_a_download_is_being_retried(monkeypatch):
+    import birdnet
+    import gradio as gr
+
+    import birdnet_analyzer.gui.localization as loc
+    from birdnet_analyzer.gui import utils as gu
+
+    monkeypatch.setattr(gr, "Warning", lambda msg, **kw: None)
+    shown = []
+
+    with gu.download_progress(lambda value, desc=None, **kw: shown.append(desc)):
+        birdnet.get_download_progress_callback()(
+            birdnet.DownloadProgress(
+                description="Downloading acoustic model v3.0",
+                url="https://example.invalid/model",
+                bytes_done=0,
+                bytes_total=1000,
+                attempt=2,
+                max_attempts=5,
+                status="retrying",
+                error="connection reset",
+            )
+        )
+
+    assert shown == [
+        f"{loc.localize('progress-download-retrying')}: acoustic model v3.0 (2/5)"
+    ]
+
+
 def test_overlapping_gui_events_keep_their_own_sink_and_unregister_cleanly():
     import threading
 

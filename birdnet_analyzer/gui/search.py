@@ -129,7 +129,7 @@ def build_search_tab() -> None:
                         loc.localize("embeddings-search-db-selection-button-label"),
                         variant="primary",
                     )
-                    db_selection_tb = gr.Textbox(
+                    db_selection_tb = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -171,7 +171,7 @@ def build_search_tab() -> None:
                         ),
                         variant="primary",
                     )
-                    audio_root_selection_tb = gr.Textbox(
+                    audio_root_selection_tb = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -190,7 +190,7 @@ def build_search_tab() -> None:
                         loc.localize("embeddings-search-select-query-button-label"),
                         variant="primary",
                     )
-                    query_sample_tb = gr.Textbox(
+                    query_sample_tb = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(

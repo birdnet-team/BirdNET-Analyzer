@@ -125,7 +125,7 @@ def build_embeddings_tab() -> None:
                 loc.localize("embeddings-tab-select-input-directory-button-label"),
                 variant="primary",
             )
-            selected_audio_directory_tb = gr.Textbox(
+            selected_audio_directory_tb = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(

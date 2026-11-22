@@ -202,7 +202,7 @@ def build_multi_analysis_tab() -> None:
                 loc.localize("multi-tab-input-selection-button-label"),
                 variant="primary",
             )
-            selected_input_textbox = gr.Textbox(
+            selected_input_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -292,7 +292,7 @@ def build_multi_analysis_tab() -> None:
                 loc.localize("multi-tab-output-selection-button-label"),
                 variant="primary",
             )
-            selected_out_textbox = gr.Textbox(
+            selected_out_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize("multi-tab-output-textbox-placeholder"),

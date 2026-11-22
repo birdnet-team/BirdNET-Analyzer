@@ -216,7 +216,7 @@ def build_single_analysis_tab() -> None:
                 loc.localize("single-tab-select-file-button-label"),
                 variant="primary",
             )
-            selected_file_label = gr.Textbox(
+            selected_file_label = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize("single-tab-no-file-selected-placeholder"),

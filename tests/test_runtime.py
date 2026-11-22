@@ -16,8 +16,22 @@ import pytest
 from birdnet_analyzer import logs, utils
 
 PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
-APP_ENVIRONMENT = {"TF_CPP_MIN_LOG_LEVEL": "3", "WRAPT_DISABLE_EXTENSIONS": "true"}
-USER_ENVIRONMENT = {"TF_CPP_MIN_LOG_LEVEL": "1", "WRAPT_DISABLE_EXTENSIONS": "1"}
+APP_ENVIRONMENT = {
+    "TF_CPP_MIN_LOG_LEVEL": "3",
+    "WRAPT_DISABLE_EXTENSIONS": "true",
+    "ORT_DISABLE_TELEMETRY": "1",
+    "GRADIO_ANALYTICS_ENABLED": "False",
+    "HF_HUB_DISABLE_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1",
+}
+USER_ENVIRONMENT = {
+    "TF_CPP_MIN_LOG_LEVEL": "1",
+    "WRAPT_DISABLE_EXTENSIONS": "1",
+    "ORT_DISABLE_TELEMETRY": "0",
+    "GRADIO_ANALYTICS_ENABLED": "True",
+    "HF_HUB_DISABLE_TELEMETRY": "0",
+    "DO_NOT_TRACK": "0",
+}
 
 FILTERS_PROBE = """
 import json
@@ -65,18 +79,55 @@ LOADED_MODULES_PROBE = """
 import json
 import sys
 
+RUNTIMES = ("tensorflow", "wrapt", "onnxruntime")
+
 for module in sys.argv[1:]:
     __import__(module)
 
-print(json.dumps([m for m in ("tensorflow", "wrapt") if m in sys.modules]))
+print(json.dumps([m for m in RUNTIMES if m in sys.modules]))
+"""
+
+GUI_CONFIGURES_FIRST_PROBE = """
+import json
+import sys
+
+import birdnet_analyzer.gui
+from birdnet_analyzer import utils
+
+
+def stop_at_configure():
+    print(json.dumps([m for m in ("gradio", "huggingface_hub") if m in sys.modules]))
+    raise SystemExit
+
+
+utils.configure_runtime = stop_at_configure
+birdnet_analyzer.gui.main()
+"""
+
+ONNXRUNTIME_FILES_PROBE = """
+import json
+import os
+
+from birdnet_analyzer import utils
+
+utils.configure_runtime()
+
+import onnxruntime
+
+home = os.environ["HOME"]
+files = (os.path.join(root, f) for root, _, names in os.walk(home) for f in names)
+print(json.dumps(sorted(f for f in files if "onnxruntime" in f.lower())))
 """
 
 
 def _run_probe(probe: str, tmp_path, *args: str):
+    home = str(tmp_path)
     env = {
         **{k: v for k, v in os.environ.items() if k not in APP_ENVIRONMENT},
-        "HOME": str(tmp_path),
-        "USERPROFILE": str(tmp_path),
+        "HOME": home,
+        "USERPROFILE": home,
+        "XDG_CACHE_HOME": os.path.join(home, ".cache"),
+        "LOCALAPPDATA": home,
     }
     result = subprocess.run(
         [sys.executable, "-c", probe, *args],
@@ -108,7 +159,7 @@ def test_importing_the_package_sets_no_environment_variable_but_the_model_direct
     assert set(_run_probe(ENVIRONMENT_PROBE, tmp_path)) <= {"BIRDNET_APP_DATA"}
 
 
-def test_the_entry_points_load_neither_tensorflow_nor_wrapt_before_they_run(tmp_path):
+def test_the_entry_points_load_no_runtime_before_they_configure_it(tmp_path):
     project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
     targets = [*project["scripts"].values(), *project["gui-scripts"].values()]
     modules = [target.partition(":")[0] for target in targets]
@@ -133,7 +184,7 @@ def entry_point_runtime():
     ("preset", "expected"),
     [({}, APP_ENVIRONMENT), (USER_ENVIRONMENT, USER_ENVIRONMENT)],
 )
-def test_an_entry_point_configures_tensorflow_unless_the_user_did(
+def test_an_entry_point_configures_the_runtimes_unless_the_user_did(
     entry_point_runtime, preset, expected
 ):
     os.environ.update(preset)
@@ -147,6 +198,16 @@ def test_an_entry_point_configures_tensorflow_unless_the_user_did(
         main()
 
     assert seen == expected
+
+
+def test_the_gui_configures_the_runtimes_before_it_imports_its_libraries(tmp_path):
+    assert _run_probe(GUI_CONFIGURES_FIRST_PROBE, tmp_path) == []
+
+
+def test_onnxruntime_keeps_no_telemetry_identity_once_an_entry_point_ran(tmp_path):
+    pytest.importorskip("onnxruntime")
+
+    assert _run_probe(ONNXRUNTIME_FILES_PROBE, tmp_path) == []
 
 
 def test_an_entry_point_silences_only_the_warnings_users_cannot_act_on(

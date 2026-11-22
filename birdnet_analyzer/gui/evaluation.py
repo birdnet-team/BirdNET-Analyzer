@@ -1567,7 +1567,7 @@ def _directory_picker(kind: str):
             loc.localize(f"eval-tab-{kind}-selection-button-label"),
             variant="primary",
         )
-        textbox = gr.Textbox(
+        textbox = gu.PathTextbox(
             show_label=False,
             interactive=False,
             placeholder=loc.localize(f"eval-tab-{kind}-selection-textbox-placeholder"),

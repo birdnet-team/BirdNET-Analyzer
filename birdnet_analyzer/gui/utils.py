@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import sys
 import threading
+from abc import ABCMeta
 from collections.abc import Callable
 from concurrent.futures import Future
 from contextlib import contextmanager, suppress
@@ -266,6 +267,40 @@ def _download_failure_message(error: Exception) -> str | None:
     )
 
 
+_LEFT_TO_RIGHT_MARK = chr(0x200E)
+
+
+def _shown_path(textbox: gr.Textbox, value: str | None) -> str | None:
+    value = gr.Textbox.postprocess(textbox, value)
+
+    return f"{_LEFT_TO_RIGHT_MARK}{value}{_LEFT_TO_RIGHT_MARK}" if value else value
+
+
+def _path(textbox: gr.Textbox, payload: str | None) -> str | None:
+    value = gr.Textbox.preprocess(textbox, payload)
+
+    return value.strip(_LEFT_TO_RIGHT_MARK) if value else value
+
+
+# The textbox for a path, used with rtl=True, which keeps the end of a long path in
+# view. Right-to-left layout alone moves a leading "/" to the far end; between two
+# left-to-right marks the path stays in one piece, and no handler gets to see them.
+#
+# Not a class statement: gradio's metaclass writes a .pyi file beside the module of
+# every component class it is asked to create.
+PathTextbox: type[gr.Textbox] = ABCMeta.__new__(
+    type(gr.Textbox),
+    "PathTextbox",
+    (gr.Textbox,),
+    {
+        "__module__": __name__,
+        "is_template": True,
+        "postprocess": _shown_path,
+        "preprocess": _path,
+    },
+)
+
+
 def _format_bytes(n: int) -> str:
     return f"{n / 1e6:.0f} MB" if n < 1e9 else f"{n / 1e9:.1f} GB"
 
@@ -312,7 +347,12 @@ def _show_download_update(update, progress: "gr.Progress | None") -> None:
         else:
             progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
     elif update.status == "retrying":
-        gr.Warning(f"{loc.localize('progress-download-retrying')}: {name}")
+        retrying = f"{loc.localize('progress-download-retrying')}: {name}"
+        gr.Warning(retrying)
+
+        # The toast is gone long before the next attempt starts.
+        if progress is not None:
+            progress(0.0, desc=retrying)
     # "failed": the library raises right after; the operation reports it.
 
 
@@ -2157,6 +2197,46 @@ def _loopback_bypasses_proxy():
                 os.environ[name] = value
 
 
+def _theme() -> gr.themes.Base:
+    # Gradio's font files for weight 600 hold a few glyphs only; with 400 and 700
+    # declared alone, semibold text takes the complete bold face.
+    return gr.themes.Default(
+        font=[
+            gr.themes.LocalFont("Source Sans Pro", weights=(400, 700)),
+            "ui-sans-serif",
+            "system-ui",
+            "sans-serif",
+        ],
+        font_mono=[
+            gr.themes.LocalFont("IBM Plex Mono", weights=(400, 700)),
+            "ui-monospace",
+            "Consolas",
+            "monospace",
+        ],
+    )
+
+
+def _webview_storage_path() -> str | None:
+    """A browser profile of the app's own, or None for pywebview's default.
+
+    The default is shared by every pywebview application and sits in the home
+    directory on Linux and in the roaming profile on Windows. The macOS backend
+    takes no path.
+    """
+    if sys.platform == "darwin":
+        return None
+
+    directory = settings.webview_storage_directory()
+
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+
+    # pywebview refuses to start with a path it cannot write to.
+    return str(directory) if os.access(directory, os.W_OK) else None
+
+
 def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
@@ -2184,7 +2264,7 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
 
         if _STARTUP_WARNINGS or settings.MODEL_DIR_STARTUP_WARNING:
             demo.load(_show_startup_warnings)
-    theme = gr.themes.Default()
+    theme = _theme()
 
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
@@ -2236,7 +2316,14 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
         _WINDOW.events.shown += color_title_bar
         _WINDOW.events.loaded += color_title_bar
 
-    webview.start(private_mode=False)
+    webview.start(
+        private_mode=False,
+        storage_path=_webview_storage_path(),
+        # Only the Linux backends take one; elsewhere it comes with the bundle.
+        icon=os.path.join(SCRIPT_DIR, "assets/img/birdnet_logo.png")
+        if sys.platform == "linux"
+        else None,
+    )
 
     _exit_within(EXIT_TIMEOUT_S)
     # Window closed: stop any analysis still running with no UI to control it.

@@ -1,4 +1,12 @@
 def main():
+    from birdnet_analyzer.logs import setup_logging
+    from birdnet_analyzer.utils import configure_runtime
+
+    # Before the tabs: importing them imports libraries that read their settings
+    # from the environment once.
+    setup_logging()
+    configure_runtime()
+
     import birdnet_analyzer.gui.localization as loc
     import birdnet_analyzer.gui.multi_file as mfa
     import birdnet_analyzer.gui.segments as gs
@@ -12,11 +20,7 @@ def main():
         species,
         train,
     )
-    from birdnet_analyzer.logs import setup_logging
-    from birdnet_analyzer.utils import configure_runtime
 
-    setup_logging()
-    configure_runtime()
     loc.load_local_state()
     gu.open_window(
         [
