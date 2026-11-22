@@ -139,7 +139,7 @@ def _recorded_learning_rate(output):
     return params.load_train_params(output + TRAIN_PARAMS_SUFFIX)["learning_rate"]
 
 
-@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.usefixtures("synthetic_training_data", "export_model_in_place")
 @pytest.mark.parametrize(
     ("recorded", "argv", "learning_rate"),
     [
@@ -175,6 +175,7 @@ def test_the_learning_rate_the_cli_trains_with(
     assert _recorded_learning_rate(output) == learning_rate
 
 
+@pytest.mark.usefixtures("export_model_in_place")
 def test_a_learning_rate_recorded_for_3_0_is_not_used_on_a_2_4_cache(
     monkeypatch, tmp_path, caplog
 ):
@@ -205,7 +206,7 @@ def test_a_learning_rate_recorded_for_3_0_is_not_used_on_a_2_4_cache(
     assert "recorded for BirdNET 3.0" in caplog.text
 
 
-@pytest.mark.usefixtures("synthetic_training_data")
+@pytest.mark.usefixtures("synthetic_training_data", "export_model_in_place")
 @pytest.mark.parametrize(("learning_rate", "warned"), [(None, True), (0.003, False)])
 def test_hidden_units_at_the_default_learning_rate_draw_a_warning(
     monkeypatch, tmp_path, caplog, learning_rate, warned
