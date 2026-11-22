@@ -133,7 +133,8 @@ The command line tool is included, <code class="docutils literal notranslate"><s
 <h2>Models and the first start<a class="headerlink" href="#models-and-the-first-start" title="Link to this heading"></a></h2>
 <p>The macOS installer contains the default BirdNET 3.0 model, including its species range model, so the first analysis
 works without an internet connection. Everything else is downloaded the first time it is used and kept for later
-runs, with the progress shown in the GUI: the other models (BirdNET 2.4, Perch), and the model that training needs to
+runs, with the progress shown in the GUI: the other models (BirdNET 2.4, about 80 MB, and Perch, about 380 MB), and
+the model that training needs to
 export a custom classifier as a TFLite or Raven model (about 320 MB for BirdNET 3.0, about 125 MB for 2.4). The first
 training with one of these exports downloads it as soon as the training data are loaded. An analysis never does, and
 neither does a training that saves only the detached classifier. An installer without the default model downloads it
@@ -164,7 +165,11 @@ missing export model once the training data are loaded, before the tuning and th
 <p><strong>Restricted networks.</strong> The models come from <code class="docutils literal notranslate"><span class="pre">zenodo.org</span></code>, <code class="docutils literal notranslate"><span class="pre">github.com</span></code> (which redirects to
 <code class="docutils literal notranslate"><span class="pre">githubusercontent.com</span></code>) and <code class="docutils literal notranslate"><span class="pre">tuc.cloud</span></code>; a firewall has to allow these. The GUI and the command line tools
 verify downloads with the certificates of the operating system, so a company or campus proxy that inspects HTTPS
-works as long as its certificate is installed there, as it is for the browser.</p>
+works as long as its certificate is installed there, as it is for the browser. A proxy entered in the Windows
+settings is used, as are the environment variables <code class="docutils literal notranslate"><span class="pre">HTTP_PROXY</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPS_PROXY</span></code>; an automatic proxy
+configuration script is not.</p>
+<p><strong>Uninstalling</strong> BirdNET-Analyzer keeps the models and the settings. To remove them as well, delete the model
+directory and, on Windows, <code class="docutils literal notranslate"><span class="pre">%APPDATA%\BirdNET-Analyzer-GUI</span></code>.</p>
 </section>
 <section id="raven-pro">
 <h2>Raven Pro<a class="headerlink" href="#raven-pro" title="Link to this heading"></a></h2>

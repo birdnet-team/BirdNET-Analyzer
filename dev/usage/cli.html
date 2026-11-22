@@ -466,8 +466,8 @@ This also works for non-bird species, as long as you have a dataset of labeled a
 If you want to use the custom classifier in Raven, make sure to set <code class="docutils literal notranslate"><span class="pre">--model_formats</span> <span class="pre">raven</span></code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Adjusting hyperparameters (e.g., number of hidden units, learning rate, etc.) can have a big impact on the performance of the classifier.
-We recommend trying different hyperparameter settings. If you want to automate this process, you can use the <code class="docutils literal notranslate"><span class="pre">--autotune</span></code> argument (in that case, make sure to install the <code class="docutils literal notranslate"><span class="pre">train</span></code> extra with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">birdnet_analyzer[train]</span></code>, which provides <code class="docutils literal notranslate"><span class="pre">optuna</span></code>).</p>
+<p>The defaults, including a learning rate chosen for the base model, were chosen by comparing training runs on real recordings; changing the other hyperparameters rarely improved a classifier.
+To experiment anyway, see <a class="reference internal" href="../implementation-details/training-hyperparameters.html"><span class="doc">the hyperparameters</span></a>. <code class="docutils literal notranslate"><span class="pre">--autotune</span></code> searches them automatically (it needs the <code class="docutils literal notranslate"><span class="pre">train</span></code> extra, <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">birdnet_analyzer[train]</span></code>, which provides <code class="docutils literal notranslate"><span class="pre">optuna</span></code>).</p>
 </div>
 <p><strong>Example usage</strong> (when downloading and unzipping the sample training data set):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.train<span class="w"> </span>train_data/<span class="w"> </span>-o<span class="w"> </span>checkpoints/custom/Custom_Classifier.tflite
@@ -593,8 +593,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.2</span></code></p>
 </dd>
 <dt><kbd>--learning_rate</kbd></dt>
-<dd><p>Learning rate.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0001</span></code></p>
+<dd><p>Learning rate. If not set, the one measured for the base model: 0.1 for BirdNET 3.0, 0.01 for BirdNET 2.4. One read with –load_params applies only to the base model it was recorded for.</p>
 </dd>
 <dt><kbd>--focal-loss, --no-focal-loss</kbd></dt>
 <dd><p>Use focal loss for training (helps with imbalanced classes and hard examples).</p>

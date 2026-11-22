@@ -101,8 +101,8 @@ birdnet_analyzer.train
    If you want to use the custom classifier in Raven, make sure to set ``--model_formats raven``.
 
    .. note::
-      Adjusting hyperparameters (e.g., number of hidden units, learning rate, etc.) can have a big impact on the performance of the classifier.
-      We recommend trying different hyperparameter settings. If you want to automate this process, you can use the ``--autotune`` argument (in that case, make sure to install the ``train`` extra with ``pip install birdnet_analyzer[train]``, which provides ``optuna``).
+      The defaults, including a learning rate chosen for the base model, were chosen by comparing training runs on real recordings; changing the other hyperparameters rarely improved a classifier.
+      To experiment anyway, see :doc:`the hyperparameters <../implementation-details/training-hyperparameters>`. ``--autotune`` searches them automatically (it needs the ``train`` extra, ``pip install birdnet_analyzer[train]``, which provides ``optuna``).
 
    **Example usage** (when downloading and unzipping the sample training data set):
 

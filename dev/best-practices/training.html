@@ -158,18 +158,14 @@ You can choose between BirdNET 3.0 (the default) and BirdNET 2.4 with the “Bas
 <p>A training data cache (see 3.4) holds the embeddings of one base model. Loading a cache trains on the version it was created with, whatever base model is selected.</p>
 </div>
 </section>
-<section id="hyperparameters-and-autotune">
-<h3>3.2 Hyperparameters and Autotune<a class="headerlink" href="#hyperparameters-and-autotune" title="Link to this heading"></a></h3>
-<p>There are several hyperparameters that can be adjusted to optimize the classifier training.
-If you don’t have experience with training machine learning models, we recommend using the autotune feature.
-This will run multiple training runs (aka trials) with different hyperparameter settings and select the best performing settings based on the validation data.
-The parameters used for training the final classifier will be saved alongside the resulting classifier.
-When using autotune you can specify the number of trials, the number of folds and the number of repeats.</p>
-<p>Each trial is scored on the validation split of the training data. With more than one fold, each trial is trained once per fold instead and scored by the mean over the folds.
-That makes the scores steadier, but multiplies the tuning time by roughly the number of folds.
-Folds are mainly worth it for small datasets of a few hundred samples, where the validation split holds only a handful of examples per class.
-From about 1,000 samples on, keep 1 fold and spend the time on more trials instead. Repeats run the folds again on a new split and cost as much time again.</p>
-<p>If you want to adjust the hyperparameters manually, we have a more detailed documentation available <a class="reference internal" href="../implementation-details/training-hyperparameters.html"><span class="doc">here</span></a>.</p>
+<section id="training-settings">
+<h3>3.2 Training Settings<a class="headerlink" href="#training-settings" title="Link to this heading"></a></h3>
+<p>The training uses fixed settings that were chosen by comparing training runs on real recordings with both base models.
+The learning rate depends on the base model, 0.1 for BirdNET 3.0 and 0.01 for BirdNET 2.4, and the classifier trains for up to 50 epochs.
+Training stops early once the validation score no longer improves, so most trainings end well before epoch 50 with a “Stopped early” message. That is expected.</p>
+<p>Changing the other hyperparameters rarely improved a classifier in that comparison. Autotune, which tries 50 combinations of settings, was compared on BirdNET 3.0 only and matched the fixed settings on most datasets at many times the training time.
+The GUI therefore trains with the fixed settings only. The hyperparameters and autotune remain available on the command line and in the Python API; they are described <a class="reference internal" href="../implementation-details/training-hyperparameters.html"><span class="doc">here</span></a>.</p>
+<p>The parameters used for training are saved alongside the resulting classifier.</p>
 </section>
 <section id="audio-settings">
 <h3>3.3 Audio Settings<a class="headerlink" href="#audio-settings" title="Link to this heading"></a></h3>

@@ -161,6 +161,30 @@ not comparable.
 ``--val_split 0`` is rejected. Compare scores only between runs of this version.
 
 
+Training chooses its learning rate for the base model
+-----------------------------------------------------
+
+**What changed.** Without ``--learning_rate``, training uses a learning rate chosen for
+the base model: 0.1 for BirdNET 3.0 and 0.01 for BirdNET 2.4. v2.4.0 used 0.0001, which
+leaves classifiers under-trained, on the 3.0 base badly. The train tab no longer offers
+the hyperparameters, autotune or the "first" crop mode and always trains with the
+defaults. All of them remain command-line options and arguments of ``train()``.
+
+**Consequence.** The same command trains a different classifier than v2.4.0, usually a
+much better one, with different confidence scores, so a threshold chosen for an older
+classifier no longer fits. Most trainings stop early, well before ``--epochs``. Presets
+and parameters files of earlier versions load in the train tab without their
+hyperparameters, with "first" as "center". ``--load_params`` still restores the
+hyperparameters of a run and its base model, so a v2.4.0 run comes back with its
+learning rate of 0.0001; a learning rate recorded for one base model is not used for
+training on the other.
+
+**What to do.** Check the ``--min_conf`` used with a retrained classifier. An explicit
+``--learning_rate`` overrides both the default and a restored one, and
+``--learning_rate 0.0001`` keeps the old value. With ``--hidden_units``, also pass a
+lower learning rate, such as 0.003.
+
+
 Locations and species lists
 ---------------------------
 
