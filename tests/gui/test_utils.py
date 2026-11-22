@@ -409,3 +409,89 @@ def test_the_splash_is_closed_only_when_the_bootloader_started_one(monkeypatch):
     monkeypatch.setenv("_PYI_SPLASH_IPC", "1")
     gu._close_splash()
     assert closed == [True]
+
+
+class _WindowEvent(list):
+    def __iadd__(self, handler):
+        self.append(handler)
+        return self
+
+
+def _open_window_with_a_fake_webview(monkeypatch):
+    """Runs open_window up to the point where the real one blocks; returns its URL."""
+    urls = []
+    events = SimpleNamespace(shown=_WindowEvent(), loaded=_WindowEvent())
+    webview = SimpleNamespace(
+        settings={},
+        create_window=lambda title, url, **kwargs: (
+            urls.append(url) or SimpleNamespace(events=events, uid="master")
+        ),
+        start=lambda **kwargs: None,
+    )
+    monkeypatch.setitem(sys.modules, "webview", webview)
+    monkeypatch.setitem(sys.modules, "webview.platforms", SimpleNamespace())
+    monkeypatch.setitem(
+        sys.modules, "webview.platforms.winforms", SimpleNamespace(BrowserView=None)
+    )
+    monkeypatch.setattr(gu, "_WINDOW", None)
+    monkeypatch.setattr(gu, "_URL", "")
+    monkeypatch.setattr(gu, "_get_network_shortcuts", list)
+    monkeypatch.setattr(gu, "_exit_within", lambda seconds: None)
+    monkeypatch.setattr(gu, "shutdown_running_analyses", lambda: None)
+
+    try:
+        gu.open_window(lambda: gr.Markdown("tab"))
+    finally:
+        gr.close_all()
+
+    return urls[0]
+
+
+def _proxy_from_the_environment(monkeypatch):
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:9")
+
+
+def _proxy_from_the_windows_settings(monkeypatch):
+    import urllib.request
+
+    for name in list(os.environ):
+        if name.lower().endswith("_proxy"):
+            monkeypatch.delenv(name)
+    monkeypatch.setattr(
+        urllib.request, "getproxies_registry", lambda: {"http": "127.0.0.1:9"}
+    )
+
+
+@pytest.mark.parametrize(
+    "configure_proxy",
+    [
+        _proxy_from_the_environment,
+        pytest.param(
+            _proxy_from_the_windows_settings,
+            marks=pytest.mark.skipif(
+                sys.platform != "win32", reason="the registry holds them on Windows"
+            ),
+        ),
+    ],
+)
+def test_the_window_opens_although_an_unreachable_proxy_is_configured(
+    appdir, monkeypatch, configure_proxy
+):
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
+    configure_proxy(monkeypatch)
+
+    url = _open_window_with_a_fake_webview(monkeypatch)
+
+    assert url.startswith("http://127.0.0.1:")
+    assert "NO_PROXY" not in os.environ
+
+
+def test_a_proxy_exclusion_of_the_user_is_kept(appdir, monkeypatch):
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:9")
+    monkeypatch.delenv("no_proxy", raising=False)
+    monkeypatch.setenv("NO_PROXY", "intranet.example")
+
+    _open_window_with_a_fake_webview(monkeypatch)
+
+    assert os.environ["NO_PROXY"] == "intranet.example"

@@ -43,7 +43,8 @@ Models and the first start
 
 The macOS installer contains the default BirdNET 3.0 model, including its species range model, so the first analysis
 works without an internet connection. Everything else is downloaded the first time it is used and kept for later
-runs, with the progress shown in the GUI: the other models (BirdNET 2.4, Perch), and the model that training needs to
+runs, with the progress shown in the GUI: the other models (BirdNET 2.4, about 80 MB, and Perch, about 380 MB), and
+the model that training needs to
 export a custom classifier as a TFLite or Raven model (about 320 MB for BirdNET 3.0, about 125 MB for 2.4). The first
 training with one of these exports downloads it as soon as the training data are loaded. An analysis never does, and
 neither does a training that saves only the detached classifier. An installer without the default model downloads it
@@ -80,7 +81,12 @@ missing export model once the training data are loaded, before the tuning and th
 **Restricted networks.** The models come from ``zenodo.org``, ``github.com`` (which redirects to
 ``githubusercontent.com``) and ``tuc.cloud``; a firewall has to allow these. The GUI and the command line tools
 verify downloads with the certificates of the operating system, so a company or campus proxy that inspects HTTPS
-works as long as its certificate is installed there, as it is for the browser.
+works as long as its certificate is installed there, as it is for the browser. A proxy entered in the Windows
+settings is used, as are the environment variables ``HTTP_PROXY`` and ``HTTPS_PROXY``; an automatic proxy
+configuration script is not.
+
+**Uninstalling** BirdNET-Analyzer keeps the models and the settings. To remove them as well, delete the model
+directory and, on Windows, ``%APPDATA%\BirdNET-Analyzer-GUI``.
 
 Raven Pro
 ---------
