@@ -9,6 +9,7 @@ import soundfile as sf
 from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
 from birdnet_analyzer.embeddings.core import SETTINGS_KEY, embeddings
 from birdnet_analyzer.search.core import open_database, read_database_settings, search
+from tests import v2_databases
 
 DATASET = Path("tests/data/embeddings/embeddings-dataset/s1")
 WINDOWS_PER_RECORDING = 4
@@ -91,3 +92,19 @@ def test_a_database_without_a_stored_model_stays_on_birdnet_2_4(
     score, *window = _best_match(database, query, tmp_path)
     assert window == ["file02", "3.0", "6.0"]
     assert score > 0.99
+
+
+def test_a_database_written_by_birdnet_analyzer_2_is_searched_and_extended(
+    recordings, query, tmp_path
+):
+    current = str(tmp_path / "current")
+    embeddings(str(recordings), current, n_workers=1, birdnet="2.4")
+    database = v2_databases.rewrite(current, tmp_path / "db")
+
+    score, *window = _best_match(database, query, tmp_path)
+
+    assert window == ["file02", "3.0", "6.0"]
+    assert score > 0.99
+    shutil.copy(DATASET / "file03.wav", recordings)
+    embeddings(str(recordings), database, n_workers=1)
+    assert _count_embeddings(database) == 3 * WINDOWS_PER_RECORDING

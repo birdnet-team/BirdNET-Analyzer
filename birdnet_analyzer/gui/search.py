@@ -108,7 +108,8 @@ def run_search(
 
 
 def build_search_tab() -> None:
-    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
+    from birdnet_analyzer.embeddings import upgrade
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY, database_model_version
 
     state = TabState("search")
 
@@ -149,6 +150,11 @@ def build_search_tab() -> None:
                             label=loc.localize(
                                 "embeddings-search-db-embedding-count-number-label"
                             ),
+                        )
+                        db_model_tb = gr.Textbox(
+                            interactive=False,
+                            visible=False,
+                            label=loc.localize("embeddings-db-model-label"),
                         )
                     with gr.Row():
                         db_bandpass_frequencies_tb = gr.Textbox(
@@ -400,7 +406,10 @@ def build_search_tab() -> None:
                 gr.update(),
                 gr.update(),
                 gr.update(),
+                gr.update(),
             )
+
+        converted = upgrade.is_old_format(folder)
 
         try:
             with open_database(folder) as db:
@@ -411,6 +420,9 @@ def build_search_tab() -> None:
                 loc.localize("embeddings-search-db-selection-error")
             ) from None
 
+        if converted:
+            gr.Info(loc.localize("embeddings-db-converted-info"))
+
         frequencies = f"{settings['BANDPASS_FMIN']} - {settings['BANDPASS_FMAX']} Hz"
         speed: float = settings["AUDIO_SPEED"]
         audio_root = settings["AUDIO_ROOT"]
@@ -419,6 +431,10 @@ def build_search_tab() -> None:
             folder,
             audio_root,
             gr.update(value=embedding_count, visible=True),
+            gr.update(
+                value=gu.birdnet_label(database_model_version(settings)),
+                visible=True,
+            ),
             gr.update(visible=True, value=frequencies),
             gr.update(visible=True, value=speed),
             [],
@@ -516,6 +532,7 @@ def build_search_tab() -> None:
             db_selection_tb,
             audio_root_selection_tb,
             db_embedding_count_number,
+            db_model_tb,
             db_bandpass_frequencies_tb,
             db_audio_speed_number,
             results_state,

@@ -5,6 +5,9 @@ import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
+from birdnet_analyzer.embeddings import upgrade
+from birdnet_analyzer.embeddings.core import database_model_version
 from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.search.core import read_database_settings
 
@@ -162,6 +165,12 @@ def build_embeddings_tab() -> None:
                 max_lines=1,
                 elem_classes="path-textbox",
             )
+            db_model_tb = gr.Textbox(
+                value=gu.birdnet_label(DEFAULT_ACOUSTIC_MODEL_VERSION),
+                label=loc.localize("embeddings-db-model-label"),
+                interactive=False,
+                max_lines=1,
+            )
 
         with gr.Group(visible=False) as file_output_row, gr.Row(equal_height=True):
             file_output_cb = gr.Checkbox(
@@ -245,14 +254,19 @@ def build_embeddings_tab() -> None:
             )
 
             if dir_name:
+                converted = upgrade.is_old_format(dir_name)
                 settings = _existing_database_settings(dir_name)
 
                 if settings is not None:
+                    if converted:
+                        gr.Info(loc.localize("embeddings-db-converted-info"))
+
                     gr.Info(loc.localize("embeddings-db-already-exists-info"))
 
                     return (
                         dir_name,
                         gr.update(value=dir_name),
+                        gu.birdnet_label(database_model_version(settings)),
                         gr.update(value=settings["AUDIO_SPEED"], interactive=False),
                         gr.update(value=settings["BANDPASS_FMIN"], interactive=False),
                         gr.update(value=settings["BANDPASS_FMAX"], interactive=False),
@@ -262,6 +276,7 @@ def build_embeddings_tab() -> None:
                 return (
                     dir_name,
                     gr.update(value=dir_name),
+                    gu.birdnet_label(DEFAULT_ACOUSTIC_MODEL_VERSION),
                     gr.update(interactive=True),
                     gr.update(interactive=True),
                     gr.update(interactive=True),
@@ -269,6 +284,7 @@ def build_embeddings_tab() -> None:
                 )
 
             return (
+                gr.update(),
                 gr.update(),
                 gr.update(),
                 gr.update(),
@@ -283,6 +299,7 @@ def build_embeddings_tab() -> None:
             outputs=[
                 db_directory_state,
                 db_path_tb,
+                db_model_tb,
                 audio_speed_slider,
                 fmin_number,
                 fmax_number,

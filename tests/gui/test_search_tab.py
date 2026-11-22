@@ -10,6 +10,7 @@ from birdnet_analyzer import audio, utils  # noqa: E402
 from birdnet_analyzer.gui import search as gui_search  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 from birdnet_analyzer.search import utils as search_utils  # noqa: E402
+from tests import v2_databases  # noqa: E402
 
 DB_SETTINGS = {
     "AUDIO_SPEED": 2.0,
@@ -112,17 +113,40 @@ def test_picking_a_database_without_settings_is_rejected_and_closed(
 def test_picking_a_database_shows_its_settings_and_closes_it(
     appdir, handler, monkeypatch, hoplite_database, hoplite_connections
 ):
-    path = hoplite_database(DB_SETTINGS)
+    path = hoplite_database({**DB_SETTINGS, "MODEL_VERSION": "3.0"})
     monkeypatch.setattr(gu, "select_folder", lambda *a, **k: path)
 
-    folder, audio_root, count, bandpass, speed, *_ = handler(
+    folder, audio_root, count, model, bandpass, speed, *_ = handler(
         gui_search.build_search_tab, "on_db_selection_click"
     )()
 
     assert (folder, audio_root) == (path, "recordings")
     assert count["value"] == 0
+    assert model["value"] == "BirdNET 3.0"
     assert bandpass["value"] == "500 - 8000 Hz"
     assert speed["value"] == 2.0
+    assert hoplite_connections.still_open() == []
+
+
+def test_picking_a_database_of_birdnet_analyzer_2_converts_it_and_says_so(
+    appdir, handler, monkeypatch, hoplite_connections, tmp_path
+):
+    path = v2_databases.write(
+        tmp_path / "db",
+        [(str(tmp_path / "recordings" / "a.wav"), 0.0, 3.0, np.ones(8, np.float32))],
+    )
+    monkeypatch.setattr(gu, "select_folder", lambda *a, **k: path)
+    shown = []
+    monkeypatch.setattr(gr, "Info", shown.append)
+
+    _, audio_root, count, model, *_ = handler(
+        gui_search.build_search_tab, "on_db_selection_click"
+    )()
+
+    assert audio_root == str(tmp_path)
+    assert count["value"] == 1
+    assert model["value"] == "BirdNET 2.4"
+    assert shown == [loc.localize("embeddings-db-converted-info")]
     assert hoplite_connections.still_open() == []
 
 

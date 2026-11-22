@@ -27,6 +27,11 @@ You can further specify the following parameters for the extraction:
     The audio speed and bandpass parameters will be stored in the database and will also applied during the search process.
 
 .. note::
+    A new database is filled with the embeddings of BirdNET 3.0. An existing database keeps the model it was created with, shown next to it in the GUI,
+    for adding recordings and for searching; if that is BirdNET 2.4, the model is downloaded when it is first needed.
+    A database written by BirdNET-Analyzer 2.x is converted the first time it is opened, and its previous ``hoplite.sqlite`` is kept as ``hoplite.sqlite.v2-backup``.
+
+.. note::
     Due to limitations of the underlying hoplite database, multithreading is not supported for the extraction process.
 
 The database will be created as a folder with the specified name containing two files:
