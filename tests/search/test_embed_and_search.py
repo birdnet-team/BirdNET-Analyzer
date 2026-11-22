@@ -43,6 +43,26 @@ def _best_match(database: str, query, tmp_path) -> tuple[float, str, str, str]:
     return float(score), recording, start, end
 
 
+def _forget_model_version(database: str):
+    """Leaves the database as one written before the version was stored.
+
+    A function of its own, so the database is released on return: Windows cannot
+    overwrite the index file while a view of it is mapped.
+    """
+    from ml_collections import ConfigDict
+
+    with open_database(database) as db:
+        settings = db.get_metadata(SETTINGS_KEY).to_dict()
+        del settings["MODEL_VERSION"]
+        db.insert_metadata(SETTINGS_KEY, ConfigDict(settings))
+        db.commit()
+
+
+def _count_embeddings(database: str) -> int:
+    with open_database(database) as db:
+        return db.count_embeddings()
+
+
 def test_a_clip_of_an_embedded_recording_is_its_own_best_match(
     recordings, query, tmp_path
 ):
@@ -60,21 +80,14 @@ def test_a_clip_of_an_embedded_recording_is_its_own_best_match(
 def test_a_database_without_a_stored_model_stays_on_birdnet_2_4(
     recordings, query, tmp_path
 ):
-    from ml_collections import ConfigDict
-
     database = str(tmp_path / "db")
     embeddings(str(recordings), database, n_workers=1, birdnet="2.4")
-    with open_database(database) as db:
-        settings = db.get_metadata(SETTINGS_KEY).to_dict()
-        del settings["MODEL_VERSION"]
-        db.insert_metadata(SETTINGS_KEY, ConfigDict(settings))
-        db.commit()
+    _forget_model_version(database)
     shutil.copy(DATASET / "file03.wav", recordings)
 
     embeddings(str(recordings), database, n_workers=1)
 
-    with open_database(database) as db:
-        assert db.count_embeddings() == 3 * WINDOWS_PER_RECORDING
+    assert _count_embeddings(database) == 3 * WINDOWS_PER_RECORDING
     score, *window = _best_match(database, query, tmp_path)
     assert window == ["file02", "3.0", "6.0"]
     assert score > 0.99
