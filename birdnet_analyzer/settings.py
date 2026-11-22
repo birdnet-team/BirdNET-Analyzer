@@ -159,12 +159,23 @@ def probe_model_directory(path: str | Path) -> str:
 def _report_fatal_startup_error(message: str) -> None:
     """Shows a fatal pre-GUI error where the user can actually see it.
 
-    The windowed build diverts stderr into the log file, so the message a
-    SystemExit prints there never reaches the screen. Best effort, and English
-    only: localization is not loaded this early.
+    With stderr diverted into the log file, the message a SystemExit prints there
+    never reaches the screen. Best effort, and English only: localization is not
+    loaded this early.
     """
     if not OUTPUT_DIVERTED:
         return
+
+    if sys.platform == "linux":
+        # Logged before the dialog, which may stay unanswered; Qt also ends the
+        # process when it cannot reach the display.
+        print(message, file=sys.stderr)
+
+        with suppress(Exception):
+            _show_error_dialog(message)
+
+        # The caller's exit would log the message a second time.
+        raise SystemExit(1)
 
     with suppress(Exception):
         if sys.platform == "win32":
@@ -177,6 +188,23 @@ def _report_fatal_startup_error(message: str) -> None:
             safe = message.replace('"', "'")
             script = f'display alert "BirdNET-Analyzer" message "{safe}"'
             subprocess.run(["osascript", "-e", script], check=False, timeout=30)
+
+
+def _show_error_dialog(message: str) -> None:
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return
+
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    if "_PYI_SPLASH_IPC" in os.environ:
+        with suppress(Exception):
+            import pyi_splash
+
+            # The splash screen asks to stay on top.
+            pyi_splash.close()
+
+    _application = QApplication([])
+    QMessageBox.critical(None, "BirdNET-Analyzer", message)
 
 
 def apply_model_directory() -> None:
@@ -399,14 +427,95 @@ class _RotatingLogFile(io.TextIOBase):
         return self._file.encoding
 
 
+class _DescriptorLogFile(_RotatingLogFile):
+    """A log file that also receives what is written to descriptors 1 and 2.
+
+    That is the output of native code - Qt and its browser engine report a window
+    that does not open there - and of child processes. They keep their descriptors
+    for as long as they run, so a full log is emptied in place instead of replaced.
+    """
+
+    def __init__(self, path: Path, max_size: int):
+        super().__init__(path, max_size)
+        self._file.reconfigure(line_buffering=True)
+        os.dup2(self.fileno(), 1)
+        os.dup2(self.fileno(), 2)
+        # No thread may be writing while the process forks: the child would wait
+        # forever for the locks of a thread it does not have.
+        os.register_at_fork(
+            before=self._lock.acquire,
+            after_in_parent=self._lock.release,
+            after_in_child=self._lock.release,
+        )
+
+    def _rotate(self) -> None:
+        import shutil
+
+        self._file.flush()
+
+        with suppress(OSError):
+            shutil.copyfile(self._path, _backup_path(self._path))
+
+        with suppress(OSError):
+            os.ftruncate(self.fileno(), 0)
+
+    def write(self, text: str) -> int:
+        with self._lock:
+            written = self._file.write(text)
+
+            # The size on disk, as a count of our own misses the other writers.
+            if os.fstat(self.fileno()).st_size >= self._max_size:
+                self._rotate()
+
+            return written
+
+
+# "Unix98 PTY slaves" in the kernel's list of allocated devices.
+_PSEUDO_TERMINAL_MAJORS = range(136, 144)
+
+
+def _controlling_terminal() -> int:
+    """The device number of the controlling terminal, 0 without one."""
+    try:
+        # The fields after the process name, which may contain spaces itself.
+        fields = Path("/proc/self/stat").read_text().rpartition(")")[2].split()
+
+        return int(fields[4])
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def _log_file_is_writable() -> bool:
+    try:
+        _ensure_appdir_exists()
+
+        with open(LOG_FILE, "a"):
+            return True
+    except OSError:
+        return False
+
+
+def _duplicate(descriptor: int) -> int | None:
+    with suppress(OSError):
+        return os.dup(descriptor)
+
+    return None
+
+
 def _divert_output_to_log() -> bool:
     """Whether a frozen build should send stdout/stderr to logs.txt.
 
-    Only the windowed GUI build has nowhere readable to print; the console CLI
-    executable must keep printing to its terminal or pipe. Decided by build shape:
-    a windowed PyInstaller build on Windows has ``sys.stdout is None``, and on macOS
-    the only frozen artifact is the windowed .app. Don't probe the descriptors
-    instead: on Windows a console handle is indistinguishable from NUL by fstat.
+    Only a GUI without a terminal has nowhere readable to print; the console CLI
+    executable must keep printing to its terminal or pipe. On Windows and macOS the
+    build shape decides: a windowed PyInstaller build on Windows has
+    ``sys.stdout is None``, and on macOS the only frozen artifact is the windowed
+    .app. Don't probe the descriptors there: on Windows a console handle is
+    indistinguishable from NUL by fstat.
+
+    On Linux both executables have real streams, so it is the GUI executable outside
+    a terminal window. Only a pseudo-terminal counts as one: a desktop session that
+    was started on a console hands that console down to every program. Without a
+    writable log the output stays where it is, which is no reason not to start.
     """
     if not FROZEN:
         return False
@@ -414,15 +523,32 @@ def _divert_output_to_log() -> bool:
     if sys.platform == "darwin":
         return True
 
+    if sys.platform == "linux":
+        is_gui = Path(sys.executable).name == APP_NAME
+        terminal = os.major(_controlling_terminal())
+
+        return (
+            is_gui
+            and terminal not in _PSEUDO_TERMINAL_MAJORS
+            and _log_file_is_writable()
+        )
+
     return sys.stdout is None or sys.stderr is None
 
 
 OUTPUT_DIVERTED = _divert_output_to_log()
+# Where stdout and stderr pointed before the Linux log took their place.
+REPLACED_OUTPUT: tuple[int | None, int | None] = (None, None)
 
 if OUTPUT_DIVERTED:
     # divert stdout & stderr to logs.txt file since we have no console when deployed
     _ensure_appdir_exists()
-    sys.stderr = sys.stdout = _RotatingLogFile(Path(LOG_FILE), MAX_LOG_SIZE)
+
+    if sys.platform == "linux":
+        REPLACED_OUTPUT = (_duplicate(1), _duplicate(2))
+        sys.stderr = sys.stdout = _DescriptorLogFile(Path(LOG_FILE), MAX_LOG_SIZE)
+    else:
+        sys.stderr = sys.stdout = _RotatingLogFile(Path(LOG_FILE), MAX_LOG_SIZE)
 
 
 def _read_json(path: str, *, before_write: bool = False) -> dict:

@@ -52,6 +52,20 @@ General workflow:
 
 For each selected sample the logistic regression curve is fitted and the threshold is calculated.
 
+Log files
+---------
+
+The installed application keeps two files that help to find the cause of a problem. Please attach them when you report
+one on `GitHub <https://github.com/birdnet-team/BirdNET-Analyzer/issues>`_.
+
+- ``error_log.txt`` holds the errors, which the **Settings** tab shows as well.
+- ``logs.txt`` holds everything else the application prints. On Linux it is written when the application was started
+  from the applications menu or a file manager; started from a terminal, the application prints there instead.
+
+Both are in ``%APPDATA%\BirdNET-Analyzer-GUI`` on Windows, ``~/Library/Application Support/BirdNET-Analyzer-GUI`` on
+macOS and ``~/.local/share/BirdNET-Analyzer-GUI`` on Linux. A file that has grown too large is continued in a new one,
+and the previous one is kept with ``.1`` added to its name.
+
 GUI Language
 ------------
 

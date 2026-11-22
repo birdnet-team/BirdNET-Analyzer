@@ -2259,6 +2259,44 @@ def _webview_storage_path() -> str | None:
     return str(directory) if os.access(directory, os.W_OK) else None
 
 
+def _open_links_as_the_desktop_would() -> None:
+    """Keeps the app's log file and libraries away from a browser a link opens.
+
+    A program the app starts inherits its output, which may be the log file, and the
+    library path of the bundle, whose libraries are not the browser's.
+    """
+    import subprocess
+    import webbrowser
+
+    environment = dict(os.environ)
+    library_path = environment.pop("LD_LIBRARY_PATH_ORIG", None)
+
+    if library_path is None:
+        environment.pop("LD_LIBRARY_PATH", None)
+    else:
+        environment["LD_LIBRARY_PATH"] = library_path
+
+    stdout, stderr = settings.REPLACED_OUTPUT
+
+    class Desktop(webbrowser.BaseBrowser):
+        def open(self, url, new=0, autoraise=True):
+            try:
+                subprocess.Popen(
+                    ["xdg-open", url],
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout,
+                    stderr=stderr,
+                    env=environment,
+                    start_new_session=True,
+                )
+            except OSError:
+                return False
+
+            return True
+
+    webbrowser.register("xdg-open", None, Desktop(), preferred=True)
+
+
 def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
@@ -2337,6 +2375,9 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
 
         _WINDOW.events.shown += color_title_bar
         _WINDOW.events.loaded += color_title_bar
+
+    if settings.FROZEN and sys.platform == "linux":
+        _open_links_as_the_desktop_would()
 
     webview.start(
         private_mode=False,
