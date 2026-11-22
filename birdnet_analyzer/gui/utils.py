@@ -12,6 +12,7 @@ from concurrent.futures import Future
 from contextlib import contextmanager, suppress
 from html import escape
 from typing import TYPE_CHECKING, Literal, cast, get_args
+from urllib.parse import urlsplit
 
 import gradio as gr
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
@@ -236,9 +237,33 @@ def gui_runtime_error_handler(f):
             raise
         except Exception as e:
             utils.write_error_log(e)
-            raise gr.Error(message=str(e) or repr(e), duration=None) from e
+            message = _download_failure_message(e) or str(e) or repr(e)
+            raise gr.Error(message=message, duration=None) from e
 
     return wrapper
+
+
+def _download_failure_message(error: Exception) -> str | None:
+    """What to tell the user when ``error`` is a failed model download, else None."""
+    import requests
+    from birdnet.globals import ENV_VAR_OFFLINE
+    from birdnet.utils.downloads import DownloadError
+
+    if os.environ.get(ENV_VAR_OFFLINE, "0") not in ("", "0"):
+        return None
+
+    if isinstance(error, requests.RequestException):
+        url = getattr(error.request, "url", None)
+        host = urlsplit(url).hostname if url else None
+        reason = f"{type(error).__name__}, {host}" if host else type(error).__name__
+    elif isinstance(error, DownloadError):
+        reason = " ".join(str(error).split()).rstrip(".")
+    else:
+        return None
+
+    return loc.localize("model-download-failed-error").format(
+        reason=reason, directory=_effective_model_directory()
+    )
 
 
 def _format_bytes(n: int) -> str:
@@ -258,6 +283,8 @@ def _effective_model_directory() -> str:
 # other's registration (the library's own scoped registration is a plain set/restore).
 _DOWNLOAD_SINKS: dict[int, "gr.Progress | None"] = {}
 _DOWNLOAD_SINKS_LOCK = threading.Lock()
+# Threads that started a download inside their current download_progress block.
+_DOWNLOADING: set[int] = set()
 
 
 def _show_download_update(update, progress: "gr.Progress | None") -> None:
@@ -285,19 +312,26 @@ def _show_download_update(update, progress: "gr.Progress | None") -> None:
         else:
             progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
     elif update.status == "retrying":
-        gr.Warning(
-            f"{loc.localize('progress-download-retrying')}: {name} - {update.error}"
-        )
+        gr.Warning(f"{loc.localize('progress-download-retrying')}: {name}")
     # "failed": the library raises right after; the operation reports it.
 
 
 def _dispatch_download_update(update) -> None:
-    with _DOWNLOAD_SINKS_LOCK:
-        if threading.get_ident() not in _DOWNLOAD_SINKS:
-            return
-        progress = _DOWNLOAD_SINKS[threading.get_ident()]
+    from birdnet_analyzer import model_utils
 
-    # An exception escaping the callback aborts the download in the library.
+    thread = threading.get_ident()
+
+    with _DOWNLOAD_SINKS_LOCK:
+        if thread not in _DOWNLOAD_SINKS:
+            return
+        progress = _DOWNLOAD_SINKS[thread]
+        _DOWNLOADING.add(thread)
+
+    # An exception escaping the callback aborts the download in the library, which
+    # then removes its partial files; a process that just exits leaves them behind.
+    if update.status != "failed" and model_utils.shutting_down():
+        raise RuntimeError("Model download cancelled: the application is closing.")
+
     try:
         _show_download_update(update, progress)
     except Exception:
@@ -325,6 +359,7 @@ def download_progress(progress: "gr.Progress | None" = None):
     finally:
         with _DOWNLOAD_SINKS_LOCK:
             _DOWNLOAD_SINKS.pop(thread, None)
+            _DOWNLOADING.discard(thread)
             if not _DOWNLOAD_SINKS:
                 birdnet.set_download_progress_callback(None)
 
@@ -2035,7 +2070,9 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
     model_utils.cancel_active_analyses()
 
     deadline = time.monotonic() + timeout
-    while model_utils.active_session_count() and time.monotonic() < deadline:
+    while (
+        model_utils.active_session_count() or _DOWNLOADING
+    ) and time.monotonic() < deadline:
         time.sleep(0.1)
 
     # Force terminate any subprocesses still alive, then join them so none are

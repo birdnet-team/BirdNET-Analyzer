@@ -249,6 +249,26 @@ def test_any_other_training_error_is_shown_in_full(monkeypatch, tmp_path):
     assert len(logged) == 1
 
 
+def test_a_failed_download_during_training_shows_the_download_message(
+    monkeypatch, tmp_path
+):
+    import requests
+
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    monkeypatch.setenv("BIRDNET_APP_DATA", str(tmp_path))
+    monkeypatch.delenv("BIRDNET_OFFLINE", raising=False)
+    monkeypatch.setitem(
+        loc.LANGUAGE_LOOKUP, "model-download-failed-error", "{reason}|{directory}"
+    )
+    request = requests.Request("GET", "https://zenodo.org/records/1/model.zip")
+    error = requests.ConnectionError("Max retries exceeded", request=request.prepare())
+
+    with pytest.raises(gr.Error) as raised:
+        _start_training(monkeypatch, tmp_path, fail_with=error)
+
+    assert raised.value.message == f"ConnectionError, zenodo.org|{tmp_path}"
+
+
 def test_folder_labels_are_listed_without_surrounding_spaces(monkeypatch, tmp_path):
     (tmp_path / "a, b").mkdir()
     (tmp_path / "b").mkdir()

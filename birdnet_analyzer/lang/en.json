@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "The selected directory cannot be created or written to.",
     "model-dir-low-space-warning": "Less than 2 GB of free space: a first model download may not fit.",
     "model-dir-readonly-warning": "The directory is read-only: the models already in it can be used, but no new models can be downloaded.",
+    "model-download-failed-error": "A model could not be downloaded ({reason}). Check the internet connection and try again. If this network blocks the download, copy the models from another computer into the model directory: {directory}",
     "model-selection-accordion-label": "Model selection",
     "model-selection-classifier-unreadable-warning": "{file} cannot be used as a classifier: {error}",
     "model-selection-facts-base-model-label": "Based on",

@@ -167,3 +167,13 @@ def test_an_entry_point_silences_only_the_warnings_users_cannot_act_on(
         warnings.warn("issued by the host", UserWarning, stacklevel=1)
 
     assert [str(w.message) for w in caught] == ["issued by the host"]
+
+
+def test_an_entry_point_verifies_downloads_with_the_system_certificates(
+    entry_point_runtime,
+):
+    import ssl
+
+    utils.configure_runtime()
+
+    assert ssl.SSLContext.__module__.startswith("truststore")

@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "Den valda katalogen kan inte skapas eller skrivas till.",
     "model-dir-low-space-warning": "Mindre än 2 GB ledigt utrymme: en första modellnedladdning kanske inte får plats.",
     "model-dir-readonly-warning": "Katalogen är skrivskyddad: modeller som redan finns kan användas, men inga nya modeller kan laddas ner.",
+    "model-download-failed-error": "En modell kunde inte laddas ned ({reason}). Kontrollera internetanslutningen och försök igen. Om det här nätverket blockerar nedladdningen kan du kopiera modellerna från en annan dator till modellkatalogen: {directory}",
     "model-selection-accordion-label": "Modellval",
     "model-selection-classifier-unreadable-warning": "{file} kan inte användas som klassificerare: {error}",
     "model-selection-facts-base-model-label": "Baserad på",

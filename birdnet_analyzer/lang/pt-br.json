@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "O diretório selecionado não pode ser criado ou gravado.",
     "model-dir-low-space-warning": "Menos de 2 GB de espaço livre: um primeiro download de modelo pode não caber.",
     "model-dir-readonly-warning": "O diretório é somente leitura: os modelos já presentes podem ser usados, mas nenhum modelo novo pode ser baixado.",
+    "model-download-failed-error": "Não foi possível baixar um modelo ({reason}). Verifique a conexão com a internet e tente novamente. Se esta rede bloquear o download, copie os modelos de outro computador para o diretório de modelos: {directory}",
     "model-selection-accordion-label": "Seleção de modelo",
     "model-selection-classifier-unreadable-warning": "{file} não pode ser usado como classificador: {error}",
     "model-selection-facts-base-model-label": "Baseado em",

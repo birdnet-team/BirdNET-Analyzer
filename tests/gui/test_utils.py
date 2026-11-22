@@ -218,6 +218,67 @@ def test_any_other_error_reaches_the_user_as_a_gr_error(monkeypatch):
     assert logged == [error]
 
 
+@pytest.fixture
+def download_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    monkeypatch.setenv("BIRDNET_APP_DATA", str(tmp_path))
+    monkeypatch.delenv("BIRDNET_OFFLINE", raising=False)
+    monkeypatch.setitem(
+        gu.loc.LANGUAGE_LOOKUP, "model-download-failed-error", "{reason}|{directory}"
+    )
+
+    def message_for(error):
+        def handler():
+            raise error
+
+        with pytest.raises(gr.Error) as raised:
+            gu.gui_runtime_error_handler(handler)()
+
+        assert raised.value.__cause__ is error
+
+        return raised.value.message
+
+    return message_for
+
+
+def test_a_failed_connection_names_the_host_and_the_model_directory(
+    download_failure, tmp_path
+):
+    import requests
+
+    request = requests.Request("GET", "https://zenodo.org/records/1/model.onnx")
+    error = requests.ConnectionError("Max retries exceeded", request=request.prepare())
+
+    assert download_failure(error) == f"ConnectionError, zenodo.org|{tmp_path}"
+
+
+def test_a_refused_download_is_shown_on_one_line(download_failure, tmp_path):
+    from birdnet.utils.downloads import DownloadError
+
+    error = DownloadError(
+        "Failed to download the file. Status code: 200\n"
+        "Expected size: 5 bytes, downloaded size: 3 bytes.",
+        status_code=200,
+    )
+
+    assert download_failure(error) == (
+        "Failed to download the file. Status code: 200 "
+        f"Expected size: 5 bytes, downloaded size: 3 bytes|{tmp_path}"
+    )
+
+
+def test_downloads_switched_off_by_the_user_are_reported_as_such(
+    download_failure, monkeypatch
+):
+    from birdnet.utils.downloads import DownloadError
+
+    monkeypatch.setenv("BIRDNET_OFFLINE", "1")
+
+    assert download_failure(DownloadError("disabled by BIRDNET_OFFLINE")) == (
+        "disabled by BIRDNET_OFFLINE"
+    )
+
+
 def test_an_error_without_a_message_is_shown_by_its_repr(monkeypatch):
     monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
 

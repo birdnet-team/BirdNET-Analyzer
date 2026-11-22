@@ -280,7 +280,7 @@ def start_training(
 
             raise gr.Error(message) from None
 
-        raise gr.Error(f"{e}") from e
+        raise
 
     if len(history.epoch) < epochs:
         gr.Info(loc.localize("training-tab-early-stoppage-msg"))

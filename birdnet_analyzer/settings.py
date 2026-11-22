@@ -223,6 +223,89 @@ def set_model_directory(directory: str) -> None:
     set_setting(MODEL_DIR_SETTING_KEY, directory)
     _point_library_at(directory)
     MODEL_DIR_STARTUP_WARNING = None
+    seed_bundled_models()
+
+
+BUNDLED_MODELS_DIR_NAME = "birdnet_models"
+
+
+def bundled_models_directory() -> Path | None:
+    """The models an installer ships inside the frozen app, if it ships any."""
+    root = getattr(sys, "_MEIPASS", None)
+
+    if not FROZEN or not root:
+        return None
+
+    directory = Path(root) / BUNDLED_MODELS_DIR_NAME
+
+    return directory if directory.is_dir() else None
+
+
+def _clone_or_copy(source: Path, target: Path) -> None:
+    import shutil
+
+    if sys.platform == "darwin":
+        # An APFS clone shares the blocks of the bundled file: no second copy on disk.
+        with suppress(Exception):
+            import ctypes
+
+            clonefile = ctypes.CDLL(None, use_errno=True).clonefile
+
+            if clonefile(os.fsencode(source), os.fsencode(target), 0) == 0:
+                return
+
+    shutil.copyfile(source, target)
+
+
+def seed_bundled_models(bundle: Path | None = None) -> None:
+    """Puts the models shipped with the app into the model directory.
+
+    Only files the directory lacks are added, so the default model works without a
+    download while everything already there - newer downloads included - is kept.
+    Best effort: where a file cannot be added, the library downloads it on first use.
+    """
+    bundle = bundle or bundled_models_directory()
+    directory = os.environ.get(MODEL_DIR_ENV_VAR)
+
+    if bundle is None or not directory:
+        return
+
+    try:
+        _add_missing_files(bundle.resolve(), Path(directory).expanduser())
+    except OSError as e:
+        logging.getLogger(__name__).warning(
+            "The models shipped with the app were not added to %s: %s", directory, e
+        )
+
+
+_SEED_SUFFIX = ".seed"
+_STALE_SEED_SECONDS = 3600
+
+
+def _add_missing_files(bundle: Path, directory: Path) -> None:
+    import time
+
+    for source in sorted(p for p in bundle.rglob("*") if p.is_file()):
+        target = directory / source.relative_to(bundle)
+
+        if target.exists():
+            continue
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        # Left by a process that was killed while it copied.
+        for leftover in target.parent.glob(f"{target.name}.*{_SEED_SUFFIX}"):
+            if time.time() - leftover.stat().st_mtime > _STALE_SEED_SECONDS:
+                leftover.unlink(missing_ok=True)
+
+        partial = target.with_name(f"{target.name}.{os.getpid()}{_SEED_SUFFIX}")
+
+        try:
+            _clone_or_copy(source, partial)
+            os.replace(partial, target)
+        finally:
+            with suppress(OSError):
+                partial.unlink(missing_ok=True)
 
 
 def _backup_path(log_path: Path) -> Path:

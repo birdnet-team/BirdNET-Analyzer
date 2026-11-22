@@ -173,6 +173,7 @@
     "model-dir-invalid-error": "無法建立所選目錄或無法寫入該目錄。",
     "model-dir-low-space-warning": "可用空間不足 2 GB：首次模型下載可能無法容納。",
     "model-dir-readonly-warning": "該目錄為唯讀：可以使用其中已有的模型，但無法下載新模型。",
+    "model-download-failed-error": "無法下載模型（{reason}）。請檢查網路連線後再試一次。如果目前的網路封鎖下載，請從另一台電腦將模型複製到模型目錄：{directory}",
     "model-selection-accordion-label": "模型選擇",
     "model-selection-classifier-unreadable-warning": "{file} 無法用作分類器：{error}",
     "model-selection-facts-base-model-label": "基礎模型",
