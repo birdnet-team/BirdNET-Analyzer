@@ -19,14 +19,18 @@ PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
 APP_ENVIRONMENT = {
     "TF_CPP_MIN_LOG_LEVEL": "3",
     "WRAPT_DISABLE_EXTENSIONS": "true",
+}
+USER_ENVIRONMENT = {
+    "TF_CPP_MIN_LOG_LEVEL": "1",
+    "WRAPT_DISABLE_EXTENSIONS": "1",
+}
+TELEMETRY_OFF = {
     "ORT_DISABLE_TELEMETRY": "1",
     "GRADIO_ANALYTICS_ENABLED": "False",
     "HF_HUB_DISABLE_TELEMETRY": "1",
     "DO_NOT_TRACK": "1",
 }
-USER_ENVIRONMENT = {
-    "TF_CPP_MIN_LOG_LEVEL": "1",
-    "WRAPT_DISABLE_EXTENSIONS": "1",
+TELEMETRY_ON = {
     "ORT_DISABLE_TELEMETRY": "0",
     "GRADIO_ANALYTICS_ENABLED": "True",
     "HF_HUB_DISABLE_TELEMETRY": "0",
@@ -71,8 +75,9 @@ before = dict(os.environ)
 
 import birdnet_analyzer
 
-changed = before.keys() | os.environ.keys()
-print(json.dumps(sorted(k for k in changed if before.get(k) != os.environ.get(k))))
+names = before.keys() | os.environ.keys()
+changed = {k: os.environ.get(k) for k in names if before.get(k) != os.environ.get(k)}
+print(json.dumps(changed))
 """
 
 LOADED_MODULES_PROBE = """
@@ -108,9 +113,7 @@ ONNXRUNTIME_FILES_PROBE = """
 import json
 import os
 
-from birdnet_analyzer import utils
-
-utils.configure_runtime()
+import birdnet_analyzer
 
 import onnxruntime
 
@@ -120,14 +123,16 @@ print(json.dumps(sorted(f for f in files if "onnxruntime" in f.lower())))
 """
 
 
-def _run_probe(probe: str, tmp_path, *args: str):
+def _run_probe(probe: str, tmp_path, *args: str, preset: dict | None = None):
     home = str(tmp_path)
+    configured = APP_ENVIRONMENT.keys() | TELEMETRY_OFF.keys()
     env = {
-        **{k: v for k, v in os.environ.items() if k not in APP_ENVIRONMENT},
+        **{k: v for k, v in os.environ.items() if k not in configured},
         "HOME": home,
         "USERPROFILE": home,
         "XDG_CACHE_HOME": os.path.join(home, ".cache"),
         "LOCALAPPDATA": home,
+        **(preset or {}),
     }
     result = subprocess.run(
         [sys.executable, "-c", probe, *args],
@@ -153,10 +158,14 @@ def test_importing_the_package_leaves_the_warning_filters_alone(tmp_path, module
     assert seen["delivered"] == ["issued by the host"]
 
 
-def test_importing_the_package_sets_no_environment_variable_but_the_model_directory(
-    tmp_path,
+@pytest.mark.parametrize("preset", [{}, TELEMETRY_ON], ids=["unset", "switched on"])
+def test_importing_the_package_switches_telemetry_off_and_sets_nothing_else(
+    tmp_path, preset
 ):
-    assert set(_run_probe(ENVIRONMENT_PROBE, tmp_path)) <= {"BIRDNET_APP_DATA"}
+    changed = _run_probe(ENVIRONMENT_PROBE, tmp_path, preset=preset)
+    changed.pop("BIRDNET_APP_DATA", None)
+
+    assert changed == TELEMETRY_OFF
 
 
 def test_the_entry_points_load_no_runtime_before_they_configure_it(tmp_path):
@@ -204,10 +213,12 @@ def test_the_gui_configures_the_runtimes_before_it_imports_its_libraries(tmp_pat
     assert _run_probe(GUI_CONFIGURES_FIRST_PROBE, tmp_path) == []
 
 
-def test_onnxruntime_keeps_no_telemetry_identity_once_an_entry_point_ran(tmp_path):
+def test_onnxruntime_keeps_no_telemetry_identity_once_the_package_is_imported(
+    tmp_path,
+):
     pytest.importorskip("onnxruntime")
 
-    assert _run_probe(ONNXRUNTIME_FILES_PROBE, tmp_path) == []
+    assert _run_probe(ONNXRUNTIME_FILES_PROBE, tmp_path, preset=TELEMETRY_ON) == []
 
 
 def test_an_entry_point_silences_only_the_warnings_users_cannot_act_on(

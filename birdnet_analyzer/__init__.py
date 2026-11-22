@@ -3,12 +3,14 @@ import logging
 from birdnet_analyzer.settings import (
     apply_matplotlib_config_directory,
     apply_model_directory,
+    disable_telemetry,
 )
 
 # Library convention: emit records but leave the configuration to the host
 # application. The shipped CLI and GUI configure handlers via logs.setup_logging().
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+disable_telemetry()
 # The birdnet library reads BIRDNET_APP_DATA whenever it needs a model path.
 apply_model_directory()
 apply_matplotlib_config_directory()

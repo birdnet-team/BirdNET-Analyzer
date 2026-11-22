@@ -59,6 +59,24 @@ MODEL_DIR_STARTUP_WARNING: str | None = None
 # the GUI setting or a default); the settings tab locks its controls then.
 MODEL_DIR_FROM_ENV = False
 
+# The libraries that report usage to their vendor unless told not to. ONNX Runtime's
+# wheels would send a device id and the path of the executable to Microsoft.
+_TELEMETRY_OPT_OUTS = {
+    "ORT_DISABLE_TELEMETRY": "1",
+    "GRADIO_ANALYTICS_ENABLED": "False",
+    "HF_HUB_DISABLE_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1",
+}
+
+
+def disable_telemetry() -> None:
+    """Switches off the usage reporting of the libraries the package loads.
+
+    Overrides the environment: these libraries read the variables when they are
+    first imported, and the worker processes of an analysis inherit them.
+    """
+    os.environ.update(_TELEMETRY_OPT_OUTS)
+
 
 def apply_matplotlib_config_directory() -> None:
     """Keeps matplotlib's font cache across launches of the frozen mac app.
