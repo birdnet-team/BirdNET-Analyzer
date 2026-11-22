@@ -7,6 +7,8 @@ import pytest
 # Every gr.Blocks() would otherwise phone home from a thread, and the socket it
 # leaves behind can surface as a ResourceWarning in an unrelated test.
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
+# So would every import of ONNX Runtime; only the entry points switch that off.
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
 
 # Importing the package applies the GUI's persisted model directory to the birdnet
 # library; a test run must not depend on this machine's GUI settings.

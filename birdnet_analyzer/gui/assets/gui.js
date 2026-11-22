@@ -23,15 +23,30 @@ function init() {
                 });
             }
 
+            // Not "differs": a build newer than the latest release would be sent back to it.
+            function isNewer(latest, current) {
+                const latest_parts = latest.split("."), current_parts = current.split(".");
+
+                for (let i = 0; i < Math.max(latest_parts.length, current_parts.length); i++) {
+                    const difference = Number(latest_parts[i] || 0) - Number(current_parts[i] || 0);
+
+                    if (difference) {
+                        return difference > 0;
+                    }
+                }
+
+                return false;
+            }
+
             const apiUrl = "https://api.github.com/repos/birdnet-team/BirdNET-Analyzer/releases/latest";
 
             sendGetRequest(apiUrl)
                 .then(response => {
                     const current_version = document.getElementById("current-version").textContent;
                     const response_object = JSON.parse(response);
-                    const latest_version = response_object.tag_name.replace(/^v/, '');
+                    const latest_version = response_object.tag_name.replace(/^v/i, '');
 
-                    if (current_version !== latest_version) {
+                    if (isNewer(latest_version, current_version)) {
                         const updateNotification = document.getElementById("update-available");
 
                         updateNotification.style.display = "block";

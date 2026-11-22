@@ -237,7 +237,7 @@ def build_train_tab() -> None:
                 variant="primary",
                 interactive=not uses_cache_file,
             )
-            selected_input_textbox = gr.Textbox(
+            selected_input_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -287,7 +287,7 @@ def build_train_tab() -> None:
                 variant="primary",
                 interactive=not uses_cache_file,
             )
-            selected_test_textbox = gr.Textbox(
+            selected_test_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -320,7 +320,7 @@ def build_train_tab() -> None:
                 loc.localize("training-tab-select-output-button-label"),
                 variant="primary",
             )
-            selected_output_textbox = gr.Textbox(
+            selected_output_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -408,7 +408,7 @@ def build_train_tab() -> None:
                         ),
                         variant="primary",
                     )
-                    selected_cache_dir_textbox = gr.Textbox(
+                    selected_cache_dir_textbox = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -460,7 +460,7 @@ def build_train_tab() -> None:
                         loc.localize("training-tab-cache-select-file-button-label"),
                         variant="primary",
                     )
-                    selected_cache_file_textbox = gr.Textbox(
+                    selected_cache_file_textbox = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(

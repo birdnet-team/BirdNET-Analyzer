@@ -339,6 +339,47 @@ than in v2.4.0.
 the v2.4.0 metrics.
 
 
+Evaluation reads tables differently
+-----------------------------------
+
+**What changed.**
+
+* The columns are detected from the tables' headers. ``--columns_annotations`` and
+  ``--columns_predictions`` name only the columns that differ; v2.4.0 took every column
+  it was not given by its literal field name. A column named ``Duration`` is no longer
+  read as the recording length (BirdNET's ``File Duration (s)`` is).
+* The annotation and prediction paths are searched with their subfolders, for ``.txt``
+  and ``.csv`` tables; v2.4.0 read the ``.txt`` files directly in the folder. A recording
+  name in two subfolders, and the tables of one recording in two subfolders, such as two
+  analyses, are errors, and so is a table read on both sides.
+* Two named files (``--annotation_path`` and ``--prediction_path`` both naming a file)
+  are compared as one recording when each holds one recording, whatever their names;
+  v2.4.0 paired them only if their names matched. When the prediction file is a
+  combined table of several recordings, only the recording named like the annotation
+  file is scored, as with folders; v2.4.0 also scored the others, as recordings without
+  calls.
+* Tables of which no recording pairs are an error; v2.4.0 scored their annotations as
+  missed and their predictions as false positives.
+* ``process_data()`` returns an ``EvaluationResult`` instead of the 4-tuple
+  ``(metrics_df, pa, predictions, labels)``; its first four fields are those values.
+  ``read_and_concatenate_files_in_directory``, ``extract_recording_filename`` and
+  ``extract_recording_filename_from_filename`` were removed from
+  ``birdnet_analyzer.evaluation.preprocessing.utils``; use ``read_tables`` and
+  ``recording_key``.
+* The GUI's **Download results table** has one row per class and the overall row last,
+  with the metrics as columns; v2.4.0 had the metrics as rows. The command line's
+  ``results_table.csv`` keeps the metrics as rows.
+
+**Consequence.** Command lines and scripts that relied on the literal column names, on
+the folder holding only top-level ``.txt`` tables, or on the removed functions read other
+tables or fail, and file pairs of a combined table score other values than in v2.4.0.
+
+**What to do.** Name only the columns that are not detected, and select folders that hold
+one analysis or one set of annotations each. For a recording length column named
+``Duration``, pass ``--columns_annotations '{"Duration": "Duration"}'`` (or
+``--columns_predictions``), or ``--recording_duration``.
+
+
 Removed options and parameters
 ------------------------------
 

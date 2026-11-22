@@ -6,12 +6,12 @@ on:
     types: [opened, synchronize, reopened]
     branches: [main]
     paths:
-      [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py]
+      [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py, birdnet_analyzer/evaluation/__init__.py]
   push:
     branches:
       - main
     paths:
-      [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py]
+      [docs/**, .github/workflows/documentation.yml, birdnet_analyzer/cli.py, birdnet_analyzer/evaluation/__init__.py]
   release:
     types: [published]
   workflow_dispatch:

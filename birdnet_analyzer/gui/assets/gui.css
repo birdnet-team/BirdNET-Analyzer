@@ -92,6 +92,12 @@ footer {
     display: none !important;
 }
 
+.eval-metrics-table .header-content .header {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
 .eval-overall-footer .virtual-row {
     font-weight: var(--weight-semibold);
 }

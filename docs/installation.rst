@@ -41,8 +41,8 @@ Settings and the downloaded models are kept in ``~/.local/share/BirdNET-Analyzer
 Models and the first start
 --------------------------
 
-The macOS installer contains the default BirdNET 3.0 model, including its species range model, so the first analysis
-works without an internet connection. Everything else is downloaded the first time it is used and kept for later
+The macOS installer and the Linux packages contain the default BirdNET 3.0 model, including its species range model,
+so the first analysis works without an internet connection. Everything else is downloaded the first time it is used and kept for later
 runs, with the progress shown in the GUI: the other models (BirdNET 2.4, about 80 MB, and Perch, about 380 MB), and
 the model that training needs to
 export a custom classifier as a TFLite or Raven model (about 320 MB for BirdNET 3.0, about 125 MB for 2.4). The first

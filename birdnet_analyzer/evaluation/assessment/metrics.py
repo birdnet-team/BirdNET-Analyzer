@@ -361,3 +361,89 @@ def calculate_auroc(
         )
 
     return np.atleast_1d(auroc)
+
+
+def _divided(numerator, denominator) -> np.ndarray:
+    """``numerator / denominator``, 0 where the denominator is 0 (zero_division=0)."""
+    numerator = np.asarray(numerator, dtype=float)
+    denominator = np.asarray(denominator, dtype=float)
+
+    return np.divide(
+        numerator,
+        denominator,
+        out=np.zeros_like(numerator),
+        where=denominator != 0,
+    )
+
+
+def _from_counts(metric_id: str, correct, detected, support, rows: int) -> np.ndarray:
+    if metric_id == "precision":
+        return _divided(correct, detected)
+    if metric_id == "recall":
+        return _divided(correct, support)
+    if metric_id == "f1":
+        return _divided(2.0 * np.asarray(correct), np.asarray(support + detected))
+    if metric_id == "accuracy":
+        return (rows - support - detected + 2 * correct) / rows
+
+    raise ValueError(f"{metric_id!r} does not depend on a threshold.")
+
+
+def threshold_metrics(
+    predictions: np.ndarray,
+    labels: np.ndarray,
+    thresholds: np.ndarray,
+    metric_ids: tuple[str, ...] | list[str],
+    averaging: Literal["macro", "micro", "weighted"] | None,
+) -> np.ndarray:
+    """Accuracy, recall, precision and F1 at each of many thresholds.
+
+    The values equal those of the ``calculate_*`` functions at each threshold with
+    ``averaging_method=averaging``, but come from four counts per class instead of
+    one scikit-learn call per threshold and metric.
+
+    Args:
+        predictions (np.ndarray): Model predictions as probabilities, one column per
+            class.
+        labels (np.ndarray): True labels.
+        thresholds (np.ndarray): The thresholds to binarize the probabilities at.
+        metric_ids: Any of ``"accuracy"``, ``"recall"``, ``"precision"``, ``"f1"``.
+        averaging: How to combine the classes; None for one value per class.
+
+    Returns:
+        np.ndarray: The values by threshold, metric and class (one column if
+            averaged).
+    """
+    _check_inputs(predictions, labels)
+
+    positives = labels.astype(bool)
+    rows, columns = positives.shape
+    support = positives.sum(axis=0)
+    values = []
+
+    for threshold in thresholds:
+        hits = predictions >= threshold
+        detected = hits.sum(axis=0)
+        correct = (hits & positives).sum(axis=0)
+        row = []
+
+        for metric_id in metric_ids:
+            if averaging is None:
+                row.append(_from_counts(metric_id, correct, detected, support, rows))
+            elif averaging == "micro" and metric_id == "accuracy":
+                cells = rows * columns
+                matches = cells - support.sum() - detected.sum() + 2 * correct.sum()
+                row.append(np.array([matches / cells]))
+            elif averaging == "micro":
+                totals = (correct.sum(), detected.sum(), support.sum())
+                row.append(_from_counts(metric_id, *np.atleast_1d(*totals), rows))
+            elif averaging in ("macro", "weighted"):
+                per_class = _from_counts(metric_id, correct, detected, support, rows)
+                weights = support if averaging == "weighted" else None
+                row.append(np.array([np.average(per_class, weights=weights)]))
+            else:
+                raise ValueError(f"Invalid averaging method: {averaging}")
+
+        values.append(row)
+
+    return np.array(values, dtype=float)

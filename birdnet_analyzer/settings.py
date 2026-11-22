@@ -73,18 +73,28 @@ def apply_matplotlib_config_directory() -> None:
         os.environ["MPLCONFIGDIR"] = str(APPDIR / "matplotlib")
 
 
-def default_model_directory() -> Path:
-    """The model directory the frozen app uses when nothing is configured.
+def _cache_directory() -> Path:
+    """Where the app keeps large or disposable data.
 
-    Models are a re-downloadable multi-GB cache, so on Windows they go to Local
-    AppData - unlike the small settings/state/log files in ``APPDIR`` (Roaming),
-    which a domain roaming profile may sync on every logon/logoff.
+    On Windows that is Local AppData - unlike the small settings/state/log files in
+    ``APPDIR`` (Roaming), which a domain roaming profile may sync on every
+    logon/logoff.
     """
     if sys.platform == "win32":
         base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData/Local")
-        return base / APP_NAME / "models"
+        return base / APP_NAME
 
-    return APPDIR / "models"
+    return APPDIR
+
+
+def default_model_directory() -> Path:
+    """The model directory the frozen app uses when nothing is configured."""
+    return _cache_directory() / "models"
+
+
+def webview_storage_directory() -> Path:
+    """Where the window keeps its browser profile: cache, cookies, local storage."""
+    return _cache_directory() / "webview"
 
 
 def _stored_model_directory() -> str | None:

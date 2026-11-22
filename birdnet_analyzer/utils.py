@@ -10,6 +10,15 @@ from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
 from birdnet_analyzer.logs import setup_logging
 from birdnet_analyzer.settings import seed_bundled_models, write_error_log
 
+# The libraries that report usage to their vendor unless told not to. ONNX Runtime's
+# wheels would send a device id and the path of the executable to Microsoft.
+_TELEMETRY_OPT_OUTS = {
+    "ORT_DISABLE_TELEMETRY": "1",
+    "GRADIO_ANALYTICS_ENABLED": "False",
+    "HF_HUB_DISABLE_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1",
+}
+
 # Raised by gradio's own gr.List/gr.Matrix defaults and event loop helpers.
 _UNACTIONABLE_WARNINGS = [
     (DeprecationWarning, "gradio", "Passing a tuple to 'row_count'"),
@@ -22,12 +31,15 @@ _UNACTIONABLE_WARNINGS = [
 def configure_runtime():
     """Prepares the process of a shipped application (CLI or GUI).
 
-    Sets defaults for the environment variables read when tensorflow is first
-    imported, keeping any value the user set, and hides the warnings a user cannot
-    act on.
+    Sets defaults for the environment variables its libraries read when they are
+    first imported, keeping any value the user set, and hides the warnings a user
+    cannot act on.
     """
     os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
     os.environ.setdefault("WRAPT_DISABLE_EXTENSIONS", "true")
+
+    for name, off in _TELEMETRY_OPT_OUTS.items():
+        os.environ.setdefault(name, off)
 
     for category, module, message in _UNACTIONABLE_WARNINGS:
         warnings.filterwarnings("ignore", message, category, module)
