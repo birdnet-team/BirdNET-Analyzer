@@ -4,8 +4,8 @@ An analysis saves its parameters into its output directory as
 ``birdnet.analyze-params.csv``, a training run saves them next to the trained
 classifier as ``<classifier>.birdnet.train-params.csv`` (see
 :func:`birdnet_analyzer.utils.save_params_file`). The loaders in this module read
-those files -- and the ones written before the 2.x releases, which held fewer
-parameters in one column per parameter -- back into keyword arguments for
+those files -- and the ones of v2.4.0 and earlier, which held fewer parameters in
+one column per parameter -- back into keyword arguments for
 :func:`birdnet_analyzer.analyze.analyze` and :func:`birdnet_analyzer.train.train`.
 The writers take their headers from :data:`ANALYSIS_PARAMS` and :data:`TRAIN_PARAMS`.
 
@@ -70,10 +70,13 @@ def _to_list(raw: str) -> list[str]:
 
 
 def _to_acoustic_version(raw: str) -> str:
-    if raw not in get_args(ACOUSTIC_MODEL_VERSIONS):
+    # v2.4.0 and earlier wrote "V2.4".
+    version = raw.removeprefix("V")
+
+    if version not in get_args(ACOUSTIC_MODEL_VERSIONS):
         raise ValueError(f"Not a BirdNET version: {raw!r}")
 
-    return raw
+    return version
 
 
 class _Param(NamedTuple):
@@ -143,8 +146,8 @@ TRAIN_PARAMS: dict[str, _Param] = {
     "Use focal loss": _Param("use_focal_loss", _to_bool, ("use focal loss",)),
     "Focal loss gamma": _Param("focal_loss_gamma", float, ("focal loss gamma",)),
     "Focal loss alpha": _Param("focal_loss_alpha", float, ("focal loss alpha",)),
-    "Upsampling mode": _Param("upsampling_mode", str),
-    "Upsampling ratio": _Param("upsampling_ratio", float),
+    "Upsampling mode": _Param("upsampling_mode", str, ("Upsamling mode",)),
+    "Upsampling ratio": _Param("upsampling_ratio", float, ("Upsamling ratio",)),
     _VERSION_HEADERS[0]: _Param("birdnet", _to_acoustic_version, _VERSION_HEADERS[1:]),
 }
 

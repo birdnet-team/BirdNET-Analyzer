@@ -9,6 +9,7 @@ import pytest
 from birdnet_analyzer.cli import train_parser
 from birdnet_analyzer.train.core import train
 from tests.models import pb_model_cached
+from tests.params_files import TRAIN_FILE, tall_file, train_values
 
 
 @patch("birdnet_analyzer.train.utils.train_model")
@@ -129,6 +130,102 @@ def test_the_cli_writes_no_training_cache_unless_asked(mock_train_model, tmp_pat
     train(**kwargs)
 
     assert mock_train_model.call_args[1]["save_cache_to"] is None
+
+
+def _recorded_learning_rate(output):
+    from birdnet_analyzer import params
+    from birdnet_analyzer.config import TRAIN_PARAMS_SUFFIX
+
+    return params.load_train_params(output + TRAIN_PARAMS_SUFFIX)["learning_rate"]
+
+
+@pytest.mark.usefixtures("synthetic_training_data", "export_model_in_place")
+@pytest.mark.parametrize(
+    ("recorded", "argv", "learning_rate"),
+    [
+        (None, [], 0.1),
+        (None, ["--birdnet", "2.4"], 0.01),
+        ("3.0", [], 0.05),
+        ("3.0", ["--birdnet", "2.4"], 0.01),
+        ("3.0", ["--birdnet", "2.4", "--learning_rate", "0.02"], 0.02),
+    ],
+    ids=["3.0", "2.4", "restored", "restored for 3.0", "given"],
+)
+def test_the_learning_rate_the_cli_trains_with(
+    monkeypatch, tmp_path, recorded, argv, learning_rate
+):
+    from birdnet_analyzer.train import utils as train_utils
+    from birdnet_analyzer.train.cli import train_kwargs
+
+    monkeypatch.setattr(
+        train_utils.model, "save_linear_classifier", lambda *a, **k: None
+    )
+    output = str(tmp_path / "cc")
+
+    if recorded:
+        file = tall_file(
+            tmp_path,
+            train_values(**{"BirdNET model version": recorded, "Learning rate": 0.05}),
+            name=TRAIN_FILE,
+        )
+        argv = [*argv, "--load_params", file, "--model_formats", "tflite"]
+
+    train(**train_kwargs(["unused", "-o", output, "--epochs", "1", *argv]))
+
+    assert _recorded_learning_rate(output) == learning_rate
+
+
+@pytest.mark.usefixtures("export_model_in_place")
+def test_a_learning_rate_recorded_for_3_0_is_not_used_on_a_2_4_cache(
+    monkeypatch, tmp_path, caplog
+):
+    from birdnet_analyzer.train import utils as train_utils
+    from birdnet_analyzer.train.cli import train_kwargs
+
+    monkeypatch.setattr(
+        train_utils.model, "save_linear_classifier", lambda *a, **k: None
+    )
+    rng = np.random.default_rng(0)
+    y = np.repeat(np.eye(2, dtype="float32"), 20, axis=0)
+    x = (rng.normal(size=(40, 1024)) + 2 * y[:, :1]).astype("float32")
+    cache = str(tmp_path / "cache.npz")
+    train_utils._save_to_cache(
+        cache, x, y, np.array([]), np.array([]), ["a", "b"], model_version="2.4"
+    )
+    file = tall_file(
+        tmp_path,
+        train_values(**{"BirdNET model version": "3.0", "Learning rate": 0.05}),
+        name=TRAIN_FILE,
+    )
+    output = str(tmp_path / "cc")
+    argv = [cache, "--load_params", file, "-o", output, "--model_formats", "tflite"]
+
+    train(**train_kwargs([*argv, "--epochs", "1"]))
+
+    assert _recorded_learning_rate(output) == 0.01
+    assert "recorded for BirdNET 3.0" in caplog.text
+
+
+@pytest.mark.usefixtures("synthetic_training_data", "export_model_in_place")
+@pytest.mark.parametrize(("learning_rate", "warned"), [(None, True), (0.003, False)])
+def test_hidden_units_at_the_default_learning_rate_draw_a_warning(
+    monkeypatch, tmp_path, caplog, learning_rate, warned
+):
+    from birdnet_analyzer.train import utils as train_utils
+
+    monkeypatch.setattr(
+        train_utils.model, "save_linear_classifier", lambda *a, **k: None
+    )
+
+    train(
+        "unused",
+        output=str(tmp_path / "cc"),
+        epochs=1,
+        hidden_units=8,
+        learning_rate=learning_rate,
+    )
+
+    assert ("without hidden units" in caplog.text) is warned
 
 
 def test_the_api_and_the_cli_default_to_the_same_number_of_autotune_folds():
@@ -284,14 +381,14 @@ def test_the_evaluation_leaves_out_rows_with_negative_labels():
     assert metrics["class_distribution"]["a"]["count"] == 2
 
 
-def _synthetic_training_data():
+def _synthetic_training_data(version="3.0"):
     rng = np.random.default_rng(0)
     y = np.zeros((40, 2), dtype="float32")
     y[:20, 0] = 1
     y[20:, 1] = 1
     x = (rng.normal(size=(40, 8)) + 2 * y[:, :1]).astype("float32")
 
-    return x, y, np.array([]), np.array([]), ["a", "b"], False, False, "3.0"
+    return x, y, np.array([]), np.array([]), ["a", "b"], False, False, version
 
 
 @pytest.fixture
@@ -299,7 +396,9 @@ def synthetic_training_data(monkeypatch):
     from birdnet_analyzer.train import utils as train_utils
 
     monkeypatch.setattr(
-        train_utils, "_load_training_data", lambda *a, **k: _synthetic_training_data()
+        train_utils,
+        "_load_training_data",
+        lambda *a, model_version="3.0", **k: _synthetic_training_data(model_version),
     )
 
 

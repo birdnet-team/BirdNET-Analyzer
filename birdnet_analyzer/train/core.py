@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
+from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION, TRAIN_EPOCHS
 
 if TYPE_CHECKING:
     from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
@@ -23,10 +23,10 @@ def train(
     *,
     crop_mode: SAMPLE_CROP_MODES = "center",
     overlap: float = 0.0,
-    epochs: int = 50,
+    epochs: int = TRAIN_EPOCHS,
     batch_size: int = 32,
     val_split: float = 0.2,
-    learning_rate: float = 0.0001,
+    learning_rate: float | None = None,
     use_focal_loss: bool = False,
     focal_loss_gamma: float = 2.0,
     focal_loss_alpha: float = 0.25,
@@ -72,8 +72,8 @@ def train(
         batch_size (int, optional): Batch size for training. Defaults to 32.
         val_split (float, optional): Fraction of data to use for validation.
                                      Defaults to 0.2.
-        learning_rate (float, optional): Learning rate for the optimizer.
-                                         Defaults to 0.0001.
+        learning_rate (float, optional): Learning rate for the optimizer. Defaults
+            to the one measured for the base model: 0.1 for BirdNET 3.0, 0.01 for 2.4.
         use_focal_loss (bool, optional): Whether to use focal loss for training.
                                          Defaults to False.
         focal_loss_gamma (float, optional): Gamma parameter for focal loss.

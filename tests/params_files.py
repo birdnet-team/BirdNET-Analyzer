@@ -1,4 +1,4 @@
-"""Parameters files in the one-column-per-parameter layout of the versions before 2.x
+"""Parameters files in the one-column-per-parameter layout of v2.4.0 and earlier
 (``wide_file``) and in the one-row-per-parameter layout of the current version
 (``tall_file``)."""
 
@@ -66,6 +66,26 @@ TRAIN_DEFAULTS = {
 }
 
 TRAIN_FILE = "MyClassifier.birdnet.train-params.csv"
+
+# Header for header as v2.4.0 wrote them, misspellings included.
+V2_4_0_TRAIN_VALUES = {
+    "Hidden units": 512,
+    "Dropout": 0.25,
+    "Batchsize": 32,
+    "Learning rate": 0.0001,
+    "Crop mode": "first",
+    "Crop overlap": 0.0,
+    "Audio speed": 0.5,
+    "Upsamling mode": "smote",
+    "Upsamling ratio": 0.75,
+    "use mixup": True,
+    "use label smoothing": False,
+    "use focal loss": False,
+    "focal loss alpha": 0.25,
+    "focal loss gamma": 2.0,
+    "BirdNET Model version": "V2.4",
+}
+V2_4_0_TRAIN_FILE = "MyClassifier_Params.csv"
 
 
 def analysis_values(**overrides):

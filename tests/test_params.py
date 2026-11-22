@@ -3,6 +3,8 @@ import pytest
 from birdnet_analyzer import cli, params
 from tests.params_files import (
     TRAIN_FILE,
+    V2_4_0_TRAIN_FILE,
+    V2_4_0_TRAIN_VALUES,
     analysis_values,
     tall_file,
     train_values,
@@ -122,38 +124,20 @@ def test_an_unknown_model_version_is_left_out(tmp_path):
     assert "birdnet" not in params.load_train_params(file)
 
 
-def test_an_old_train_params_file_is_still_understood(tmp_path):
-    # The layout and names the versions before 2.x saved next to the classifier.
-    old = {
-        "Hidden units": 512,
-        "Dropout": 0.25,
-        "Batchsize": 32,
-        "Learning rate": 0.0001,
-        "Weight decay": 0.004,
-        "Crop mode": "center",
-        "Crop overlap": 0.0,
-        "Audio speed": 0.5,
-        "Upsampling mode": "repeat",
-        "Upsampling ratio": 0.75,
-        "use mixup": True,
-        "use label smoothing": False,
-        "use focal loss": False,
-        "focal loss alpha": 0.25,
-        "focal loss gamma": 2.0,
-        "BirdNET Model version": "2.4",
-    }
-
-    kwargs = params.load_train_params(wide_file(tmp_path, old))
+def test_the_train_params_file_of_v2_4_0_is_understood(tmp_path):
+    kwargs = params.load_train_params(
+        wide_file(tmp_path, V2_4_0_TRAIN_VALUES, name=V2_4_0_TRAIN_FILE)
+    )
 
     assert kwargs == {
         "hidden_units": 512,
         "dropout": 0.25,
         "batch_size": 32,
         "learning_rate": 0.0001,
-        "crop_mode": "center",
+        "crop_mode": "first",
         "overlap": 0.0,
         "audio_speed": 0.5,
-        "upsampling_mode": "repeat",
+        "upsampling_mode": "smote",
         "upsampling_ratio": 0.75,
         "mixup": True,
         "label_smoothing": False,

@@ -54,10 +54,8 @@ TABS = {
         train.build_train_tab,
         {
             "<lambda>",
-            "on_autotune_change",
             "on_cache_mode_change",
             "on_crop_or_cache_mode_change",
-            "on_focal_loss_change",
             "train_and_show_metrics",
         },
     ),

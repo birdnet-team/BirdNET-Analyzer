@@ -324,7 +324,7 @@ def upsampling(
         Upsampled data.
     """
     min_samples = (
-        int(max(y.sum(axis=0), len(y) - y.sum(axis=0)) * ratio)
+        int(max(y.sum(), len(y) - y.sum()) * ratio)
         if is_binary
         else int(np.max((y == 1).sum(axis=0)) * ratio)
     )

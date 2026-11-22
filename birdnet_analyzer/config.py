@@ -75,3 +75,4 @@ UPSAMPLING_MODES = Literal["repeat", "linear", "mean", "smote"]
 TRAINED_MODEL_OUTPUT_FORMATS = Literal["tflite", "raven", "detached"]
 TRAINED_MODEL_SAVE_MODES = Literal["replace", "append"]
 AUTOTUNE_METRICS = Literal["val_AUPRC", "val_AUROC"]
+TRAIN_EPOCHS: int = 50

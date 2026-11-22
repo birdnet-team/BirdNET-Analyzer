@@ -18,6 +18,7 @@ from birdnet_analyzer.config import (
     RESULT_TYPES,
     SAMPLE_CROP_MODES,
     SCORE_FUNCTIONS,
+    TRAIN_EPOCHS,
     TRAINED_MODEL_OUTPUT_FORMATS,
     TRAINED_MODEL_SAVE_MODES,
     UPSAMPLING_MODES,
@@ -53,6 +54,14 @@ ASCII_LOGO = r"""
 """  # noqa: W291
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    def _get_help_string(self, action):
+        if action.default is None:
+            return action.help
+
+        return super()._get_help_string(action)
+
+
 def apply_params_file_defaults(parser, loader, argv=None):
     """Makes the values of a ``--load_params`` file the defaults of a parser.
 
@@ -65,13 +74,16 @@ def apply_params_file_defaults(parser, loader, argv=None):
         loader: Reads the parameters file into keyword arguments, e.g.
             :func:`birdnet_analyzer.params.load_analysis_params`.
         argv: The command line to read the file path from. Defaults to ``sys.argv``.
+
+    Returns:
+        The values read from the file, or an empty dict without one.
     """
     pre_parser = argparse.ArgumentParser(add_help=False)
     pre_parser.add_argument("--load_params")
     known, _ = pre_parser.parse_known_args(argv)
 
     if not known.load_params:
-        return
+        return {}
 
     try:
         values = loader(known.load_params)
@@ -80,6 +92,8 @@ def apply_params_file_defaults(parser, loader, argv=None):
 
     dests = {action.dest for action in parser._actions}
     parser.set_defaults(**{key: value for key, value in values.items() if key in dests})
+
+    return values
 
 
 def load_params_args(run: str, files_hint: str):
@@ -465,7 +479,7 @@ def analyzer_parser():
     ]
 
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         parents=parents,
     )
 
@@ -549,7 +563,7 @@ def embeddings_parser():
         verbosity_args(),
     ]
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         parents=parents,
     )
 
@@ -573,9 +587,7 @@ def search_parser():
     """Build the argument parser for searching BirdNET embeddings."""
 
     parents = [overlap_args(), db_args(), verbosity_args()]
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter, parents=parents
-    )
+    parser = argparse.ArgumentParser(formatter_class=_HelpFormatter, parents=parents)
 
     parser.add_argument(
         "-q", "--queryfile", required=True, help="Path to the query file."
@@ -613,7 +625,7 @@ def search_parser():
 def segments_parser():
     """Build the argument parser for extracting segments from audio files."""
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         parents=[
             audio_speed_args(),
             threads_args(),
@@ -672,7 +684,7 @@ def segments_parser():
 def species_parser():
     """Build the argument parser for retrieving a species list."""
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         parents=[
             species_list_args(),
             # The geo model's languages, which the default acoustic model shares.
@@ -693,7 +705,7 @@ def species_parser():
 def train_parser():
     """Build the argument parser for training a custom classifier."""
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         parents=[
             bandpass_args(),
             audio_speed_args(),
@@ -737,7 +749,7 @@ def train_parser():
     parser.add_argument(
         "--epochs",
         type=int,
-        default=50,
+        default=TRAIN_EPOCHS,
         help="Number of training epochs.",
     )
     parser.add_argument(
@@ -749,8 +761,7 @@ def train_parser():
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=0.0001,
-        help="Learning rate.",
+        help="Learning rate. If not set, the one measured for the base model: 0.1 for BirdNET 3.0, 0.01 for BirdNET 2.4. One read with --load_params applies only to the base model it was recorded for.",
     )
     parser.add_argument(
         "--focal-loss",

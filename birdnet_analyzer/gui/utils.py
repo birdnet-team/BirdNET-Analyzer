@@ -2131,6 +2131,32 @@ def _close_splash():
         pyi_splash.close()
 
 
+@contextmanager
+def _loopback_bypasses_proxy():
+    """Keeps the requests gradio sends to its own server off a configured proxy.
+
+    launch() calls the local server through httpx, which applies a proxy from the
+    environment or the Windows settings to 127.0.0.1 as well. Scoped to the block,
+    because a proxy exclusion in the environment makes Python ignore the Windows
+    proxy settings altogether, and model downloads may depend on them.
+    """
+    names = ("NO_PROXY",) if os.name == "nt" else ("no_proxy", "NO_PROXY")
+    previous = {name: os.environ.get(name) for name in names}
+
+    for name, value in previous.items():
+        hosts = [host for host in (value or "").split(",") if host.strip()]
+        os.environ[name] = ",".join([*hosts, "127.0.0.1", "localhost", "::1"])
+
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
 def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
@@ -2163,6 +2189,7 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+        _loopback_bypasses_proxy(),
     ):
         _URL = demo.queue(api_open=False).launch(
             css=css_file.read(),

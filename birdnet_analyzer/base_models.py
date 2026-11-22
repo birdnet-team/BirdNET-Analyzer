@@ -25,6 +25,9 @@ class BaseModel:
     # export built on it does the same. 2.4 outputs logits; the pipeline's sigmoid
     # (and with it the sensitivity setting) applies to those.
     outputs_probabilities: bool
+    # The training default, measured for classifiers without hidden units. 3.0's
+    # embeddings are about 20 times smaller than 2.4's.
+    learning_rate: float
 
     def fetch(self):
         """The SavedModel's path and its English labels; downloads it on first use."""
@@ -53,6 +56,7 @@ _BASE_MODELS = {
         AcousticModelV2_4.get_sample_rate(),
         AcousticModelV2_4.get_embeddings_dim(),
         outputs_probabilities=False,
+        learning_rate=0.01,
     ),
     "3.0": BaseModel(
         "3.0",
@@ -60,6 +64,7 @@ _BASE_MODELS = {
         AcousticModelV3_0.get_sample_rate(),
         AcousticModelV3_0.get_embeddings_dim(),
         outputs_probabilities=True,
+        learning_rate=0.1,
     ),
 }
 
@@ -85,3 +90,30 @@ def version_for_embeddings_dim(dim: int) -> str:
             return base.version
 
     raise ValueError(f"No BirdNET model has {dim}-dimensional embeddings.")
+
+
+def cache_model_version(path: str) -> str | None:
+    """The BirdNET version a training data cache was embedded with."""
+    import zipfile
+
+    import numpy as np
+    from numpy.lib import format as npformat
+
+    try:
+        with np.load(path) as data:
+            if "model_version" in data:
+                return str(data["model_version"])
+
+        # Only the header: the samples themselves can be hundreds of MB.
+        with zipfile.ZipFile(path) as archive, archive.open("x_train.npy") as member:
+            version = npformat.read_magic(member)
+            read_header = (
+                npformat.read_array_header_2_0
+                if version == (2, 0)
+                else npformat.read_array_header_1_0
+            )
+            shape, _, _ = read_header(member)
+
+        return version_for_embeddings_dim(shape[1])
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+        return None

@@ -48,7 +48,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=1.5.0",
+    "birdnet>=1.5.1",
     "truststore",
 ]
 
