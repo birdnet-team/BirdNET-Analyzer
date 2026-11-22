@@ -50,7 +50,7 @@ def search(
         None
     """
     from birdnet_analyzer import audio
-    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY, database_model_version
     from birdnet_analyzer.search.utils import get_search_results
 
     with open_database(database) as db:
@@ -78,6 +78,7 @@ def search(
             crop_mode,
             overlap,
             sig_length,
+            model_version=database_model_version(settings),
         )
 
         for r in results:

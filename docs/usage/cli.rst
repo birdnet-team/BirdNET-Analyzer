@@ -47,6 +47,9 @@ birdnet_analyzer.embeddings
 
       python -m birdnet_analyzer.embeddings -i example/ -db example_db/ --batch_size 16
 
+   A new database is filled with the embeddings of BirdNET 3.0, or of the version named with ``--birdnet``.
+   An existing database keeps the version it was created with, and ``birdnet_analyzer.search`` uses that version for the query.
+
 .. _cli-evaluation:
 
 birdnet_analyzer.evaluation

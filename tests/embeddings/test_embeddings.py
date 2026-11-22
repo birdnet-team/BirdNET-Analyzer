@@ -56,6 +56,8 @@ def test_embeddings_cli_accepts_full_parser_surface(
             "2",
             "--n_producers",
             "3",
+            "--birdnet",
+            "2.4",
             "--file_output",
             file_output,
         ]
@@ -161,6 +163,27 @@ def test_a_settings_mismatch_closes_the_database(
         embeddings(str(tmp_path / "recordings"), path)
 
     assert hoplite_connections.still_open() == []
+
+
+def test_naming_another_model_than_the_databases_fails_before_inference(
+    hoplite_database, monkeypatch, tmp_path
+):
+    from birdnet_analyzer import model_utils
+
+    path = hoplite_database(
+        {
+            "AUDIO_SPEED": 1.0,
+            "BANDPASS_FMIN": 0,
+            "BANDPASS_FMAX": 15000,
+            "MODEL_VERSION": "3.0",
+        }
+    )
+    monkeypatch.setattr(
+        model_utils, "get_embeddings", lambda *a, **k: pytest.fail("inference ran")
+    )
+
+    with pytest.raises(ValueError, match=r"holds BirdNET 3\.0 embeddings"):
+        embeddings(str(tmp_path / "recordings"), path, birdnet="2.4")
 
 
 def test_a_failing_csv_export_closes_the_database(
