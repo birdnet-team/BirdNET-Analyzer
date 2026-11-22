@@ -267,12 +267,15 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.embeddings<span class="w"> </span>-i<span class="w"> </span>example/<span class="w"> </span>-db<span class="w"> </span>example_db/<span class="w"> </span>--batch_size<span class="w"> </span><span class="m">16</span>
 </pre></div>
 </div>
+<p>A new database is filled with the embeddings of BirdNET 3.0, or of the version named with <code class="docutils literal notranslate"><span class="pre">--birdnet</span></code>.
+An existing database keeps the version it was created with, and <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.search</span></code> uses that version for the query.</p>
 <div class="highlight-default notranslate" id="birdnet_analyzer.embeddings"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">embeddings</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">-</span><span class="n">db</span> <span class="n">DATABASE</span> <span class="p">[</span><span class="o">--</span><span class="n">fmin</span> <span class="n">FMIN</span><span class="p">]</span>
                                    <span class="p">[</span><span class="o">--</span><span class="n">fmax</span> <span class="n">FMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">audio_speed</span> <span class="n">AUDIO_SPEED</span><span class="p">]</span>
                                    <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">b</span> <span class="n">BATCH_SIZE</span><span class="p">]</span>
                                    <span class="p">[</span><span class="o">--</span><span class="n">n_workers</span> <span class="n">N_WORKERS</span><span class="p">]</span>
                                    <span class="p">[</span><span class="o">--</span><span class="n">n_producers</span> <span class="n">N_PRODUCERS</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span> <span class="o">|</span> <span class="o">--</span><span class="n">quiet</span><span class="p">]</span>
-                                   <span class="o">-</span><span class="n">i</span> <span class="n">AUDIO_INPUT</span> <span class="p">[</span><span class="o">--</span><span class="n">file_output</span> <span class="n">FILE_OUTPUT</span><span class="p">]</span>
+                                   <span class="o">-</span><span class="n">i</span> <span class="n">AUDIO_INPUT</span> <span class="p">[</span><span class="o">--</span><span class="n">birdnet</span> <span class="p">{</span><span class="mf">2.4</span><span class="p">,</span><span class="mf">3.0</span><span class="p">}]</span>
+                                   <span class="p">[</span><span class="o">--</span><span class="n">file_output</span> <span class="n">FILE_OUTPUT</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="birdnet_analyzer.embeddings-named-arguments">
@@ -316,6 +319,10 @@ Embeddings can be used for clustering or similarity analysis. Here is an example
 </dd>
 <dt><kbd>-i, --input</kbd></dt>
 <dd><p>Path to input file or folder.</p>
+</dd>
+<dt><kbd>--birdnet</kbd></dt>
+<dd><p>Possible choices: 2.4, 3.0</p>
+<p>BirdNET version to extract the embeddings with. Defaults to the version of the database if it exists, and to the newest version for a new one.</p>
 </dd>
 <dt><kbd>--file_output</kbd></dt>
 <dd><p>Saves all embeddings contained in the database in a csv file.</p>

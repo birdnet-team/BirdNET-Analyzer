@@ -376,11 +376,16 @@ for older BirdNET models.</p>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.search</span></code> requires <code class="docutils literal notranslate"><span class="pre">--audio_root</span></code>, the folder the
 audio paths in the database are relative to, and <code class="docutils literal notranslate"><span class="pre">search()</span></code> takes it as its third
 argument, before <code class="docutils literal notranslate"><span class="pre">queryfile</span></code>. Embedding databases now use the perch-hoplite 1.x
-format; v2.4.0 wrote them with perch-hoplite 0.x.</p>
+format; v2.4.0 wrote them with perch-hoplite 0.x. A new database holds the embeddings
+of BirdNET 3.0, which have 1280 values per segment; v2.4.0 extracted them with BirdNET
+2.4, with 1024 values.</p>
 <p><strong>Consequence.</strong> v2.4.0 search command lines and positional calls of <code class="docutils literal notranslate"><span class="pre">search()</span></code> fail.
-Databases written by v2.4.0 are in the older format.</p>
+Databases written by v2.4.0 are in the older format. Embeddings and search scores are
+not comparable with those of v2.4.0.</p>
 <p><strong>What to do.</strong> Pass <code class="docutils literal notranslate"><span class="pre">--audio_root</span></code> (the parent of the input that was embedded), and
-extract the embeddings again into a new database.</p>
+extract the embeddings again into a new database. <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings</span>
+<span class="pre">--birdnet</span> <span class="pre">2.4</span></code> fills a new database with BirdNET 2.4 embeddings; the GUI always uses
+BirdNET 3.0 for a new database.</p>
 </section>
 <section id="evaluation-needs-a-confidence-column-and-scores-every-annotated-recording">
 <h2><a class="toc-backref" href="#id15" role="doc-backlink">Evaluation needs a confidence column and scores every annotated recording</a><a class="headerlink" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" title="Link to this heading"></a></h2>
