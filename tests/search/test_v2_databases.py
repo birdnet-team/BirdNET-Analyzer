@@ -100,10 +100,13 @@ def test_the_file_of_a_v2_database_is_kept_beside_the_new_one(tmp_path):
 
     assert Path(database, v2_databases.BACKUP).read_bytes() == written
     assert not upgrade.is_old_format(database)
-    assert not [name for name in os.listdir(database) if name.startswith(".")]
+    assert not [name for name in os.listdir(database) if name.endswith(".part")]
 
 
-def test_a_failing_conversion_leaves_the_v2_database_as_it_was(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failing", ["insert_metadata", "insert_recording"])
+def test_a_failing_conversion_leaves_the_v2_database_as_it_was(
+    tmp_path, monkeypatch, failing
+):
     from perch_hoplite.db.sqlite_usearch_impl import SQLiteUSearchDB
 
     database = v2_databases.write(
@@ -115,7 +118,7 @@ def test_a_failing_conversion_leaves_the_v2_database_as_it_was(tmp_path, monkeyp
         raise OSError("disk full")
 
     with monkeypatch.context() as patch:
-        patch.setattr(SQLiteUSearchDB, "insert_metadata", fail)
+        patch.setattr(SQLiteUSearchDB, failing, fail)
         with pytest.raises(OSError, match="disk full"):
             read_database_settings(database)
 

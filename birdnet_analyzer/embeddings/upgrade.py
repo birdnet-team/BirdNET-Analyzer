@@ -14,7 +14,7 @@ import posixpath
 import shutil
 import sqlite3
 import tempfile
-from contextlib import closing
+from contextlib import closing, suppress
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,10 @@ def upgrade(database_path: str) -> None:
     sqlite_file = os.path.join(database_path, HOPLITE_FILENAME)
     backup = sqlite_file + BACKUP_SUFFIX
 
-    with tempfile.TemporaryDirectory(dir=database_path, prefix=".upgrade-") as scratch:
+    # Not in the database folder, and removed only if possible: perch-hoplite leaves
+    # its connection open when it fails to create a database, and Windows cannot
+    # remove a file that is open.
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as scratch:
         with closing(sqlite3.connect(sqlite_file)) as old:
             # A leftover write-ahead log would be applied to the file that replaces
             # this one.
@@ -65,9 +68,9 @@ def upgrade(database_path: str) -> None:
             _write_current_format(old, scratch)
 
         if not os.path.exists(backup):
-            shutil.copy2(sqlite_file, backup)
+            _copy_whole(sqlite_file, backup)
 
-        os.replace(os.path.join(scratch, HOPLITE_FILENAME), sqlite_file)
+        _copy_whole(os.path.join(scratch, HOPLITE_FILENAME), sqlite_file)
 
     logger.warning(
         "Converted the embeddings database %s, written by an earlier BirdNET-Analyzer "
@@ -75,6 +78,18 @@ def upgrade(database_path: str) -> None:
         database_path,
         backup,
     )
+
+
+def _copy_whole(source: str, target: str) -> None:
+    """Copies a file so that ``target`` is never left half-written."""
+    partial = target + ".part"
+
+    try:
+        shutil.copy2(source, partial)
+        os.replace(partial, target)
+    finally:
+        with suppress(FileNotFoundError):
+            os.remove(partial)
 
 
 def _write_current_format(old: sqlite3.Connection, folder: str) -> None:
@@ -128,6 +143,9 @@ def _write_current_format(old: sqlite3.Connection, folder: str) -> None:
         new.db.commit()
         new.db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     finally:
+        # Closes the cursor perch-hoplite keeps as well. While that is open the
+        # file stays open, and Windows cannot remove the folder.
+        new.rollback()
         new.db.close()
 
 
