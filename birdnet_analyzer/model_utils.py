@@ -359,6 +359,16 @@ def segment_length_s(model: str) -> float:
     return _model_class(model).get_segment_size_s()
 
 
+def sample_rate(model: str) -> int:
+    """The sample rate in Hz of the audio a model takes."""
+    return _model_class(model).get_sample_rate()
+
+
+def embeddings_dim(model: str) -> int:
+    """The length of the embedding a model computes for a segment."""
+    return _model_class(model).get_embeddings_dim()
+
+
 def class_count(model: str) -> int:
     """The number of classes an official model outputs; not all of them are species."""
     return _model_class(model).get_n_classes()
@@ -640,7 +650,7 @@ def _load_acoustic_for_embeddings(version: ACOUSTIC_MODEL_VERSIONS):
 
 def get_embeddings(
     path: str,
-    version: ACOUSTIC_MODEL_VERSIONS = "2.4",
+    version: ACOUSTIC_MODEL_VERSIONS = "3.0",
     batch_size=1,
     n_workers: int | None = None,
     n_producers: int = 1,
@@ -723,7 +733,7 @@ def encode_arrays_batched(
 
 def get_embeddings_array(
     signals: list[np.ndarray],
-    version: ACOUSTIC_MODEL_VERSIONS = "2.4",
+    version: ACOUSTIC_MODEL_VERSIONS = "3.0",
     batch_size=1,
     n_workers: int | None = None,
     n_producers: int = 1,

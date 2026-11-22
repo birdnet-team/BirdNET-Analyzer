@@ -306,13 +306,18 @@ Search needs the audio root and a new database
 **What changed.** ``birdnet_analyzer.search`` requires ``--audio_root``, the folder the
 audio paths in the database are relative to, and ``search()`` takes it as its third
 argument, before ``queryfile``. Embedding databases now use the perch-hoplite 1.x
-format; v2.4.0 wrote them with perch-hoplite 0.x.
+format; v2.4.0 wrote them with perch-hoplite 0.x. A new database holds the embeddings
+of BirdNET 3.0, which have 1280 values per segment; v2.4.0 extracted them with BirdNET
+2.4, with 1024 values.
 
 **Consequence.** v2.4.0 search command lines and positional calls of ``search()`` fail.
-Databases written by v2.4.0 are in the older format.
+Databases written by v2.4.0 are in the older format. Embeddings and search scores are
+not comparable with those of v2.4.0.
 
 **What to do.** Pass ``--audio_root`` (the parent of the input that was embedded), and
-extract the embeddings again into a new database.
+extract the embeddings again into a new database. ``birdnet_analyzer.embeddings
+--birdnet 2.4`` fills a new database with BirdNET 2.4 embeddings; the GUI always uses
+BirdNET 3.0 for a new database.
 
 
 Evaluation needs a confidence column and scores every annotated recording

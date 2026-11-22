@@ -73,7 +73,7 @@ def run_search(
     crop_overlap,
     progress=gr.Progress(),
 ):
-    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY, database_model_version
     from birdnet_analyzer.search.utils import get_search_results
 
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
@@ -99,6 +99,7 @@ def run_search(
                 score_fn,
                 crop_mode,
                 crop_overlap,
+                model_version=database_model_version(settings),
             )
 
     chunks = [results[i : i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]

@@ -576,6 +576,12 @@ def embeddings_parser():
     )
 
     parser.add_argument(
+        "--birdnet",
+        choices=get_args(ACOUSTIC_MODEL_VERSIONS),
+        help="BirdNET version to extract the embeddings with. Defaults to the version of the database if it exists, and to the newest version for a new one.",
+    )
+
+    parser.add_argument(
         "--file_output",
         help="Saves all embeddings contained in the database in a csv file.",
     )
