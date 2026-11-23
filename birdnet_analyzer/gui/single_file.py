@@ -482,7 +482,7 @@ def build_single_analysis_tab() -> None:
             run_single_file_analysis,
             inputs=inputs,
             outputs=[output_dataframe, action_row, last_prediction_state],
-        )
+        ).then(**model_settings["refresh_download_note"])
         rtable_download_button.click(download_rtable, inputs=last_prediction_state)
         csv_download_button.click(download_csv, inputs=last_prediction_state)
         kaleidoscope_download_button.click(

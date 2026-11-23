@@ -209,24 +209,14 @@ def acoustic_model_downloaded(version: str) -> bool:
     """Whether the acoustic model for ``version`` is already fully on disk.
 
     Lets a caller avoid triggering a large model download for a cheap best-effort
-    check (see :func:`acoustic_species_list`). Uses the birdnet downloader's own file
-    check; any failure (e.g. a library API change) reports False so the caller skips.
+    check (see :func:`acoustic_species_list`). False as well when the library cannot
+    tell, so the caller skips.
     """
-    try:
-        from birdnet.globals import MODEL_PRECISION_FP32
+    from birdnet_analyzer import model_store
 
-        if version == "3.0":
-            from birdnet.acoustic.models.v3_0.onnx import (
-                AcousticOnnxDownloaderV3_0 as downloader,
-            )
-        else:
-            from birdnet.acoustic.models.v2_4.tf import (
-                AcousticTFDownloaderV2_4 as downloader,
-            )
+    files = model_store.model_files(model_store.acoustic_key(version))
 
-        return bool(downloader._check_acoustic_model_available(MODEL_PRECISION_FP32))
-    except Exception:
-        return False
+    return files is not None and files.downloaded
 
 
 # Live sessions, so they can be cancelled from another thread. Lock-guarded: sessions

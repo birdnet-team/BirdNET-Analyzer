@@ -9,3 +9,23 @@ def pb_model_cached(version: str) -> bool:
     model_path, _ = downloader._get_paths()
 
     return check_protobuf_model_files_exist(model_path)
+
+
+def put_acoustic_2_4(directory) -> None:
+    """Fills ``directory`` the way a download of the BirdNET 2.4 tflite model does."""
+    from birdnet.acoustic.models.v2_4.tf import models
+
+    tf = directory / "acoustic-models" / "v2.4" / "tf"
+    put_labels_2_4(tf / "labels")
+
+    with open(tf / "model-fp32.tflite", "wb") as file:
+        file.truncate(models["fp32"].file_size)
+
+
+def put_labels_2_4(directory) -> None:
+    from birdnet.acoustic.models.v2_4.tf import AcousticTFDownloaderV2_4
+
+    directory.mkdir(parents=True)
+
+    for language in AcousticTFDownloaderV2_4.AVAILABLE_LANGUAGES:
+        (directory / f"{language}.txt").write_text("")
