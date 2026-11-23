@@ -885,12 +885,12 @@ def adopt_earlier_settings() -> None:
             continue
 
         if values := _read_json(earlier):
-            # 1.x remembered the file a dialog picked, the dialogs start in a folder.
+            # The classifier and the training cache 1.x remembered by file, the
+            # dialogs start in a folder.
             values = {
                 key: os.path.dirname(value)
                 if isinstance(value, str)
-                and os.path.isabs(value)
-                and os.path.isfile(value)
+                and value.lower().endswith((".tflite", ".npz"))
                 else value
                 for key, value in values.items()
             }

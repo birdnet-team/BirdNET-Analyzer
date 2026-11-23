@@ -141,15 +141,13 @@ def leave_earlier_settings(language: str, state: dict):
 
 
 def test_the_window_opens_with_the_language_and_folders_of_an_earlier_version(
-    monkeypatch, gui_main, tmp_path
+    monkeypatch, gui_main
 ):
-    classifier = tmp_path / "Custom.tflite"
-    classifier.touch()
     leave_earlier_settings(
         "de",
         {
             "batch-analysis-data-dir": "D:/recordings",
-            "custom_classifier_file": str(classifier),
+            "custom_classifier_file": "D:/models/Custom.tflite",
         },
     )
     seen = opened_labels(monkeypatch)
@@ -158,7 +156,11 @@ def test_the_window_opens_with_the_language_and_folders_of_an_earlier_version(
 
     assert seen == [labels("de")]
     assert settings.get_state("batch-analysis-data-dir") == "D:/recordings"
-    assert settings.get_state("custom_classifier_file") == str(tmp_path)
+    assert settings.get_state("custom_classifier_file") == "D:/models"
+    assert sorted(os.listdir(settings.EARLIER_SETTINGS_DIR)) == [
+        "gui-settings.json",
+        "state.json",
+    ]
 
 
 def test_the_users_own_settings_win_over_those_of_an_earlier_version(
