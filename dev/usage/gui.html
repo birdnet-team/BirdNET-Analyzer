@@ -132,6 +132,19 @@ This can help you to choose an appropriate cut-off threshold for your specific u
 </ol>
 <p>For each selected sample the logistic regression curve is fitted and the threshold is calculated.</p>
 </section>
+<section id="log-files">
+<h2>Log files<a class="headerlink" href="#log-files" title="Link to this heading"></a></h2>
+<p>The installed application keeps two files that help to find the cause of a problem. Please attach them when you report
+one on <a class="reference external" href="https://github.com/birdnet-team/BirdNET-Analyzer/issues">GitHub</a>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">error_log.txt</span></code> holds the errors, which the <strong>Settings</strong> tab shows as well.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logs.txt</span></code> holds everything else the application prints. On Linux it is written when the application was started
+from the applications menu or a file manager; started from a terminal, the application prints there instead.</p></li>
+</ul>
+<p>Both are in <code class="docutils literal notranslate"><span class="pre">%APPDATA%\BirdNET-Analyzer-GUI</span></code> on Windows, <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/BirdNET-Analyzer-GUI</span></code> on
+macOS and <code class="docutils literal notranslate"><span class="pre">~/.local/share/BirdNET-Analyzer-GUI</span></code> on Linux. A file that has grown too large is continued in a new one,
+and the previous one is kept with <code class="docutils literal notranslate"><span class="pre">.1</span></code> added to its name.</p>
+</section>
 <section id="gui-language">
 <h2>GUI Language<a class="headerlink" href="#gui-language" title="Link to this heading"></a></h2>
 <p>The default language of the GUI is English, but you can change it to German, French, Chinese or Portuguese in the Settings tab of the GUI.
