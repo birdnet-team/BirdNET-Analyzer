@@ -488,7 +488,9 @@ Other changes
 * **The GUI of a pip or source installation** keeps its language, theme and last used
   folders in the user's application data folder, as the installed application always
   did; v2.4.0 kept them in the package folder. The GUI takes them over from there when
-  it starts without settings of its own.
+  it starts without settings of its own. The models v2.4.0 downloaded into the
+  ``checkpoints`` folder of the package are not used: this version downloads its own
+  (see :ref:`installation`), and that folder can be deleted.
 * **The GUI's worker count** is automatic by default: the birdnet library starts as
   many worker processes as fit the available memory, at most one per CPU core, where
   v2.4.0 started one per logical core. A count set in an earlier version is ignored
@@ -519,21 +521,26 @@ folders of a 1.x installation, which kept them inside the installation folder, a
 its BirdNET 2.4 model (see :ref:`installation`). A source checkout of 1.4.0 or later
 keeps them too: the GUI takes over the files 1.x left in the ``birdnet_analyzer``
 folder when it starts without settings of its own. TFLite classifiers trained with
-1.x give the scores they gave in 1.x. Their ``<classifier>_Params.csv`` loads with
-``--load_params`` and in the train tab, and a training data cache of 1.x trains as
-``INPUT``. Species lists and the result tables of 1.x are read like those of v2.4.0:
-the segments tool and tab read every result type, including the R tables, and the
-evaluation reads the Raven and CSV tables.
+1.x give the scores they gave in 1.x, at the default sensitivity and apart from the
+cases under `Scores of the BirdNET 2.4 model`_. Their ``<classifier>_Params.csv``
+loads with ``--load_params`` and in the train tab, and a training data cache of 1.x
+trains as ``INPUT``. Species lists and the result tables of 1.x are read like those
+of v2.4.0: the segments tool and tab read every result type, including the R tables,
+and the evaluation reads the Raven and CSV tables.
 
-**Not carried over.** The GUI settings of the macOS app of 1.x, which kept them inside
-the app, and of a source checkout of 1.3.1 or older, which kept them at its top
-level: copy ``gui-settings.json`` and ``state.json`` into ``BirdNET-Analyzer-GUI`` in
-the user's application data folder (``%APPDATA%`` on Windows, ``~/Library/Application
-Support`` on macOS). A Raven model folder no longer works as a classifier (see
-above); the analysis says so and asks for the ``.tflite`` file. Nothing reads the
-embeddings text files of 1.x (``*.birdnet.embeddings.txt``): extract the embeddings
-again into a database to search them, with ``birdnet_analyzer.embeddings -i INPUT -db
-DATABASE``.
+**Not carried over.** The macOS app of 1.x kept its GUI settings inside the app, so
+they are gone with it. A source checkout of 1.3.1 or older kept them at its top level:
+move ``gui-settings.json`` and ``state.json`` into its ``birdnet_analyzer`` folder,
+and the GUI takes them over when it starts without settings of its own. A Raven model
+folder no longer works as a classifier (see above); the analysis says so and asks for
+the ``.tflite`` file. Nothing reads the embeddings text files of 1.x
+(``*.birdnet.embeddings.txt``): extract the embeddings again into a database to search
+them, with ``birdnet_analyzer.embeddings -i INPUT -db DATABASE``.
+
+**Changed meaning.** ``--sensitivity`` made the score curve steeper or flatter in 1.x;
+since 2.0 it shifts the scores, so a value other than 1.0 gives other confidences than
+in 1.x. With ``--classifier``, 1.x ignored ``--lat`` and ``--lon``; now a location
+limits the classes of a classifier that are species to the species of that place.
 
 **Command lines.** The tools take their input as the first argument and are installed
 as commands (``birdnet-analyze``, ``birdnet-train``, ...); ``python -m
@@ -545,7 +552,8 @@ birdnet_analyzer.analyze`` still works. 1.x options that changed:
    * - 1.x
      - Now
    * - ``--i INPUT`` (analyze, train), ``--audio INPUT`` (segments)
-     - ``INPUT`` as the first argument
+     - ``INPUT`` as the first argument. In ``segments``, ``--audio`` is now taken for
+       ``--audio_speed``.
    * - ``--o OUTPUT``
      - ``-o OUTPUT``. ``--o`` alone fails where another option starts with it, such
        as ``--overlap``; in ``embeddings``, ``--o`` now means ``--overlap``.
