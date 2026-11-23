@@ -1123,6 +1123,11 @@ def sample_species_model_settings(state: TabState, opened=True):
     def on_model_selection_change(
         value, species_choice, overlap, current_locale, classifier
     ):
+        shown = state.shown_with("model_selection_radio", value)
+        species_choice = shown.get("species_list_radio", species_choice)
+        overlap = shown.get("overlap_slider", overlap)
+        current_locale = shown.get("locale_dropdown", current_locale)
+
         return [
             *on_model_change(value, species_choice, overlap, current_locale),
             *model_settings["updates_for_model"](value, classifier),

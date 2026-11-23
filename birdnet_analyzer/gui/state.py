@@ -23,6 +23,7 @@ from birdnet_analyzer import settings
 # Every persisted component with its build default, for the settings tab's reset.
 # Populated in build order while the tabs are built.
 _PERSISTED: list[tuple[gr.components.Component, Any]] = []
+_TAB_STATES: list["TabState"] = []
 
 
 class _Field(NamedTuple):
@@ -107,6 +108,8 @@ class TabState:
         self._fitters: list[tuple[Callable, list, list]] = []
         self._retired: set[str] = set()
         self._retired_values: dict[str, dict] = {}
+        self._shown: dict[str, Any] = {}
+        _TAB_STATES.append(self)
 
     def get(
         self,
@@ -346,7 +349,22 @@ class TabState:
             for component, update in zip(outputs, fn(*args), strict=True):
                 updates[keys[component]] = {**updates[keys[component]], **update}
 
+        self._shown = {
+            key: update["value"] for key, update in updates.items() if "value" in update
+        }
+
         return list(updates.values()), skipped
+
+    def shown_with(self, key: str, value) -> dict[str, Any]:
+        """The values the last batch of updates showed, if ``key`` got ``value`` in it.
+
+        The page reports the change of a component such a batch set with the values
+        the other components had before the batch, so a handler that returns them
+        would undo it. Taken once: the change after that is the user's.
+        """
+        shown, self._shown = self._shown, {}
+
+        return shown if key in shown and shown[key] == value else {}
 
 
 def persisted_components() -> list[gr.components.Component]:
@@ -364,5 +382,8 @@ def reset_to_defaults() -> list[dict]:
         An update per component built through a `TabState`, in build order.
     """
     settings.reset_tab_settings()
+
+    for state in _TAB_STATES:
+        state._shown = {key: field.default for key, field in state._fields.items()}
 
     return [gr.update(value=default) for _, default in _PERSISTED]
