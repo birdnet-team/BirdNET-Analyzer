@@ -1,4 +1,5 @@
 def main():
+    from birdnet_analyzer import settings
     from birdnet_analyzer.logs import setup_logging
     from birdnet_analyzer.utils import configure_runtime
 
@@ -6,6 +7,7 @@ def main():
     # from the environment once.
     setup_logging()
     configure_runtime()
+    settings.adopt_earlier_settings()
 
     import birdnet_analyzer.gui.localization as loc
     import birdnet_analyzer.gui.multi_file as mfa

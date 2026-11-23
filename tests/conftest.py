@@ -78,6 +78,9 @@ def isolated_appdir(monkeypatch, tmp_path_factory):
     )
     monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(appdir / "state.json"))
     monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(appdir / "error_log.txt"))
+    monkeypatch.setattr(
+        settings, "EARLIER_SETTINGS_DIR", str(tmp_path_factory.mktemp("package"))
+    )
 
 
 @pytest.fixture
