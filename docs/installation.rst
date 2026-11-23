@@ -41,14 +41,14 @@ Settings and the downloaded models are kept in ``~/.local/share/BirdNET-Analyzer
 Models and the first start
 --------------------------
 
-The macOS installer and the Linux packages contain the default BirdNET 3.0 model, including its species range model,
+The installers and the Linux packages contain the default BirdNET 3.0 model, including its species range model,
 so the first analysis works without an internet connection. Everything else is downloaded the first time it is used and kept for later
 runs, with the progress shown in the GUI: the other models (BirdNET 2.4, about 80 MB, and Perch, about 380 MB), and
 the model that training needs to
 export a custom classifier as a TFLite or Raven model (about 320 MB for BirdNET 3.0, about 125 MB for 2.4). The first
 training with one of these exports downloads it as soon as the training data are loaded. An analysis never does, and
-neither does a training that saves only the detached classifier. An installer without the default model downloads it
-the same way, about 380 MB, on the first analysis or training.
+neither does a training that saves only the detached classifier. A pip installation contains no model and downloads
+the default one the same way, about 380 MB, on the first analysis or training.
 
 The settings tab of the GUI lists every model, whether it is on the computer and how large its download is. Where a
 model is chosen, a line below the choice says so when the first use is going to download it.

@@ -79,18 +79,17 @@ conditions.
 conditions with this version: analyse all of it with one version.
 
 
-Models are downloaded on first use
-----------------------------------
+The installers contain BirdNET 3.0, not 2.4
+-------------------------------------------
 
-**What changed.** The Windows installer of v2.4.0 contained its model. The Windows
-installer no longer contains one: the default BirdNET 3.0 model, about 345 MB, is
-downloaded with the first analysis, and every other model when it is first used. The
-macOS installer and the Linux packages contain the default model.
+**What changed.** The installers contain the default BirdNET 3.0 model and its
+geolocation model. The BirdNET 2.4 model, which the installer of v2.4.0 contained, is
+downloaded the first time it is used (about 80 MB), like every other model.
 
-**Consequence.** The first analysis after installing on Windows needs an internet
-connection and takes a few minutes longer. The settings tab lists the models and
-whether they are on the computer, and a line below the model choice says when the first
-use is going to download one.
+**Consequence.** An analysis with the default model needs no internet connection.
+The first analysis with BirdNET 2.4 does, unless the model is there already: the
+settings tab lists the models and whether they are on the computer, and a line below
+the model choice says when the first use is going to download one.
 
 **What to do.** Nothing, with an internet connection. When the Windows installer
 replaces an installation of v2.4.0 or older, it keeps that installation's BirdNET 2.4
