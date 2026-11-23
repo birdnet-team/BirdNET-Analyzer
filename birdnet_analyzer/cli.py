@@ -381,6 +381,13 @@ def min_conf_args():
     return p
 
 
+def _locale(value: str) -> str:
+    """Takes the spellings of v2.4.0: any case, and ``en`` for its English."""
+    value = value.lower()
+
+    return MODEL_LANGUAGE_EN_US if value == "en" else value
+
+
 def locale_args(languages=None):
     """Argument parser for the --locale of translated species common names.
 
@@ -397,6 +404,7 @@ def locale_args(languages=None):
         "-l",
         "--locale",
         default=cast("str", MODEL_LANGUAGE_EN_US),
+        type=_locale,
         choices=locale_choices,
         help="Locale for translated species common names.",
     )

@@ -42,6 +42,20 @@ def test_the_cli_choices_are_the_values_of_their_config_type(parser, dest, value
     assert set(action.choices) == set(get_args(values))
 
 
+@pytest.mark.parametrize(
+    ("given", "locale"), [("en", "en_us"), ("en_UK", "en_uk"), ("DE", "de")]
+)
+def test_the_locale_spellings_of_v2_4_0_are_understood(given, locale):
+    args = cli.analyzer_parser().parse_args(["recordings", "--locale", given])
+
+    assert args.locale == locale
+
+
+def test_an_unknown_locale_is_still_rejected():
+    with pytest.raises(SystemExit):
+        cli.analyzer_parser().parse_args(["recordings", "--locale", "xx"])
+
+
 def test_result_types_and_additional_columns_keep_their_order_without_repeats():
     args = cli.analyzer_parser().parse_args(
         [
