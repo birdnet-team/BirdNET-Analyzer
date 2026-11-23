@@ -8,7 +8,12 @@ gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.localization as loc  # noqa: E402
 from birdnet_analyzer import model_store, settings  # noqa: E402
-from birdnet_analyzer.gui import multi_file, single_file, train  # noqa: E402
+from birdnet_analyzer.gui import (  # noqa: E402
+    embeddings,
+    multi_file,
+    single_file,
+    train,
+)
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 from tests.models import put_acoustic_2_4  # noqa: E402
@@ -144,6 +149,19 @@ def test_the_training_tab_counts_the_export_model_too(model_directory, handler):
     assert "125 MB" in refresh("2.4")["value"]
 
 
+def test_the_embeddings_tab_names_the_model_of_the_chosen_database(
+    model_directory, handler, hoplite_database
+):
+    refresh = handler(embeddings.build_embeddings_tab, "refresh_download_note")
+
+    assert refresh(None)["value"] == note(model_store.ACOUSTIC_3_0)
+    assert refresh(hoplite_database({}))["value"] == note(model_store.ACOUSTIC_2_4)
+
+    put_acoustic_2_4(model_directory)
+
+    assert not refresh(hoplite_database({}))["visible"]
+
+
 def _name(event) -> str:
     fn = getattr(event.fn, "func", event.fn)
 
@@ -156,6 +174,7 @@ def _name(event) -> str:
         (single_file.build_single_analysis_tab, "run_single_file_analysis"),
         (multi_file.build_multi_analysis_tab, "run_batch_analysis"),
         (train.build_train_tab, "train_and_show_metrics"),
+        (embeddings.build_embeddings_tab, "run_embeddings_with_tqdm_tracking"),
     ],
 )
 def test_the_note_is_brought_up_to_date_after_a_run(appdir, build, run):

@@ -3,8 +3,10 @@ from functools import partial
 
 import gradio as gr
 
+import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer import model_store
 from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.search.core import read_database_settings
 
@@ -308,6 +310,11 @@ def build_embeddings_tab() -> None:
             show_progress="hidden",
         )
 
+        _, refresh_download_note = gu.download_note_line(
+            db_directory_state, _database_model_files
+        )
+        db_directory_state.change(**refresh_download_note)
+
         start_btn = gr.Button(
             loc.localize("embeddings-tab-start-button-label"), variant="primary"
         )
@@ -339,7 +346,7 @@ def build_embeddings_tab() -> None:
             lambda: gr.update(visible=False),
             outputs=progress_plot,
             show_progress="hidden",
-        )
+        ).then(**refresh_download_note)
 
 
 def _existing_database_settings(db_directory: str) -> dict | None:
@@ -347,3 +354,17 @@ def _existing_database_settings(db_directory: str) -> dict | None:
         return read_database_settings(db_directory)
     except (FileNotFoundError, KeyError):
         return None
+
+
+def _database_model_files(db_directory: str | None) -> tuple[str, ...]:
+    """The model a database is filled with: its own, or the default for a new one."""
+    from birdnet_analyzer.embeddings.core import database_model_version
+
+    settings = _existing_database_settings(db_directory) if db_directory else None
+    version = (
+        database_model_version(settings)
+        if settings is not None
+        else cfg.DEFAULT_ACOUSTIC_MODEL_VERSION
+    )
+
+    return (model_store.acoustic_key(version),)
