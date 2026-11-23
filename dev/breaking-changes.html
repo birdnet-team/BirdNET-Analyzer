@@ -70,6 +70,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#evaluation-reads-tables-differently">Evaluation reads tables differently</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#removed-options-and-parameters">Removed options and parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#other-changes">Other changes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#coming-from-1-x">Coming from 1.x</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
@@ -114,7 +115,8 @@
 3.0</strong> acoustic and geolocation models by default, which is not backwards compatible
 with the previous release in several ways. Breaking changes are expected for a major
 release; this page lists every user-visible incompatibility relative to the previous
-release (<strong>v2.4.0</strong>) and what to do about it.</p>
+release (<strong>v2.4.0</strong>) and what to do about it. Users of a 1.x release find what else
+applies to them under <a class="reference internal" href="#coming-from-1x"><span class="std std-ref">Coming from 1.x</span></a>.</p>
 <nav class="contents local" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#default-model-is-now-birdnet-3-0" id="id1">Default model is now BirdNET 3.0</a></p></li>
@@ -137,6 +139,7 @@ release (<strong>v2.4.0</strong>) and what to do about it.</p>
 <li><p><a class="reference internal" href="#evaluation-reads-tables-differently" id="id18">Evaluation reads tables differently</a></p></li>
 <li><p><a class="reference internal" href="#removed-options-and-parameters" id="id19">Removed options and parameters</a></p></li>
 <li><p><a class="reference internal" href="#other-changes" id="id20">Other changes</a></p></li>
+<li><p><a class="reference internal" href="#coming-from-1-x" id="id21">Coming from 1.x</a></p></li>
 </ul>
 </nav>
 <section id="default-model-is-now-birdnet-3-0">
@@ -539,7 +542,10 @@ the query segments whose own top results contained it, so its rankings differ.</
 mean confidence of all of them; v2.4.0 took the mean of the three highest.</p></li>
 <li><p><strong>The GUI of a pip or source installation</strong> keeps its language, theme and last used
 folders in the user’s application data folder, as the installed application always
-did; v2.4.0 kept them in the package folder, so they start from the defaults once.</p></li>
+did; v2.4.0 kept them in the package folder. The GUI takes them over from there when
+it starts without settings of its own. The models v2.4.0 downloaded into the
+<code class="docutils literal notranslate"><span class="pre">checkpoints</span></code> folder of the package are not used: this version downloads its own
+(see <a class="reference internal" href="installation.html#installation"><span class="std std-ref">Download &amp; Setup</span></a>), and that folder can be deleted.</p></li>
 <li><p><strong>The GUI’s worker count</strong> is automatic by default: the birdnet library starts as
 many worker processes as fit the available memory, at most one per CPU core, where
 v2.4.0 started one per logical core. A count set in an earlier version is ignored
@@ -556,6 +562,74 @@ space dropped. v2.4.0 used the name as it was, which nested the folders of a nam
 <code class="docutils literal notranslate"><span class="pre">/</span></code> (<code class="docutils literal notranslate"><span class="pre">Eurasian/Green-winged</span> <span class="pre">Teal</span></code>) and failed on Windows for a name with <code class="docutils literal notranslate"><span class="pre">?</span></code>.
 Segments extracted again into an existing output folder land in the new folder.</p></li>
 </ul>
+</section>
+<section id="coming-from-1-x">
+<span id="coming-from-1x"></span><h2><a class="toc-backref" href="#id21" role="doc-backlink">Coming from 1.x</a><a class="headerlink" href="#coming-from-1-x" title="Link to this heading"></a></h2>
+<p>The 2.x releases changed more for users of 1.0.2 to 1.5.1 than this release does.
+Everything above applies to them as well, and so does the following.</p>
+<p><strong>Carried over.</strong> The Windows installer keeps the GUI language and the last used
+folders of a 1.x installation, which kept them inside the installation folder, and
+its BirdNET 2.4 model (see <a class="reference internal" href="installation.html#installation"><span class="std std-ref">Download &amp; Setup</span></a>). A source checkout of 1.4.0 or later
+keeps them too: the GUI takes over the files 1.x left in the <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer</span></code>
+folder when it starts without settings of its own. TFLite classifiers trained with
+1.x give the scores they gave in 1.x, at the default sensitivity and apart from the
+cases under <a class="reference internal" href="#scores-of-the-birdnet-2-4-model">Scores of the BirdNET 2.4 model</a>. Their <code class="docutils literal notranslate"><span class="pre">&lt;classifier&gt;_Params.csv</span></code>
+loads with <code class="docutils literal notranslate"><span class="pre">--load_params</span></code> and in the train tab, and a training data cache of 1.x
+trains as <code class="docutils literal notranslate"><span class="pre">INPUT</span></code>. Species lists and the result tables of 1.x are read like those
+of v2.4.0: the segments tool and tab read every result type, including the R tables,
+and the evaluation reads the Raven and CSV tables.</p>
+<p><strong>Not carried over.</strong> The macOS app of 1.x kept its GUI settings inside the app, so
+they are gone with it. A source checkout of 1.3.1 or older kept them at its top level:
+move <code class="docutils literal notranslate"><span class="pre">gui-settings.json</span></code> and <code class="docutils literal notranslate"><span class="pre">state.json</span></code> into its <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer</span></code> folder,
+and the GUI takes them over when it starts without settings of its own. A Raven model
+folder no longer works as a classifier (see above); the analysis says so and asks for
+the <code class="docutils literal notranslate"><span class="pre">.tflite</span></code> file. Nothing reads the embeddings text files of 1.x
+(<code class="docutils literal notranslate"><span class="pre">*.birdnet.embeddings.txt</span></code>): extract the embeddings again into a database to search
+them, with <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings</span> <span class="pre">-i</span> <span class="pre">INPUT</span> <span class="pre">-db</span> <span class="pre">DATABASE</span></code>.</p>
+<p><strong>Changed meaning.</strong> <code class="docutils literal notranslate"><span class="pre">--sensitivity</span></code> made the score curve steeper or flatter in 1.x;
+since 2.0 it shifts the scores, so a value other than 1.0 gives other confidences than
+in 1.x. With <code class="docutils literal notranslate"><span class="pre">--classifier</span></code>, 1.x ignored <code class="docutils literal notranslate"><span class="pre">--lat</span></code> and <code class="docutils literal notranslate"><span class="pre">--lon</span></code>; now a location
+limits the classes of a classifier that are species to the species of that place.</p>
+<p><strong>Command lines.</strong> The tools take their input as the first argument and are installed
+as commands (<code class="docutils literal notranslate"><span class="pre">birdnet-analyze</span></code>, <code class="docutils literal notranslate"><span class="pre">birdnet-train</span></code>, …); <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span>
+<span class="pre">birdnet_analyzer.analyze</span></code> still works. 1.x options that changed:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>1.x</p></th>
+<th class="head"><p>Now</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--i</span> <span class="pre">INPUT</span></code> (analyze, train), <code class="docutils literal notranslate"><span class="pre">--audio</span> <span class="pre">INPUT</span></code> (segments)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INPUT</span></code> as the first argument. In <code class="docutils literal notranslate"><span class="pre">segments</span></code>, <code class="docutils literal notranslate"><span class="pre">--audio</span></code> is now taken for
+<code class="docutils literal notranslate"><span class="pre">--audio_speed</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--o</span> <span class="pre">OUTPUT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">OUTPUT</span></code>. <code class="docutils literal notranslate"><span class="pre">--o</span></code> alone fails where another option starts with it, such
+as <code class="docutils literal notranslate"><span class="pre">--overlap</span></code>; in <code class="docutils literal notranslate"><span class="pre">embeddings</span></code>, <code class="docutils literal notranslate"><span class="pre">--o</span></code> now means <code class="docutils literal notranslate"><span class="pre">--overlap</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--o</span> <span class="pre">OUTPUT</span></code> (species)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code> as the first argument</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--batchsize</span></code> (analyze, embeddings)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--batch_size</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--rtype</span> <span class="pre">r</span></code></p></td>
+<td><p>none; <code class="docutils literal notranslate"><span class="pre">--rtype</span> <span class="pre">csv</span></code> with <code class="docutils literal notranslate"><span class="pre">--additional_columns</span></code> holds the same values</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--crop_overlap</span></code> (train)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--overlap</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--threshold</span></code> (species)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--sf_thresh</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--i</span></code>, <code class="docutils literal notranslate"><span class="pre">--o</span></code> (embeddings)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-i</span> <span class="pre">INPUT</span></code>, <code class="docutils literal notranslate"><span class="pre">-db</span> <span class="pre">DATABASE</span></code>: a database instead of a text file per recording</p></td>
+</tr>
+</tbody>
+</table>
+<p>The options under <a class="reference internal" href="#removed-options-and-parameters">Removed options and parameters</a> are gone as well. The default
+<code class="docutils literal notranslate"><span class="pre">--min_conf</span></code> is 0.25; 1.x used 0.1, so the same command finds fewer detections.</p>
 </section>
 </section>
 
