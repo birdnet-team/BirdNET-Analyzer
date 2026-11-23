@@ -145,11 +145,14 @@ def get_database(database_path) -> SQLiteUSearchDB:
     """
     from perch_hoplite.db import sqlite_usearch_impl
 
+    from birdnet_analyzer.index_paths import reach_any_path
+
     files = (sqlite_usearch_impl.HOPLITE_FILENAME, sqlite_usearch_impl.UINDEX_FILENAME)
     if not all(os.path.isfile(os.path.join(database_path, f)) for f in files):
         raise FileNotFoundError(f"No embeddings database found in {database_path}")
 
     reject_database_of_v2(database_path)
+    reach_any_path()
 
     return sqlite_usearch_impl.SQLiteUSearchDB.create(database_path)
 

@@ -250,6 +250,10 @@ def get_or_create_database(
 
     from perch_hoplite.db import sqlite_usearch_impl
 
+    from birdnet_analyzer.index_paths import reach_any_path
+
+    reach_any_path()
+
     if not os.path.exists(db_path):
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
 

@@ -1,9 +1,14 @@
 import os
 import sqlite3
 
+import numpy as np
 import pytest
 
-from birdnet_analyzer.embeddings.core import get_or_create_database
+from birdnet_analyzer.embeddings.core import (
+    _ensure_deployment,
+    _ensure_recording,
+    get_or_create_database,
+)
 from birdnet_analyzer.search import core as search_core
 from birdnet_analyzer.search import utils as search_utils
 
@@ -127,3 +132,34 @@ def test_a_database_of_v2_is_named_as_one_and_left_as_it_is(tmp_path, open_datab
         open_database(database)
 
     assert (database / "hoplite.sqlite").read_bytes() == before
+
+
+def _add_windows(database, starts):
+    """One window per start. A function of its own, so the database is released on
+    return: Windows cannot overwrite the index file while a view of it is mapped."""
+    db = get_or_create_database(str(database), embedding_dim=8)
+
+    try:
+        recording = _ensure_recording(db, "a.wav", _ensure_deployment(db))
+
+        for start in starts:
+            db.insert_window(
+                recording,
+                [start, start + 3.0],
+                embedding=np.full(8, start, dtype=np.float32),
+            )
+
+        db.commit()
+    finally:
+        db.db.close()
+
+
+def test_a_database_below_a_folder_with_other_letters_is_filled_and_read(tmp_path):
+    database = tmp_path / ("J" + chr(0xF6) + "rg M" + chr(0xFC) + "ller") / "db"
+
+    _add_windows(database, [0.0, 3.0])
+    _add_windows(database, [6.0])
+
+    with search_core.open_database(str(database)) as db:
+        assert db.count_embeddings() == 3
+        np.testing.assert_allclose(db.get_embedding(3), np.full(8, 6.0))
