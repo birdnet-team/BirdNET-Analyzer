@@ -200,7 +200,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <dt><kbd>-l, --locale</kbd></dt>
 <dd><p>Possible choices: af, ar, bg, ca, cs, cy, da, de, en_uk, en_us, es, es_ec, es_es, es_mx, fa, fi, fr, hr, hu, it, ja, ko, lt, nl, no, pl, pt, pt_pt, ro, ru, sk, sl, sr, sv, th, tr, uk, zh</p>
 <p>Locale for translated species common names.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">'en_us'</span></code></p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">en_us</span></code></p>
 </dd>
 <dt><kbd>-b, --batch_size</kbd></dt>
 <dd><p>Number of samples to process at the same time. A custom classifier trained on BirdNET 3.0 always processes 1.</p>
@@ -241,7 +241,7 @@ match the interrupted run, otherwise the analysis starts over; see
 <dd><p>Saves at most the top N predictions for each segment. –min_conf still applies.</p>
 </dd>
 <dt><kbd>--merge_consecutive</kbd></dt>
-<dd><p>Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. We use the mean of the top 3 scores from all consecutive detections for merging.</p>
+<dd><p>Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. A merged detection has the mean score of the detections it was made of.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--use_perch</kbd></dt>
@@ -559,7 +559,7 @@ This way, it might be easier to review results instead of loading hundreds of re
 <dt><kbd>-l, --locale</kbd></dt>
 <dd><p>Possible choices: bg, ca, cs, cy, da, de, en_us, es, es_ec, es_es, es_mx, fa, fi, fr, hr, ja, lt, nl, no, pl, pt, pt_pt, ru, sk, sr, sv, tr, uk, zh</p>
 <p>Locale for translated species common names.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">'en_us'</span></code></p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">en_us</span></code></p>
 </dd>
 <dt><kbd>-v, --verbose</kbd></dt>
 <dd><p>Also show debug messages and stacktraces on the console.</p>

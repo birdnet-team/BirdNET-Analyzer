@@ -52,6 +52,8 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Breaking changes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#default-model-is-now-birdnet-3-0">Default model is now BirdNET 3.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path">Inference runs on ONNX, not TensorFlow, on the default path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scores-of-the-birdnet-2-4-model">Scores of the BirdNET 2.4 model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-installers-contain-birdnet-3-0-not-2-4">The installers contain BirdNET 3.0, not 2.4</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-species-lists-and-the-3-0-taxonomy">Custom species lists and the 3.0 taxonomy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#label-languages">Label languages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#training-defaults-to-the-3-0-base">Training defaults to the 3.0 base</a></li>
@@ -117,22 +119,24 @@ release (<strong>v2.4.0</strong>) and what to do about it.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#default-model-is-now-birdnet-3-0" id="id1">Default model is now BirdNET 3.0</a></p></li>
 <li><p><a class="reference internal" href="#inference-runs-on-onnx-not-tensorflow-on-the-default-path" id="id2">Inference runs on ONNX, not TensorFlow, on the default path</a></p></li>
-<li><p><a class="reference internal" href="#custom-species-lists-and-the-3-0-taxonomy" id="id3">Custom species lists and the 3.0 taxonomy</a></p></li>
-<li><p><a class="reference internal" href="#label-languages" id="id4">Label languages</a></p></li>
-<li><p><a class="reference internal" href="#training-defaults-to-the-3-0-base" id="id5">Training defaults to the 3.0 base</a></p></li>
-<li><p><a class="reference internal" href="#training-validates-on-the-training-data" id="id6">Training validates on the training data</a></p></li>
-<li><p><a class="reference internal" href="#training-chooses-its-learning-rate-for-the-base-model" id="id7">Training chooses its learning rate for the base model</a></p></li>
-<li><p><a class="reference internal" href="#locations-and-species-lists" id="id8">Locations and species lists</a></p></li>
-<li><p><a class="reference internal" href="#top-n-results-keep-the-confidence-threshold" id="id9">Top-N results keep the confidence threshold</a></p></li>
-<li><p><a class="reference internal" href="#results-are-written-to-combined-files-by-default" id="id10">Results are written to combined files by default</a></p></li>
-<li><p><a class="reference internal" href="#result-and-parameters-file-formats" id="id11">Result and parameters file formats</a></p></li>
-<li><p><a class="reference internal" href="#kaleidoscope-output-has-seven-columns" id="id12">Kaleidoscope output has seven columns</a></p></li>
-<li><p><a class="reference internal" href="#custom-classifiers-must-be-tflite-files" id="id13">Custom classifiers must be tflite files</a></p></li>
-<li><p><a class="reference internal" href="#search-needs-the-audio-root-and-a-new-database" id="id14">Search needs the audio root and a new database</a></p></li>
-<li><p><a class="reference internal" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" id="id15">Evaluation needs a confidence column and scores every annotated recording</a></p></li>
-<li><p><a class="reference internal" href="#evaluation-reads-tables-differently" id="id16">Evaluation reads tables differently</a></p></li>
-<li><p><a class="reference internal" href="#removed-options-and-parameters" id="id17">Removed options and parameters</a></p></li>
-<li><p><a class="reference internal" href="#other-changes" id="id18">Other changes</a></p></li>
+<li><p><a class="reference internal" href="#scores-of-the-birdnet-2-4-model" id="id3">Scores of the BirdNET 2.4 model</a></p></li>
+<li><p><a class="reference internal" href="#the-installers-contain-birdnet-3-0-not-2-4" id="id4">The installers contain BirdNET 3.0, not 2.4</a></p></li>
+<li><p><a class="reference internal" href="#custom-species-lists-and-the-3-0-taxonomy" id="id5">Custom species lists and the 3.0 taxonomy</a></p></li>
+<li><p><a class="reference internal" href="#label-languages" id="id6">Label languages</a></p></li>
+<li><p><a class="reference internal" href="#training-defaults-to-the-3-0-base" id="id7">Training defaults to the 3.0 base</a></p></li>
+<li><p><a class="reference internal" href="#training-validates-on-the-training-data" id="id8">Training validates on the training data</a></p></li>
+<li><p><a class="reference internal" href="#training-chooses-its-learning-rate-for-the-base-model" id="id9">Training chooses its learning rate for the base model</a></p></li>
+<li><p><a class="reference internal" href="#locations-and-species-lists" id="id10">Locations and species lists</a></p></li>
+<li><p><a class="reference internal" href="#top-n-results-keep-the-confidence-threshold" id="id11">Top-N results keep the confidence threshold</a></p></li>
+<li><p><a class="reference internal" href="#results-are-written-to-combined-files-by-default" id="id12">Results are written to combined files by default</a></p></li>
+<li><p><a class="reference internal" href="#result-and-parameters-file-formats" id="id13">Result and parameters file formats</a></p></li>
+<li><p><a class="reference internal" href="#kaleidoscope-output-has-seven-columns" id="id14">Kaleidoscope output has seven columns</a></p></li>
+<li><p><a class="reference internal" href="#custom-classifiers-must-be-tflite-files" id="id15">Custom classifiers must be tflite files</a></p></li>
+<li><p><a class="reference internal" href="#search-needs-the-audio-root-and-a-new-database" id="id16">Search needs the audio root and a new database</a></p></li>
+<li><p><a class="reference internal" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" id="id17">Evaluation needs a confidence column and scores every annotated recording</a></p></li>
+<li><p><a class="reference internal" href="#evaluation-reads-tables-differently" id="id18">Evaluation reads tables differently</a></p></li>
+<li><p><a class="reference internal" href="#removed-options-and-parameters" id="id19">Removed options and parameters</a></p></li>
+<li><p><a class="reference internal" href="#other-changes" id="id20">Other changes</a></p></li>
 </ul>
 </nav>
 <section id="default-model-is-now-birdnet-3-0">
@@ -165,11 +169,49 @@ model, custom classifiers, and training.</p></li>
 (the 2.4 TFLite model was ~120 MB).</p></li>
 </ul>
 <p><strong>What to do.</strong> Reinstall the package so <code class="docutils literal notranslate"><span class="pre">onnxruntime</span></code> is pulled in (your usual
-<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code> step). Nothing changes for the 2.4, Perch, custom-classifier or
-training paths.</p>
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code> step). The 2.4, Perch, custom-classifier and training paths still run
+on TensorFlow.</p>
+</section>
+<section id="scores-of-the-birdnet-2-4-model">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Scores of the BirdNET 2.4 model</a><a class="headerlink" href="#scores-of-the-birdnet-2-4-model" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> The birdnet library resamples and band-pass filters the audio segment
+by segment. v2.4.0 did both on the whole file, with another resampler.</p>
+<p><strong>Consequence.</strong> With <code class="docutils literal notranslate"><span class="pre">--birdnet</span> <span class="pre">2.4</span></code>, recordings at 44.1 kHz and above give the
+detections of v2.4.0, with confidences that differ by less than 0.001; so do stereo
+files, flac and mp3, an overlap, a sensitivity, a location and a species list. The
+scores differ</p>
+<ul class="simple">
+<li><p>for recordings below 44.1 kHz. On twenty field recordings at 32 kHz, about one
+detection in six above a confidence of 0.25 was found by only one of the two versions,
+the confidences of the others differed by 0.02 in the median and by up to 0.3, and the
+most confident species of a recording was the same in 19 of 20;</p></li>
+<li><p>with <code class="docutils literal notranslate"><span class="pre">--audio_speed</span></code> other than 1, to a similar degree;</p></li>
+<li><p>with <code class="docutils literal notranslate"><span class="pre">--fmin</span></code>, by up to 0.1 for single detections, and slightly with <code class="docutils literal notranslate"><span class="pre">--fmax</span></code>.</p></li>
+</ul>
+<p>A custom classifier trained with v2.4.0 gives the scores of v2.4.0 under the same
+conditions.</p>
+<p><strong>What to do.</strong> Do not continue a dataset analysed with v2.4.0 under one of these
+conditions with this version: analyse all of it with one version.</p>
+</section>
+<section id="the-installers-contain-birdnet-3-0-not-2-4">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">The installers contain BirdNET 3.0, not 2.4</a><a class="headerlink" href="#the-installers-contain-birdnet-3-0-not-2-4" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> The installers contain the default BirdNET 3.0 model and its
+geolocation model. The BirdNET 2.4 model, which the installer of v2.4.0 contained, is
+downloaded the first time it is used (about 80 MB), like every other model.</p>
+<p><strong>Consequence.</strong> An analysis with the default model needs no internet connection.
+The first analysis with BirdNET 2.4 does, unless the model is there already: the
+settings tab lists the models and whether they are on the computer, and a line below
+the model choice says when the first use is going to download one. A location filter
+with BirdNET 2.4 uses the geolocation model of 2.4, a download of its own (about
+46 MB), which the location settings point out the same way.</p>
+<p><strong>What to do.</strong> Nothing, with an internet connection. When the Windows installer
+replaces an installation of v2.4.0, it keeps that installation’s BirdNET 2.4 model,
+so analyses with BirdNET 2.4 need no download. The geolocation model of 2.4 is not
+among the files it can keep: the first analysis with BirdNET 2.4 and a location
+still downloads it. For computers without internet access see <a class="reference internal" href="installation.html#installation"><span class="std std-ref">Download &amp; Setup</span></a>.</p>
 </section>
 <section id="custom-species-lists-and-the-3-0-taxonomy">
-<h2><a class="toc-backref" href="#id3" role="doc-backlink">Custom species lists and the 3.0 taxonomy</a><a class="headerlink" href="#custom-species-lists-and-the-3-0-taxonomy" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Custom species lists and the 3.0 taxonomy</a><a class="headerlink" href="#custom-species-lists-and-the-3-0-taxonomy" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> The 3.0 model uses an updated taxonomy, so labels from a v2.4-era
 species list may no longer match verbatim — for example <code class="docutils literal notranslate"><span class="pre">Accipiter</span> <span class="pre">cooperii</span></code> became
 <code class="docutils literal notranslate"><span class="pre">Astur</span> <span class="pre">cooperii</span></code>, and several common names changed (<code class="docutils literal notranslate"><span class="pre">Rock</span> <span class="pre">Pigeon</span></code> → <code class="docutils literal notranslate"><span class="pre">Rock</span> <span class="pre">Dove</span></code>,
@@ -206,12 +248,13 @@ unmatched species into a hard error — use the new <code class="docutils litera
 chosen model does not have (only once that model has been downloaded).</p>
 </section>
 <section id="label-languages">
-<h2><a class="toc-backref" href="#id4" role="doc-backlink">Label languages</a><a class="headerlink" href="#label-languages" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Label languages</a><a class="headerlink" href="#label-languages" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> The <code class="docutils literal notranslate"><span class="pre">--locale</span></code> codes depend on the model version. Compared with
 v2.4.0:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">en</span></code>, <code class="docutils literal notranslate"><span class="pre">el</span></code>, <code class="docutils literal notranslate"><span class="pre">he</span></code>, <code class="docutils literal notranslate"><span class="pre">in</span></code>, <code class="docutils literal notranslate"><span class="pre">is</span></code>, <code class="docutils literal notranslate"><span class="pre">ml</span></code> and <code class="docutils literal notranslate"><span class="pre">pt_BR</span></code> are no longer accepted.
-English is <code class="docutils literal notranslate"><span class="pre">en_us</span></code>, the new default.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">el</span></code>, <code class="docutils literal notranslate"><span class="pre">he</span></code>, <code class="docutils literal notranslate"><span class="pre">in</span></code>, <code class="docutils literal notranslate"><span class="pre">is</span></code>, <code class="docutils literal notranslate"><span class="pre">ml</span></code> and <code class="docutils literal notranslate"><span class="pre">pt_BR</span></code> are no longer accepted.
+English is <code class="docutils literal notranslate"><span class="pre">en_us</span></code>, the new default; <code class="docutils literal notranslate"><span class="pre">en</span></code> is still understood as English, and
+upper and lower case make no difference (<code class="docutils literal notranslate"><span class="pre">en_UK</span></code> is <code class="docutils literal notranslate"><span class="pre">en_uk</span></code>).</p></li>
 <li><p>The 3.0 model has no <code class="docutils literal notranslate"><span class="pre">af</span></code>, <code class="docutils literal notranslate"><span class="pre">ar</span></code>, <code class="docutils literal notranslate"><span class="pre">en_uk</span></code>, <code class="docutils literal notranslate"><span class="pre">hu</span></code>, <code class="docutils literal notranslate"><span class="pre">it</span></code>, <code class="docutils literal notranslate"><span class="pre">ko</span></code>, <code class="docutils literal notranslate"><span class="pre">ro</span></code>,
 <code class="docutils literal notranslate"><span class="pre">sl</span></code> or <code class="docutils literal notranslate"><span class="pre">th</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">bg</span></code>, <code class="docutils literal notranslate"><span class="pre">ca</span></code>, <code class="docutils literal notranslate"><span class="pre">hr</span></code>, <code class="docutils literal notranslate"><span class="pre">lt</span></code>, <code class="docutils literal notranslate"><span class="pre">pt_pt</span></code> and <code class="docutils literal notranslate"><span class="pre">sr</span></code> are only available with the 3.0
@@ -226,7 +269,7 @@ one only the other has. In the GUI the locale dropdown offers only the selected 
 languages.</p>
 </section>
 <section id="training-defaults-to-the-3-0-base">
-<h2><a class="toc-backref" href="#id5" role="doc-backlink">Training defaults to the 3.0 base</a><a class="headerlink" href="#training-defaults-to-the-3-0-base" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Training defaults to the 3.0 base</a><a class="headerlink" href="#training-defaults-to-the-3-0-base" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.train</span></code> takes <code class="docutils literal notranslate"><span class="pre">--birdnet</span> <span class="pre">{3.0,2.4}</span></code> (the train
 tab a “Base model” choice) and trains on BirdNET 3.0 unless told otherwise. All output
 formats (tflite, Raven, detached) are available on both bases. A classifier only works
@@ -245,7 +288,7 @@ explicit <code class="docutils literal notranslate"><span class="pre">-o/--outpu
 pip-installed package and survives upgrades.</p>
 </section>
 <section id="training-validates-on-the-training-data">
-<h2><a class="toc-backref" href="#id6" role="doc-backlink">Training validates on the training data</a><a class="headerlink" href="#training-validates-on-the-training-data" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Training validates on the training data</a><a class="headerlink" href="#training-validates-on-the-training-data" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--test_data</span></code> now only evaluates the trained classifier. A
 validation split (<code class="docutils literal notranslate"><span class="pre">--val_split</span></code>, which must be above 0) is always taken from the
 training data, and early stopping watches <code class="docutils literal notranslate"><span class="pre">--autotune_metric</span></code> (AUPRC by default)
@@ -259,7 +302,7 @@ not comparable.</p>
 <code class="docutils literal notranslate"><span class="pre">--val_split</span> <span class="pre">0</span></code> is rejected. Compare scores only between runs of this version.</p>
 </section>
 <section id="training-chooses-its-learning-rate-for-the-base-model">
-<h2><a class="toc-backref" href="#id7" role="doc-backlink">Training chooses its learning rate for the base model</a><a class="headerlink" href="#training-chooses-its-learning-rate-for-the-base-model" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Training chooses its learning rate for the base model</a><a class="headerlink" href="#training-chooses-its-learning-rate-for-the-base-model" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> Without <code class="docutils literal notranslate"><span class="pre">--learning_rate</span></code>, training uses a learning rate chosen for
 the base model: 0.1 for BirdNET 3.0 and 0.01 for BirdNET 2.4. v2.4.0 used 0.0001, which
 leaves classifiers under-trained, on the 3.0 base badly. The train tab no longer offers
@@ -279,7 +322,7 @@ training on the other.</p>
 lower learning rate, such as 0.003.</p>
 </section>
 <section id="locations-and-species-lists">
-<h2><a class="toc-backref" href="#id8" role="doc-backlink">Locations and species lists</a><a class="headerlink" href="#locations-and-species-lists" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">Locations and species lists</a><a class="headerlink" href="#locations-and-species-lists" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">-1</span></code> no longer means “not set”. <code class="docutils literal notranslate"><span class="pre">--lat</span> <span class="pre">-1</span> <span class="pre">--lon</span> <span class="pre">-1</span></code> is a location in the Gulf of
@@ -294,7 +337,8 @@ longitude -1.</p></li>
 acoustic model does not have, such as insects. They are sorted alphabetically; v2.4.0
 used the acoustic model’s labels and sorted them by occurrence frequency.</p></li>
 </ul>
-<p><strong>Consequence.</strong> Scripts that pass -1 get a filter for the wrong place or an error.
+<p><strong>Consequence.</strong> Scripts that pass -1 get a filter for the wrong place, which finds
+next to nothing, or an error. <code class="docutils literal notranslate"><span class="pre">--lat</span> <span class="pre">-1</span> <span class="pre">--lon</span> <span class="pre">-1</span></code> logs a warning that says so.
 Using a location list as <code class="docutils literal notranslate"><span class="pre">--slist</span></code> logs the species the model lacks as skipped, and
 fails with <code class="docutils literal notranslate"><span class="pre">--strict</span></code>. A species with another scientific name in the acoustic model
 is found by its common name, so it is skipped too when the list is neither in English
@@ -307,7 +351,7 @@ English or in the <code class="docutils literal notranslate"><span class="pre">-
 and <code class="docutils literal notranslate"><span class="pre">--lon</span></code> to the analysis instead of a list.</p>
 </section>
 <section id="top-n-results-keep-the-confidence-threshold">
-<h2><a class="toc-backref" href="#id9" role="doc-backlink">Top-N results keep the confidence threshold</a><a class="headerlink" href="#top-n-results-keep-the-confidence-threshold" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id11" role="doc-backlink">Top-N results keep the confidence threshold</a><a class="headerlink" href="#top-n-results-keep-the-confidence-threshold" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--top_n</span></code> keeps at most N detections per segment among those above
 <code class="docutils literal notranslate"><span class="pre">--min_conf</span></code>. v2.4.0 ignored the threshold when <code class="docutils literal notranslate"><span class="pre">--top_n</span></code> was set.</p>
 <p><strong>Consequence.</strong> The same command returns fewer detections than in v2.4.0.</p>
@@ -315,7 +359,7 @@ and <code class="docutils literal notranslate"><span class="pre">--lon</span></c
 regardless of their score.</p>
 </section>
 <section id="results-are-written-to-combined-files-by-default">
-<h2><a class="toc-backref" href="#id10" role="doc-backlink">Results are written to combined files by default</a><a class="headerlink" href="#results-are-written-to-combined-files-by-default" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Results are written to combined files by default</a><a class="headerlink" href="#results-are-written-to-combined-files-by-default" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> An analysis writes one combined result file per result type, such as
 <code class="docutils literal notranslate"><span class="pre">BirdNET_SelectionTable.txt</span></code>. v2.4.0 wrote one file per audio file and added
 combined files only with <code class="docutils literal notranslate"><span class="pre">--combine_results</span></code>.</p>
@@ -324,16 +368,27 @@ combined files only with <code class="docutils literal notranslate"><span class=
 <p><strong>What to do.</strong> Pass <code class="docutils literal notranslate"><span class="pre">--split_tables</span></code> for one result file per audio file, which
 replaces the combined files. As in v2.4.0, an audio file without detections still gets
 its files, which hold only the header.</p>
+<p>Analyse into a new output folder when the old one holds the per-file results of an
+earlier analysis: they stay where they are, and the evaluation reads the per-file
+tables of a folder in place of a combined table beside them.</p>
 </section>
 <section id="result-and-parameters-file-formats">
-<h2><a class="toc-backref" href="#id11" role="doc-backlink">Result and parameters file formats</a><a class="headerlink" href="#result-and-parameters-file-formats" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id13" role="doc-backlink">Result and parameters file formats</a><a class="headerlink" href="#result-and-parameters-file-formats" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p>Raven selection tables add a <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">Name</span></code> column and order the columns
 differently. They have no <code class="docutils literal notranslate"><span class="pre">nocall</span></code> row for a file without detections, and no
 <code class="docutils literal notranslate"><span class="pre">BirdNET_SelectionTable.list.txt</span></code> is written. As before, the times of a combined
 table run on across all analysed files in path order, including those without
-detections.</p></li>
+detections. The <code class="docutils literal notranslate"><span class="pre">Species</span> <span class="pre">Code</span></code> is found by the scientific name, in every label
+language, and by the English name where the 3.0 model uses a newer scientific name.
+A species the eBird list of the 2.4 model does not have, as close to half of the 3.0
+model’s, carries its label there.</p></li>
+<li><p>Confidences are written with all their digits (<code class="docutils literal notranslate"><span class="pre">0.81405586</span></code>); v2.4.0 rounded them
+to four decimals.</p></li>
+<li><p>With <code class="docutils literal notranslate"><span class="pre">--additional_columns</span></code>, <code class="docutils literal notranslate"><span class="pre">lat</span></code>, <code class="docutils literal notranslate"><span class="pre">lon</span></code> and <code class="docutils literal notranslate"><span class="pre">week</span></code> are empty without a
+location, where v2.4.0 wrote <code class="docutils literal notranslate"><span class="pre">-1</span></code>, and <code class="docutils literal notranslate"><span class="pre">model</span></code> is the file name of the model in
+the model directory.</p></li>
 <li><p>Audacity labels read <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">name_Common</span> <span class="pre">name</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">name,</span> <span class="pre">Common</span> <span class="pre">name</span></code>.</p></li>
 <li><p>The analysis parameters are written to <code class="docutils literal notranslate"><span class="pre">birdnet.analyze-params.csv</span></code> instead of
@@ -345,10 +400,12 @@ instead of <code class="docutils literal notranslate"><span class="pre">&lt;clas
 <p><strong>Consequence.</strong> Scripts that read these files by column position, label format or
 file name break.</p>
 <p><strong>What to do.</strong> Read the columns by name. <code class="docutils literal notranslate"><span class="pre">--load_params</span></code> reads both the new and the
-v2.4.0 parameters files.</p>
+v2.4.0 parameters files. An analysis file of v2.4.0 held only the overlap, the bandpass,
+the merging, the audio speed and the classifier; it is repeated with BirdNET 2.4, or
+with Perch if it was a Perch analysis, and with the defaults for everything else.</p>
 </section>
 <section id="kaleidoscope-output-has-seven-columns">
-<h2><a class="toc-backref" href="#id12" role="doc-backlink">Kaleidoscope output has seven columns</a><a class="headerlink" href="#kaleidoscope-output-has-seven-columns" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id14" role="doc-backlink">Kaleidoscope output has seven columns</a><a class="headerlink" href="#kaleidoscope-output-has-seven-columns" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--rtype</span> <span class="pre">kaleidoscope</span></code> writes <code class="docutils literal notranslate"><span class="pre">INDIR</span></code>, <code class="docutils literal notranslate"><span class="pre">FOLDER</span></code>, <code class="docutils literal notranslate"><span class="pre">IN</span> <span class="pre">FILE</span></code>,
 <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code>, <code class="docutils literal notranslate"><span class="pre">DURATION</span></code>, <code class="docutils literal notranslate"><span class="pre">TOP1MATCH</span></code> and <code class="docutils literal notranslate"><span class="pre">TOP1DIST</span></code>. v2.4.0 wrote 13 columns: the
 scientific and common name, <code class="docutils literal notranslate"><span class="pre">confidence</span></code>, <code class="docutils literal notranslate"><span class="pre">lat</span></code>, <code class="docutils literal notranslate"><span class="pre">lon</span></code>, <code class="docutils literal notranslate"><span class="pre">week</span></code>, <code class="docutils literal notranslate"><span class="pre">overlap</span></code> and
@@ -361,7 +418,7 @@ Kaleidoscope files.</p>
 with <code class="docutils literal notranslate"><span class="pre">--additional_columns</span></code>.</p>
 </section>
 <section id="custom-classifiers-must-be-tflite-files">
-<h2><a class="toc-backref" href="#id13" role="doc-backlink">Custom classifiers must be tflite files</a><a class="headerlink" href="#custom-classifiers-must-be-tflite-files" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id15" role="doc-backlink">Custom classifiers must be tflite files</a><a class="headerlink" href="#custom-classifiers-must-be-tflite-files" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--classifier</span></code> takes a <code class="docutils literal notranslate"><span class="pre">.tflite</span></code> file only; v2.4.0 also loaded a
 Raven model folder. The labels are read from <code class="docutils literal notranslate"><span class="pre">&lt;classifier&gt;_Labels.txt</span></code> or
 <code class="docutils literal notranslate"><span class="pre">--cc_species_list</span></code>; v2.4.0 also found <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_Labels.txt</span></code> next to an older
@@ -372,7 +429,7 @@ its labels file named explicitly.</p>
 for older BirdNET models.</p>
 </section>
 <section id="search-needs-the-audio-root-and-a-new-database">
-<h2><a class="toc-backref" href="#id14" role="doc-backlink">Search needs the audio root and a new database</a><a class="headerlink" href="#search-needs-the-audio-root-and-a-new-database" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">Search needs the audio root and a new database</a><a class="headerlink" href="#search-needs-the-audio-root-and-a-new-database" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.search</span></code> requires <code class="docutils literal notranslate"><span class="pre">--audio_root</span></code>, the folder the
 audio paths in the database are relative to, and <code class="docutils literal notranslate"><span class="pre">search()</span></code> takes it as its third
 argument, before <code class="docutils literal notranslate"><span class="pre">queryfile</span></code>. Embedding databases now use the perch-hoplite 1.x
@@ -388,7 +445,7 @@ extract the embeddings again into a new database. <code class="docutils literal 
 BirdNET 3.0 for a new database.</p>
 </section>
 <section id="evaluation-needs-a-confidence-column-and-scores-every-annotated-recording">
-<h2><a class="toc-backref" href="#id15" role="doc-backlink">Evaluation needs a confidence column and scores every annotated recording</a><a class="headerlink" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Evaluation needs a confidence column and scores every annotated recording</a><a class="headerlink" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p>A prediction table without the mapped confidence column, or with an empty one, is an
@@ -409,7 +466,7 @@ than in v2.4.0.</p>
 the v2.4.0 metrics.</p>
 </section>
 <section id="evaluation-reads-tables-differently">
-<h2><a class="toc-backref" href="#id16" role="doc-backlink">Evaluation reads tables differently</a><a class="headerlink" href="#evaluation-reads-tables-differently" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id18" role="doc-backlink">Evaluation reads tables differently</a><a class="headerlink" href="#evaluation-reads-tables-differently" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p>The columns are detected from the tables’ headers. <code class="docutils literal notranslate"><span class="pre">--columns_annotations</span></code> and
@@ -447,7 +504,7 @@ one analysis or one set of annotations each. For a recording length column named
 <code class="docutils literal notranslate"><span class="pre">--columns_predictions</span></code>), or <code class="docutils literal notranslate"><span class="pre">--recording_duration</span></code>.</p>
 </section>
 <section id="removed-options-and-parameters">
-<h2><a class="toc-backref" href="#id17" role="doc-backlink">Removed options and parameters</a><a class="headerlink" href="#removed-options-and-parameters" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id19" role="doc-backlink">Removed options and parameters</a><a class="headerlink" href="#removed-options-and-parameters" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> These v2.4.0 command-line options no longer exist, so command lines
 that use them fail with “unrecognized arguments”. The Python functions lost the
 matching parameters.</p>
@@ -458,22 +515,31 @@ finished one runs again). <code class="docutils literal notranslate"><span class
 <code class="docutils literal notranslate"><span class="pre">model=&quot;perch&quot;</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">embeddings</span></code>: <code class="docutils literal notranslate"><span class="pre">--threads</span></code> (use <code class="docutils literal notranslate"><span class="pre">--n_workers</span></code>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">species</span></code>: <code class="docutils literal notranslate"><span class="pre">--sortby</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">train</span></code>: <code class="docutils literal notranslate"><span class="pre">--model_format</span></code> (use <code class="docutils literal notranslate"><span class="pre">--model_formats</span></code>, <code class="docutils literal notranslate"><span class="pre">tflite</span> <span class="pre">raven</span></code> for
-<code class="docutils literal notranslate"><span class="pre">both</span></code>), <code class="docutils literal notranslate"><span class="pre">--cache_mode</span></code> and <code class="docutils literal notranslate"><span class="pre">--cache_file</span></code> (pass a cache file as <code class="docutils literal notranslate"><span class="pre">INPUT</span></code> to
+<li><p><code class="docutils literal notranslate"><span class="pre">train</span></code>: <code class="docutils literal notranslate"><span class="pre">--model_format</span> <span class="pre">both</span></code> (use <code class="docutils literal notranslate"><span class="pre">--model_formats</span> <span class="pre">tflite</span> <span class="pre">raven</span></code>; with one
+format the old spelling still works), <code class="docutils literal notranslate"><span class="pre">--cache_mode</span></code> and <code class="docutils literal notranslate"><span class="pre">--cache_file</span></code> (pass a cache file as <code class="docutils literal notranslate"><span class="pre">INPUT</span></code> to
 train from it, and <code class="docutils literal notranslate"><span class="pre">--save_cache_to</span></code> to write one), and
 <code class="docutils literal notranslate"><span class="pre">--autotune_executions_per_trial</span></code> (<code class="docutils literal notranslate"><span class="pre">--autotune_n_splits</span></code> with
 <code class="docutils literal notranslate"><span class="pre">--autotune_n_repeats</span></code> repeats each trial).</p></li>
 </ul>
 <p>The HTTP server and client, <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.network.server</span></code> and <code class="docutils literal notranslate"><span class="pre">.client</span></code>, were
-removed.</p>
+removed. So were the modules the analysis was built from: <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.analyze.utils</span></code>,
+<code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings.utils</span></code>, the <code class="docutils literal notranslate"><span class="pre">predict</span></code>, <code class="docutils literal notranslate"><span class="pre">embeddings</span></code> and <code class="docutils literal notranslate"><span class="pre">load_model</span></code>
+functions of <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.model</span></code>, and the run-time settings of
+<code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.config</span></code> such as <code class="docutils literal notranslate"><span class="pre">cfg.MIN_CONFIDENCE</span></code>. <code class="docutils literal notranslate"><span class="pre">analyze()</span></code> returns the
+result of the birdnet library instead of <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <p><strong>What to do.</strong> Update scripts as listed.</p>
 </section>
 <section id="other-changes">
-<h2><a class="toc-backref" href="#id18" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id20" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong>Search</strong> with a query longer than one segment (<code class="docutils literal notranslate"><span class="pre">--crop_mode</span> <span class="pre">segments</span></code>) ranks the
 results by their mean score over all query segments. v2.4.0 counted a result only for
 the query segments whose own top results contained it, so its rankings differ.</p></li>
+<li><p><strong>Merged detections</strong> (<code class="docutils literal notranslate"><span class="pre">--merge_consecutive</span></code>) of more than three segments have the
+mean confidence of all of them; v2.4.0 took the mean of the three highest.</p></li>
+<li><p><strong>The GUI of a pip or source installation</strong> keeps its language, theme and last used
+folders in the user’s application data folder, as the installed application always
+did; v2.4.0 kept them in the package folder, so they start from the defaults once.</p></li>
 <li><p><strong>The GUI’s worker count</strong> is automatic by default: the birdnet library starts as
 many worker processes as fit the available memory, at most one per CPU core, where
 v2.4.0 started one per logical core. A count set in an earlier version is ignored

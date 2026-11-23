@@ -50,8 +50,54 @@ Inference runs on ONNX, not TensorFlow, on the default path
   (the 2.4 TFLite model was ~120 MB).
 
 **What to do.** Reinstall the package so ``onnxruntime`` is pulled in (your usual
-``pip install`` step). Nothing changes for the 2.4, Perch, custom-classifier or
-training paths.
+``pip install`` step). The 2.4, Perch, custom-classifier and training paths still run
+on TensorFlow.
+
+
+Scores of the BirdNET 2.4 model
+-------------------------------
+
+**What changed.** The birdnet library resamples and band-pass filters the audio segment
+by segment. v2.4.0 did both on the whole file, with another resampler.
+
+**Consequence.** With ``--birdnet 2.4``, recordings at 44.1 kHz and above give the
+detections of v2.4.0, with confidences that differ by less than 0.001; so do stereo
+files, flac and mp3, an overlap, a sensitivity, a location and a species list. The
+scores differ
+
+* for recordings below 44.1 kHz. On twenty field recordings at 32 kHz, about one
+  detection in six above a confidence of 0.25 was found by only one of the two versions,
+  the confidences of the others differed by 0.02 in the median and by up to 0.3, and the
+  most confident species of a recording was the same in 19 of 20;
+* with ``--audio_speed`` other than 1, to a similar degree;
+* with ``--fmin``, by up to 0.1 for single detections, and slightly with ``--fmax``.
+
+A custom classifier trained with v2.4.0 gives the scores of v2.4.0 under the same
+conditions.
+
+**What to do.** Do not continue a dataset analysed with v2.4.0 under one of these
+conditions with this version: analyse all of it with one version.
+
+
+The installers contain BirdNET 3.0, not 2.4
+-------------------------------------------
+
+**What changed.** The installers contain the default BirdNET 3.0 model and its
+geolocation model. The BirdNET 2.4 model, which the installer of v2.4.0 contained, is
+downloaded the first time it is used (about 80 MB), like every other model.
+
+**Consequence.** An analysis with the default model needs no internet connection.
+The first analysis with BirdNET 2.4 does, unless the model is there already: the
+settings tab lists the models and whether they are on the computer, and a line below
+the model choice says when the first use is going to download one. A location filter
+with BirdNET 2.4 uses the geolocation model of 2.4, a download of its own (about
+46 MB), which the location settings point out the same way.
+
+**What to do.** Nothing, with an internet connection. When the Windows installer
+replaces an installation of v2.4.0, it keeps that installation's BirdNET 2.4 model,
+so analyses with BirdNET 2.4 need no download. The geolocation model of 2.4 is not
+among the files it can keep: the first analysis with BirdNET 2.4 and a location
+still downloads it. For computers without internet access see :ref:`installation`.
 
 
 Custom species lists and the 3.0 taxonomy
@@ -103,8 +149,9 @@ Label languages
 **What changed.** The ``--locale`` codes depend on the model version. Compared with
 v2.4.0:
 
-* ``en``, ``el``, ``he``, ``in``, ``is``, ``ml`` and ``pt_BR`` are no longer accepted.
-  English is ``en_us``, the new default.
+* ``el``, ``he``, ``in``, ``is``, ``ml`` and ``pt_BR`` are no longer accepted.
+  English is ``en_us``, the new default; ``en`` is still understood as English, and
+  upper and lower case make no difference (``en_UK`` is ``en_uk``).
 * The 3.0 model has no ``af``, ``ar``, ``en_uk``, ``hu``, ``it``, ``ko``, ``ro``,
   ``sl`` or ``th``.
 * ``bg``, ``ca``, ``hr``, ``lt``, ``pt_pt`` and ``sr`` are only available with the 3.0
@@ -202,7 +249,8 @@ Locations and species lists
   acoustic model does not have, such as insects. They are sorted alphabetically; v2.4.0
   used the acoustic model's labels and sorted them by occurrence frequency.
 
-**Consequence.** Scripts that pass -1 get a filter for the wrong place or an error.
+**Consequence.** Scripts that pass -1 get a filter for the wrong place, which finds
+next to nothing, or an error. ``--lat -1 --lon -1`` logs a warning that says so.
 Using a location list as ``--slist`` logs the species the model lacks as skipped, and
 fails with ``--strict``. A species with another scientific name in the acoustic model
 is found by its common name, so it is skipped too when the list is neither in English
@@ -242,6 +290,10 @@ combined files only with ``--combine_results``.
 replaces the combined files. As in v2.4.0, an audio file without detections still gets
 its files, which hold only the header.
 
+Analyse into a new output folder when the old one holds the per-file results of an
+earlier analysis: they stay where they are, and the evaluation reads the per-file
+tables of a folder in place of a combined table beside them.
+
 
 Result and parameters file formats
 ----------------------------------
@@ -252,7 +304,15 @@ Result and parameters file formats
   differently. They have no ``nocall`` row for a file without detections, and no
   ``BirdNET_SelectionTable.list.txt`` is written. As before, the times of a combined
   table run on across all analysed files in path order, including those without
-  detections.
+  detections. The ``Species Code`` is found by the scientific name, in every label
+  language, and by the English name where the 3.0 model uses a newer scientific name.
+  A species the eBird list of the 2.4 model does not have, as close to half of the 3.0
+  model's, carries its label there.
+* Confidences are written with all their digits (``0.81405586``); v2.4.0 rounded them
+  to four decimals.
+* With ``--additional_columns``, ``lat``, ``lon`` and ``week`` are empty without a
+  location, where v2.4.0 wrote ``-1``, and ``model`` is the file name of the model in
+  the model directory.
 * Audacity labels read ``Scientific name_Common name`` instead of
   ``Scientific name, Common name``.
 * The analysis parameters are written to ``birdnet.analyze-params.csv`` instead of
@@ -265,7 +325,9 @@ Result and parameters file formats
 file name break.
 
 **What to do.** Read the columns by name. ``--load_params`` reads both the new and the
-v2.4.0 parameters files.
+v2.4.0 parameters files. An analysis file of v2.4.0 held only the overlap, the bandpass,
+the merging, the audio speed and the classifier; it is repeated with BirdNET 2.4, or
+with Perch if it was a Perch analysis, and with the defaults for everything else.
 
 
 Kaleidoscope output has seven columns
@@ -398,14 +460,18 @@ matching parameters.
   ``model="perch"``.
 * ``embeddings``: ``--threads`` (use ``--n_workers``).
 * ``species``: ``--sortby``.
-* ``train``: ``--model_format`` (use ``--model_formats``, ``tflite raven`` for
-  ``both``), ``--cache_mode`` and ``--cache_file`` (pass a cache file as ``INPUT`` to
+* ``train``: ``--model_format both`` (use ``--model_formats tflite raven``; with one
+  format the old spelling still works), ``--cache_mode`` and ``--cache_file`` (pass a cache file as ``INPUT`` to
   train from it, and ``--save_cache_to`` to write one), and
   ``--autotune_executions_per_trial`` (``--autotune_n_splits`` with
   ``--autotune_n_repeats`` repeats each trial).
 
 The HTTP server and client, ``birdnet_analyzer.network.server`` and ``.client``, were
-removed.
+removed. So were the modules the analysis was built from: ``birdnet_analyzer.analyze.utils``,
+``birdnet_analyzer.embeddings.utils``, the ``predict``, ``embeddings`` and ``load_model``
+functions of ``birdnet_analyzer.model``, and the run-time settings of
+``birdnet_analyzer.config`` such as ``cfg.MIN_CONFIDENCE``. ``analyze()`` returns the
+result of the birdnet library instead of ``None``.
 
 **What to do.** Update scripts as listed.
 
@@ -416,6 +482,11 @@ Other changes
 * **Search** with a query longer than one segment (``--crop_mode segments``) ranks the
   results by their mean score over all query segments. v2.4.0 counted a result only for
   the query segments whose own top results contained it, so its rankings differ.
+* **Merged detections** (``--merge_consecutive``) of more than three segments have the
+  mean confidence of all of them; v2.4.0 took the mean of the three highest.
+* **The GUI of a pip or source installation** keeps its language, theme and last used
+  folders in the user's application data folder, as the installed application always
+  did; v2.4.0 kept them in the package folder, so they start from the defaults once.
 * **The GUI's worker count** is automatic by default: the birdnet library starts as
   many worker processes as fit the available memory, at most one per CPU core, where
   v2.4.0 started one per logical core. A count set in an earlier version is ignored
