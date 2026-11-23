@@ -50,6 +50,12 @@ training with one of these exports downloads it as soon as the training data are
 neither does a training that saves only the detached classifier. An installer without the default model downloads it
 the same way, about 380 MB, on the first analysis or training.
 
+The settings tab of the GUI lists every model, whether it is on the computer and how large its download is. Where a
+model is chosen, a line below the choice says so when the first use is going to download it.
+
+The Windows installer keeps the BirdNET 2.4 model of the installation it replaces, if that is version 2.4.0 or older:
+analyses and training with BirdNET 2.4 go on without a download.
+
 The installed application keeps its models in
 
 - ``%LOCALAPPDATA%\BirdNET-Analyzer-GUI\models`` on Windows,
