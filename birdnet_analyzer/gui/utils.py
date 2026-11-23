@@ -1377,8 +1377,14 @@ def locale(
 def plot_map_scatter_mapbox(lat, lon, zoom=4):
     import plotly.express as px
 
+    # plotly 7 no longer centres the map on its points.
     fig = px.scatter_map(
-        lat=[lat], lon=[lon], zoom=zoom, map_style="open-street-map", size=[10]
+        lat=[lat],
+        lon=[lon],
+        zoom=zoom,
+        center={"lat": lat, "lon": lon},
+        map_style="open-street-map",
+        size=[10],
     )
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
     return fig
