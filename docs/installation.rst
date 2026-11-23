@@ -55,9 +55,14 @@ The settings tab of the GUI lists every model, whether it is on the computer and
 model is chosen, a line below the choice says so when the first use is going to download it, and the location
 settings of an analysis say so for the species range model.
 
-The Windows installer keeps the BirdNET 2.4 model of the installation it replaces, if that is version 2.4.0:
-analyses and training with BirdNET 2.4 go on without a download. The species range model of 2.4 is not among the
-files it can keep, so the first analysis with BirdNET 2.4 and a location filter downloads it.
+The Windows installer keeps the BirdNET 2.4 model of the installation it replaces, if that is version 2.4.0 or a
+1.x release: analyses and training with BirdNET 2.4 go on without a download. The species range model of 2.4 is not
+among the files it can keep, so the first analysis with BirdNET 2.4 and a location filter downloads it. From an
+installation of 1.x, which kept the GUI language and the last used folders inside the installation folder, it also
+keeps those, for every user of the computer who has none of their own yet.
+
+Do not install 1.5.0 or 1.5.1 over this version: their installer deletes ``%LOCALAPPDATA%\BirdNET-Analyzer-GUI``,
+the folder that holds the models of this version.
 
 The installed application keeps its models in
 

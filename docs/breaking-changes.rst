@@ -5,7 +5,8 @@ This is a major release. Its central change is that analyses now use the **BirdN
 3.0** acoustic and geolocation models by default, which is not backwards compatible
 with the previous release in several ways. Breaking changes are expected for a major
 release; this page lists every user-visible incompatibility relative to the previous
-release (**v2.4.0**) and what to do about it.
+release (**v2.4.0**) and what to do about it. Users of a 1.x release find what else
+applies to them under :ref:`coming-from-1x`.
 
 .. contents::
    :local:
@@ -486,7 +487,8 @@ Other changes
   mean confidence of all of them; v2.4.0 took the mean of the three highest.
 * **The GUI of a pip or source installation** keeps its language, theme and last used
   folders in the user's application data folder, as the installed application always
-  did; v2.4.0 kept them in the package folder, so they start from the defaults once.
+  did; v2.4.0 kept them in the package folder. The GUI takes them over from there when
+  it starts without settings of its own.
 * **The GUI's worker count** is automatic by default: the birdnet library starts as
   many worker processes as fit the available memory, at most one per CPU core, where
   v2.4.0 started one per logical core. A count set in an earlier version is ignored
@@ -502,3 +504,63 @@ Other changes
   space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
   ``/`` (``Eurasian/Green-winged Teal``) and failed on Windows for a name with ``?``.
   Segments extracted again into an existing output folder land in the new folder.
+
+
+.. _coming-from-1x:
+
+Coming from 1.x
+---------------
+
+The 2.x releases changed more for users of 1.0.2 to 1.5.1 than this release does.
+Everything above applies to them as well, and so does the following.
+
+**Carried over.** The Windows installer keeps the GUI language and the last used
+folders of a 1.x installation, which kept them inside the installation folder, and
+its BirdNET 2.4 model (see :ref:`installation`). A source checkout of 1.4.0 or later
+keeps them too: the GUI takes over the files 1.x left in the ``birdnet_analyzer``
+folder when it starts without settings of its own. TFLite classifiers trained with
+1.x give the scores they gave in 1.x. Their ``<classifier>_Params.csv`` loads with
+``--load_params`` and in the train tab, and a training data cache of 1.x trains as
+``INPUT``. Species lists and the result tables of 1.x are read like those of v2.4.0:
+the segments tool and tab read every result type, including the R tables, and the
+evaluation reads the Raven and CSV tables.
+
+**Not carried over.** The GUI settings of the macOS app of 1.x, which kept them inside
+the app, and of a source checkout of 1.3.1 or older, which kept them at its top
+level: copy ``gui-settings.json`` and ``state.json`` into ``BirdNET-Analyzer-GUI`` in
+the user's application data folder (``%APPDATA%`` on Windows, ``~/Library/Application
+Support`` on macOS). A Raven model folder no longer works as a classifier (see
+above); the analysis says so and asks for the ``.tflite`` file. Nothing reads the
+embeddings text files of 1.x (``*.birdnet.embeddings.txt``): extract the embeddings
+again into a database to search them, with ``birdnet_analyzer.embeddings -i INPUT -db
+DATABASE``.
+
+**Command lines.** The tools take their input as the first argument and are installed
+as commands (``birdnet-analyze``, ``birdnet-train``, ...); ``python -m
+birdnet_analyzer.analyze`` still works. 1.x options that changed:
+
+.. list-table::
+   :header-rows: 1
+
+   * - 1.x
+     - Now
+   * - ``--i INPUT`` (analyze, train), ``--audio INPUT`` (segments)
+     - ``INPUT`` as the first argument
+   * - ``--o OUTPUT``
+     - ``-o OUTPUT``. ``--o`` alone fails where another option starts with it, such
+       as ``--overlap``; in ``embeddings``, ``--o`` now means ``--overlap``.
+   * - ``--o OUTPUT`` (species)
+     - ``OUTPUT`` as the first argument
+   * - ``--batchsize`` (analyze, embeddings)
+     - ``--batch_size``
+   * - ``--rtype r``
+     - none; ``--rtype csv`` with ``--additional_columns`` holds the same values
+   * - ``--crop_overlap`` (train)
+     - ``--overlap``
+   * - ``--threshold`` (species)
+     - ``--sf_thresh``
+   * - ``--i``, ``--o`` (embeddings)
+     - ``-i INPUT``, ``-db DATABASE``: a database instead of a text file per recording
+
+The options under `Removed options and parameters`_ are gone as well. The default
+``--min_conf`` is 0.25; 1.x used 0.1, so the same command finds fewer detections.
