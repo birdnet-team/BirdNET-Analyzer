@@ -516,6 +516,7 @@ def analyzer_parser():
     parser.add_argument(
         "-c",
         "--classifier",
+        action=set_model_action("birdnet"),
         help="Path to custom trained classifier. Its species names come from its labels file, so --locale is ignored. --lat and --lon keep only its species that the geo model predicts there, or, with a warning, all of them if it predicts none.",
     )
     parser.add_argument(

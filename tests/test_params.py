@@ -133,6 +133,7 @@ def test_a_perch_analysis_is_repeated_with_perch(tmp_path):
 
     assert parser.parse_args(["recordings"]).model == "perch"
     assert parser.parse_args(["recordings", "--birdnet"]).model == "birdnet"
+    assert parser.parse_args(["recordings", "-c", "cc.tflite"]).model == "birdnet"
 
 
 def test_train_params_are_read_back_as_train_arguments(tmp_path):
