@@ -107,18 +107,21 @@ def reject_database_of_v2(database_path) -> None:
         ValueError: If the database in `database_path` has the layout of 2.x.
     """
     import sqlite3
-    from pathlib import Path
+    from urllib.parse import quote
 
     from perch_hoplite.db import sqlite_usearch_impl
 
-    file = Path(database_path, sqlite_usearch_impl.HOPLITE_FILENAME)
+    file = os.path.join(database_path, sqlite_usearch_impl.HOPLITE_FILENAME)
 
-    if not file.is_file():
+    if not os.path.isfile(file):
         return
 
-    try:
-        uri = f"{file.resolve().as_uri()}?mode=ro"
+    # SQLite takes the part after "file://" up to the next slash as a host and
+    # refuses one, so a network path keeps both of its leading slashes behind it.
+    path = quote(os.path.abspath(file).replace(os.sep, "/"), safe="/:")
+    uri = f"file://{'' if path.startswith('/') else '/'}{path}?mode=ro"
 
+    try:
         with contextlib.closing(sqlite3.connect(uri, uri=True)) as connection:
             columns = {
                 row[1]

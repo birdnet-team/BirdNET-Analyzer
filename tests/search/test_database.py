@@ -134,6 +134,17 @@ def test_a_database_of_v2_is_named_as_one_and_left_as_it_is(tmp_path, open_datab
     assert (database / "hoplite.sqlite").read_bytes() == before
 
 
+def test_a_database_of_v2_on_a_network_path_is_named_as_one(tmp_path):
+    drive, folders = os.path.splitdrive(_database_of_v2(tmp_path / "db"))
+    share = f"{chr(92) * 2}localhost{chr(92)}{drive[:1]}${folders}"
+
+    if not os.path.isdir(share):
+        pytest.skip("needs the administrative share of a Windows drive")
+
+    with pytest.raises(ValueError, match=r"written by BirdNET-Analyzer 2\.x"):
+        search_core.get_database(share)
+
+
 def _add_windows(database, starts):
     """One window per start. A function of its own, so the database is released on
     return: Windows cannot overwrite the index file while a view of it is mapped."""
