@@ -527,8 +527,10 @@ def _merge_consecutive_segments(
         segment. Runs longer than this are split into chunks of at most
         ``merge_consecutive`` rows; runs shorter than it are still merged.
     hop_size : float, optional
-        Allowed tolerance (in seconds) between the end of one segment and the start of
-        the next to consider them consecutive, by default 3.0.
+        The step (in seconds) from one segment to the next, by default 3.0. A row
+        follows the one before it when it starts no later than half a step after
+        that one ends: overlapping and touching segments are consecutive, a
+        segment without a detection in between ends the run.
     Returns
     -------
     pandas.DataFrame
@@ -575,7 +577,7 @@ def _merge_consecutive_segments(
     run_break[1:] = ~(
         (inputs[1:] == inputs[:-1])
         & (species[1:] == species[:-1])
-        & (np.abs(start[1:] - end[:-1]) <= hop_size)
+        & (start[1:] - end[:-1] <= hop_size / 2)
     )
     run_start = np.maximum.accumulate(np.where(run_break, rows, 0))
     firsts = np.flatnonzero((rows - run_start) % merge_consecutive == 0)

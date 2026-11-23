@@ -1,5 +1,3 @@
-from math import isclose
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -40,11 +38,8 @@ def _merge_reference(
             if (
                 candidate_row["input"] == prev_row["input"]
                 and candidate_row["species_name"] == prev_row["species_name"]
-                and isclose(
-                    float(candidate_row["start_time"]),
-                    float(prev_row["end_time"]),
-                    abs_tol=hop_size,
-                )
+                and float(candidate_row["start_time"]) - float(prev_row["end_time"])
+                <= hop_size / 2
             ):
                 window.append(candidate_row)
             else:
@@ -71,7 +66,7 @@ def _merge_reference(
 
 def _random_detections(seed: int, dtype: str, hop_size: float = 3.0) -> pd.DataFrame:
     rng = np.random.default_rng([seed, round(hop_size * 10)])
-    gaps = [-1.5, 0.0, hop_size - 0.5, hop_size, hop_size + 0.5, 2 * hop_size]
+    gaps = [-1.5, 0.0, hop_size / 2 - 0.5, hop_size / 2, hop_size / 2 + 0.5, hop_size]
     rows = []
 
     for input_file in ("b.wav", "a.wav", "c.wav"):
@@ -146,10 +141,10 @@ def test_merge_consecutive_segments_matches_reference_without_confidence():
 
 @pytest.mark.parametrize(
     ("hop_size", "ulps", "expected_rows"),
-    [(3.0, -1, 1), (3.0, 0, 1), (3.0, 1, 2), (2.9, -1, 1), (2.9, 0, 2), (2.9, 1, 2)],
+    [(3.0, -1, 1), (3.0, 0, 1), (3.0, 1, 2), (2.9, -1, 1), (2.9, 0, 1), (2.9, 1, 2)],
 )
 def test_merge_consecutive_segments_gap_boundary(hop_size, ulps, expected_rows):
-    start = np.float32(3.0) + np.float32(hop_size)
+    start = np.float32(3.0) + np.float32(hop_size / 2)
 
     for _ in range(abs(ulps)):
         start = np.nextafter(start, np.float32(np.sign(ulps) * np.inf))
@@ -170,6 +165,39 @@ def test_merge_consecutive_segments_gap_boundary(hop_size, ulps, expected_rows):
     pd.testing.assert_frame_equal(
         merged, _merge_reference(df, 2, hop_size=hop_size), check_exact=True
     )
+
+
+def test_a_segment_without_a_detection_ends_a_merged_detection():
+    df = _detections(
+        [
+            ("file.wav", "species", 69.0, 72.0, 0.3),
+            ("file.wav", "species", 72.0, 75.0, 0.5),
+            ("file.wav", "species", 78.0, 81.0, 0.2),
+        ]
+    )
+
+    merged = _merge_consecutive_segments(df, merge_consecutive=3, hop_size=3.0)
+
+    assert merged[["start_time", "end_time"]].to_numpy().tolist() == [
+        [69.0, 75.0],
+        [78.0, 81.0],
+    ]
+
+
+@pytest.mark.parametrize("overlap", [0.5, 1.5, 2.0, 2.9])
+def test_detections_in_overlapping_segments_merge_whatever_the_overlap(overlap):
+    hop_size = 3.0 - overlap
+    df = _detections(
+        [
+            ("file.wav", "species", i * hop_size, i * hop_size + 3.0, 0.5)
+            for i in range(3)
+        ]
+    )
+
+    merged = _merge_consecutive_segments(df, merge_consecutive=3, hop_size=hop_size)
+
+    assert len(merged) == 1
+    assert merged["end_time"].item() == pytest.approx(2 * hop_size + 3.0)
 
 
 def test_merge_consecutive_segments_keeps_inputs_apart():
