@@ -885,6 +885,16 @@ def adopt_earlier_settings() -> None:
             continue
 
         if values := _read_json(earlier):
+            # 1.x remembered the file a dialog picked, the dialogs start in a folder.
+            values = {
+                key: os.path.dirname(value)
+                if isinstance(value, str)
+                and os.path.isabs(value)
+                and os.path.isfile(value)
+                else value
+                for key, value in values.items()
+            }
+
             try:
                 _write_json_atomic(path, values)
             except OSError as e:
