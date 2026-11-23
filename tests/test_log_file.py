@@ -83,7 +83,7 @@ while not os.path.exists(os.environ["BROWSER_STARTED"]):
 
 BROWSER = """#!/bin/sh
 echo "from the browser" >&2
-echo "${LD_LIBRARY_PATH-not set}" > "$BROWSER_STARTED.part"
+echo "$(basename "$0"): ${LD_LIBRARY_PATH-not set}" > "$BROWSER_STARTED.part"
 mv "$BROWSER_STARTED.part" "$BROWSER_STARTED"
 """
 
@@ -206,6 +206,14 @@ def _log_file(home):
     return home / ".local/share/BirdNET-Analyzer-GUI/logs.txt"
 
 
+def _browser(directory, name: str):
+    directory.mkdir(exist_ok=True)
+    (directory / name).write_text(BROWSER, encoding="utf-8")
+    (directory / name).chmod(0o755)
+
+    return directory / name
+
+
 @linux
 def test_a_gui_started_without_a_terminal_writes_its_output_to_the_log_file(tmp_path):
     printed = _run(INSTALLED_APP_PROBE, tmp_path, GUI, "no terminal")
@@ -259,10 +267,7 @@ def test_a_browser_opened_from_a_link_gets_neither_the_log_nor_the_apps_librarie
     tmp_path,
 ):
     pytest.importorskip("gradio")
-    programs = tmp_path / "bin"
-    programs.mkdir()
-    (programs / "xdg-open").write_text(BROWSER, encoding="utf-8")
-    (programs / "xdg-open").chmod(0o755)
+    programs = _browser(tmp_path / "bin", "xdg-open").parent
     started = tmp_path / "browser-started"
 
     printed = _run(
@@ -271,12 +276,31 @@ def test_a_browser_opened_from_a_link_gets_neither_the_log_nor_the_apps_librarie
         GUI,
         PATH=f"{programs}{os.pathsep}{os.environ['PATH']}",
         LD_LIBRARY_PATH="/opt/birdnet-analyzer/_internal",
+        BROWSER="",
         BROWSER_STARTED=str(started),
     )
 
     assert _lines(printed) == ["from the browser"]
     assert _lines(_log_file(tmp_path).read_text(encoding="utf-8")) == []
-    assert started.read_text(encoding="utf-8") == "not set\n"
+    assert started.read_text(encoding="utf-8") == "xdg-open: not set\n"
+
+
+@linux
+def test_a_link_opens_in_the_browser_the_user_named_in_the_browser_variable(tmp_path):
+    pytest.importorskip("gradio")
+    programs = _browser(tmp_path / "bin", "xdg-open").parent
+    started = tmp_path / "browser-started"
+
+    _run(
+        LINK_PROBE,
+        tmp_path,
+        GUI,
+        PATH=f"{programs}{os.pathsep}{os.environ['PATH']}",
+        BROWSER=str(_browser(programs, "chosen-browser")),
+        BROWSER_STARTED=str(started),
+    )
+
+    assert started.read_text(encoding="utf-8").startswith("chosen-browser: ")
 
 
 @pytest.mark.skipif(sys.platform == "linux", reason="Windows and macOS")

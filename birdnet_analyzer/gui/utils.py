@@ -2268,6 +2268,10 @@ def _open_links_as_the_desktop_would() -> None:
     import subprocess
     import webbrowser
 
+    # The user's own choice of browser, which a preferred one would go ahead of.
+    if os.environ.get("BROWSER"):
+        return
+
     environment = dict(os.environ)
     library_path = environment.pop("LD_LIBRARY_PATH_ORIG", None)
 
