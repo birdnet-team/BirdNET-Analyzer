@@ -65,9 +65,10 @@ detections of v2.4.0, with confidences that differ by less than 0.001; so do ste
 files, flac and mp3, an overlap, a sensitivity, a location and a species list. The
 scores differ
 
-* for recordings below 44.1 kHz. In a comparison on clips at 16, 22.05 and 32 kHz,
-  made from one 48 kHz recording, about a third of the detections above the threshold
-  were found by only one of the two versions, and confidences differed by up to 0.4;
+* for recordings below 44.1 kHz. On twenty field recordings at 32 kHz, about one
+  detection in six above a confidence of 0.25 was found by only one of the two versions,
+  the confidences of the others differed by 0.02 in the median and by up to 0.3, and the
+  most confident species of a recording was the same in 19 of 20;
 * with ``--audio_speed`` other than 1, to a similar degree;
 * with ``--fmin``, by up to 0.1 for single detections, and slightly with ``--fmax``.
 
