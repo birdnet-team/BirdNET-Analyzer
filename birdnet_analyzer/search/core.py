@@ -98,17 +98,58 @@ def search(
             audio.save_signal(sig, result_path, rate)
 
 
+def reject_database_of_v2(database_path) -> None:
+    """Stops at a database BirdNET-Analyzer 2.x wrote, before it is opened.
+
+    perch-hoplite 1.x adds its tables to such a file and then fails on the old ones.
+
+    Raises:
+        ValueError: If the database in `database_path` has the layout of 2.x.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    from perch_hoplite.db import sqlite_usearch_impl
+
+    file = Path(database_path, sqlite_usearch_impl.HOPLITE_FILENAME)
+
+    if not file.is_file():
+        return
+
+    try:
+        uri = f"{file.resolve().as_uri()}?mode=ro"
+
+        with contextlib.closing(sqlite3.connect(uri, uri=True)) as connection:
+            columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(hoplite_metadata)")
+            }
+    except sqlite3.Error:
+        return
+
+    if columns and "value" not in columns:
+        raise ValueError(
+            f"The embeddings database in {database_path} was written by "
+            "BirdNET-Analyzer 2.x and cannot be read by this version. Extract the "
+            "embeddings again into a new database; on the command line, "
+            "--birdnet 2.4 extracts them with BirdNET 2.4 as before."
+        )
+
+
 def get_database(database_path) -> SQLiteUSearchDB:
     """Opens an existing embeddings database.
 
     Raises:
         FileNotFoundError: If `database_path` is not a folder holding a database.
+        ValueError: If the database was written by BirdNET-Analyzer 2.x.
     """
     from perch_hoplite.db import sqlite_usearch_impl
 
     files = (sqlite_usearch_impl.HOPLITE_FILENAME, sqlite_usearch_impl.UINDEX_FILENAME)
     if not all(os.path.isfile(os.path.join(database_path, f)) for f in files):
         raise FileNotFoundError(f"No embeddings database found in {database_path}")
+
+    reject_database_of_v2(database_path)
 
     return sqlite_usearch_impl.SQLiteUSearchDB.create(database_path)
 

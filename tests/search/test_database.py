@@ -1,7 +1,9 @@
 import os
+import sqlite3
 
 import pytest
 
+from birdnet_analyzer.embeddings.core import get_or_create_database
 from birdnet_analyzer.search import core as search_core
 from birdnet_analyzer.search import utils as search_utils
 
@@ -90,3 +92,38 @@ def test_a_failing_search_closes_the_database(
         )
 
     assert hoplite_connections.still_open() == []
+
+
+def _database_of_v2(folder):
+    """The tables perch-hoplite 0.x created, as BirdNET-Analyzer 2.x left them."""
+    folder.mkdir()
+    connection = sqlite3.connect(folder / "hoplite.sqlite")
+    connection.execute(
+        "CREATE TABLE hoplite_metadata (key STRING PRIMARY KEY, data STRING NOT NULL)"
+    )
+    connection.execute(
+        "CREATE TABLE hoplite_embeddings (id INTEGER PRIMARY KEY, offsets BLOB)"
+    )
+    connection.commit()
+    connection.close()
+    (folder / "usearch.index").write_bytes(b"")
+
+    return folder
+
+
+@pytest.mark.parametrize(
+    "open_database",
+    [
+        search_core.get_database,
+        search_core.read_database_settings,
+        lambda path: get_or_create_database(str(path), embedding_dim=1024),
+    ],
+)
+def test_a_database_of_v2_is_named_as_one_and_left_as_it_is(tmp_path, open_database):
+    database = _database_of_v2(tmp_path / "db")
+    before = (database / "hoplite.sqlite").read_bytes()
+
+    with pytest.raises(ValueError, match=r"written by BirdNET-Analyzer 2\.x"):
+        open_database(database)
+
+    assert (database / "hoplite.sqlite").read_bytes() == before
