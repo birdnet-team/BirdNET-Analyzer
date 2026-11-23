@@ -1,5 +1,6 @@
 """Module containing common function."""
 
+import logging
 import os
 import warnings
 from contextlib import suppress
@@ -385,6 +386,35 @@ def load_codes() -> dict[str, str]:
 
     with open(CODES_FILE, encoding="utf-8") as cfile:
         return json.load(cfile)
+
+
+@cache
+def _codes_by_scientific_name() -> dict[str, str]:
+    return {
+        label.partition("_")[0]: code
+        for label, code in load_codes().items()
+        if "_" in label
+    }
+
+
+def species_code(label: str) -> str:
+    """The eBird code of a ``Scientific name_Common name`` label.
+
+    Found by the scientific name: the common name differs between the label
+    languages and between the model versions. A label without a code is returned
+    as it is.
+    """
+    return _codes_by_scientific_name().get(label.partition("_")[0], label)
+
+
+def warn_about_location_minus_one(lat, lon) -> None:
+    """Up to v2.4.0, latitude and longitude -1 meant that no location is set."""
+    if lat == -1 and lon == -1:
+        logging.getLogger(__name__).warning(
+            "Latitude -1 and longitude -1 are a place in the Gulf of Guinea. Up to "
+            "version 2.4.0 they meant that no location is set: leave both out "
+            "for that."
+        )
 
 
 def img2base64(path):
