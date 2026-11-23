@@ -103,6 +103,20 @@ def test_the_file_of_a_v2_database_is_kept_beside_the_new_one(tmp_path):
     assert not [name for name in os.listdir(database) if name.endswith(".part")]
 
 
+def test_a_v2_database_on_a_network_path_is_converted(tmp_path):
+    database = v2_databases.write(
+        tmp_path / "db", [(str(tmp_path / "rec" / "a.wav"), 0.0, 3.0, EMBEDDINGS[0])]
+    )
+    drive, folders = os.path.splitdrive(database)
+    share = f"{chr(92) * 2}localhost{chr(92)}{drive[:1]}${folders}"
+
+    if not os.path.isdir(share):
+        pytest.skip("needs the administrative share of a Windows drive")
+
+    assert read_database_settings(share)["MODEL_VERSION"] == "2.4"
+    assert not upgrade.is_old_format(database)
+
+
 @pytest.mark.parametrize("failing", ["insert_metadata", "insert_recording"])
 def test_a_failing_conversion_leaves_the_v2_database_as_it_was(
     tmp_path, monkeypatch, failing

@@ -16,6 +16,7 @@ import sqlite3
 import tempfile
 from contextlib import closing, suppress
 from pathlib import Path
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,11 @@ def is_old_format(database_path: str) -> bool:
     if not sqlite_file.is_file():
         return False
 
+    # SQLite takes the part after "file://" up to the next slash as a host and
+    # refuses one, so a network path keeps both of its leading slashes behind it.
+    path = quote(os.path.abspath(sqlite_file).replace(os.sep, "/"), safe="/:")
     # immutable: a plain read-only connection leaves a -shm file beside the database.
-    uri = f"{sqlite_file.resolve().as_uri()}?mode=ro&immutable=1"
+    uri = f"file://{'' if path.startswith('/') else '/'}{path}?mode=ro&immutable=1"
 
     try:
         with closing(sqlite3.connect(uri, uri=True)) as db:
