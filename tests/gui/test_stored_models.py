@@ -52,6 +52,8 @@ def test_the_settings_tab_lists_which_models_are_on_the_computer(
     assert set(status.values()) == {loc.localize(MISSING)}
 
     put_acoustic_2_4(model_directory)
+    (model_directory / "recordings").mkdir()
+    (model_directory / "recordings" / "a.wav").write_bytes(bytes(5_000_000))
     status, info = statuses(handler)
 
     assert status.pop("BirdNET 2.4") == loc.localize(DOWNLOADED)
@@ -75,6 +77,16 @@ def test_another_model_directory_is_listed_as_soon_as_it_is_picked(
         loc.localize(DOWNLOADED)
     ]
 
+    monkeypatch.setattr(
+        "birdnet.utils.local_data.get_app_data_path", lambda: tmp_path / "default"
+    )
+
+    _shown, rows, _info = handler(gu.build_settings, "on_model_dir_reset")()
+
+    assert [row[2] for row in rows if row[0] == "BirdNET 2.4"] == [
+        loc.localize(MISSING)
+    ]
+
 
 def test_the_open_button_shows_the_directory_in_use(
     model_directory, handler, monkeypatch
@@ -93,7 +105,7 @@ def test_a_model_that_is_not_downloaded_says_so_where_it_is_chosen(model_directo
     with gr.Blocks():
         model = gu.model_selection(gs.TabState("multi"))
 
-    line = model["refresh_download_note"]["outputs"]
+    (line,) = model["refresh_download_note"]["outputs"]
 
     assert line.value == note(model_store.ACOUSTIC_2_4)
     assert "77 MB" in line.value
@@ -116,11 +128,11 @@ def test_the_note_goes_once_the_model_is_there(model_directory):
 
     refresh = model["refresh_download_note"]["fn"]
 
-    assert refresh(gu.USE_BIRDNET_2_4)["visible"]
+    assert refresh(gu.USE_BIRDNET_2_4, None)[0]["visible"]
 
     put_acoustic_2_4(model_directory)
 
-    assert not refresh(gu.USE_BIRDNET_2_4)["visible"]
+    assert not refresh(gu.USE_BIRDNET_2_4, None)[0]["visible"]
     assert not model["updates_for_model"](gu.USE_BIRDNET_2_4, None)[-1]["visible"]
 
 
@@ -131,10 +143,60 @@ def test_a_downloaded_model_is_chosen_without_a_note(model_directory):
     with gr.Blocks():
         model = gu.model_selection(gs.TabState("multi"))
 
-    line = model["refresh_download_note"]["outputs"]
+    (line,) = model["refresh_download_note"]["outputs"]
 
     assert not line.visible
     assert not line.value
+
+
+def test_a_location_filter_says_when_its_model_is_not_downloaded(
+    model_directory, monkeypatch
+):
+    settings.update_tab_settings("multi", {"model_selection_radio": gu.USE_BIRDNET_2_4})
+
+    with gr.Blocks() as demo:
+        _, species, model = gu.sample_species_model_settings(gs.TabState("multi"))
+
+    line = species["location_download_note"]
+    for_model = model["updates_for_model"]
+
+    assert line.value == note(model_store.GEO_2_4)
+    assert "46 MB" in line.value
+    assert for_model(gu.USE_BIRDNET_3_0, None)[-1]["value"] == note(model_store.GEO_3_0)
+    assert not for_model(gu.USE_PERCH, None)[-1]["visible"]
+    assert len(for_model(gu.USE_PERCH, None)) == len(model["model_outputs"])
+    assert [
+        line in event.outputs
+        for event in demo.fns.values()
+        if _name(event) == "on_model_selection_change"
+    ] == [True]
+
+    monkeypatch.setitem(model_store._PROBES, model_store.GEO_2_4, lambda: (True, 1))
+
+    assert not for_model(gu.USE_BIRDNET_2_4, None)[-1]["visible"]
+
+
+def test_a_classifier_filters_by_location_with_the_geo_model_of_its_version(
+    model_directory, monkeypatch
+):
+    from birdnet_analyzer import model_utils
+
+    monkeypatch.setattr(
+        model_utils,
+        "classifier_info",
+        lambda file, **_: SimpleNamespace(version=file.partition("-")[0]),
+    )
+
+    with gr.Blocks():
+        _, _species, model = gu.sample_species_model_settings(gs.TabState("multi"))
+
+    refresh = model["refresh_download_note"]["fn"]
+
+    assert [
+        refresh(gu.CUSTOM_CLASSIFIER, file)[-1]["value"]
+        for file in ("2.4-based.tflite", "3.0-based.tflite")
+    ] == [note(model_store.GEO_2_4), note(model_store.GEO_3_0)]
+    assert not refresh(gu.CUSTOM_CLASSIFIER, None)[-1]["visible"]
 
 
 def test_the_training_tab_counts_the_export_model_too(model_directory, handler):

@@ -22,6 +22,24 @@ def put_acoustic_2_4(directory) -> None:
         file.truncate(models["fp32"].file_size)
 
 
+def put_acoustic_3_0(directory) -> None:
+    """Fills ``directory`` the way a download of the BirdNET 3.0 ONNX model does."""
+    from birdnet.acoustic.models.v3_0.onnx import AcousticOnnxDownloaderV3_0, models
+    from birdnet.utils.local_data import get_birdnet_app_data_folder
+
+    model, labels = (
+        directory / path.relative_to(get_birdnet_app_data_folder())
+        for path in AcousticOnnxDownloaderV3_0._get_paths("fp32")
+    )
+    labels.mkdir(parents=True)
+
+    for language in AcousticOnnxDownloaderV3_0.AVAILABLE_LANGUAGES:
+        (labels / f"{language}.txt").write_text("")
+
+    with open(model, "wb") as file:
+        file.truncate(models["fp32"].file_size)
+
+
 def put_labels_2_4(directory) -> None:
     from birdnet.acoustic.models.v2_4.tf import AcousticTFDownloaderV2_4
 

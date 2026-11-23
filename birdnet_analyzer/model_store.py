@@ -131,6 +131,11 @@ def acoustic_key(version: str) -> str:
     return ACOUSTIC_3_0 if version == "3.0" else ACOUSTIC_2_4
 
 
+def geo_key(version: str) -> str:
+    """The geo model a location filter uses with the acoustic model ``version``."""
+    return GEO_2_4 if version == "2.4" else GEO_3_0
+
+
 def training_keys(version: str) -> tuple[str, str]:
     """The downloads a training on ``version`` uses: embeddings, then the export."""
     if version == "3.0":
@@ -148,17 +153,25 @@ def missing_download_size(*keys: str) -> int:
     )
 
 
-def directory_size(directory: str) -> int:
-    """The bytes of every file below ``directory``."""
+_LIBRARY_FOLDERS = ("acoustic-models", "geo-models", "taxonomy-v3")
+
+
+def stored_size(directory: str) -> int:
+    """The bytes of the birdnet library's files in the model directory.
+
+    Only its own folders are read: the directory is the user's choice and can
+    be one with a lot else in it.
+    """
     import os
 
     total = 0
 
-    for root, _dirs, names in os.walk(directory):
-        for name in names:
-            try:
-                total += os.path.getsize(os.path.join(root, name))
-            except OSError:
-                continue
+    for folder in _LIBRARY_FOLDERS:
+        for root, _dirs, names in os.walk(os.path.join(directory, folder)):
+            for name in names:
+                try:
+                    total += os.path.getsize(os.path.join(root, name))
+                except OSError:
+                    continue
 
     return total

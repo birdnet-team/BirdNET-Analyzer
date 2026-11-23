@@ -3,7 +3,7 @@
 import pytest
 
 from birdnet_analyzer import model_store, settings
-from tests.models import put_acoustic_2_4, put_labels_2_4
+from tests.models import put_acoustic_2_4, put_acoustic_3_0, put_labels_2_4
 
 # What the Windows installer verifies before it hands over the model files of an
 # installation of 2.4.0 or older, and the note it writes beside the SavedModel.
@@ -39,6 +39,17 @@ def test_a_model_counts_as_downloaded_once_its_files_are_there(model_directory):
     assert model_store.model_files(model_store.ACOUSTIC_2_4).downloaded
     assert model_store.missing_download_size(model_store.ACOUSTIC_2_4) == 0
     assert not model_store.model_files(model_store.TRAINING_2_4).downloaded
+
+
+def test_the_default_model_counts_as_downloaded_once_its_files_are_there(
+    model_directory,
+):
+    assert not model_store.model_files(model_store.ACOUSTIC_3_0).downloaded
+
+    put_acoustic_3_0(model_directory)
+
+    assert model_store.model_files(model_store.ACOUSTIC_3_0).downloaded
+    assert not model_store.model_files(model_store.TRAINING_3_0).downloaded
 
 
 def test_a_training_downloads_the_embeddings_model_and_the_export_model(

@@ -79,6 +79,7 @@ _SPECIES_KEYS = Literal[
     "sf_thresh_number",
     "yearlong_checkbox",
     "selected_classifier_state",
+    "location_download_note",
 ]
 
 _SETTINGS_TAB_ID = "settings"
@@ -365,7 +366,7 @@ def _stored_model_rows() -> list[list[str]]:
 
 
 def _stored_models_info() -> str:
-    size = model_store.directory_size(_effective_model_directory())
+    size = model_store.stored_size(_effective_model_directory())
 
     return loc.localize("settings-tab-models-info").format(size=_format_bytes(size))
 
@@ -1053,8 +1054,14 @@ def sample_species_model_settings(state: TabState, opened=True):
         is_perch=is_perch,
         sensitivity_enabled=model_supports_sensitivity(model_choice),
     )
-    species_settings = species_lists(state, opened=opened, is_perch=is_perch)
-    model_settings = model_selection(state, opened=opened)
+    species_settings = species_lists(
+        state, opened=opened, is_perch=is_perch, model_choice=model_choice
+    )
+    model_settings = model_selection(
+        state,
+        opened=opened,
+        location_note=species_settings["location_download_note"],
+    )
 
     def on_model_change(value, species_choice, overlap, current_locale):
         is_perch = value == USE_PERCH
@@ -1719,8 +1726,32 @@ def _model_choice_files(model_choice: str) -> tuple[str, ...]:
     return (key,) if key else ()
 
 
+def _location_filter_files(
+    model_choice: str, classifier_file: str | None
+) -> tuple[str, ...]:
+    """The geo model a location filter loads for the selected model."""
+    if is_birdnet_model(model_choice):
+        return (model_store.geo_key(model_choice),)
+
+    if model_choice != CUSTOM_CLASSIFIER or classifier_file is None:
+        return ()
+
+    from birdnet_analyzer import model_utils
+
+    try:
+        version = model_utils.classifier_info(classifier_file).version
+    except (OSError, ValueError):
+        return ()
+
+    return (model_store.geo_key(version),)
+
+
 def _note_update(note: str) -> dict:
     return gr.update(value=note, visible=bool(note))
+
+
+def _download_note_md(note: str) -> gr.Markdown:
+    return gr.Markdown(note, visible=bool(note), elem_classes="model-download-note")
 
 
 def _enclosing_tab() -> gr.Tab | None:
@@ -1745,12 +1776,16 @@ def download_note_line(
     def refresh_download_note(choice: str):
         return _note_update(download_note(*files(choice)))
 
-    note = download_note(*files(selector.value))
-    line = gr.Markdown(note, visible=bool(note), elem_classes="model-download-note")
+    line = _download_note_md(download_note(*files(selector.value)))
+
+    return line, _refreshed_with_its_tab(refresh_download_note, selector, line)
+
+
+def _refreshed_with_its_tab(fn, inputs, outputs) -> dict:
     refresh = {
-        "fn": refresh_download_note,
-        "inputs": selector,
-        "outputs": line,
+        "fn": fn,
+        "inputs": inputs,
+        "outputs": outputs,
         "show_progress": "hidden",
     }
     tab = _enclosing_tab()
@@ -1758,22 +1793,26 @@ def download_note_line(
     if tab is not None:
         tab.select(**refresh)
 
-    return line, refresh
+    return refresh
 
 
-def _facts_updates(
-    facts: list[tuple[str, str]], warning: str | None, note: str = ""
-) -> list:
+def _facts_updates(facts: list[tuple[str, str]], warning: str | None) -> list:
     return [
         gr.update(visible=bool(facts)),
         *(gr.update(label=caption, value=value) for caption, value in facts),
         *([gr.skip()] * (_FACT_COUNT - len(facts))),
         gr.update(value=warning or "", visible=warning is not None),
-        _note_update(note),
     ]
 
 
-def model_selection(state: TabState, opened=True):
+def model_selection(
+    state: TabState, opened=True, location_note: gr.Markdown | None = None
+):
+    """Creates the gradio accordion for the model selection.
+
+    ``location_note`` is the line that says when a location filter downloads its
+    model, which depends on the model chosen here.
+    """
     with (
         gr.Group(),
         gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened),
@@ -1831,7 +1870,10 @@ def model_selection(state: TabState, opened=True):
 
                     state.remember({CLASSIFIER_FILE_KEY: file})
                     labels = utils.read_classifier_labels(file)
-                    facts = _facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file))
+                    facts = [
+                        *_facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file)),
+                        *note_updates(CUSTOM_CLASSIFIER, file),
+                    ]
 
                     if labels is None:
                         gr.Warning(
@@ -1873,10 +1915,30 @@ def model_selection(state: TabState, opened=True):
             visible=warning is not None,
             elem_classes="model-facts-warning",
         )
-        download_note_md, refresh_download_note = download_note_line(
-            model_selection_radio, _model_choice_files
+        note_lines = [
+            _download_note_md(download_note(*_model_choice_files(selected_model))),
+            *([] if location_note is None else [location_note]),
+        ]
+
+        def note_updates(choice: str, classifier: str | None) -> list[dict]:
+            """One update per ``note_lines``."""
+            notes = [download_note(*_model_choice_files(choice))]
+
+            if location_note is not None:
+                notes.append(download_note(*_location_filter_files(choice, classifier)))
+
+            return [_note_update(note) for note in notes]
+
+        @gui_runtime_error_handler
+        def refresh_download_note(choice: str, classifier: str | None):
+            return note_updates(choice, classifier)
+
+        refresh_download_note = _refreshed_with_its_tab(
+            refresh_download_note,
+            [model_selection_radio, selected_classifier_state],
+            note_lines,
         )
-        facts_outputs = [facts_row, *fact_boxes, facts_warning, download_note_md]
+        facts_outputs = [facts_row, *fact_boxes, facts_warning, *note_lines]
 
         # Shown: restrict locale to the model's languages. Hidden (Perch/custom): offer
         # the union so a saved locale from another version isn't dropped by persist.
@@ -1921,10 +1983,8 @@ def model_selection(state: TabState, opened=True):
         return [
             gr.update(visible=custom),
             gr.update(visible=labels is not None),
-            *_facts_updates(
-                *_model_facts(choice, classifier),
-                download_note(*_model_choice_files(choice)),
-            ),
+            *_facts_updates(*_model_facts(choice, classifier)),
+            *note_updates(choice, classifier),
         ]
 
     @gui_runtime_error_handler
@@ -1984,13 +2044,15 @@ def _read_species_rows(file: str) -> list[list[str]]:
 
 
 def species_lists(
-    state: TabState, opened=True, is_perch=False
+    state: TabState, opened=True, is_perch=False, model_choice: str | None = None
 ) -> dict[_SPECIES_KEYS, gr.components.Component]:
     """Creates the gradio accordion for species list selection.
     Args:
         state: The persisted settings of the tab the accordion belongs to.
         opened: If True the accordion is open on init.
         is_perch: If True the choices are limited to what the Perch model supports.
+        model_choice: The selected model, which decides the geo model a location
+            filter loads. A classifier's is known once its file was inspected.
     Returns:
         A dict with the created elements.
     """
@@ -2022,6 +2084,9 @@ def species_lists(
                     yearlong_checkbox,
                     _,
                 ) = species_list_coordinates(state)
+                location_download_note = _download_note_md(
+                    download_note(*_location_filter_files(model_choice or "", None))
+                )
 
             species_file = state.get_file(SPECIES_FILE_KEY)
 
@@ -2100,6 +2165,7 @@ def species_lists(
         "week_number": week_number,
         "sf_thresh_number": sf_thresh_number,
         "yearlong_checkbox": yearlong_checkbox,
+        "location_download_note": location_download_note,
     }
 
 
