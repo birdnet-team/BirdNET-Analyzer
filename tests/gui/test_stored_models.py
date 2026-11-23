@@ -258,6 +258,23 @@ def test_the_note_is_brought_up_to_date_after_a_run(appdir, build, run):
     assert run in ran_before
 
 
+@pytest.mark.parametrize(
+    "build", [train.build_train_tab, embeddings.build_embeddings_tab]
+)
+def test_the_note_follows_the_choice_it_depends_on(appdir, build):
+    with gr.Blocks() as demo:
+        build()
+
+    triggers = {
+        trigger
+        for event in demo.fns.values()
+        if _name(event) == "refresh_download_note"
+        for _target, trigger in event.targets
+    }
+
+    assert "change" in triggers
+
+
 def test_the_note_is_brought_up_to_date_when_its_tab_is_selected(appdir):
     with gr.Blocks() as demo:
         single_file.build_single_analysis_tab()

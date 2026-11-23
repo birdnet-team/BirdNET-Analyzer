@@ -89,12 +89,15 @@ downloaded the first time it is used (about 80 MB), like every other model.
 **Consequence.** An analysis with the default model needs no internet connection.
 The first analysis with BirdNET 2.4 does, unless the model is there already: the
 settings tab lists the models and whether they are on the computer, and a line below
-the model choice says when the first use is going to download one.
+the model choice says when the first use is going to download one. A location filter
+with BirdNET 2.4 uses the geolocation model of 2.4, a download of its own (about
+46 MB), which the location settings point out the same way.
 
 **What to do.** Nothing, with an internet connection. When the Windows installer
-replaces an installation of v2.4.0 or older, it keeps that installation's BirdNET 2.4
-model, so BirdNET 2.4 works at once and offline. For computers without internet access
-see :ref:`installation`.
+replaces an installation of v2.4.0, it keeps that installation's BirdNET 2.4 model,
+so analyses with BirdNET 2.4 need no download. The geolocation model of 2.4 is not
+among the files it can keep: the first analysis with BirdNET 2.4 and a location
+still downloads it. For computers without internet access see :ref:`installation`.
 
 
 Custom species lists and the 3.0 taxonomy
