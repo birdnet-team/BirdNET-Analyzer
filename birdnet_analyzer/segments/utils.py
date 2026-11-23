@@ -38,6 +38,8 @@ _LEGACY_KALEIDOSCOPE_COLUMNS = (
     "scientific_name",
     "confidence",
 )
+# The R table of the 1.x releases.
+_R_TABLE_FILENAME = "BirdNET_RTable.csv"
 
 
 def _detect_rtype(line: str):
@@ -47,7 +49,7 @@ def _detect_rtype(line: str):
         line: First line of text.
 
     Returns:
-        Either "table", "kaleidoscope", "csv" or "audacity".
+        Either "table", "kaleidoscope", "csv", "r" or "audacity".
     """
     if line.lower().startswith("selection"):
         return "table"
@@ -57,6 +59,9 @@ def _detect_rtype(line: str):
 
     if line.lower().startswith("start (s)"):
         return "csv"
+
+    if line.lower().startswith("filepath"):
+        return "r"
 
     return "audacity"
 
@@ -146,6 +151,21 @@ def _parse_csv_line(
     )
 
 
+def _parse_r_line(
+    line: str, header_mapping: dict, combined: bool
+) -> tuple[str, float, float, str, float]:
+    d = _split_csv_line(line)
+    afile = _native_path(d[header_mapping["filepath"]]) if combined else ""
+
+    return (
+        afile,
+        float(d[header_mapping["start"]]),
+        float(d[header_mapping["end"]]),
+        d[header_mapping["common_name"]],
+        float(d[header_mapping["confidence"]]),
+    )
+
+
 def _parse_audacity_line(
     line: str, header_mapping: dict, combined: bool
 ) -> tuple[str, float, float, str, float]:
@@ -162,6 +182,7 @@ _LINE_PARSERS = {
     "kaleidoscope": lambda line, header_mapping, combined: _parse_kaleidoscope_line(
         line, header_mapping
     ),
+    "r": _parse_r_line,
     "audacity": _parse_audacity_line,
 }
 
@@ -244,6 +265,9 @@ def parse_folders(
         data["combined"] = {"isCombinedFile": True, "result": rfile}
     elif os.path.exists(os.path.join(rpath, cfg.OUTPUT_KALEIDOSCOPE_FILENAME)):
         rfile = os.path.join(rpath, cfg.OUTPUT_KALEIDOSCOPE_FILENAME)
+        data["combined"] = {"isCombinedFile": True, "result": rfile}
+    elif os.path.exists(os.path.join(rpath, _R_TABLE_FILENAME)):
+        rfile = os.path.join(rpath, _R_TABLE_FILENAME)
         data["combined"] = {"isCombinedFile": True, "result": rfile}
     else:
         for root, _, files in os.walk(apath):

@@ -51,7 +51,10 @@ per tab exposing `build_*_tab`, assembled in `gui/__init__.py:main`.
 `settings.APPDIR` is a per-OS user data directory (`BirdNET-Analyzer-GUI`) holding
 GUI settings, tab state (`state.json`) and the logs — **not** the checkout. GUI
 behaviour can therefore differ between machines because of leftover local state, and
-deleting that directory is how you test a first-run experience.
+deleting that directory is how you test a first-run experience. Except in a checkout
+whose `birdnet_analyzer` folder still holds the gitignored `gui-settings.json` or
+`state.json` of an earlier version: the GUI copies them into an empty `APPDIR` at
+start, so delete those as well.
 
 ## Conventions that are easy to get wrong
 

@@ -357,6 +357,14 @@ def test_analyze_rejects_a_single_coordinate(
     mock_run_inference.assert_not_called()
 
 
+def test_a_raven_model_folder_as_classifier_is_refused_with_what_to_pass(tmp_path):
+    raven_model = tmp_path / "Custom"
+    (raven_model / "labels").mkdir(parents=True)
+
+    with pytest.raises(ValueError, match=r"is a folder.*\.tflite file"):
+        analyze(SOUNDSCAPE, str(tmp_path / "out"), classifier=str(raven_model))
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_rejects_perch_with_a_custom_classifier(mock_run_inference, env):
 

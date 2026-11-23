@@ -864,6 +864,43 @@ def set_setting(key, value):
         _write_json_atomic(GUI_SETTINGS_PATH, settings_dict)
 
 
+# Where 1.x kept the GUI's settings and state, and 2.x when not frozen. The Windows
+# installer puts those of an installation it replaces there as well.
+EARLIER_SETTINGS_DIR = SCRIPT_DIR
+
+
+def adopt_earlier_settings() -> None:
+    """Takes over the GUI settings and state an earlier version left behind.
+
+    Each file only while the user has none of their own. The file stays where it is, for
+    the other users of an installation for all users.
+    """
+    for name, path in (
+        ("gui-settings.json", GUI_SETTINGS_PATH),
+        ("state.json", STATE_SETTINGS_PATH),
+    ):
+        earlier = os.path.join(EARLIER_SETTINGS_DIR, name)
+
+        if os.path.exists(path) or not os.path.isfile(earlier):
+            continue
+
+        if values := _read_json(earlier):
+            # The classifier and the training cache 1.x remembered by file, the
+            # dialogs start in a folder.
+            values = {
+                key: os.path.dirname(value)
+                if isinstance(value, str)
+                and value.lower().endswith((".tflite", ".npz"))
+                else value
+                for key, value in values.items()
+            }
+
+            try:
+                _write_json_atomic(path, values)
+            except OSError as e:
+                write_error_log(e)
+
+
 def theme():
     options = ("light", "dark")
     current_theme = get_setting("theme", "light")

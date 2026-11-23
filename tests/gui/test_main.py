@@ -111,8 +111,7 @@ def gui_main(monkeypatch):
     logs._remove_installed_handlers()
 
 
-def test_the_window_opens_in_the_language_of_the_settings(monkeypatch, gui_main):
-    settings.set_setting("language-id", "de")
+def opened_labels(monkeypatch) -> list:
     seen = []
     monkeypatch.setattr(
         gu,
@@ -121,10 +120,61 @@ def test_the_window_opens_in_the_language_of_the_settings(monkeypatch, gui_main)
             [gu._label(gu.CUSTOM_SPECIES), sfa.HEADER_CONFIDENCE_LBL]
         ),
     )
+    return seen
+
+
+def test_the_window_opens_in_the_language_of_the_settings(monkeypatch, gui_main):
+    settings.set_setting("language-id", "de")
+    seen = opened_labels(monkeypatch)
 
     gui_main()
 
     assert seen == [labels("de")]
+
+
+def leave_earlier_settings(language: str, state: dict):
+    earlier = Path(settings.EARLIER_SETTINGS_DIR)
+    (earlier / "gui-settings.json").write_text(
+        json.dumps({"language-id": language}, indent=4), encoding="utf-8"
+    )
+    (earlier / "state.json").write_text(json.dumps(state, indent=4), encoding="utf-8")
+
+
+def test_the_window_opens_with_the_language_and_folders_of_an_earlier_version(
+    monkeypatch, gui_main
+):
+    leave_earlier_settings(
+        "de",
+        {
+            "batch-analysis-data-dir": "D:/recordings",
+            "custom_classifier_file": "D:/models/Custom.tflite",
+        },
+    )
+    seen = opened_labels(monkeypatch)
+
+    gui_main()
+
+    assert seen == [labels("de")]
+    assert settings.get_state("batch-analysis-data-dir") == "D:/recordings"
+    assert settings.get_state("custom_classifier_file") == "D:/models"
+    assert sorted(os.listdir(settings.EARLIER_SETTINGS_DIR)) == [
+        "gui-settings.json",
+        "state.json",
+    ]
+
+
+def test_the_users_own_settings_win_over_those_of_an_earlier_version(
+    monkeypatch, gui_main
+):
+    leave_earlier_settings("de", {"batch-analysis-data-dir": "D:/recordings"})
+    settings.set_setting("language-id", "fr")
+    settings.set_state("batch-analysis-data-dir", "E:/field")
+    seen = opened_labels(monkeypatch)
+
+    gui_main()
+
+    assert seen == [labels("fr")]
+    assert settings.get_state("batch-analysis-data-dir") == "E:/field"
 
 
 def test_the_window_opens_despite_a_corrupted_settings_file(monkeypatch, gui_main):

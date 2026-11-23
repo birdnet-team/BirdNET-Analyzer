@@ -160,9 +160,10 @@ def analyze(
         returns those of the files it analyzed, or None if none were left.
     Raises:
         ValueError: If only one of ``lat`` and ``lon`` is given, they are combined
-            with ``slist``, ``classifier`` is combined with ``model`` "perch",
-            ``lat``, ``lon``, ``week`` or ``min_conf`` is out of range, ``model`` is
-            unknown, ``audio_input`` does not exist or holds no supported audio file,
+            with ``slist``, ``classifier`` is a folder or combined with ``model``
+            "perch", ``lat``, ``lon``, ``week`` or ``min_conf`` is out of range,
+            ``model`` is unknown, ``audio_input`` does not exist or holds no supported
+            audio file,
             or none of the species in an ``slist`` file (with
             ``strict_species_list``, not all of them) are in the model.
         FileNotFoundError: If the ``slist`` file or ``classifier`` does not exist.
@@ -187,6 +188,13 @@ def analyze(
 
     if classifier and model == "perch":
         raise ValueError("Select either Perch or a custom classifier, not both.")
+
+    if classifier and os.path.isdir(classifier):
+        raise ValueError(
+            f"{classifier} is a folder, such as the Raven model of a classifier. "
+            "Pass the classifier's .tflite file instead; training writes one with "
+            "the tflite model format."
+        )
 
     if (lat is None) != (lon is None):
         raise ValueError(
