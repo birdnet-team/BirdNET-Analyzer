@@ -531,7 +531,7 @@ def analyzer_parser():
         "--merge_consecutive",
         type=int,
         default=1,
-        help="Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. We use the mean of the top 3 scores from all consecutive detections for merging.",
+        help="Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. A merged detection has the mean score of the detections it was made of.",
     )
     parser.add_argument(
         "--use_perch",

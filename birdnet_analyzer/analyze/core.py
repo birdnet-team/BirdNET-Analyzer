@@ -518,6 +518,11 @@ def result_dataframe(predictions, merge_consecutive: int) -> pd.DataFrame:
     )
 
 
+# Times are float32 products of a segment index and the step; a hundredth of a
+# step is far above their rounding and far below a missing segment.
+_MERGE_TOLERANCE = 0.01
+
+
 def _merge_consecutive_segments(
     df: pd.DataFrame, merge_consecutive: int, hop_size: float = 3.0
 ) -> pd.DataFrame:
@@ -534,9 +539,9 @@ def _merge_consecutive_segments(
         ``merge_consecutive`` rows; runs shorter than it are still merged.
     hop_size : float, optional
         The step (in seconds) from one segment to the next, by default 3.0. A row
-        follows the one before it when it starts no later than half a step after
-        that one ends: overlapping and touching segments are consecutive, a
-        segment without a detection in between ends the run.
+        follows the one before it when it starts where that one ends, or before,
+        as in v2.4.0: touching and overlapping segments are consecutive. The step
+        only sets how much rounding of the times is allowed for.
     Returns
     -------
     pandas.DataFrame
@@ -583,7 +588,7 @@ def _merge_consecutive_segments(
     run_break[1:] = ~(
         (inputs[1:] == inputs[:-1])
         & (species[1:] == species[:-1])
-        & (start[1:] - end[:-1] <= hop_size / 2)
+        & (start[1:] - end[:-1] <= hop_size * _MERGE_TOLERANCE)
     )
     run_start = np.maximum.accumulate(np.where(run_break, rows, 0))
     firsts = np.flatnonzero((rows - run_start) % merge_consecutive == 0)
