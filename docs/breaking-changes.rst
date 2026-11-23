@@ -302,8 +302,9 @@ Result and parameters file formats
   ``BirdNET_SelectionTable.list.txt`` is written. As before, the times of a combined
   table run on across all analysed files in path order, including those without
   detections. The ``Species Code`` is found by the scientific name, in every label
-  language; a species the eBird list of the 2.4 model does not have, as many of the 3.0
-  model, carries its label there.
+  language, and by the English name where the 3.0 model uses a newer scientific name.
+  A species the eBird list of the 2.4 model does not have, as close to half of the 3.0
+  model's, carries its label there.
 * Confidences are written with all their digits (``0.81405586``); v2.4.0 rounded them
   to four decimals.
 * With ``--additional_columns``, ``lat``, ``lon`` and ``week`` are empty without a

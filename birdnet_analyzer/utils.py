@@ -389,22 +389,35 @@ def load_codes() -> dict[str, str]:
 
 
 @cache
-def _codes_by_scientific_name() -> dict[str, str]:
-    return {
-        label.partition("_")[0]: code
-        for label, code in load_codes().items()
-        if "_" in label
+def _codes_by_name() -> tuple[dict[str, str], dict[str, str]]:
+    by_scientific_name: dict[str, str] = {}
+    by_common_name: dict[str, set[str]] = {}
+
+    for label, code in load_codes().items():
+        scientific_name, separator, common_name = label.partition("_")
+
+        if separator:
+            by_scientific_name[scientific_name] = code
+            by_common_name.setdefault(common_name.casefold(), set()).add(code)
+
+    return by_scientific_name, {
+        name: codes.pop() for name, codes in by_common_name.items() if len(codes) == 1
     }
 
 
 def species_code(label: str) -> str:
     """The eBird code of a ``Scientific name_Common name`` label.
 
-    Found by the scientific name: the common name differs between the label
-    languages and between the model versions. A label without a code is returned
-    as it is.
+    Found by the scientific name, which is the same in every label language, and
+    for a species whose scientific name has changed since by its English name. A
+    label without a code is returned as it is.
     """
-    return _codes_by_scientific_name().get(label.partition("_")[0], label)
+    scientific_name, _, common_name = label.partition("_")
+    by_scientific_name, by_common_name = _codes_by_name()
+
+    return by_scientific_name.get(scientific_name) or by_common_name.get(
+        common_name.casefold(), label
+    )
 
 
 def warn_about_location_minus_one(lat, lon) -> None:

@@ -29,7 +29,7 @@ from birdnet_analyzer.analyze.core import (
 from birdnet_analyzer.analyze.resume import RunMetadata
 from birdnet_analyzer.cli import analyzer_parser
 from birdnet_analyzer.params import load_analysis_params
-from birdnet_analyzer.utils import _codes_by_scientific_name, load_codes
+from birdnet_analyzer.utils import _codes_by_name, load_codes
 
 SOUNDSCAPE = "birdnet_analyzer/example/soundscape.wav"
 
@@ -1013,7 +1013,7 @@ def test_a_split_run_parses_the_species_codes_once(tmp_path, monkeypatch):
 
     monkeypatch.setattr(json, "load", counting_load)
     load_codes.cache_clear()
-    _codes_by_scientific_name.cache_clear()
+    _codes_by_name.cache_clear()
 
     _split(detections, tmp_path / "in", tmp_path / "out", ["table"])
 
@@ -1060,10 +1060,11 @@ def test_split_tables_write_every_result_type_for_each_analysed_input(
 def test_the_selection_table_has_the_species_code_in_any_label_language(
     mock_run_inference, tmp_path
 ):
-    detections = _detections_in_three_files(tmp_path / "in").iloc[:3].copy()
+    detections = _detections_in_three_files(tmp_path / "in").iloc[:4].copy()
     detections["species_name"] = [
         "Lanius collurio_Neunt" + chr(0xF6) + "ter",
         "Turdus merula_Common Blackbird",
+        "Astur cooperii_Cooper" + chr(39) + "s Hawk",
         "Nomen nescio_No such species",
     ]
     _mock_result(mock_run_inference, detections)
@@ -1074,6 +1075,7 @@ def test_the_selection_table_has_the_species_code_in_any_label_language(
     assert table["Species Code"].tolist() == [
         "rebshr1",
         "eurbla",
+        "coohaw",
         "Nomen nescio_No such species",
     ]
 
