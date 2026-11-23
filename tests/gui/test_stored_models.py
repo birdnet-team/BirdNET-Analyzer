@@ -175,3 +175,17 @@ def test_the_note_is_brought_up_to_date_after_a_run(appdir, build, run):
             earlier = demo.fns[earlier].trigger_after
 
     assert run in ran_before
+
+
+def test_the_note_is_brought_up_to_date_when_its_tab_is_selected(appdir):
+    with gr.Blocks() as demo:
+        single_file.build_single_analysis_tab()
+
+    triggers = {
+        trigger
+        for event in demo.fns.values()
+        if _name(event) == "refresh_download_note"
+        for _target, trigger in event.targets
+    }
+
+    assert "select" in triggers
