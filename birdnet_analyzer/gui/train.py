@@ -7,7 +7,7 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import utils
+from birdnet_analyzer import model_store, utils
 from birdnet_analyzer.gui.presets import PresetControls, load_train_params
 from birdnet_analyzer.gui.state import TabState
 
@@ -385,6 +385,10 @@ def build_train_tab() -> None:
                 label=loc.localize("training-tab-base-model-radio-label"),
                 info=loc.localize("training-tab-base-model-radio-info"),
             )
+            _, refresh_download_note = gu.download_note_line(
+                base_model_radio, model_store.training_keys
+            )
+            base_model_radio.change(**refresh_download_note)
 
         with gr.Row():
             cache_file_state = gr.State()
@@ -798,7 +802,7 @@ def build_train_tab() -> None:
                 threads_number,
             ],
             outputs=[train_history_plot, metrics_table],
-        )
+        ).then(**refresh_download_note)
 
         preset_controls.wire(state)
 

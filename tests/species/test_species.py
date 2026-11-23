@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -28,6 +29,20 @@ def test_species_cli(
         "Species1",
         "Species2",
     ]
+
+
+@patch("birdnet_analyzer.species.utils.get_species_list", new=lambda **_: ["Species1"])
+def test_the_no_location_values_of_v2_4_0_are_pointed_out(tmp_path, caplog):
+    with caplog.at_level(logging.WARNING):
+        species(str(tmp_path), lat=-1, lon=-1)
+
+    assert "meant that no location is set" in caplog.text
+    caplog.clear()
+
+    with caplog.at_level(logging.WARNING):
+        species(str(tmp_path), lat=-1, lon=12.9)
+
+    assert "no location" not in caplog.text
 
 
 @pytest.mark.parametrize("coordinate", [{"lat": 50.83}, {"lon": 12.92}])

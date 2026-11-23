@@ -90,7 +90,8 @@ def apply_params_file_defaults(parser, loader, argv=None):
     except ValueError as e:
         parser.error(str(e))
 
-    dests = {action.dest for action in parser._actions}
+    # The model has no argument of its own: the model options set it.
+    dests = {action.dest for action in parser._actions} | set(parser._defaults)
     parser.set_defaults(**{key: value for key, value in values.items() if key in dests})
 
     return values
@@ -380,6 +381,13 @@ def min_conf_args():
     return p
 
 
+def _locale(value: str) -> str:
+    """Takes the spellings of v2.4.0: any case, and ``en`` for its English."""
+    value = value.lower()
+
+    return MODEL_LANGUAGE_EN_US if value == "en" else value
+
+
 def locale_args(languages=None):
     """Argument parser for the --locale of translated species common names.
 
@@ -396,6 +404,7 @@ def locale_args(languages=None):
         "-l",
         "--locale",
         default=cast("str", MODEL_LANGUAGE_EN_US),
+        type=_locale,
         choices=locale_choices,
         help="Locale for translated species common names.",
     )
@@ -507,6 +516,7 @@ def analyzer_parser():
     parser.add_argument(
         "-c",
         "--classifier",
+        action=set_model_action("birdnet"),
         help="Path to custom trained classifier. Its species names come from its labels file, so --locale is ignored. --lat and --lon keep only its species that the geo model predicts there, or, with a warning, all of them if it predicts none.",
     )
     parser.add_argument(
@@ -522,7 +532,7 @@ def analyzer_parser():
         "--merge_consecutive",
         type=int,
         default=1,
-        help="Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. We use the mean of the top 3 scores from all consecutive detections for merging.",
+        help="Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. A merged detection has the mean score of the detections it was made of.",
     )
     parser.add_argument(
         "--use_perch",

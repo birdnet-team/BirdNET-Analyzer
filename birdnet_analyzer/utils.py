@@ -1,5 +1,6 @@
 """Module containing common function."""
 
+import logging
 import os
 import warnings
 from contextlib import suppress
@@ -385,6 +386,48 @@ def load_codes() -> dict[str, str]:
 
     with open(CODES_FILE, encoding="utf-8") as cfile:
         return json.load(cfile)
+
+
+@cache
+def _codes_by_name() -> tuple[dict[str, str], dict[str, str]]:
+    by_scientific_name: dict[str, str] = {}
+    by_common_name: dict[str, set[str]] = {}
+
+    for label, code in load_codes().items():
+        scientific_name, separator, common_name = label.partition("_")
+
+        if separator:
+            by_scientific_name[scientific_name] = code
+            by_common_name.setdefault(common_name.casefold(), set()).add(code)
+
+    return by_scientific_name, {
+        name: codes.pop() for name, codes in by_common_name.items() if len(codes) == 1
+    }
+
+
+def species_code(label: str) -> str:
+    """The eBird code of a ``Scientific name_Common name`` label.
+
+    Found by the scientific name, which is the same in every label language, and
+    for a species whose scientific name has changed since by its English name. A
+    label without a code is returned as it is.
+    """
+    scientific_name, _, common_name = label.partition("_")
+    by_scientific_name, by_common_name = _codes_by_name()
+
+    return by_scientific_name.get(scientific_name) or by_common_name.get(
+        common_name.casefold(), label
+    )
+
+
+def warn_about_location_minus_one(lat, lon) -> None:
+    """Up to v2.4.0, latitude and longitude -1 meant that no location is set."""
+    if lat == -1 and lon == -1:
+        logging.getLogger(__name__).warning(
+            "Latitude -1 and longitude -1 are a place in the Gulf of Guinea. Up to "
+            "version 2.4.0 they meant that no location is set: leave both out "
+            "for that."
+        )
 
 
 def img2base64(path):

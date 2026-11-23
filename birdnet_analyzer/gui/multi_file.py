@@ -434,7 +434,7 @@ def build_multi_analysis_tab() -> None:
             inputs=resume_status_inputs,
             outputs=resume_status_outputs,
             show_progress="hidden",
-        )
+        ).then(**model_settings["refresh_download_note"])
         pause_batch_analysis_btn.click(
             pause_batch_analysis,
             outputs=pause_batch_analysis_btn,

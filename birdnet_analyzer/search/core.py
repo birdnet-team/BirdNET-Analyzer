@@ -104,6 +104,10 @@ def get_database(database_path) -> SQLiteUSearchDB:
     Raises:
         FileNotFoundError: If `database_path` is not a folder holding a database.
     """
+    from birdnet_analyzer.index_paths import reach_any_path
+
+    reach_any_path()
+
     from perch_hoplite.db import sqlite_usearch_impl
 
     files = (sqlite_usearch_impl.HOPLITE_FILENAME, sqlite_usearch_impl.UINDEX_FILENAME)

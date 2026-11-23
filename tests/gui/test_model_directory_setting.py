@@ -25,12 +25,12 @@ def test_the_settings_tab_switches_the_model_directory_live(
     target = tmp_path / "models"
     monkeypatch.setattr(gu, "select_folder", lambda **_: str(target))
 
-    shown = handler(gu.build_settings, "on_model_dir_select")()
+    shown, _models, _info = handler(gu.build_settings, "on_model_dir_select")()
 
     assert Path(shown).samefile(target)
     assert get_model_path("acoustic", "3.0", "onnx", "fp32").is_relative_to(shown)
 
-    shown = handler(gu.build_settings, "on_model_dir_reset")()
+    shown, _models, _info = handler(gu.build_settings, "on_model_dir_reset")()
 
     assert Path(shown) == get_app_data_path() / "birdnet"
     assert get_model_path("acoustic", "3.0", "onnx", "fp32").is_relative_to(shown)
@@ -59,7 +59,7 @@ def test_the_model_directory_stays_while_a_model_is_in_use(
     assert gu._effective_model_directory() == before
     assert dialogs == []
 
-    assert Path(select()).samefile(target)
+    assert Path(select()[0]).samefile(target)
 
 
 def test_a_task_started_while_the_dialog_is_open_keeps_the_directory(

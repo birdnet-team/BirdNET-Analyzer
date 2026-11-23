@@ -54,6 +54,9 @@ def species(
         )
     else:
         from birdnet_analyzer.species.utils import get_species_list
+        from birdnet_analyzer.utils import warn_about_location_minus_one
+
+        warn_about_location_minus_one(lat, lon)
 
         species_list = get_species_list(
             lat=lat, lon=lon, week=week, threshold=sf_thresh, lang=locale

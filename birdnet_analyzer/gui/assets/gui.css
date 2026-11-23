@@ -166,6 +166,17 @@ footer {
     color: var(--error-text-color);
 }
 
+.block.model-download-note,
+.block.stored-models-info {
+    padding: var(--spacing-sm) var(--spacing-xl);
+}
+
+.block.model-download-note .prose,
+.block.stored-models-info .prose {
+    color: var(--block-info-text-color);
+    font-size: var(--block-info-text-size);
+}
+
 [data-testid="toast-text"] {
     white-space: pre-line;
 }

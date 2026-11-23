@@ -22,7 +22,7 @@ from gradio.context import Context
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
-from birdnet_analyzer import settings, utils
+from birdnet_analyzer import model_store, settings, utils
 from birdnet_analyzer.gui.state import TabState
 
 if TYPE_CHECKING:
@@ -79,6 +79,7 @@ _SPECIES_KEYS = Literal[
     "sf_thresh_number",
     "yearlong_checkbox",
     "selected_classifier_state",
+    "location_download_note",
 ]
 
 _SETTINGS_TAB_ID = "settings"
@@ -316,6 +317,85 @@ def _effective_model_directory() -> str:
     from birdnet.utils.local_data import get_birdnet_app_data_folder
 
     return str(get_birdnet_app_data_folder())
+
+
+_STORED_MODEL_NAMES = {
+    model_store.ACOUSTIC_3_0: "BirdNET 3.0",
+    model_store.ACOUSTIC_2_4: "BirdNET 2.4",
+    model_store.PERCH: "Perch v2",
+    model_store.GEO_3_0: "BirdNET Geomodel 3.0",
+    model_store.GEO_2_4: "BirdNET Geomodel 2.4",
+    model_store.TRAINING_3_0: "BirdNET 3.0 SavedModel",
+    model_store.TRAINING_2_4: "BirdNET 2.4 SavedModel",
+}
+_STORED_MODEL_USES = {
+    model_store.ACOUSTIC_3_0: "settings-tab-models-use-acoustic",
+    model_store.ACOUSTIC_2_4: "settings-tab-models-use-acoustic",
+    model_store.PERCH: "settings-tab-models-use-analysis",
+    model_store.GEO_3_0: "model-selection-facts-location-label",
+    model_store.GEO_2_4: "model-selection-facts-location-label",
+    model_store.TRAINING_3_0: "settings-tab-models-use-training",
+    model_store.TRAINING_2_4: "settings-tab-models-use-training",
+}
+
+
+def _stored_model_rows() -> list[list[str]]:
+    rows = []
+
+    for files in model_store.all_model_files():
+        use = loc.localize(_STORED_MODEL_USES[files.key])
+
+        if files.key == model_store.GEO_2_4:
+            use = f"{use} ({_BIRDNET_MODEL_LABELS[USE_BIRDNET_2_4]})"
+
+        status = loc.localize(
+            "settings-tab-models-status-downloaded"
+            if files.downloaded
+            else "settings-tab-models-status-missing"
+        )
+        rows.append(
+            [
+                _STORED_MODEL_NAMES[files.key],
+                use,
+                status,
+                _format_bytes(files.download_size),
+            ]
+        )
+
+    return rows
+
+
+def _stored_models_info() -> str:
+    size = model_store.stored_size(_effective_model_directory())
+
+    return loc.localize("settings-tab-models-info").format(size=_format_bytes(size))
+
+
+def download_note(*keys: str) -> str:
+    """Says that a first use of these models downloads them; empty when none will."""
+    size = model_store.missing_download_size(*keys)
+
+    if not size:
+        return ""
+
+    return loc.localize("model-download-note").format(size=_format_bytes(size))
+
+
+def _open_directory(directory: str) -> None:
+    with suppress(OSError):
+        os.makedirs(directory, exist_ok=True)
+
+    if sys.platform == "win32":
+        os.startfile(directory)
+    elif sys.platform == "darwin":
+        import subprocess
+
+        subprocess.Popen(["open", directory])
+    else:
+        import webbrowser
+        from pathlib import Path
+
+        webbrowser.open(Path(directory).as_uri())
 
 
 # Download sinks by the thread that runs birdnet.load; the library's callback fires
@@ -644,7 +724,7 @@ def build_settings():
                 dir_name = select_folder(state_key="model-directory")
 
                 if not dir_name:
-                    return gr.update()
+                    return gr.skip()
 
                 verdict = settings.probe_model_directory(dir_name)
 
@@ -660,14 +740,26 @@ def build_settings():
 
                 gr.Info(loc.localize("settings-tab-model-dir-saved-info"))
 
-                return _effective_model_directory()
+                return (
+                    _effective_model_directory(),
+                    _stored_model_rows(),
+                    _stored_models_info(),
+                )
 
             @gui_runtime_error_handler
             def on_model_dir_reset():
                 _switch_model_directory("")
                 gr.Info(loc.localize("settings-tab-model-dir-saved-info"))
 
-                return _effective_model_directory()
+                return (
+                    _effective_model_directory(),
+                    _stored_model_rows(),
+                    _stored_models_info(),
+                )
+
+            @gui_runtime_error_handler
+            def on_model_dir_open():
+                _open_directory(_effective_model_directory())
 
             state = TabState(_SETTINGS_TAB_ID)
 
@@ -782,13 +874,32 @@ def build_settings():
                     loc.localize("settings-tab-model-dir-reset-button"),
                     interactive=not env_controlled,
                 )
+                model_dir_open_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-open-button")
+                )
+
+            # Filled when the tab is selected.
+            stored_models_df = gr.Dataframe(
+                headers=[
+                    loc.localize("settings-tab-models-model-header"),
+                    loc.localize("settings-tab-models-use-header"),
+                    loc.localize("settings-tab-models-status-header"),
+                    loc.localize("settings-tab-models-size-header"),
+                ],
+                label=loc.localize("settings-tab-models-label"),
+                interactive=False,
+                buttons=[],
+            )
+            stored_models_info = gr.Markdown(elem_classes="stored-models-info")
+            model_dir_outputs = [model_dir_tb, stored_models_df, stored_models_info]
 
             model_dir_select_btn.click(
-                on_model_dir_select, outputs=model_dir_tb, show_progress="hidden"
+                on_model_dir_select, outputs=model_dir_outputs, show_progress="hidden"
             )
             model_dir_reset_btn.click(
-                on_model_dir_reset, outputs=model_dir_tb, show_progress="hidden"
+                on_model_dir_reset, outputs=model_dir_outputs, show_progress="hidden"
             )
+            model_dir_open_btn.click(on_model_dir_open, show_progress="hidden")
 
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()
@@ -850,20 +961,27 @@ def build_settings():
 
         @gui_runtime_error_handler
         def on_tab_select(value: gr.SelectData):
-            if value.selected and os.path.exists(settings.ERROR_LOG_FILE):
+            if not value.selected:
+                return "", gr.skip(), gr.skip()
+
+            error_log = ""
+
+            if os.path.exists(settings.ERROR_LOG_FILE):
                 with open(settings.ERROR_LOG_FILE, mode="rb") as f:
                     lines = [line.decode("utf-8", errors="ignore") for line in f]
-                    last_100_lines = lines[-100:]
+                    error_log = "".join(lines[-100:])
 
-                    return "".join(last_100_lines)
-
-            return ""
+            return error_log, _stored_model_rows(), _stored_models_info()
 
         languages_dropdown.input(
             on_language_change, inputs=languages_dropdown, show_progress="hidden"
         )
         theme_radio.input(on_theme_change, inputs=theme_radio, show_progress="hidden")
-        settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
+        settings_tab.select(
+            on_tab_select,
+            outputs=[error_log_tb, stored_models_df, stored_models_info],
+            show_progress="hidden",
+        )
 
 
 def birdnet_model_choices() -> list[tuple[str, str]]:
@@ -936,8 +1054,14 @@ def sample_species_model_settings(state: TabState, opened=True):
         is_perch=is_perch,
         sensitivity_enabled=model_supports_sensitivity(model_choice),
     )
-    species_settings = species_lists(state, opened=opened, is_perch=is_perch)
-    model_settings = model_selection(state, opened=opened)
+    species_settings = species_lists(
+        state, opened=opened, is_perch=is_perch, model_choice=model_choice
+    )
+    model_settings = model_selection(
+        state,
+        opened=opened,
+        location_note=species_settings["location_download_note"],
+    )
 
     def on_model_change(value, species_choice, overlap, current_locale):
         is_perch = value == USE_PERCH
@@ -1006,6 +1130,11 @@ def sample_species_model_settings(state: TabState, opened=True):
     def on_model_selection_change(
         value, species_choice, overlap, current_locale, classifier
     ):
+        shown = state.shown_with("model_selection_radio", value)
+        species_choice = shown.get("species_list_radio", species_choice)
+        overlap = shown.get("overlap_slider", overlap)
+        current_locale = shown.get("locale_dropdown", current_locale)
+
         return [
             *on_model_change(value, species_choice, overlap, current_locale),
             *model_settings["updates_for_model"](value, classifier),
@@ -1255,8 +1384,14 @@ def locale(
 def plot_map_scatter_mapbox(lat, lon, zoom=4):
     import plotly.express as px
 
+    # plotly 7 no longer centres the map on its points.
     fig = px.scatter_map(
-        lat=[lat], lon=[lon], zoom=zoom, map_style="open-street-map", size=[10]
+        lat=[lat],
+        lon=[lon],
+        zoom=zoom,
+        center={"lat": lat, "lon": lon},
+        map_style="open-street-map",
+        size=[10],
     )
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
     return fig
@@ -1578,6 +1713,89 @@ def _model_facts(
     ], None
 
 
+_MODEL_CHOICE_FILES = {
+    USE_BIRDNET_3_0: model_store.ACOUSTIC_3_0,
+    USE_BIRDNET_2_4: model_store.ACOUSTIC_2_4,
+    USE_PERCH: model_store.PERCH,
+}
+
+
+def _model_choice_files(model_choice: str) -> tuple[str, ...]:
+    key = _MODEL_CHOICE_FILES.get(model_choice)
+
+    return (key,) if key else ()
+
+
+def _location_filter_files(
+    model_choice: str, classifier_file: str | None
+) -> tuple[str, ...]:
+    """The geo model a location filter loads for the selected model."""
+    if is_birdnet_model(model_choice):
+        return (model_store.geo_key(model_choice),)
+
+    if model_choice != CUSTOM_CLASSIFIER or classifier_file is None:
+        return ()
+
+    from birdnet_analyzer import model_utils
+
+    try:
+        version = model_utils.classifier_info(classifier_file).version
+    except (OSError, ValueError):
+        return ()
+
+    return (model_store.geo_key(version),)
+
+
+def _note_update(note: str) -> dict:
+    return gr.update(value=note, visible=bool(note))
+
+
+def _download_note_md(note: str) -> gr.Markdown:
+    return gr.Markdown(note, visible=bool(note), elem_classes="model-download-note")
+
+
+def _enclosing_tab() -> gr.Tab | None:
+    block = Context.block
+
+    while block is not None and not isinstance(block, gr.Tab):
+        block = block.parent
+
+    return block
+
+
+def download_note_line(
+    selector: gr.components.Component, files: Callable[[str], tuple[str, ...]]
+) -> tuple[gr.Markdown, dict]:
+    """A line that says when the choice of ``selector`` is downloaded on first use.
+
+    Returns it with the arguments of a listener that brings it up to date; selecting
+    the tab it is built in does so already.
+    """
+
+    @gui_runtime_error_handler
+    def refresh_download_note(choice: str):
+        return _note_update(download_note(*files(choice)))
+
+    line = _download_note_md(download_note(*files(selector.value)))
+
+    return line, _refreshed_with_its_tab(refresh_download_note, selector, line)
+
+
+def _refreshed_with_its_tab(fn, inputs, outputs) -> dict:
+    refresh = {
+        "fn": fn,
+        "inputs": inputs,
+        "outputs": outputs,
+        "show_progress": "hidden",
+    }
+    tab = _enclosing_tab()
+
+    if tab is not None:
+        tab.select(**refresh)
+
+    return refresh
+
+
 def _facts_updates(facts: list[tuple[str, str]], warning: str | None) -> list:
     return [
         gr.update(visible=bool(facts)),
@@ -1587,7 +1805,14 @@ def _facts_updates(facts: list[tuple[str, str]], warning: str | None) -> list:
     ]
 
 
-def model_selection(state: TabState, opened=True):
+def model_selection(
+    state: TabState, opened=True, location_note: gr.Markdown | None = None
+):
+    """Creates the gradio accordion for the model selection.
+
+    ``location_note`` is the line that says when a location filter downloads its
+    model, which depends on the model chosen here.
+    """
     with (
         gr.Group(),
         gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened),
@@ -1645,7 +1870,10 @@ def model_selection(state: TabState, opened=True):
 
                     state.remember({CLASSIFIER_FILE_KEY: file})
                     labels = utils.read_classifier_labels(file)
-                    facts = _facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file))
+                    facts = [
+                        *_facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file)),
+                        *note_updates(CUSTOM_CLASSIFIER, file),
+                    ]
 
                     if labels is None:
                         gr.Warning(
@@ -1687,7 +1915,30 @@ def model_selection(state: TabState, opened=True):
             visible=warning is not None,
             elem_classes="model-facts-warning",
         )
-        facts_outputs = [facts_row, *fact_boxes, facts_warning]
+        note_lines = [
+            _download_note_md(download_note(*_model_choice_files(selected_model))),
+            *([] if location_note is None else [location_note]),
+        ]
+
+        def note_updates(choice: str, classifier: str | None) -> list[dict]:
+            """One update per ``note_lines``."""
+            notes = [download_note(*_model_choice_files(choice))]
+
+            if location_note is not None:
+                notes.append(download_note(*_location_filter_files(choice, classifier)))
+
+            return [_note_update(note) for note in notes]
+
+        @gui_runtime_error_handler
+        def refresh_download_note(choice: str, classifier: str | None):
+            return note_updates(choice, classifier)
+
+        refresh_download_note = _refreshed_with_its_tab(
+            refresh_download_note,
+            [model_selection_radio, selected_classifier_state],
+            note_lines,
+        )
+        facts_outputs = [facts_row, *fact_boxes, facts_warning, *note_lines]
 
         # Shown: restrict locale to the model's languages. Hidden (Perch/custom): offer
         # the union so a saved locale from another version isn't dropped by persist.
@@ -1733,6 +1984,7 @@ def model_selection(state: TabState, opened=True):
             gr.update(visible=custom),
             gr.update(visible=labels is not None),
             *_facts_updates(*_model_facts(choice, classifier)),
+            *note_updates(choice, classifier),
         ]
 
     @gui_runtime_error_handler
@@ -1781,6 +2033,7 @@ def model_selection(state: TabState, opened=True):
         "model_facts_row": facts_row,
         "model_facts": fact_boxes,
         "model_facts_warning": facts_warning,
+        "refresh_download_note": refresh_download_note,
         "model_outputs": model_outputs,
         "updates_for_model": updates_for_model,
     }
@@ -1791,13 +2044,15 @@ def _read_species_rows(file: str) -> list[list[str]]:
 
 
 def species_lists(
-    state: TabState, opened=True, is_perch=False
+    state: TabState, opened=True, is_perch=False, model_choice: str | None = None
 ) -> dict[_SPECIES_KEYS, gr.components.Component]:
     """Creates the gradio accordion for species list selection.
     Args:
         state: The persisted settings of the tab the accordion belongs to.
         opened: If True the accordion is open on init.
         is_perch: If True the choices are limited to what the Perch model supports.
+        model_choice: The selected model, which decides the geo model a location
+            filter loads. A classifier's is known once its file was inspected.
     Returns:
         A dict with the created elements.
     """
@@ -1829,6 +2084,9 @@ def species_lists(
                     yearlong_checkbox,
                     _,
                 ) = species_list_coordinates(state)
+                location_download_note = _download_note_md(
+                    download_note(*_location_filter_files(model_choice or "", None))
+                )
 
             species_file = state.get_file(SPECIES_FILE_KEY)
 
@@ -1907,6 +2165,7 @@ def species_lists(
         "week_number": week_number,
         "sf_thresh_number": sf_thresh_number,
         "yearlong_checkbox": yearlong_checkbox,
+        "location_download_note": location_download_note,
     }
 
 
