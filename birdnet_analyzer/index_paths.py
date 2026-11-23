@@ -75,8 +75,11 @@ def reach_any_path() -> None:
         if not _needs_python_io(source):
             return load(self, path_or_buffer, progress)
 
-        with open(source, "rb") as file:
-            self._compiled.load_index_from_buffer(file.read(), progress)
+        with (
+            open(source, "rb") as file,
+            mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as mapped,
+        ):
+            self._compiled.load_index_from_buffer(mapped, progress)
 
         # Windows replaces no file that is still mapped, and a loaded index is saved
         # over the file it was viewed from.

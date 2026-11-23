@@ -1,5 +1,7 @@
 import os
 import sqlite3
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -174,3 +176,25 @@ def test_a_database_below_a_folder_with_other_letters_is_filled_and_read(tmp_pat
     with search_core.open_database(str(database)) as db:
         assert db.count_embeddings() == 3
         np.testing.assert_allclose(db.get_embedding(3), np.full(8, 6.0))
+
+
+def test_a_database_below_a_folder_with_other_letters_opens_in_a_new_process(
+    tmp_path,
+):
+    database = tmp_path / ("J" + chr(0xF6) + "rg M" + chr(0xFC) + "ller") / "db"
+    _add_windows(database, [0.0, 3.0])
+    count = (
+        "import sys\n"
+        "from birdnet_analyzer.search.core import open_database\n"
+        "with open_database(sys.argv[1]) as db:\n"
+        "    print(db.count_embeddings())\n"
+    )
+
+    opened = subprocess.run(
+        [sys.executable, "-c", count, str(database)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert opened.stdout.split() == ["2"], opened.stderr
