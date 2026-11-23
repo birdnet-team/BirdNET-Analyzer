@@ -8,6 +8,8 @@ from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 from tests.params_files import (  # noqa: E402
     TRAIN_FILE,
+    V2_4_0_ANALYSIS_VALUES,
+    V2_4_0_PERCH_ANALYSIS_VALUES,
     V2_4_0_TRAIN_FILE,
     V2_4_0_TRAIN_VALUES,
     analysis_values,
@@ -214,6 +216,19 @@ def test_a_birdnet_3_0_analysis_restores_the_3_0_model_choice(appdir, tmp_path):
     )
 
     assert values["model_selection_radio"] == gu.USE_BIRDNET_3_0
+
+
+def test_an_analysis_of_v2_4_0_restores_the_model_it_ran_with(appdir, tmp_path):
+    values = presets.load_analysis_params(wide_file(tmp_path, V2_4_0_ANALYSIS_VALUES))
+
+    assert values["model_selection_radio"] == gu.USE_BIRDNET_2_4
+
+    perch = presets.load_analysis_params(
+        wide_file(tmp_path, V2_4_0_PERCH_ANALYSIS_VALUES)
+    )
+
+    assert perch["model_selection_radio"] == gu.USE_PERCH
+    assert perch["overlap_slider"] == 4.5
 
 
 def test_a_top_n_analysis_does_not_restore_the_confidence_placeholder(appdir, tmp_path):

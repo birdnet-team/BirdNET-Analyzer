@@ -90,7 +90,8 @@ def apply_params_file_defaults(parser, loader, argv=None):
     except ValueError as e:
         parser.error(str(e))
 
-    dests = {action.dest for action in parser._actions}
+    # The model has no argument of its own: the model options set it.
+    dests = {action.dest for action in parser._actions} | set(parser._defaults)
     parser.set_defaults(**{key: value for key, value in values.items() if key in dests})
 
     return values

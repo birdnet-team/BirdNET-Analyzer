@@ -23,6 +23,7 @@ from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
 # Minimum parameters for a file to count as one. High enough to reject the other
 # command's params file (it shares a few names) and any other CSV output.
 _MIN_RECOGNIZED_PARAMS = 5
+_PERCH_SAMPLE_RATE = "32000"
 
 
 def read_params(path: str) -> dict[str, str]:
@@ -202,10 +203,19 @@ def load_analysis_params(path: str) -> dict[str, Any]:
     Raises:
         ValueError: If the file is not an analysis parameters file.
     """
-    values = _read_values(read_params(path), ANALYSIS_PARAMS)
+    params = read_params(path)
+    values = _read_values(params, ANALYSIS_PARAMS)
 
     if len(values) < _MIN_RECOGNIZED_PARAMS:
         raise ValueError(f"Not an analysis parameters file: {path}")
+
+    if "Model" not in params:
+        # v2.4.0 and earlier did not record the model: BirdNET 2.4, or Perch,
+        # which shows in its sample rate.
+        if params.get("Sample rate", "").strip() == _PERCH_SAMPLE_RATE:
+            values["model"] = "perch"
+        else:
+            values.update(model="birdnet", birdnet="2.4")
 
     return values
 

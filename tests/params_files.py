@@ -87,6 +87,26 @@ V2_4_0_TRAIN_VALUES = {
 }
 V2_4_0_TRAIN_FILE = "MyClassifier_Params.csv"
 
+# Header for header as the analysis of v2.4.0 wrote them.
+V2_4_0_ANALYSIS_VALUES = {
+    "File splitting duration": 600,
+    "Segment length": 3.0,
+    "Sample rate": 48000,
+    "Segment overlap": 1.5,
+    "Minimum Segment length": 1.0,
+    "Bandpass filter minimum": 500,
+    "Bandpass filter maximum": 10000,
+    "Merge consecutive detections": 1,
+    "Audio speed": 1.0,
+    "Custom classifier path": "",
+}
+V2_4_0_PERCH_ANALYSIS_VALUES = {
+    **V2_4_0_ANALYSIS_VALUES,
+    "Segment length": 5.0,
+    "Sample rate": 32000,
+    "Segment overlap": 4.5,
+}
+
 
 def analysis_values(**overrides):
     return {**ANALYSIS_DEFAULTS, **overrides}

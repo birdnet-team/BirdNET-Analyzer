@@ -3,6 +3,8 @@ import pytest
 from birdnet_analyzer import cli, params
 from tests.params_files import (
     TRAIN_FILE,
+    V2_4_0_ANALYSIS_VALUES,
+    V2_4_0_PERCH_ANALYSIS_VALUES,
     V2_4_0_TRAIN_FILE,
     V2_4_0_TRAIN_VALUES,
     analysis_values,
@@ -81,6 +83,56 @@ def test_files_of_an_analysis_are_read_back(tmp_path):
 
     assert kwargs["slist"] == "/data/birds.txt"
     assert kwargs["classifier"] == "/models/my.tflite"
+
+
+def test_the_analysis_params_file_of_v2_4_0_names_the_model_it_ran_with(tmp_path):
+    kwargs = params.load_analysis_params(wide_file(tmp_path, V2_4_0_ANALYSIS_VALUES))
+
+    assert (kwargs["model"], kwargs["birdnet"]) == ("birdnet", "2.4")
+    assert (kwargs["overlap"], kwargs["fmin"], kwargs["fmax"]) == (1.5, 500, 10000)
+
+    perch = params.load_analysis_params(
+        wide_file(tmp_path, V2_4_0_PERCH_ANALYSIS_VALUES)
+    )
+
+    assert perch["model"] == "perch"
+    assert perch["overlap"] == 4.5
+
+
+@pytest.mark.parametrize(
+    ("values", "model", "version"),
+    [
+        (V2_4_0_ANALYSIS_VALUES, "birdnet", "2.4"),
+        (V2_4_0_PERCH_ANALYSIS_VALUES, "perch", None),
+    ],
+)
+def test_an_analysis_of_v2_4_0_is_repeated_with_its_model(
+    tmp_path, values, model, version
+):
+    file = wide_file(tmp_path, values)
+    parser = cli.analyzer_parser()
+
+    cli.apply_params_file_defaults(
+        parser, params.load_analysis_params, argv=["--load_params", file]
+    )
+    args = parser.parse_args(["recordings"])
+
+    assert args.model == model
+    assert version is None or args.birdnet == version
+    assert parser.parse_args(["recordings", "--birdnet", "3.0"]).birdnet == "3.0"
+    assert parser.parse_args(["recordings", "--birdnet", "3.0"]).model == "birdnet"
+
+
+def test_a_perch_analysis_is_repeated_with_perch(tmp_path):
+    file = tall_file(tmp_path, analysis_values(Model="perch"))
+    parser = cli.analyzer_parser()
+
+    cli.apply_params_file_defaults(
+        parser, params.load_analysis_params, argv=["--load_params", file]
+    )
+
+    assert parser.parse_args(["recordings"]).model == "perch"
+    assert parser.parse_args(["recordings", "--birdnet"]).model == "birdnet"
 
 
 def test_train_params_are_read_back_as_train_arguments(tmp_path):
