@@ -3,10 +3,8 @@ from functools import partial
 
 import gradio as gr
 
-import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import model_store
 from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.search.core import read_database_settings
 
@@ -358,13 +356,15 @@ def _existing_database_settings(db_directory: str) -> dict | None:
 
 def _database_model_files(db_directory: str | None) -> tuple[str, ...]:
     """The model a database is filled with: its own, or the default for a new one."""
+    from birdnet_analyzer import model_store
+    from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
     from birdnet_analyzer.embeddings.core import database_model_version
 
     settings = _existing_database_settings(db_directory) if db_directory else None
     version = (
         database_model_version(settings)
         if settings is not None
-        else cfg.DEFAULT_ACOUSTIC_MODEL_VERSION
+        else DEFAULT_ACOUSTIC_MODEL_VERSION
     )
 
     return (model_store.acoustic_key(version),)

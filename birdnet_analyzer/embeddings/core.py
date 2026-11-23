@@ -264,10 +264,6 @@ def get_or_create_database(
             ),
         )
 
-    from birdnet_analyzer.search.core import reject_database_of_v2
-
-    reject_database_of_v2(db_path)
-
     try:
         return sqlite_usearch_impl.SQLiteUSearchDB.create(db_path=db_path)
     except ValueError:

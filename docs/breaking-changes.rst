@@ -373,9 +373,8 @@ of BirdNET 3.0, which have 1280 values per segment; v2.4.0 extracted them with B
 2.4, with 1024 values.
 
 **Consequence.** v2.4.0 search command lines and positional calls of ``search()`` fail.
-Databases written by v2.4.0 are in the older format: opening one fails with a message
-that says so, and leaves the database usable for v2.4.0. Embeddings and search scores
-are not comparable with those of v2.4.0.
+Databases written by v2.4.0 are in the older format. Embeddings and search scores are
+not comparable with those of v2.4.0.
 
 **What to do.** Pass ``--audio_root`` (the parent of the input that was embedded), and
 extract the embeddings again into a new database. ``birdnet_analyzer.embeddings
