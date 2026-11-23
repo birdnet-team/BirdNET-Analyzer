@@ -1097,6 +1097,24 @@ def test_the_no_location_values_of_v2_4_0_are_pointed_out(
     assert "no location" not in caplog.text
 
 
+@patch("birdnet_analyzer.model_utils.classifier_version", new=lambda _: "2.4")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_the_params_file_names_the_birdnet_version_of_the_classifier(
+    mock_run_inference, tmp_path
+):
+    _mock_result(mock_run_inference, _detections_in_three_files(tmp_path / "in"))
+
+    analyze(
+        str(tmp_path / "in"),
+        str(tmp_path / "out"),
+        classifier="classifier.tflite",
+        save_params=True,
+    )
+
+    kwargs = load_analysis_params(tmp_path / "out" / cfg.ANALYSIS_PARAMS_FILENAME)
+    assert kwargs["birdnet"] == "2.4"
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_raven_times_run_on_across_the_files_without_detections(
     mock_run_inference, tmp_path

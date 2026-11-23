@@ -362,7 +362,9 @@ def analyze(
                 ANALYSIS_PARAMS,
                 {
                     "model": model,
-                    "birdnet": birdnet,
+                    "birdnet": classifier_version(classifier)
+                    if classifier
+                    else birdnet,
                     "segment_length": meta.segment_duration_s,
                     "sample_rate": meta.model_sr,
                     "overlap": overlap,
