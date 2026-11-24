@@ -72,8 +72,11 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
     mock_load.assert_not_called()
 
 
+@pytest.mark.parametrize("overlap", [0.0, 2.0])
 @pytest.mark.parametrize("crop_mode", ["first", "segments"])
-def test_a_file_shorter_than_one_second_is_one_zero_padded_segment(tmp_path, crop_mode):
+def test_a_file_shorter_than_one_second_is_one_zero_padded_segment(
+    tmp_path, crop_mode, overlap
+):
     duration = 0.4
     segs, labels = _read_and_crop_file(
         _sine_wav(tmp_path / "call.wav", duration),
@@ -81,6 +84,7 @@ def test_a_file_shorter_than_one_second_is_one_zero_padded_segment(tmp_path, cro
         sample_rate=SR,
         crop_mode=crop_mode,
         sig_length=SIG_LENGTH,
+        overlap=overlap,
     )
 
     (segment,) = segs
