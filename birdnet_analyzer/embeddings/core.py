@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import pathlib
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -106,7 +105,7 @@ def embeddings(
     unreadable = [str(result.inputs[i]) for i in skipped]
     warn_about_unreadable_files(unreadable, result.n_inputs)
 
-    audio_root = str(pathlib.Path(audio_input).parent)
+    audio_root = os.path.dirname(os.path.abspath(audio_input))
 
     batchsize = COMMIT_BS_SIZE
     pending_since_commit = 0
@@ -135,7 +134,7 @@ def embeddings(
         for i in tqdm(
             range(n_inputs), desc="Saving embeddings to database", total=n_inputs
         ):
-            fpath = str(pathlib.Path(result.inputs[i]).relative_to(audio_root))
+            fpath = os.path.relpath(result.inputs[i], audio_root)
             file_dur = float(input_durations[i])
             recording_id = _ensure_recording(db, fpath, deployment_id)
             windows_batch = []
@@ -314,6 +313,10 @@ def _model_version_for(
     return stored
 
 
+def _same_folder(stored: str | None, given: str | None) -> bool:
+    return os.path.normcase(stored or "") == os.path.normcase(given or "")
+
+
 def _check_database_settings(
     db: sqlite_usearch_impl.SQLiteUSearchDB,
     fmin: int = 0,
@@ -333,7 +336,7 @@ def _check_database_settings(
             settings["BANDPASS_FMIN"] != fmin
             or settings["BANDPASS_FMAX"] != fmax
             or settings["AUDIO_SPEED"] != audio_speed
-            or settings.get("AUDIO_ROOT") != audio_root
+            or not _same_folder(settings.get("AUDIO_ROOT"), audio_root)
         ):
             raise ValueError(
                 "Database settings do not match current configuration. DB Settings are:"
