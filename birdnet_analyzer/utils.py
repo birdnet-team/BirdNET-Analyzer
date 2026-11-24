@@ -2,11 +2,13 @@
 
 import logging
 import os
+import sys
 import warnings
 from contextlib import suppress
 from functools import cache
 from pathlib import Path
 
+from birdnet_analyzer import settings
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
 from birdnet_analyzer.logs import setup_logging
 from birdnet_analyzer.settings import seed_bundled_models, write_error_log
@@ -19,6 +21,10 @@ _TELEMETRY_OPT_OUTS = {
     "HF_HUB_DISABLE_TELEMETRY": "1",
     "DO_NOT_TRACK": "1",
 }
+
+MAX_LISTED_FILES = 20
+# The log record attribute that holds the files a run could not read.
+UNREADABLE_FILES = "unreadable_files"
 
 # Raised by gradio's own gr.List/gr.Matrix defaults and event loop helpers.
 _UNACTIONABLE_WARNINGS = [
@@ -59,8 +65,8 @@ def runtime_error_handler(f):
     """Decorator preparing the runtime of the CLI entry points.
 
     Configures logging, so messages reach the console and the error log file,
-    prepares the process with configure_runtime, and catches runtime errors to
-    write them to the error log.
+    prepares the process with configure_runtime, and ends a failed command with
+    its error message and exit status 1, leaving the stacktrace to the error log.
 
     Args:
         f: The function to be decorated.
@@ -76,8 +82,16 @@ def runtime_error_handler(f):
         try:
             return f(*args, **kwargs)
         except Exception as ex:
-            write_error_log(ex)
-            raise
+            write_error_log(ex, f"Error: {str(ex) or repr(ex)}")
+
+            if not logging.getLogger(__name__).isEnabledFor(logging.DEBUG):
+                print(
+                    f"The stacktrace is in {settings.ERROR_LOG_FILE}; "
+                    "--verbose shows it here.",
+                    file=sys.stderr,
+                )
+
+            raise SystemExit(1) from ex
 
     return wrapper
 
@@ -428,6 +442,25 @@ def warn_about_location_minus_one(lat, lon) -> None:
             "version 2.4.0 they meant that no location is set: leave both out "
             "for that."
         )
+
+
+def warn_about_unreadable_files(files: list[str], n_files: int) -> None:
+    """Names the audio files a run left out because it could not read them."""
+    if not files:
+        return
+
+    listed = [f"  {file}" for file in files[:MAX_LISTED_FILES]]
+
+    if len(files) > MAX_LISTED_FILES:
+        listed.append(f"  ... and {len(files) - MAX_LISTED_FILES} more")
+
+    logging.getLogger(__name__).warning(
+        "%d of %d audio files could not be read and were skipped:\n%s",
+        len(files),
+        n_files,
+        "\n".join(listed),
+        extra={UNREADABLE_FILES: files},
+    )
 
 
 def img2base64(path):

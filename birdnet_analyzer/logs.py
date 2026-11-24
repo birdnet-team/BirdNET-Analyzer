@@ -75,8 +75,9 @@ class _ErrorLogFormatter(logging.Formatter):
 def setup_logging(level: int = logging.INFO):
     """Configures logging for the shipped applications (CLI and GUI).
 
-    Installs a console handler that prints bare messages to stdout and a rotating
-    file handler that collects ERROR records with their stacktraces in
+    Installs console handlers that print bare messages, errors to stderr and the rest
+    to stdout, and a rotating file handler that collects ERROR records with their
+    stacktraces in
     settings.ERROR_LOG_FILE. The file is rotated into a single ".1" backup once it
     exceeds MAX_ERROR_LOG_SIZE, keeping its disk usage at roughly
     2 * MAX_ERROR_LOG_SIZE.
@@ -93,7 +94,12 @@ def setup_logging(level: int = logging.INFO):
 
     console = logging.StreamHandler(sys.stdout)
     console.setLevel(level)
-    console.setFormatter(_ConsoleFormatter(show_stacktraces=level <= logging.DEBUG))
+    console.addFilter(lambda record: record.levelno < logging.ERROR)
+    console_errors = logging.StreamHandler(sys.stderr)
+    console_errors.setLevel(logging.ERROR)
+
+    for handler in (console, console_errors):
+        handler.setFormatter(_ConsoleFormatter(show_stacktraces=level <= logging.DEBUG))
 
     Path(settings.ERROR_LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
     # delay=True postpones opening the file until the first error, so an app run
@@ -109,8 +115,11 @@ def setup_logging(level: int = logging.INFO):
     error_file.setFormatter(_ErrorLogFormatter())
 
     logger.setLevel(min(level, logging.ERROR))
+    # A dependency can put a handler of its own on the root logger, which would print
+    # every record a second time, errors with their stacktrace.
+    logger.propagate = False
 
-    for handler in (console, error_file):
+    for handler in (console, console_errors, error_file):
         logger.addHandler(handler)
         _installed_handlers.append(handler)
 
@@ -125,3 +134,4 @@ def _remove_installed_handlers():
     # Also drop the configured level, so a host application that configures logging
     # afterwards decides again which records get through.
     logger.setLevel(logging.NOTSET)
+    logger.propagate = True

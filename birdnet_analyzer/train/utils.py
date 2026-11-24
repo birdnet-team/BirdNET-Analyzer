@@ -29,6 +29,7 @@ from birdnet_analyzer.config import (
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
 from birdnet_analyzer.params import TRAIN_PARAMS, by_header
+from birdnet_analyzer.train.errors import TrainingInputError
 
 # Encode batch size per base model, measured on CPU inside a warm session: the 2.4
 # tflite interpreter re-plans on every batch-shape change, so small batches win
@@ -176,10 +177,10 @@ def _check_input_folders(audio_input: str, train_folders: list[str]):
 
     if empty_folders:
         folder_list = ", ".join(sorted(empty_folders))
-        raise ValueError(
+        raise TrainingInputError(
+            "validation-no-audio-files-in-training-folders",
             "The following training data folders do not contain any supported audio "
             f"files: {folder_list}",
-            "validation-no-audio-files-in-training-folders",
             folder_list,
         )
 
@@ -274,22 +275,36 @@ def _load_training_data(
     is_binary = len(valid_labels) == 1
     is_multi_label = len(valid_labels) > 1 and any("," in f for f in train_folders)
 
+    if not valid_labels:
+        raise TrainingInputError(
+            "validation-no-class-folders-in-training-data",
+            f"No class folders were found in {audio_input}. Put the recordings of "
+            "each class into a subfolder named after the class. Folders named Noise, "
+            'Other, Background or Silence and folders whose name starts with "-" do '
+            "not count as classes.",
+            audio_input,
+        )
+
     if is_binary:
         if any(f for f in train_folders if f.startswith("-")):
-            raise ValueError(
-                "Negative labels can't be used with binary classification",
+            raise TrainingInputError(
                 "validation-no-negative-samples-in-binary-classification",
+                'Folders whose name starts with "-" can only be used with two or '
+                "more classes. With a single class, put the recordings without it "
+                "into a folder named Noise, Other, Background or Silence.",
             )
         if not any(f for f in train_folders if f.lower() in NON_EVENT_CLASSES):
-            raise ValueError(
-                "Non-event samples are required for binary classification",
+            raise TrainingInputError(
                 "validation-non-event-samples-required-in-binary-classification",
+                "Training a single class also needs recordings without it. Add a "
+                "folder named Noise, Other, Background or Silence with such "
+                "recordings next to the class folder.",
             )
 
     if is_multi_label and upsampling_ratio > 0 and upsampling_mode != "repeat":
-        raise ValueError(
-            "Only repeat-upsampling is available for multi-label",
+        raise TrainingInputError(
             "validation-only-repeat-upsampling-for-multi-label",
+            "Only repeat-upsampling is available for multi-label",
         )
 
     _check_input_folders(audio_input, train_folders)
@@ -434,6 +449,15 @@ def _load_training_data(
             )
 
         x_train, y_train, files_train = load_data(audio_input, train_folders)
+
+        if not len(x_train):
+            raise TrainingInputError(
+                "validation-no-readable-training-audio",
+                f"None of the recordings in {audio_input} could be read, so there is "
+                "nothing to train on. The files may be damaged; check whether an audio "
+                "player can open them.",
+                audio_input,
+            )
 
         if test_data and test_data != audio_input:
             test_folders = sorted(utils.list_subdirectories(test_data))
@@ -681,11 +705,11 @@ def _check_validation_files(y: np.ndarray, files: np.ndarray, labels) -> None:
     validated = ~negative & ~alone
 
     if not (np.any(has_one[validated]) and np.any(has_zero[validated])):
-        raise ValueError(
+        raise TrainingInputError(
+            "validation-too-few-files-to-validate",
             "Too few files to validate on. At least one class needs two or more "
             "files, and a classifier for a single class also needs two or more "
             "non-event files.",
-            "validation-too-few-files-to-validate",
         )
 
     if np.any(alone):

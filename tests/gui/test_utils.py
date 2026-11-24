@@ -1,4 +1,5 @@
 import base64
+import errno
 import inspect
 import io
 import logging
@@ -279,16 +280,72 @@ def test_downloads_switched_off_by_the_user_are_reported_as_such(
     )
 
 
-def test_an_error_without_a_message_is_shown_by_its_repr(monkeypatch):
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            FileNotFoundError(2, "No such file or directory", "birds.wav"),
+            "gone|birds.wav",
+        ),
+        (PermissionError(13, "Permission denied", "R&D.csv"), "locked|R&amp;D.csv"),
+        (OSError(errno.EROFS, "Read-only file system", "card.csv"), "locked|card.csv"),
+        (OSError(errno.ENOSPC, "No space left on device", "out.csv"), "full"),
+        (FileNotFoundError("No database found in db"), "No database found in db"),
+        (ValueError("Set both lat and lon."), "Set both lat and lon."),
+        (ValueError("a <b> c"), "a &lt;b&gt; c"),
+        (
+            RuntimeError("Resume state is incomplete. Delete 'x' and run again."),
+            "Resume state is incomplete. Delete 'x' and run again.",
+        ),
+        (EOFError(), "EOFError()"),
+        (
+            IndexError("tuple index out of range"),
+            "bug|IndexError: tuple index out of range",
+        ),
+        (TypeError("'<' not supported"), "bug|TypeError: '&lt;' not supported"),
+        (TypeError("word " * 100), "bug|TypeError: " + "word " * 59 + "..."),
+        (AssertionError(), "bug|AssertionError"),
+    ],
+    ids=lambda value: value if isinstance(value, str) else type(value).__name__,
+)
+def test_an_error_no_handler_explained_is_put_into_the_users_words(
+    monkeypatch, error, message
+):
     monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    texts = {
+        "error-path-not-found": "gone|{path}",
+        "error-path-no-access": "locked|{path}",
+        "error-disk-full": "full",
+        "error-unexpected": "bug|{error}",
+    }
+
+    for key, text in texts.items():
+        assert key in gu.loc.LANGUAGE_LOOKUP
+        monkeypatch.setitem(gu.loc.LANGUAGE_LOOKUP, key, text)
 
     def handler():
-        raise EOFError
+        raise error
 
     with pytest.raises(gr.Error) as raised:
         gu.gui_runtime_error_handler(handler)()
 
-    assert raised.value.message == "EOFError()"
+    assert raised.value.message == message
+
+
+def test_a_missing_folder_is_named_instead_of_the_file_that_was_to_be_written(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    monkeypatch.setitem(gu.loc.LANGUAGE_LOOKUP, "error-path-not-found", "gone|{path}")
+    species_list = tmp_path / "unplugged" / "lists" / "species.txt"
+
+    def handler():
+        species_list.write_text("Parus major_Great Tit")
+
+    with pytest.raises(gr.Error) as raised:
+        gu.gui_runtime_error_handler(handler)()
+
+    assert raised.value.message == f"gone|{tmp_path / 'unplugged'}"
 
 
 def test_a_language_is_saved_and_announced_once_per_choice(

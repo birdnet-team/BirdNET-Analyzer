@@ -1,4 +1,5 @@
 import os
+from html import escape
 from pathlib import Path
 
 import gradio as gr
@@ -39,6 +40,12 @@ def __getattr__(name: str) -> str:
 
 # What every embedded browser plays; WebKit before macOS 15.4 has no Ogg.
 BROWSER_PLAYABLE = (".wav", ".flac", ".mp3")
+
+
+def _unreadable(path: str) -> str:
+    return loc.localize("validation-audio-file-unreadable").format(
+        path=escape(path, quote=False)
+    )
 
 
 def audio_preview(path: str):
@@ -126,6 +133,9 @@ def run_single_file_analysis(
         n_workers=1,
         progress=progress,
     )
+
+    if len(predictions.unprocessable_inputs):
+        raise gr.Error(_unreadable(input_path))
 
     def convert_to_time_str(seconds: float) -> str:
         time_str = str(timedelta(seconds=seconds))
@@ -303,7 +313,12 @@ def build_single_analysis_tab() -> None:
             if not file_path:
                 return gr.skip(), gr.skip(), gr.skip(), gr.skip(), None
 
-            preview = audio_preview(file_path)
+            import soundfile as sf
+
+            try:
+                preview = audio_preview(file_path)
+            except sf.SoundFileError as e:
+                raise gr.Error(_unreadable(file_path)) from e
 
             return (
                 file_path,
@@ -474,9 +489,13 @@ def build_single_analysis_tab() -> None:
         output_dataframe.select(
             get_selected_audio, inputs=audio_path_state, outputs=segment_audio
         )
+
+        def prepare_run_ui():
+            return gr.update(visible=True, value=None), gr.update(visible=False), None
+
         single_file_analyze.click(
-            lambda: gr.update(visible=True),
-            outputs=output_dataframe,
+            prepare_run_ui,
+            outputs=[output_dataframe, action_row, last_prediction_state],
             show_progress="hidden",
         ).then(
             run_single_file_analysis,

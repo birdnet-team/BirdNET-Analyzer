@@ -549,6 +549,14 @@ Other changes
   space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
   ``/`` (``Eurasian/Green-winged Teal``) and failed on Windows for a name with ``?``.
   Segments extracted again into an existing output folder land in the new folder.
+* **A command that fails** prints ``Error:`` with the reason and ends with exit status
+  1; the stacktrace is in the error log file and, with ``--verbose``, on the console.
+  v2.4.0 printed the stacktrace. Error messages are printed to the standard error
+  stream, all other messages to the standard output; v2.4.0 printed both to the
+  standard output.
+* **Training data that cannot be used** raises a ``TrainingInputError``, a
+  ``ValueError`` whose text is the message and whose ``key`` names the GUI text. v2.4.0
+  raised a ``ValueError`` with the message and the key as its two arguments.
 
 
 .. _coming-from-1x:

@@ -689,9 +689,9 @@ def test_cli_writes_uncaught_errors_to_the_error_log(tmp_path, monkeypatch, cli)
     _write_table(ann / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     _write_table(pred / "rec1.txt", ANN_HEADER, [[0, 3, "X"]])
     logged = []
-    monkeypatch.setattr(utils, "write_error_log", logged.append)
+    monkeypatch.setattr(utils, "write_error_log", lambda ex, _: logged.append(ex))
 
-    with pytest.raises(EvaluationInputError, match="Confidence"):
+    with pytest.raises(SystemExit):
         cli(
             "--annotation_path",
             str(ann),
@@ -1529,8 +1529,7 @@ def test_a_class_mapping_that_is_not_an_object_of_names_is_rejected(
     assert ("message" in error.value.details) is (reason == "not-json")
 
 
-def test_the_cli_detects_the_columns_of_birdnet_tables(tmp_path, cli, caplog):
-    caplog.set_level(logging.WARNING)
+def test_the_cli_detects_the_columns_of_birdnet_tables(tmp_path, cli, capsys):
     ann, pred = _dirs(tmp_path)
     selections = ["Begin Time (s)", "End Time (s)", "Class"]
     _write_table(ann / "rec1.txt", selections, [[0, 3, "Wren"], [3, 6, "Robin"]])
@@ -1573,5 +1572,6 @@ def test_the_cli_detects_the_columns_of_birdnet_tables(tmp_path, cli, caplog):
     assert results.loc["Precision", "Wren"] == 1.0
     assert results.loc["Recall", "Wren"] == 0.5
     assert results.loc["Precision", "Robin"] == 0.0
-    assert "README.txt" in caplog.text
-    assert "rec2" in caplog.text
+    printed = capsys.readouterr().out
+    assert "README.txt" in printed
+    assert "rec2" in printed

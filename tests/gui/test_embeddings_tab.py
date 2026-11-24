@@ -21,7 +21,7 @@ SELECT_DB_DIRECTORY = "select_directory_and_update_tb"
 
 
 @pytest.fixture
-def embeddings_calls(monkeypatch):
+def embeddings_calls(monkeypatch, made_up_inputs):
     calls = []
     monkeypatch.setattr(gr, "Info", lambda *a, **k: None)
     monkeypatch.setattr(
@@ -108,6 +108,7 @@ def test_an_existing_database_keeps_its_settings(embeddings_calls, hoplite_datab
     assert (kwargs["n_producers"], kwargs["n_workers"]) == (3, 5)
 
 
+@pytest.mark.usefixtures("made_up_inputs")
 def test_a_failing_run_is_neither_retried_nor_masked(monkeypatch, hoplite_database):
     raised = []
 
@@ -213,3 +214,68 @@ def test_embedding_lets_birdnet_pick_the_worker_count_by_default(
 
     assert start() is None
     assert start(workers_auto=False, workers_number=5) == 5
+
+
+@pytest.mark.parametrize(
+    ("there", "key"),
+    [(False, "error-path-not-found"), (True, "validation-no-audio-files-found")],
+    ids=["gone", "without audio"],
+)
+def test_a_recordings_folder_with_nothing_to_embed_is_reported_instead_of_embedded(
+    monkeypatch, tmp_path, there, key
+):
+    def fail(*args, **kwargs):
+        raise AssertionError("the embedding started")
+
+    monkeypatch.setattr(embeddings_core, "embeddings", fail)
+    monkeypatch.chdir(tmp_path)
+
+    if there:
+        (tmp_path / "recordings").mkdir()
+        (tmp_path / "recordings" / "notes.txt").touch()
+
+    with pytest.raises(gr.Error) as raised:
+        _run(str(tmp_path / "new_db"))
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP[key].format(path="recordings")
+
+
+@pytest.mark.usefixtures("made_up_inputs")
+@pytest.mark.parametrize(
+    ("skipped", "listed"),
+    [
+        (["R&D/broken.wav"], "R&amp;D/broken.wav"),
+        (
+            [f"{i:02}.wav" for i in range(23)],
+            ", ".join([*(f"{i:02}.wav" for i in range(20)), "..."]),
+        ),
+    ],
+    ids=["named", "cut short"],
+)
+def test_files_the_embedding_could_not_read_are_named_in_a_notice_that_stays(
+    monkeypatch, tmp_path, skipped, listed
+):
+    notices = []
+    monkeypatch.setattr(gr, "Info", lambda *a, **k: None)
+    monkeypatch.setattr(
+        gr, "Warning", lambda message, **k: notices.append((message, k))
+    )
+    monkeypatch.setattr(
+        embeddings_core,
+        "embeddings",
+        lambda *a, **k: [
+            os.path.join("recordings", *name.split("/")) for name in skipped
+        ],
+    )
+
+    _run(str(tmp_path / "new_db"))
+
+    header = loc.LANGUAGE_LOOKUP[
+        "multi-tab-result-dataframe-column-invalid-file-header"
+    ]
+    assert notices == [
+        (
+            f"{header} ({len(skipped)}): {listed.replace('/', os.sep)}",
+            {"duration": None},
+        )
+    ]

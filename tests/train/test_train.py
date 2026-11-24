@@ -499,7 +499,7 @@ def test_a_training_with_too_few_files_to_validate_on_is_refused(
     with pytest.raises(ValueError, match="Too few files") as error:
         train_model("unused", output=str(tmp_path / "cc"), model_formats=[])
 
-    assert error.value.args[1] == "validation-too-few-files-to-validate"
+    assert error.value.key == "validation-too-few-files-to-validate"
 
 
 @pytest.mark.parametrize(

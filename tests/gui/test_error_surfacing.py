@@ -27,7 +27,7 @@ TABS = {
     ),
     "single_file": (
         single_file.build_single_analysis_tab,
-        {"<lambda>", *MODEL_CONTROLS},
+        {"<lambda>", "prepare_run_ui", *MODEL_CONTROLS},
     ),
     "multi_file": (
         multi_file.build_multi_analysis_tab,

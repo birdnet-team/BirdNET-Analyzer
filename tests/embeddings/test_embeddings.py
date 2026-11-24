@@ -1,3 +1,4 @@
+import logging
 import pathlib
 from unittest.mock import MagicMock, patch
 
@@ -200,3 +201,39 @@ def test_exporting_a_missing_database_creates_nothing(tmp_path):
         create_csv_output(str(tmp_path / "out.csv"), str(tmp_path / "typo"))
 
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("as_method", [True, False], ids=["method", "property"])
+@patch("birdnet_analyzer.embeddings.core._ensure_recording", return_value=20)
+@patch("birdnet_analyzer.embeddings.core._ensure_deployment", return_value=10)
+@patch("birdnet_analyzer.embeddings.core._check_database_settings")
+@patch("birdnet_analyzer.embeddings.core.get_or_create_database")
+@patch("birdnet_analyzer.model_utils.get_embeddings")
+def test_embeddings_name_and_return_the_files_they_could_not_read(
+    mock_get_embeddings: MagicMock,
+    mock_get_db: MagicMock,
+    mock_check_settings: MagicMock,
+    mock_ensure_deployment: MagicMock,
+    mock_ensure_recording: MagicMock,
+    tmp_path,
+    caplog,
+    as_method,
+):
+    good, broken = str(tmp_path / "good.wav"), str(tmp_path / "broken.wav")
+    result = _make_empty_encoding_result()
+    result.n_inputs = 2
+    result.inputs = np.array([good, broken])
+    result.input_durations = np.array([0.0, 0.0])
+    skipped = np.array([1])
+    result.unprocessable_inputs = (
+        MagicMock(return_value=skipped) if as_method else skipped
+    )
+    mock_get_embeddings.return_value = result
+
+    with caplog.at_level(logging.WARNING, logger="birdnet_analyzer"):
+        skipped = embeddings(audio_input=str(tmp_path), database=str(tmp_path / "db"))
+
+    assert skipped == [broken]
+    assert [r.getMessage() for r in caplog.records] == [
+        f"1 of 2 audio files could not be read and were skipped:\n  {broken}"
+    ]

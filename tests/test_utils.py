@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -79,3 +80,22 @@ def test_a_long_recording_is_drawn_at_pixel_resolution_keeping_peaks():
     assert 20 * figure.dpi / 2 < mesh.shape[1] <= 20 * figure.dpi
     assert mesh.max() == pytest.approx(0)
     assert mesh.max(axis=0).argmax() == pytest.approx(mesh.shape[1] / 2, abs=2)
+
+
+def test_a_long_list_of_unreadable_files_is_cut_short(caplog):
+    files = [f"{i:02}.wav" for i in range(23)]
+
+    with caplog.at_level(logging.WARNING, logger="birdnet_analyzer"):
+        utils.warn_about_unreadable_files(files, 100)
+
+    lines = caplog.records[0].getMessage().splitlines()
+
+    assert lines[0] == "23 of 100 audio files could not be read and were skipped:"
+    assert lines[1:] == [*(f"  {file}" for file in files[:20]), "  ... and 3 more"]
+
+
+def test_a_run_that_read_every_file_reports_nothing(caplog):
+    with caplog.at_level(logging.WARNING, logger="birdnet_analyzer"):
+        utils.warn_about_unreadable_files([], 100)
+
+    assert caplog.records == []

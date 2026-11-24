@@ -12,12 +12,14 @@ import pytest
 gr = pytest.importorskip("gradio")
 
 import birdnet_analyzer.gui.analysis as ga  # noqa: E402
+import birdnet_analyzer.gui.localization as loc  # noqa: E402
 import birdnet_analyzer.gui.single_file as sfa  # noqa: E402
 import birdnet_analyzer.gui.utils as gu  # noqa: E402
 
 
 class FakePredictions:
     hop_duration_s = 3.0
+    unprocessable_inputs = ()
 
     def __init__(self, df):
         self._df = df
@@ -116,3 +118,17 @@ def test_consecutive_detections_are_merged_for_table_and_downloads(monkeypatch):
     assert table.shape[0] == 2
     assert list(state["table"]["start_time"]) == [0.0, 9.0]
     assert list(state["table"]["end_time"]) == [9.0, 18.0]
+
+
+def test_a_file_that_could_not_be_read_is_reported_instead_of_an_empty_table(
+    monkeypatch,
+):
+    result = make_result(0)
+    result.unprocessable_inputs = (0,)
+
+    with pytest.raises(gr.Error) as raised:
+        run(monkeypatch, result)
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP[
+        "validation-audio-file-unreadable"
+    ].format(path="a.wav")

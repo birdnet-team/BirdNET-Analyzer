@@ -348,7 +348,10 @@ def analyze(
         ),
     }
 
-    inputs = _analysed_inputs(predictions, journal, input_files)
+    from birdnet_analyzer.utils import warn_about_unreadable_files
+
+    inputs, unreadable = _analysed_inputs(predictions, journal, input_files)
+    warn_about_unreadable_files(unreadable, len(inputs) + len(unreadable))
 
     if split_tables:
         _split_tables(
@@ -429,15 +432,20 @@ def _resume_fingerprint_params(**params) -> dict:
     return params
 
 
-def _analysed_inputs(predictions, journal, input_files: list[Path]) -> list[str]:
-    """The inputs an analysis read, whether or not they hold detections."""
+def _analysed_inputs(
+    predictions, journal, input_files: list[Path]
+) -> tuple[list[str], list[str]]:
+    """The inputs an analysis read, detections or not, and those it could not read."""
     files = input_files or [Path(f) for f in predictions.inputs]
     unprocessable = journal.invalid_subset(input_files) if journal else set()
 
     if predictions is not None:
         unprocessable |= predictions.get_unprocessed_files()
 
-    return [str(f) for f in files if f not in unprocessable]
+    return (
+        [str(f) for f in files if f not in unprocessable],
+        [str(f) for f in files if f in unprocessable],
+    )
 
 
 def _path_key(path) -> str:

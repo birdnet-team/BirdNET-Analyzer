@@ -25,6 +25,8 @@ def _extract_segments(
     progress=gr.Progress(),
 ):
     gu.validate(audio_dir, loc.localize("validation-no-audio-directory-selected"))
+
+    gu.validate_exists(result_dir or audio_dir)
     gu.validate(
         max_conf > min_conf,
         loc.localize("validation-max-confidence-lower-than-min-confidence"),
@@ -56,6 +58,11 @@ def _extract_segments(
         n_bins=num_bins,
         on_update=on_update if progress else None,
     )
+
+    if not segments_list:
+        gu.validate_exists(audio_dir)
+
+        raise gr.Error(loc.localize("segments-tab-no-segments-error"))
 
     skipped_files = [
         os.path.relpath(r[0], audio_dir) for r in segments_list if not r[1]
