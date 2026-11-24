@@ -928,7 +928,15 @@ def test_processes_started_during_and_after_a_training_keep_the_gpus(
 
 
 def _train_in_a_new_process(cache, output, tf_first, queue):
+    from concurrent.futures import ThreadPoolExecutor
+
     import tensorflow as tf
+
+    installed = len(tf.config.list_physical_devices("GPU"))
+
+    if not installed:
+        queue.put({"installed": 0})
+        return
 
     before = 0
 
@@ -939,14 +947,16 @@ def _train_in_a_new_process(cache, output, tf_first, queue):
         tf.config.experimental.reset_memory_stats("GPU:0")
         before = tf.config.experimental.get_memory_info("GPU:0")["current"]
 
-    train(
-        cache,
-        output,
-        epochs=2,
-        model_formats=["tflite", "detached"],
-        autotune=True,
-        autotune_trials=2,
-    )
+    with ThreadPoolExecutor(1) as gui_thread:
+        gui_thread.submit(
+            train,
+            cache,
+            output,
+            epochs=2,
+            model_formats=["tflite", "detached"],
+            autotune=True,
+            autotune_trials=2,
+        ).result()
 
     gpus = tf.config.list_logical_devices("GPU")
     allocated = (
@@ -965,6 +975,7 @@ def _train_in_a_new_process(cache, output, tf_first, queue):
     )
     queue.put(
         {
+            "installed": installed,
             "gpus": len(gpus),
             "allocated_on_the_gpu": allocated,
             "gpus_of_a_later_process": int(child.stdout.split()[-1]),
@@ -975,15 +986,9 @@ def _train_in_a_new_process(cache, output, tf_first, queue):
 @pytest.mark.skipif(not pb_model_cached("3.0"), reason="3.0 pb model not cached")
 @pytest.mark.parametrize("tf_first", [False, True], ids=["fresh", "tf on the gpu"])
 def test_a_training_takes_nothing_on_the_gpu(monkeypatch, tmp_path, tf_first):
-    import tensorflow as tf
-
     from birdnet_analyzer.train import utils as train_utils
 
-    n_gpus = len(tf.config.list_physical_devices("GPU"))
-
-    if not n_gpus:
-        pytest.skip("TensorFlow sees no GPU")
-
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     monkeypatch.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
     rng = np.random.default_rng(0)
     y = np.repeat(np.eye(2, dtype="float32"), 30, axis=0)
@@ -1006,6 +1011,11 @@ def test_a_training_takes_nothing_on_the_gpu(monkeypatch, tmp_path, tf_first):
         report = queue.get(timeout=5)
     finally:
         process.kill()
+
+    n_gpus = report.pop("installed")
+
+    if not n_gpus:
+        pytest.skip("TensorFlow sees no GPU")
 
     assert report == {
         "gpus": n_gpus if tf_first else 0,

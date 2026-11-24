@@ -459,7 +459,7 @@ class HardLabelAUC(keras.metrics.AUC):
 @contextlib.contextmanager
 def on_the_cpu():
     """Runs TensorFlow on the CPU and hides the GPUs from it for the rest of the
-    process. Child processes and other libraries still see them."""
+    process. Processes it spawns and other libraries still see them."""
     # Raised once TensorFlow has set up its devices; the scope still applies then.
     with contextlib.suppress(RuntimeError):
         tf.config.set_visible_devices([], "GPU")
@@ -604,7 +604,10 @@ def train_linear_classifier(
 
     loss_function = _focal_loss if train_with_focal_loss else custom_loss
 
+    # Keras picks XLA when a GPU is installed, hidden or not, and on the CPU XLA made
+    # autotune about three times slower.
     classifier.compile(
+        jit_compile=False,
         optimizer=keras.optimizers.AdamW(
             learning_rate=learning_rate, weight_decay=weight_decay
         ),

@@ -53,6 +53,9 @@ def train(
 ):
     """
     Trains a custom classifier model using the BirdNET-Analyzer framework.
+
+    The training runs on the CPU, and TensorFlow in the calling process uses no GPU
+    afterwards either.
     Args:
         audio_input (str): Path to the training data directory or path to a cache file
                            ("train_cache.npz" for example).
