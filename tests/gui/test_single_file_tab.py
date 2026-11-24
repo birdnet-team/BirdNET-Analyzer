@@ -101,6 +101,15 @@ def test_the_player_starts_with_the_lighter_classic_preset(appdir):
     assert '"defaultPreset": "classicSmall"' in player.js_on_load
 
 
+def test_a_detection_clicked_in_the_player_plays(appdir):
+    with gr.Blocks() as demo:
+        single_file.build_single_analysis_tab()
+
+    player = next(c for c in demo.blocks.values() if isinstance(c, SignaVisPlayer))
+
+    assert '"playOnLabelClick": true' in player.js_on_load
+
+
 def test_the_confidence_choice_is_remembered(appdir):
     from birdnet_analyzer import settings
     from birdnet_analyzer.gui import localization as loc

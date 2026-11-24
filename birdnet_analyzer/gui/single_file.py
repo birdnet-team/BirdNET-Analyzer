@@ -351,6 +351,8 @@ def build_single_analysis_tab() -> None:
                 "keyboardShortcuts": False,
                 # A quarter of the spectrogram data of "classic", same look.
                 "defaultPreset": "classicSmall",
+                # A detection clicked in the player plays, as a click in the table does.
+                "playOnLabelClick": True,
             },
         )
         show_confidence_checkbox = state.persist(
