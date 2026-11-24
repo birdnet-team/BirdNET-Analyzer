@@ -84,6 +84,15 @@ def test_the_file_is_shown_in_the_spectrogram_player(appdir):
     assert not any(isinstance(c, (gr.Audio, gr.Plot)) for c in demo.blocks.values())
 
 
+def test_a_row_clicked_in_the_table_does_not_dim_the_player(appdir):
+    with gr.Blocks() as demo:
+        single_file.build_single_analysis_tab()
+
+    events = {getattr(e.fn, "__name__", None): e for e in demo.fns.values()}
+
+    assert events["play_selected_detection"].show_progress == "hidden"
+
+
 def test_the_player_leaves_the_keyboard_to_the_rest_of_the_gui(appdir):
     with gr.Blocks() as demo:
         single_file.build_single_analysis_tab()

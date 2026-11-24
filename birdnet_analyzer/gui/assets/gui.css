@@ -21,6 +21,10 @@ footer {
     text-align: center;
 }
 
+#single-file-output .virtual-row.at-playhead [role=gridcell] {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
 #species-progress-placeholder {
     height: 5rem;
 }

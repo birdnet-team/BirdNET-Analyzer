@@ -640,6 +640,7 @@ def build_single_analysis_tab() -> None:
             play_selected_detection,
             inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
             outputs=player,
+            show_progress="hidden",
         )
         for checkbox in (show_confidence_checkbox, long_spectrogram_checkbox):
             checkbox.change(
