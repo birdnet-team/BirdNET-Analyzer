@@ -474,14 +474,19 @@ class _WindowEvent(list):
         return self
 
 
-def _open_window_with_a_fake_webview(monkeypatch):
-    """Runs open_window up to the point where the real one blocks; returns its URL."""
-    urls = []
+def _open_window_with_a_fake_webview(monkeypatch, screen=(1920, 1080)):
+    """Runs open_window up to the point where the real one blocks.
+
+    Returns the URL and the other arguments of the window.
+    """
+    windows = []
     events = SimpleNamespace(shown=_WindowEvent(), loaded=_WindowEvent())
     webview = SimpleNamespace(
         settings={},
+        screens=[SimpleNamespace(width=screen[0], height=screen[1])],
         create_window=lambda title, url, **kwargs: (
-            urls.append(url) or SimpleNamespace(events=events, uid="master")
+            windows.append((url, kwargs))
+            or SimpleNamespace(events=events, uid="master")
         ),
         start=lambda **kwargs: None,
     )
@@ -501,7 +506,28 @@ def _open_window_with_a_fake_webview(monkeypatch):
     finally:
         gr.close_all()
 
-    return urls[0]
+    return windows[0]
+
+
+@pytest.mark.parametrize("screen", [(1366, 768), (1280, 720), (1024, 600)])
+def test_the_window_opens_maximized_on_a_screen_it_does_not_fit(
+    appdir, monkeypatch, screen
+):
+    _, size = _open_window_with_a_fake_webview(monkeypatch, screen)
+
+    assert size["maximized"]
+    assert size["width"] <= screen[0]
+    assert size["height"] <= screen[1]
+    assert size["min_size"][0] < screen[0]
+    assert size["min_size"][1] < screen[1]
+
+
+def test_the_window_keeps_its_size_on_a_screen_it_fits(appdir, monkeypatch):
+    _, size = _open_window_with_a_fake_webview(monkeypatch, (1920, 1080))
+
+    assert (size["width"], size["height"]) == (1300, 900)
+    assert size["min_size"] == (1300, 900)
+    assert not size.get("maximized")
 
 
 def _proxy_from_the_environment(monkeypatch):
@@ -538,7 +564,7 @@ def test_the_window_opens_although_an_unreachable_proxy_is_configured(
     monkeypatch.delenv("no_proxy", raising=False)
     configure_proxy(monkeypatch)
 
-    url = _open_window_with_a_fake_webview(monkeypatch)
+    url, _ = _open_window_with_a_fake_webview(monkeypatch)
 
     assert url.startswith("http://127.0.0.1:")
     assert "NO_PROXY" not in os.environ
