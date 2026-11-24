@@ -7,9 +7,11 @@ import csv
 import logging
 import os
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
+from contextlib import closing
 
 import numpy as np
+import soundfile as sf
 
 import birdnet_analyzer.config as cfg
 from birdnet_analyzer import audio, utils
@@ -404,6 +406,65 @@ def parse_files(
     return [tuple(e) for e in segments.items()]
 
 
+def _trailing_parts(path: str) -> list[str]:
+    return os.path.normcase(path).split(os.sep)[::-1]
+
+
+def relocate_audio(
+    file_list: list[tuple[str, list]], audio_dir: str
+) -> list[tuple[str, list]]:
+    """Finds the recordings that are no longer where a combined table names them.
+
+    The table holds the paths of the day of the analysis, which a drive with another
+    letter or a copied folder leaves behind. A missing recording is taken from
+    ``audio_dir`` if one file there shares more trailing folders and its name with
+    it than any other, and no other recording of the table lands on that file.
+    """
+    present = {os.path.normcase(path) for path, _ in file_list if os.path.isfile(path)}
+
+    if len(present) == len(file_list):
+        return file_list
+
+    by_name = defaultdict(list)
+
+    for root, _, files in os.walk(audio_dir):
+        for f in files:
+            candidate = os.path.join(root, f)
+
+            if os.path.normcase(candidate) not in present:
+                by_name[os.path.normcase(f)].append(candidate)
+
+    found = {}
+
+    for path, _ in file_list:
+        if os.path.normcase(path) in present:
+            continue
+
+        wanted = _trailing_parts(path)
+        ranked = sorted(
+            (
+                (
+                    len(os.path.commonprefix([wanted, _trailing_parts(candidate)])),
+                    candidate,
+                )
+                for candidate in by_name.get(wanted[0], [])
+            ),
+            reverse=True,
+        )
+
+        if ranked and (len(ranked) == 1 or ranked[0][0] > ranked[1][0]):
+            found[path] = ranked[0][1]
+
+    claims = Counter(found.values())
+    found = {path: target for path, target in found.items() if claims[target] == 1}
+    logger.info(
+        f"Found {len(found)} of {len(file_list) - len(present)} audio files, which "
+        f"are not where the results name them, in {audio_dir}."
+    )
+
+    return [(found.get(path, path), segments) for path, segments in file_list]
+
+
 def _find_segments(
     afile: str | None, rfile: str, min_conf: float = 0.25, max_conf: float = 1.0
 ) -> list[dict] | None:
@@ -438,6 +499,63 @@ def _find_segments(
     ]
 
 
+# Right after a seek an mp3 decodes wrong: 63 of 2000 parts did, for up to 65 ms
+# (libsndfile 1.2.2). None did with 0.1 s decoded ahead of the part.
+_LEAD_IN_S = 1.0
+
+
+class _Recording:
+    """Reads parts of a recording at ``sample_rate``, sped up by ``speed``.
+
+    A file soundfile opens is read part by part, so the memory in use does not grow
+    with its length. Any other is decoded as a whole.
+    """
+
+    def __init__(self, path: str, sample_rate: int, speed: float):
+        self._sample_rate = sample_rate
+        self._speed = speed
+        self._signal = None
+
+        try:
+            self._file = sf.SoundFile(path)
+        except sf.LibsndfileError:
+            self._file = None
+            self._signal, _ = audio.open_audio_file(path, sample_rate, speed=speed)
+
+    def read(self, start: float, end: float) -> np.ndarray:
+        """The signal between two times of the recording, in seconds."""
+        if self._file is None:
+            per_second = self._sample_rate / self._speed
+
+            return self._signal[int(start * per_second) : int(end * per_second)]
+
+        import librosa
+
+        rate = self._file.samplerate
+        first = min(round(start * rate), self._file.frames)
+        lead_in = min(first, int(_LEAD_IN_S * rate))
+        self._file.seek(first - lead_in)
+        sig = self._file.read(
+            lead_in + max(0, round((end - start) * rate)),
+            dtype="float32",
+            always_2d=True,
+        )[lead_in:].mean(axis=1)
+
+        if not len(sig):
+            return sig
+
+        return librosa.resample(
+            sig,
+            orig_sr=int(rate * self._speed),
+            target_sr=self._sample_rate,
+            res_type="soxr_hq",
+        )
+
+    def close(self) -> None:
+        if self._file is not None:
+            self._file.close()
+
+
 def extract_segments(
     file_path: str,
     output_path: str,
@@ -468,40 +586,40 @@ def extract_segments(
         Exception: If there is an error opening the audio file or extracting segments.
     """
     try:
-        sig, rate = audio.open_audio_file(file_path, sample_rate, speed=audio_speed)
+        recording = _Recording(file_path, sample_rate, audio_speed)
     except Exception as ex:
         logger.error(f"Error: Cannot open audio file {file_path}", exc_info=ex)
 
         return file_path, False
 
-    for seg_cnt, seg in enumerate(segments, 1):
-        try:
-            start = int((seg["start"] * rate) / audio_speed)
-            end = int((seg["end"] * rate) / audio_speed)
-            offset = max(0, ((seg_length * rate) - (end - start)) // 2)
-            start = max(0, start - offset)
-            end = min(len(sig), end + offset)
-
-            if end > start:
-                seg_sig = sig[int(start) : int(end)]
-                outpath = os.path.join(output_path, _species_folder(seg["species"]))
-                seg_name = "{:.3f}_{}_{}_{:.2f}s_{:.2f}s.wav".format(
-                    seg["confidence"],
-                    seg_cnt,
-                    file_path.rsplit(os.sep, 1)[-1].rsplit(".", 1)[0],
-                    seg["start"],
-                    seg["end"],
+    with closing(recording):
+        for seg_cnt, seg in enumerate(segments, 1):
+            try:
+                padding = max(
+                    0.0, (seg_length * audio_speed - (seg["end"] - seg["start"])) / 2
                 )
-                seg_path = os.path.join(outpath, seg_name)
+                start = max(0.0, seg["start"] - padding)
+                seg_sig = recording.read(start, seg["end"] + padding)
 
-                os.makedirs(outpath, exist_ok=True)
-                audio.save_signal(seg_sig, seg_path, rate)
+                if len(seg_sig):
+                    outpath = os.path.join(output_path, _species_folder(seg["species"]))
+                    seg_name = "{:.3f}_{}_{}_{:.2f}s_{:.2f}s.wav".format(
+                        seg["confidence"],
+                        seg_cnt,
+                        file_path.rsplit(os.sep, 1)[-1].rsplit(".", 1)[0],
+                        seg["start"],
+                        seg["end"],
+                    )
+                    seg_path = os.path.join(outpath, seg_name)
 
-        except Exception as ex:
-            logger.error(
-                f"Error: Cannot extract segments from {file_path}.", exc_info=ex
-            )
+                    os.makedirs(outpath, exist_ok=True)
+                    audio.save_signal(seg_sig, seg_path, sample_rate)
 
-            return file_path, False
+            except Exception as ex:
+                logger.error(
+                    f"Error: Cannot extract segments from {file_path}.", exc_info=ex
+                )
+
+                return file_path, False
 
     return file_path, True

@@ -2697,6 +2697,47 @@ def _open_links_as_the_desktop_would() -> None:
     webbrowser.register("xdg-open", None, Desktop(), preferred=True)
 
 
+WINDOW_SIZE = (1300, 900)
+SMALL_SCREEN_MIN_SIZE = (800, 600)
+# Taskbar, dock or panels: a screen's size includes them.
+SCREEN_MARGIN = 100
+
+
+def _window_size_options(screens: list) -> dict:
+    """The size arguments of the window on the first of ``screens``.
+
+    Where the window does not fit, it opens maximized with a minimum size that does:
+    Cinnamon gives a window that cannot fit the screen no maximize button.
+    """
+    width, height = WINDOW_SIZE
+
+    if not screens:
+        return {"width": width, "height": height, "min_size": WINDOW_SIZE}
+
+    room = (screens[0].width - SCREEN_MARGIN, screens[0].height - SCREEN_MARGIN)
+
+    if room[0] >= width and room[1] >= height:
+        return {"width": width, "height": height, "min_size": WINDOW_SIZE}
+
+    return {
+        "width": min(width, screens[0].width),
+        "height": min(height, screens[0].height),
+        "min_size": tuple(map(min, SMALL_SCREEN_MIN_SIZE, room)),
+        "maximized": True,
+    }
+
+
+def _screens() -> list:
+    import webview
+
+    try:
+        return webview.screens
+    except Exception:
+        logger.warning("The screen size is unknown.", exc_info=True)
+
+        return []
+
+
 def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
@@ -2747,9 +2788,7 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     _WINDOW = webview.create_window(
         "BirdNET-Analyzer",
         _URL.rstrip("/") + f"?__theme={theme_mode}",
-        width=1300,
-        height=900,
-        min_size=(1300, 900),
+        **_window_size_options(_screens()),
         # The page's body fill, so the window does not flash white before it renders.
         # pywebview takes "#rrggbb" only; the light fill is the keyword "white".
         background_color=theme.neutral_950 if dark else "#ffffff",

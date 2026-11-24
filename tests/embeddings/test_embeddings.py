@@ -1,5 +1,7 @@
 import logging
 import pathlib
+import shutil
+import sys
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -7,6 +9,9 @@ import pytest
 
 from birdnet_analyzer.cli import embeddings_parser
 from birdnet_analyzer.embeddings.core import create_csv_output, embeddings
+from birdnet_analyzer.search.core import open_database, read_database_settings
+
+RECORDING = pathlib.Path("tests/data/embeddings/embeddings-dataset/s1/file01.wav")
 
 
 def _make_empty_encoding_result():
@@ -166,6 +171,24 @@ def test_a_settings_mismatch_closes_the_database(
     assert hoplite_connections.still_open() == []
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Case tells folders apart.")
+def test_a_folder_spelled_in_another_case_is_still_the_databases_folder(
+    monkeypatch, tmp_path
+):
+    from birdnet_analyzer import model_utils
+
+    monkeypatch.setattr(
+        model_utils, "get_embeddings", lambda *a, **k: _make_empty_encoding_result()
+    )
+    recordings = str(tmp_path / "recordings")
+    database = str(tmp_path / "db")
+    embeddings(recordings, database)
+
+    embeddings(recordings.swapcase(), database)
+
+    assert read_database_settings(database)["AUDIO_ROOT"] == str(tmp_path)
+
+
 def test_naming_another_model_than_the_databases_fails_before_inference(
     hoplite_database, monkeypatch, tmp_path
 ):
@@ -237,3 +260,32 @@ def test_embeddings_name_and_return_the_files_they_could_not_read(
     assert [r.getMessage() for r in caplog.records] == [
         f"1 of 2 audio files could not be read and were skipped:\n  {broken}"
     ]
+
+
+def _count_embeddings(database: str) -> int:
+    with open_database(database) as db:
+        return db.count_embeddings()
+
+
+@pytest.mark.parametrize(
+    "folder", ["recordings", "recordings/", "nested/../recordings"]
+)
+def test_a_folder_named_from_the_working_directory_is_embedded_like_its_full_path(
+    folder, tmp_path, monkeypatch
+):
+    recordings = tmp_path / "recordings"
+    recordings.mkdir()
+    (tmp_path / "nested").mkdir()
+    shutil.copy(RECORDING, recordings)
+    database = str(tmp_path / "db")
+    monkeypatch.chdir(tmp_path)
+
+    embeddings(folder, database, n_workers=1)
+
+    n_embeddings = _count_embeddings(database)
+    assert n_embeddings > 0
+    assert read_database_settings(database)["AUDIO_ROOT"] == str(tmp_path)
+
+    embeddings(str(recordings), database, n_workers=1)
+
+    assert _count_embeddings(database) == n_embeddings
