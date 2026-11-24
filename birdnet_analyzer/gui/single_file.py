@@ -417,7 +417,7 @@ def build_single_analysis_tab() -> None:
             # The last value is the selection request: None tells the
             # steps chained below that the dialog was cancelled.
             if not file_path:
-                return (*(gr.skip(),) * 8, None)
+                return (*(gr.skip(),) * 9, None)
 
             # The player shows up right away: decoding an mp3/ogg into a
             # preview below can take a while for long recordings.
@@ -426,6 +426,8 @@ def build_single_analysis_tab() -> None:
                 file_path,
                 None,
                 gr.update(visible=True, value=player_value(None)),
+                gr.update(visible=True),
+                # Shown for every file: it can only be turned off where it is shown.
                 gr.update(visible=True),
                 None,
                 # The results of the last recording go with its predictions.
@@ -444,7 +446,7 @@ def build_single_analysis_tab() -> None:
         @gu.gui_runtime_error_handler
         def load_player(file_path, show_confidence, show_long_spectrogram):
             if not file_path:
-                return (gr.skip(),) * 5
+                return (gr.skip(),) * 4
 
             import soundfile as sf
 
@@ -461,7 +463,6 @@ def build_single_analysis_tab() -> None:
                 ),
                 gr.update(interactive=True),
                 long_recording,
-                gr.update(visible=long_recording),
             )
 
         select_file_button.click(
@@ -472,6 +473,7 @@ def build_single_analysis_tab() -> None:
                 player_src_state,
                 player,
                 show_confidence_checkbox,
+                long_spectrogram_checkbox,
                 last_prediction_state,
                 output_dataframe,
                 action_row,
@@ -494,7 +496,6 @@ def build_single_analysis_tab() -> None:
                 player,
                 single_file_analyze,
                 long_recording_state,
-                long_spectrogram_checkbox,
             ],
             show_progress_on=player,
         )

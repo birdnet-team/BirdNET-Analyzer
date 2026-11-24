@@ -155,14 +155,14 @@ def test_cancelling_the_dialog_changes_nothing(appdir, handler, monkeypatch):
         single_file.build_single_analysis_tab, "select_and_load_audio_file"
     )()
 
-    assert list(result) == [gr.skip()] * 8 + [None]
+    assert list(result) == [gr.skip()] * 9 + [None]
 
 
 def test_a_cancelled_dialog_stops_the_chained_steps(appdir, handler):
     tab = single_file.build_single_analysis_tab
 
     assert handler(tab, "lock_analyze")(None) == gr.skip()
-    assert handler(tab, "load_player")(None, False, False) == (gr.skip(),) * 5
+    assert handler(tab, "load_player")(None, False, False) == (gr.skip(),) * 4
 
 
 def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path):
@@ -170,21 +170,31 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
     monkeypatch.setattr(gu, "select_file", lambda *a, **k: str(clip))
 
-    path, label, src, player, checkbox, predictions, table, actions, selection = (
-        handler(single_file.build_single_analysis_tab, "select_and_load_audio_file")()
-    )
+    (
+        path,
+        label,
+        src,
+        player,
+        checkbox,
+        spectrogram_checkbox,
+        predictions,
+        table,
+        actions,
+        selection,
+    ) = handler(single_file.build_single_analysis_tab, "select_and_load_audio_file")()
 
     assert path == label == str(clip)
     assert src is None
     assert player["visible"] is True, "the player shows up before the audio is ready"
     assert checkbox["visible"] is True
+    assert spectrogram_checkbox["visible"] is True, "it can be turned off for any file"
     assert predictions is None, "a new file drops the last results"
     assert table["visible"] is False
     assert table["value"] is None
     assert actions["visible"] is False
     assert selection == str(clip)
 
-    src, player, analyze, long_recording, spectrogram_checkbox = handler(
+    src, player, analyze, long_recording = handler(
         single_file.build_single_analysis_tab, "load_player"
     )(path, True, False)
 
@@ -204,7 +214,6 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     }
     assert analyze["interactive"] is True
     assert long_recording is False
-    assert spectrogram_checkbox["visible"] is False
 
 
 def test_the_player_draws_with_the_spectrogram_settings(appdir, handler, tmp_path):
@@ -260,13 +269,12 @@ def test_a_long_recording_shows_its_spectrogram_on_request(
 
     monkeypatch.setattr(sf, "info", long_info)
 
-    _, player, _, long_recording, spectrogram_checkbox = handler(
+    _, player, _, long_recording = handler(
         single_file.build_single_analysis_tab, "load_player"
     )(str(clip), False, show)
 
     assert player["viewMode"] == view
     assert long_recording is True
-    assert spectrogram_checkbox["visible"] is True
 
 
 def test_turning_on_the_spectrogram_keeps_the_detections(appdir, handler):
