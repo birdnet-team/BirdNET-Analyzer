@@ -602,6 +602,14 @@ folder name cannot hold (<code class="docutils literal notranslate"><span class=
 space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
 <code class="docutils literal notranslate"><span class="pre">/</span></code> (<code class="docutils literal notranslate"><span class="pre">Eurasian/Green-winged</span> <span class="pre">Teal</span></code>) and failed on Windows for a name with <code class="docutils literal notranslate"><span class="pre">?</span></code>.
 Segments extracted again into an existing output folder land in the new folder.</p></li>
+<li><p><strong>A command that fails</strong> prints <code class="docutils literal notranslate"><span class="pre">Error:</span></code> with the reason and ends with exit status
+1; the stacktrace is in the error log file and, with <code class="docutils literal notranslate"><span class="pre">--verbose</span></code>, on the console.
+v2.4.0 printed the stacktrace. Error messages are printed to the standard error
+stream, all other messages to the standard output; v2.4.0 printed both to the
+standard output.</p></li>
+<li><p><strong>Training data that cannot be used</strong> raises a <code class="docutils literal notranslate"><span class="pre">TrainingInputError</span></code>, a
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code> whose text is the message and whose <code class="docutils literal notranslate"><span class="pre">key</span></code> names the GUI text. v2.4.0
+raised a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> with the message and the key as its two arguments.</p></li>
 </ul>
 </section>
 <section id="coming-from-1-x">
