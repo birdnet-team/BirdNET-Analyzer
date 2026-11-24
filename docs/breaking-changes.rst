@@ -485,9 +485,10 @@ Other changes
   the query segments whose own top results contained it, so its rankings differ.
 * **Training files and search queries shorter than 1 second** are used in the
   ``segments`` and ``first`` crop modes too: such a file is one segment, padded with
-  zeros to 3 seconds as in the other crop modes. At the default overlap, v2.4.0 trained
-  without them, so a class of short calls had fewer samples than files, or none, and a
-  search with such a query failed.
+  zeros to 3 seconds as in the other crop modes. At the default overlap, v2.4.0 left them
+  out with ``segments``, so a class of short calls had fewer samples than files, or
+  none. With ``first``, the training stopped with an error, and so did a search with
+  such a query.
 * **Merged detections** (``--merge_consecutive``) of more than three segments have the
   mean confidence of all of them; v2.4.0 took the mean of the three highest.
 * **The GUI of a pip or source installation** keeps its language, theme and last used

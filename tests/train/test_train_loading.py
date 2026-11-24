@@ -30,11 +30,14 @@ def _label():
 
 
 @pytest.mark.parametrize(
-    ("crop_mode", "n_segments"), [("center", 1), ("first", 1), ("segments", 2)]
+    ("crop_mode", "duration", "n_segments"),
+    [("center", 5.0, 1), ("first", 5.0, 1), ("segments", 5.0, 2), ("segments", 3.5, 1)],
 )
-def test_a_file_is_cropped_into_labelled_segments(tmp_path, crop_mode, n_segments):
+def test_a_file_is_cropped_into_labelled_segments(
+    tmp_path, crop_mode, duration, n_segments
+):
     segs, labels = _read_and_crop_file(
-        _sine_wav(tmp_path / "five.wav", 5.0),
+        _sine_wav(tmp_path / "recording.wav", duration),
         _label(),
         sample_rate=SR,
         crop_mode=crop_mode,
