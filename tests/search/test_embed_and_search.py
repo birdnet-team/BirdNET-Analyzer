@@ -34,9 +34,18 @@ def query(recordings, tmp_path):
     return path
 
 
-def _best_match(database: str, query, tmp_path) -> tuple[float, str, str, str]:
-    output = tmp_path / "found"
-    search(str(output), database, str(tmp_path), str(query), n_results=1)
+def _best_match(
+    database: str, query, tmp_path, crop_mode="center"
+) -> tuple[float, str, str, str]:
+    output = tmp_path / f"found-{crop_mode}"
+    search(
+        str(output),
+        database,
+        str(tmp_path),
+        str(query),
+        n_results=1,
+        crop_mode=crop_mode,
+    )
     (found,) = output.iterdir()
     score, recording, start, end = found.stem.split("_")
 
@@ -75,6 +84,24 @@ def test_a_clip_of_an_embedded_recording_is_its_own_best_match(
     assert score > 0.99
     stored = read_database_settings(database)["MODEL_VERSION"]
     assert stored == DEFAULT_ACOUSTIC_MODEL_VERSION
+
+
+def test_a_query_shorter_than_one_second_has_the_same_match_in_every_crop_mode(
+    recordings, tmp_path
+):
+    database = str(tmp_path / "db")
+    embeddings(str(recordings), database, n_workers=1)
+    signal, rate = sf.read(recordings / "file02.wav")
+    call = tmp_path / "call.wav"
+    sf.write(call, signal[3 * rate : 3 * rate + rate // 2], rate)
+
+    center, first, segments = (
+        _best_match(database, call, tmp_path, crop_mode)
+        for crop_mode in ("center", "first", "segments")
+    )
+
+    assert first == pytest.approx(center, abs=1e-4)
+    assert segments == pytest.approx(center, abs=1e-4)
 
 
 def test_a_database_without_a_stored_model_stays_on_birdnet_2_4(

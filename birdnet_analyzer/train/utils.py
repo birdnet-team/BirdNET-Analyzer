@@ -122,19 +122,19 @@ def _read_and_crop_file(
         crop_mode: Mode for cropping audio samples.
         sig_length: Segment length in seconds.
         overlap: Overlap between segments in seconds.
-        min_len: Minimum length of a segment in seconds.
+        min_len: Minimum length of the audio left for the last segment in seconds.
 
     Returns:
         A tuple ``(sig_splits, labels)`` where ``sig_splits`` is a list of float32
         segment arrays and ``labels`` repeats the file's ``label_vector`` once per
         segment. Both lists are empty if the file could not be loaded or produced no
-        usable segment (e.g. a signal shorter than ``min_len``).
+        segment.
     """
     try:
         sig, rate = audio.open_audio_file(
             f,
             sample_rate=sample_rate,
-            duration=sig_length if crop_mode == "first" else None,
+            duration=sig_length * audio_speed if crop_mode == "first" else None,
             fmin=fmin,
             fmax=fmax,
             speed=audio_speed,
@@ -146,8 +146,6 @@ def _read_and_crop_file(
     if crop_mode == "center":
         sig_splits = [audio.crop_center(sig, rate, sig_length)]
     elif crop_mode == "first":
-        # split_signal returns [] for signals shorter than min_len; slicing (not
-        # indexing [0]) keeps such files fail-soft instead of raising IndexError.
         sig_splits = audio.split_signal(sig, rate, sig_length, overlap, min_len)[:1]
     elif crop_mode == "smart":
         sig_splits = audio.smart_crop_signal(sig, rate, sig_length, overlap, min_len)
@@ -245,7 +243,7 @@ def _load_training_data(
         audio_speed: Speed factor for audio playback. Defaults to 1.0.
         crop_mode: Mode for cropping audio samples. Defaults to "center".
         overlap: Overlap between audio chunks. Defaults to 0.0.
-        min_len: Minimum length of audio chunks. Defaults to 1.0.
+        min_len: Minimum length of the audio left for the last chunk. Defaults to 1.0.
         model_version: The BirdNET version whose embeddings become the samples. A
                        cache file was embedded with a fixed version, which is
                        returned instead.

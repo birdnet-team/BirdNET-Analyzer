@@ -30,11 +30,14 @@ def _label():
 
 
 @pytest.mark.parametrize(
-    ("crop_mode", "n_segments"), [("center", 1), ("first", 1), ("segments", 2)]
+    ("crop_mode", "duration", "n_segments"),
+    [("center", 5.0, 1), ("first", 5.0, 1), ("segments", 5.0, 2), ("segments", 3.5, 1)],
 )
-def test_a_file_is_cropped_into_labelled_segments(tmp_path, crop_mode, n_segments):
+def test_a_file_is_cropped_into_labelled_segments(
+    tmp_path, crop_mode, duration, n_segments
+):
     segs, labels = _read_and_crop_file(
-        _sine_wav(tmp_path / "five.wav", 5.0),
+        _sine_wav(tmp_path / "recording.wav", duration),
         _label(),
         sample_rate=SR,
         crop_mode=crop_mode,
@@ -72,18 +75,55 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
     mock_load.assert_not_called()
 
 
-def test_read_and_crop_first_short_file_fails_soft(tmp_path):
-    # Below the 1 s minimum split_signal yields nothing, and "first" must not index it.
+@pytest.mark.parametrize("overlap", [0.0, 2.0])
+@pytest.mark.parametrize("crop_mode", ["first", "segments"])
+def test_a_file_shorter_than_one_second_is_one_zero_padded_segment(
+    tmp_path, crop_mode, overlap
+):
+    duration = 0.4
     segs, labels = _read_and_crop_file(
-        _sine_wav(tmp_path / "short.wav", 0.4),
+        _sine_wav(tmp_path / "call.wav", duration),
         _label(),
         sample_rate=SR,
-        crop_mode="first",
+        crop_mode=crop_mode,
         sig_length=SIG_LENGTH,
+        overlap=overlap,
+    )
+
+    (segment,) = segs
+    call_end = int(duration * SR)
+    assert segment.shape == (int(SIG_LENGTH * SR),)
+    assert np.abs(segment[:call_end]).max() > 0.2
+    assert not segment[call_end:].any()
+    np.testing.assert_array_equal(labels, [_label()])
+
+
+@pytest.mark.parametrize("crop_mode", ["first", "segments"])
+def test_an_empty_file_gives_no_segment(tmp_path, crop_mode):
+    path = tmp_path / "empty.wav"
+    sf.write(path, np.zeros(0, dtype="float32"), SR)
+
+    segs, labels = _read_and_crop_file(
+        str(path), _label(), sample_rate=SR, crop_mode=crop_mode, sig_length=SIG_LENGTH
     )
 
     assert segs == []
     assert labels == []
+
+
+@pytest.mark.parametrize("audio_speed", [0.5, 2.0])
+def test_the_first_segment_is_audio_to_its_end_at_any_speed(tmp_path, audio_speed):
+    (segment,), _ = _read_and_crop_file(
+        _sine_wav(tmp_path / "recording.wav", 8.0),
+        _label(),
+        sample_rate=SR,
+        crop_mode="first",
+        sig_length=SIG_LENGTH,
+        audio_speed=audio_speed,
+    )
+
+    assert segment.shape == (int(SIG_LENGTH * SR),)
+    assert np.abs(segment[-SR // 10 :]).max() > 0.2
 
 
 class _FakeResult:
