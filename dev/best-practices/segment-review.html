@@ -113,6 +113,7 @@ To obtain batch analysis result tables, run the analysis via the GUI or the <a c
 <p class="admonition-title">Warning</p>
 <p>Audacity labels name no audio file, so the segments tool reads them only as the per-file results of an analysis with <code class="docutils literal notranslate"><span class="pre">--split_tables</span></code>, not the combined <code class="docutils literal notranslate"><span class="pre">BirdNET_AudacityLabels.txt</span></code>. Use “table”, “kaleidoscope”, or “csv” formats for combined results.</p>
 </div>
+<p>A combined result table names each recording where it was during the analysis. If the recordings have moved since, for example because the drive got another letter or the folder was copied to another computer, select the folder that holds them now as the audio folder: the segments tool looks there for a recording it does not find, by its file name and the folders it is in. A recording that two files there match equally well is skipped.</p>
 </section>
 <section id="using-the-segments-tool-in-the-gui-or-command-line">
 <h2>Using the “Segments” Tool in the GUI or Command Line<a class="headerlink" href="#using-the-segments-tool-in-the-gui-or-command-line" title="Link to this heading"></a></h2>
