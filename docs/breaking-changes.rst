@@ -489,6 +489,10 @@ Other changes
   out with ``segments``, so a class of short calls had fewer samples than files, or
   none. With ``first``, the training stopped with an error, and so did a search with
   such a query.
+* **Training with ``--crop_mode first`` and an ``--audio_speed`` above 1** uses the
+  first 3 seconds of the sped-up audio. v2.4.0 sped up only the first 3 seconds of the
+  recording, so the rest of the segment was silence, and above a speed of 3 the
+  training stopped with an error.
 * **Merged detections** (``--merge_consecutive``) of more than three segments have the
   mean confidence of all of them; v2.4.0 took the mean of the three highest.
 * **The GUI of a pip or source installation** keeps its language, theme and last used

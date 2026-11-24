@@ -134,7 +134,7 @@ def _read_and_crop_file(
         sig, rate = audio.open_audio_file(
             f,
             sample_rate=sample_rate,
-            duration=sig_length if crop_mode == "first" else None,
+            duration=sig_length * audio_speed if crop_mode == "first" else None,
             fmin=fmin,
             fmax=fmax,
             speed=audio_speed,

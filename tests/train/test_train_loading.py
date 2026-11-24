@@ -111,6 +111,21 @@ def test_an_empty_file_gives_no_segment(tmp_path, crop_mode):
     assert labels == []
 
 
+@pytest.mark.parametrize("audio_speed", [0.5, 2.0])
+def test_the_first_segment_is_audio_to_its_end_at_any_speed(tmp_path, audio_speed):
+    (segment,), _ = _read_and_crop_file(
+        _sine_wav(tmp_path / "recording.wav", 8.0),
+        _label(),
+        sample_rate=SR,
+        crop_mode="first",
+        sig_length=SIG_LENGTH,
+        audio_speed=audio_speed,
+    )
+
+    assert segment.shape == (int(SIG_LENGTH * SR),)
+    assert np.abs(segment[-SR // 10 :]).max() > 0.2
+
+
 class _FakeResult:
     def __init__(self, embeddings, masked):
         # shapes: (n_inputs, n_segments=1, emb_dim)
