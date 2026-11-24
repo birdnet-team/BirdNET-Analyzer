@@ -15,7 +15,7 @@ Batch Size
 ----------------
 
 Specifies the number of training samples processed at the same time. Defaults to 32.
-This values is very dependent on the available hardware (RAM/VRAM), if you are not sure, leave it at the default value.
+This values is very dependent on the available hardware (RAM), if you are not sure, leave it at the default value.
 
 Learning Rate
 -------------------
