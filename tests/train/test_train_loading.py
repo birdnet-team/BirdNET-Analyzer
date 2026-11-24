@@ -284,7 +284,7 @@ def _write_wav(path):
 def test_a_folder_of_spaced_labels_sets_each_label(tmp_path):
     _write_wav(tmp_path / "a, b" / "x.wav")
 
-    _, y_train, _, _, labels, *_ = _load_training_data(str(tmp_path))
+    _, y_train, _, _, _, labels, *_ = _load_training_data(str(tmp_path))
 
     assert labels == ["a", "b"]
     np.testing.assert_array_equal(y_train, [[1, 1]])

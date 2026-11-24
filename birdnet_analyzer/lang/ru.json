@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "Каталог аудио не выбран",
     "validation-no-audio-files-in-training-folders": "Следующие папки с обучающими данными не содержат поддерживаемых аудиофайлов: {0}",
     "validation-no-cache-file-selected": "Пожалуйста, выберите файл кэша.",
+    "validation-no-class-with-two-files": "В каждом классе обучающих данных только один файл, поэтому для валидации не остаётся ни одного файла. Добавьте второй файл хотя бы в один класс.",
     "validation-no-custom-classifier-selected": "Пользовательский классификатор не выбран.",
     "validation-no-directory-for-classifier-selected": "Пожалуйста, выберите каталог для классификатора.",
     "validation-no-directory-selected": "Пожалуйста, выберите каталог.",

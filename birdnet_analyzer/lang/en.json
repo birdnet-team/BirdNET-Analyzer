@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "No audio directory selected",
     "validation-no-audio-files-in-training-folders": "The following training data folders do not contain any supported audio files: {0}",
     "validation-no-cache-file-selected": "Please select a cache file.",
+    "validation-no-class-with-two-files": "Every class of the training data has only one file, so no file is left for validation. Add a second file to at least one class.",
     "validation-no-custom-classifier-selected": "No custom classifier selected.",
     "validation-no-directory-for-classifier-selected": "Please select a directory for the classifier.",
     "validation-no-directory-selected": "Please select a directory.",

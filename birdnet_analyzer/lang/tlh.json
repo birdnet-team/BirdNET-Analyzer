@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "wav Daq tu'Ha'.",
     "validation-no-audio-files-in-training-folders": "qeq De' pa'meyvamDaq wab De' tu'lu'be': {0}",
     "validation-no-cache-file-selected": "polmeH teywI' yIwIv.",
+    "validation-no-class-with-two-files": "Hoch qeq De' SeghDaq wa' wav neH tu'lu', vaj QelmeH wav ratlhbe'. wa' SeghDaq cha'DIch wav yIchel.",
     "validation-no-custom-classifier-selected": "chu' tu'law' yIwIvHa'.",
     "validation-no-directory-for-classifier-selected": "tu'law' Daq yIwIv.",
     "validation-no-directory-selected": "Daq yIwIv.",

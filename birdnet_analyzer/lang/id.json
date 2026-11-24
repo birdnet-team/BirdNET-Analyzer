@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "Tidak ada audio direktori yang dipilih",
     "validation-no-audio-files-in-training-folders": "Folder data pelatihan berikut tidak berisi berkas audio yang didukung: {0}",
     "validation-no-cache-file-selected": "Silakan pilih berkas cache.",
+    "validation-no-class-with-two-files": "Setiap kelas dalam data pelatihan hanya memiliki satu berkas, sehingga tidak ada berkas yang tersisa untuk validasi. Tambahkan berkas kedua ke setidaknya satu kelas.",
     "validation-no-custom-classifier-selected": "Tidak ada klasifikator kustom yang dipilih.",
     "validation-no-directory-for-classifier-selected": "Silakan pilih direktori untuk klasifikator.",
     "validation-no-directory-selected": "Silakan pilih direktori.",

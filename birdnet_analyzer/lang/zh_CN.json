@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "未选择音频目录",
     "validation-no-audio-files-in-training-folders": "以下训练数据文件夹不含任何支持的音频文件：{0}",
     "validation-no-cache-file-selected": "请选择缓存文件。",
+    "validation-no-class-with-two-files": "训练数据的每个类别都只有一个文件，因此没有文件可用于验证。请至少为一个类别添加第二个文件。",
     "validation-no-custom-classifier-selected": "未选择自定义分类器。",
     "validation-no-directory-for-classifier-selected": "请为分类器选择目录。",
     "validation-no-directory-selected": "请选择目录。",

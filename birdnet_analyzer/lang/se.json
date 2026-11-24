@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "Ingen ljudkatalog vald",
     "validation-no-audio-files-in-training-folders": "Följande mappar med träningsdata innehåller inga ljudfiler som stöds: {0}",
     "validation-no-cache-file-selected": "Vänligen välj en cachefil.",
+    "validation-no-class-with-two-files": "Varje klass i träningsdata har bara en fil, så ingen fil blir kvar för validering. Lägg till en andra fil i minst en klass.",
     "validation-no-custom-classifier-selected": "Ingen anpassad klassificerare vald.",
     "validation-no-directory-for-classifier-selected": "Välj en katalog för klassificeraren.",
     "validation-no-directory-selected": "Välj en katalog.",

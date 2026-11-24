@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "Nenhum diretório de áudios selecionado",
     "validation-no-audio-files-in-training-folders": "As seguintes pastas de dados de treinamento não contêm arquivos de áudio compatíveis: {0}",
     "validation-no-cache-file-selected": "Selecione um arquivo de cache.",
+    "validation-no-class-with-two-files": "Cada classe dos dados de treinamento tem apenas um arquivo, então não sobra nenhum arquivo para a validação. Adicione um segundo arquivo a pelo menos uma classe.",
     "validation-no-custom-classifier-selected": "Nenhum classificador customizado selecionado.",
     "validation-no-directory-for-classifier-selected": "Selecione um diretório para o classificador.",
     "validation-no-directory-selected": "Selecione um diretório. ",

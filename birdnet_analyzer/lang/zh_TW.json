@@ -523,6 +523,7 @@
     "validation-no-audio-directory-selected": "請提供包含音檔的資料夾",
     "validation-no-audio-files-in-training-folders": "下列訓練資料夾不含任何支援的音訊檔案:{0}",
     "validation-no-cache-file-selected": "請選擇快取檔案。",
+    "validation-no-class-with-two-files": "訓練資料的每個類別都只有一個檔案，因此沒有檔案可用於驗證。請至少為一個類別新增第二個檔案。",
     "validation-no-custom-classifier-selected": "尚未選擇客製化分類器",
     "validation-no-directory-for-classifier-selected": "請選擇分類器路徑",
     "validation-no-directory-selected": "請選擇資料夾",

@@ -298,7 +298,9 @@ def test_negative_label_rows_train_in_every_fold_and_never_validate(is_multi_lab
     negatives = set(range(18, 21))
     validated = []
 
-    for train_idx, val_idx in _kfold_splits(y, 3, 1, False, is_multi_label):
+    for train_idx, val_idx in _kfold_splits(
+        y, 3, 1, False, is_multi_label, np.arange(24)
+    ):
         assert negatives <= set(train_idx)
         assert not negatives & set(val_idx)
         assert not set(train_idx) & set(val_idx)
@@ -313,7 +315,7 @@ def test_binary_folds_are_stratified():
     y = np.zeros((30, 1), dtype="float32")
     y[:10] = 1
 
-    for _, val_idx in _kfold_splits(y, 5, 1, True, False):
+    for _, val_idx in _kfold_splits(y, 5, 1, True, False, np.arange(30)):
         assert y[val_idx].sum() == 2
 
 
@@ -323,7 +325,7 @@ def test_non_event_rows_form_their_own_stratum():
     y = np.zeros((25, 2), dtype="float32")
     y[:10, 0] = y[10:20, 1] = 1
 
-    for _, val_idx in _kfold_splits(y, 5, 1, False, False):
+    for _, val_idx in _kfold_splits(y, 5, 1, False, False, np.arange(25)):
         assert np.sum(y[val_idx].sum(axis=1) == 0) == 1
 
 
@@ -391,7 +393,17 @@ def _synthetic_training_data(version="3.0"):
     y[20:, 1] = 1
     x = (rng.normal(size=(40, 8)) + 2 * y[:, :1]).astype("float32")
 
-    return x, y, np.array([]), np.array([]), ["a", "b"], False, False, version
+    return (
+        x,
+        y,
+        np.arange(40),
+        np.array([]),
+        np.array([]),
+        ["a", "b"],
+        False,
+        False,
+        version,
+    )
 
 
 @pytest.fixture
@@ -544,7 +556,7 @@ def test_tuning_and_early_stopping_never_see_the_test_data(monkeypatch, tmp_path
     monkeypatch.setattr(
         train_utils,
         "_load_training_data",
-        lambda *a, **k: (x, y, x_test, y_test, ["a", "b"], False, False, "3.0"),
+        lambda *a, **k: (x, y, None, x_test, y_test, ["a", "b"], False, False, "3.0"),
     )
     fits = []
     evaluated = []
@@ -643,7 +655,7 @@ def test_the_result_tables_take_a_label_outside_the_windows_code_page(
     monkeypatch.setattr(
         train_utils,
         "_load_training_data",
-        lambda *a, **k: (x, y, x[::4], y[::4], labels, False, False, "3.0"),
+        lambda *a, **k: (x, y, None, x[::4], y[::4], labels, False, False, "3.0"),
     )
 
     train_utils.train_model(
