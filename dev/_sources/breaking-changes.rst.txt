@@ -85,7 +85,8 @@ The installers contain BirdNET 3.0, not 2.4
 
 **What changed.** The installers contain the default BirdNET 3.0 model and its
 geolocation model. The BirdNET 2.4 model, which the installer of v2.4.0 contained, is
-downloaded the first time it is used (about 80 MB), like every other model.
+downloaded the first time it is used (about 80 MB), like every other model. The macOS
+app is the exception: it contains BirdNET 2.4 as well.
 
 **Consequence.** An analysis with the default model needs no internet connection.
 The first analysis with BirdNET 2.4 does, unless the model is there already: the
@@ -96,9 +97,10 @@ with BirdNET 2.4 uses the geolocation model of 2.4, a download of its own (about
 
 **What to do.** Nothing, with an internet connection. When the Windows installer
 replaces an installation of v2.4.0, it keeps that installation's BirdNET 2.4 model,
-so analyses with BirdNET 2.4 need no download. The geolocation model of 2.4 is not
-among the files it can keep: the first analysis with BirdNET 2.4 and a location
-still downloads it. For computers without internet access see :ref:`installation`.
+so analyses with BirdNET 2.4 need no download, and neither do they in the macOS app.
+The geolocation model of 2.4 comes with neither: the first analysis with BirdNET 2.4
+and a location filter still downloads it. For computers without internet access see
+:ref:`installation`.
 
 
 Custom species lists and the 3.0 taxonomy
