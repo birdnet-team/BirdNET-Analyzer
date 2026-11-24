@@ -37,7 +37,7 @@ dependencies = [
     "keras",
     # ONNX runtime backs 3.0 acoustic + geo inference: no TensorFlow load, faster.
     # TensorFlow above is still required for training and the 2.4/perch/custom paths.
-    "onnxruntime>=1.16.0",
+    "onnxruntime>=1.18.0",
     "numpy",
     "scipy",
     "soundfile",
@@ -48,7 +48,8 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=1.5.0",
+    "birdnet>=1.5.1",
+    "truststore",
 ]
 
 [project.optional-dependencies]

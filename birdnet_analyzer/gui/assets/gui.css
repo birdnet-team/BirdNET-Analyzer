@@ -92,6 +92,12 @@ footer {
     display: none !important;
 }
 
+.eval-metrics-table .header-content .header {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
 .eval-overall-footer .virtual-row {
     font-weight: var(--weight-semibold);
 }
@@ -158,6 +164,17 @@ footer {
 
 .block.model-facts-warning .prose {
     color: var(--error-text-color);
+}
+
+.block.model-download-note,
+.block.stored-models-info {
+    padding: var(--spacing-sm) var(--spacing-xl);
+}
+
+.block.model-download-note .prose,
+.block.stored-models-info .prose {
+    color: var(--block-info-text-color);
+    font-size: var(--block-info-text-size);
 }
 
 [data-testid="toast-text"] {

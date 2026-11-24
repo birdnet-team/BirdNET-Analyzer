@@ -326,7 +326,7 @@ def build_single_analysis_tab() -> None:
                 loc.localize("single-tab-select-file-button-label"),
                 variant="primary",
             )
-            selected_file_label = gr.Textbox(
+            selected_file_label = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize("single-tab-no-file-selected-placeholder"),
@@ -638,7 +638,7 @@ def build_single_analysis_tab() -> None:
             show_detections,
             inputs=detection_inputs,
             outputs=player,
-        )
+        ).then(**model_settings["refresh_download_note"])
         rtable_download_button.click(download_rtable, inputs=last_prediction_state)
         csv_download_button.click(download_csv, inputs=last_prediction_state)
         kaleidoscope_download_button.click(

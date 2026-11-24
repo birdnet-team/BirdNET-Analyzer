@@ -7,40 +7,11 @@ import gradio as gr
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
-from birdnet_analyzer import utils
+from birdnet_analyzer import model_store, utils
 from birdnet_analyzer.gui.presets import PresetControls, load_train_params
 from birdnet_analyzer.gui.state import TabState
 
 _GRID_MAX_HEIGHT = 240
-
-
-def cache_model_version(path: str) -> str | None:
-    """The BirdNET version a training data cache was embedded with."""
-    import zipfile
-
-    import numpy as np
-    from numpy.lib import format as npformat
-
-    from birdnet_analyzer.base_models import version_for_embeddings_dim
-
-    try:
-        with np.load(path) as data:
-            if "model_version" in data:
-                return str(data["model_version"])
-
-        # Only the header: the samples themselves can be hundreds of MB.
-        with zipfile.ZipFile(path) as archive, archive.open("x_train.npy") as member:
-            version = npformat.read_magic(member)
-            read_header = (
-                npformat.read_array_header_2_0
-                if version == (2, 0)
-                else npformat.read_array_header_1_0
-            )
-            shape, _, _ = read_header(member)
-
-        return version_for_embeddings_dim(shape[1])
-    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
-        return None
 
 
 def select_subdirectories(state_key=None):
@@ -81,28 +52,15 @@ def start_training(
     cache_mode,
     cache_file,
     cache_file_name,
-    autotune,
-    autotune_trials,
-    autotune_folds,
-    autotune_repeats,
-    epochs,
-    batch_size,
-    learning_rate,
-    focal_loss,
-    focal_loss_gamma,
-    focal_loss_alpha,
-    hidden_units,
-    dropout,
-    label_smoothing,
-    use_mixup,
-    upsampling_ratio,
-    upsampling_mode,
     model_formats,
     audio_speed,
     threads,
     progress=gr.Progress(),
 ):
     """Starts the training of a custom classifier.
+
+    The hyperparameters are the defaults of
+    :func:`birdnet_analyzer.train.utils.train_model`.
 
     Args:
         data_dir: Directory containing the training data.
@@ -119,23 +77,6 @@ def start_training(
         cache_file: The cache file to train from in "load" mode, or the directory to
             write the cache to in "save" mode.
         cache_file_name: Name of the cache file written in "save" mode.
-        autotune: Whether to use hyperparameter autotuning.
-        autotune_trials: Number of trials for autotuning.
-        autotune_folds: Number of folds for autotuning.
-        autotune_repeats: Number of repeats for each autotuning trial.
-        epochs: Number of training epochs.
-        batch_size: Batch size for training.
-        learning_rate: Learning rate for the optimizer.
-        focal_loss: Whether to use focal loss for training.
-        focal_loss_gamma: Gamma parameter for focal loss.
-        focal_loss_alpha: Alpha parameter for focal loss.
-        hidden_units: Number of hidden units in the droput: Dropout rate for
-            regularization.
-        dropout: Dropout rate for regularization.
-        label_smoothing: Whether to apply label smoothing for training.
-        use_mixup: Whether to use mixup data augmentation.
-        upsampling_ratio: Ratio for upsampling underrepresented classes.
-        upsampling_mode: Mode for upsampling (repeat, linear, mean, smote).
         model_formats: Formats to save the trained model (tflite, raven, detached).
         audio_speed: Speed factor for audio playback.
         threads: Number of parallel CPU threads for loading and decoding the training
@@ -157,21 +98,10 @@ def start_training(
     gu.validate(classifier_name, loc.localize("validation-no-valid-classifier-name"))
 
     cc_output_path = str(Path(output_dir) / classifier_name)
-
-    if not epochs or epochs < 0:
-        raise gr.Error(loc.localize("validation-no-valid-epoch-number"))
-
-    if not batch_size or batch_size < 0:
-        raise gr.Error(loc.localize("validation-no-valid-batch-size"))
-
-    if not learning_rate or learning_rate < 0:
-        raise gr.Error(loc.localize("validation-no-valid-learning-rate"))
+    epochs = cfg.TRAIN_EPOCHS
 
     if fmin < 0 or fmax > 15000 or fmin > fmax:
         raise gr.Error(f"{loc.localize('validation-no-valid-frequency')} [0, 15000]")
-
-    if not hidden_units or hidden_units < 0:
-        hidden_units = 0
 
     if progress is not None:
         progress(
@@ -218,15 +148,6 @@ def start_training(
                     desc=loc.localize("progress-training"),
                 )
 
-    def trial_progression(trial):
-        if progress is not None:
-            progress(
-                (trial, autotune_trials),
-                total=autotune_trials,
-                unit="trials",
-                desc=loc.localize("progress-autotune"),
-            )
-
     try:
         with gu.download_progress(progress):
             history, metrics = train_model(
@@ -234,18 +155,8 @@ def start_training(
                 output=cc_output_path,
                 test_data=test_data_dir,
                 crop_mode=crop_mode,
-                epochs=int(epochs),
-                batch_size=int(batch_size),
-                learning_rate=learning_rate,
-                hidden_units=hidden_units,
-                label_smoothing=label_smoothing,
-                mixup=use_mixup,
-                upsampling_ratio=min(max(0, upsampling_ratio), 1),
-                upsampling_mode=upsampling_mode,
+                epochs=epochs,
                 model_formats=model_formats,
-                use_focal_loss=focal_loss,
-                focal_loss_gamma=max(0.0, float(focal_loss_gamma)),
-                focal_loss_alpha=max(0.0, min(1.0, float(focal_loss_alpha))),
                 fmin=int(fmin),
                 fmax=int(fmax),
                 model_save_mode=model_save_mode,
@@ -253,19 +164,13 @@ def start_training(
                 save_cache_to=os.path.join(cache_file, cache_file_name)
                 if cache_mode == "save"
                 else None,
-                dropout=max(0.0, min(1.0, float(dropout))),
                 overlap=max(0.0, min(2.9, float(crop_overlap))),
                 threads=int(threads)
                 if threads and int(threads) > 0
                 else max(1, multiprocessing.cpu_count()),
                 on_epoch_end=epoch_progression,
-                on_trial_result=trial_progression,
                 on_data_load_end=data_load_progression,
                 audio_speed=gu.slider_to_value(audio_speed),
-                autotune=autotune,
-                autotune_trials=int(autotune_trials),
-                autotune_n_splits=int(autotune_folds),
-                autotune_n_repeats=int(autotune_repeats),
             )
     except Exception as e:
         key = e.args[1] if len(e.args) > 1 else None
@@ -280,7 +185,7 @@ def start_training(
 
             raise gr.Error(message) from None
 
-        raise gr.Error(f"{e}") from e
+        raise
 
     if len(history.epoch) < epochs:
         gr.Info(loc.localize("training-tab-early-stoppage-msg"))
@@ -332,7 +237,7 @@ def build_train_tab() -> None:
                 variant="primary",
                 interactive=not uses_cache_file,
             )
-            selected_input_textbox = gr.Textbox(
+            selected_input_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -382,7 +287,7 @@ def build_train_tab() -> None:
                 variant="primary",
                 interactive=not uses_cache_file,
             )
-            selected_test_textbox = gr.Textbox(
+            selected_test_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -415,7 +320,7 @@ def build_train_tab() -> None:
                 loc.localize("training-tab-select-output-button-label"),
                 variant="primary",
             )
-            selected_output_textbox = gr.Textbox(
+            selected_output_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -480,6 +385,10 @@ def build_train_tab() -> None:
                 label=loc.localize("training-tab-base-model-radio-label"),
                 info=loc.localize("training-tab-base-model-radio-info"),
             )
+            _, refresh_download_note = gu.download_note_line(
+                base_model_radio, model_store.training_keys
+            )
+            base_model_radio.change(**refresh_download_note)
 
         with gr.Row():
             cache_file_state = gr.State()
@@ -503,7 +412,7 @@ def build_train_tab() -> None:
                         ),
                         variant="primary",
                     )
-                    selected_cache_dir_textbox = gr.Textbox(
+                    selected_cache_dir_textbox = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -555,7 +464,7 @@ def build_train_tab() -> None:
                         loc.localize("training-tab-cache-select-file-button-label"),
                         variant="primary",
                     )
-                    selected_cache_file_textbox = gr.Textbox(
+                    selected_cache_file_textbox = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -578,6 +487,8 @@ def build_train_tab() -> None:
                     )
 
                     if file:
+                        from birdnet_analyzer.base_models import cache_model_version
+
                         version = cache_model_version(file)
 
                         return (
@@ -666,6 +577,7 @@ def build_train_tab() -> None:
             )
 
             with gr.Row():
+                state.retire_value("crop_mode_radio", "first", "center")
                 crop_mode = state.persist(
                     "crop_mode_radio",
                     gr.Radio,
@@ -673,10 +585,6 @@ def build_train_tab() -> None:
                         (
                             loc.localize("training-tab-crop-mode-radio-option-center"),
                             "center",
-                        ),
-                        (
-                            loc.localize("training-tab-crop-mode-radio-option-first"),
-                            "first",
                         ),
                         (
                             loc.localize(
@@ -773,249 +681,23 @@ def build_train_tab() -> None:
                 show_progress="hidden",
             )
 
-        with gr.Group():
-            autotune_cb = state.persist(
-                "autotune_checkbox",
-                gr.Checkbox,
-                value=False,
-                label=loc.localize("training-tab-autotune-checkbox-label"),
-                info=loc.localize("training-tab-autotune-checkbox-info"),
-            )
-            autotunes = bool(autotune_cb.value)
-
-            with gr.Column(visible=autotunes) as autotune_params, gr.Row():
-                autotune_trials = state.persist(
-                    "autotune_trials_number",
-                    gr.Number,
-                    value=50,
-                    label=loc.localize("training-tab-autotune-trials-number-label"),
-                    info=loc.localize("training-tab-autotune-trials-number-info"),
-                    minimum=1,
-                )
-                autotune_folds = state.persist(
-                    "autotune_folds_number",
-                    gr.Number,
-                    value=1,
-                    minimum=1,
-                    label=loc.localize("training-tab-autotune-folds-number-label"),
-                    info=loc.localize("training-tab-autotune-folds-number-info"),
-                )
-                autotune_repeats = state.persist(
-                    "autotune_repeats_number",
-                    gr.Number,
-                    value=1,
-                    minimum=1,
-                    interactive=(autotune_folds.value or 1) > 1,
-                    label=loc.localize("training-tab-autotune-repeats-number-label"),
-                    info=loc.localize("training-tab-autotune-repeats-number-info"),
-                )
-
-            # Repeats only repeat a k-fold split.
-            autotune_folds.change(
-                lambda folds: gr.update(interactive=(folds or 1) > 1),
-                inputs=autotune_folds,
-                outputs=autotune_repeats,
-                show_progress="hidden",
-            )
-
-        # The custom-parameters accordion stays visible while autotuning; every field
-        # the tuner searches is disabled instead (its value is only a seed and gets
-        # overridden), so users can still see the values but not waste time tuning them
-        # by hand. "epochs" is not autotuned and stays editable -- it applies to every
-        # trial.
-        with (
-            gr.Group(),
-            gr.Accordion(
-                open=False,
-                label=loc.localize("training-tab-custom-params-accordion-label"),
-            ),
-        ):
-            with gr.Row():
-                epoch_number = state.persist(
-                    "epochs_number",
-                    gr.Number,
-                    value=50,
-                    minimum=1,
-                    step=1,
-                    label=loc.localize("training-tab-epochs-number-label"),
-                    info=loc.localize("training-tab-epochs-number-info"),
-                )
-                batch_size_number = state.persist(
-                    "batch_size_number",
-                    gr.Number,
-                    value=32,
-                    minimum=1,
-                    step=8,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-batchsize-number-label"),
-                    info=loc.localize("training-tab-batchsize-number-info"),
-                )
-                learning_rate_number = state.persist(
-                    "learning_rate_number",
-                    gr.Number,
-                    value=0.0001,
-                    minimum=0.0001,
-                    step=0.0001,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-learningrate-number-label"),
-                    info=loc.localize("training-tab-learningrate-number-info"),
-                )
-
-            with gr.Row():
-                hidden_units_number = state.persist(
-                    "hidden_units_number",
-                    gr.Number,
-                    value=0,
-                    minimum=0,
-                    step=64,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-hiddenunits-number-label"),
-                    info=loc.localize("training-tab-hiddenunits-number-info"),
-                )
-                dropout_number = state.persist(
-                    "dropout_number",
-                    gr.Number,
-                    value=0.0,
-                    minimum=0.0,
-                    maximum=0.9,
-                    step=0.1,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-dropout-number-label"),
-                    info=loc.localize("training-tab-dropout-number-info"),
-                )
-                use_label_smoothing = state.persist(
-                    "use_label_smoothing_checkbox",
-                    gr.Checkbox,
-                    value=False,
-                    interactive=not autotunes,
-                    label=loc.localize(
-                        "training-tab-use-labelsmoothing-checkbox-label"
-                    ),
-                    info=loc.localize("training-tab-use-labelsmoothing-checkbox-info"),
-                    show_label=True,
-                )
-
-            with gr.Row():
-                upsampling_mode = state.persist(
-                    "upsampling_mode_radio",
-                    gr.Radio,
-                    choices=[
-                        (
-                            loc.localize("training-tab-upsampling-radio-option-repeat"),
-                            "repeat",
-                        ),
-                        (
-                            loc.localize("training-tab-upsampling-radio-option-mean"),
-                            "mean",
-                        ),
-                        (
-                            loc.localize("training-tab-upsampling-radio-option-linear"),
-                            "linear",
-                        ),
-                        (
-                            loc.localize("training-tab-upsampling-radio-option-smote"),
-                            "smote",
-                        ),
-                    ],
-                    value="repeat",
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-upsampling-radio-label"),
-                    info=loc.localize("training-tab-upsampling-radio-info"),
-                )
-                upsampling_ratio = state.persist(
-                    "upsampling_ratio_slider",
-                    gr.Slider,
-                    minimum=0.0,
-                    maximum=1.0,
-                    value=0.0,
-                    step=0.05,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-upsampling-ratio-slider-label"),
-                    info=loc.localize("training-tab-upsampling-ratio-slider-info"),
-                )
-
-            with gr.Row():
-                use_mixup = state.persist(
-                    "use_mixup_checkbox",
-                    gr.Checkbox,
-                    value=False,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-use-mixup-checkbox-label"),
-                    info=loc.localize("training-tab-use-mixup-checkbox-info"),
-                    show_label=True,
-                )
-                use_focal_loss = state.persist(
-                    "use_focal_loss_checkbox",
-                    gr.Checkbox,
-                    value=False,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-use-focal-loss-checkbox-label"),
-                    info=loc.localize("training-tab-use-focal-loss-checkbox-info"),
-                    show_label=True,
-                )
-
-            with gr.Row(visible=bool(use_focal_loss.value)) as focal_loss_params:
-                focal_loss_gamma = state.persist(
-                    "focal_loss_gamma_slider",
-                    gr.Slider,
-                    minimum=0.5,
-                    maximum=5.0,
-                    value=2.0,
-                    step=0.1,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-focal-loss-gamma-slider-label"),
-                    info=loc.localize("training-tab-focal-loss-gamma-slider-info"),
-                )
-                focal_loss_alpha = state.persist(
-                    "focal_loss_alpha_slider",
-                    gr.Slider,
-                    minimum=0.1,
-                    maximum=0.9,
-                    value=0.25,
-                    step=0.05,
-                    interactive=not autotunes,
-                    label=loc.localize("training-tab-focal-loss-alpha-slider-label"),
-                    info=loc.localize("training-tab-focal-loss-alpha-slider-info"),
-                )
-
-        def on_focal_loss_change(value):
-            return gr.update(visible=value)
-
-        use_focal_loss.change(
-            on_focal_loss_change,
-            inputs=use_focal_loss,
-            outputs=focal_loss_params,
-            show_progress="hidden",
-        )
-
-        # Every hyperparameter the tuner searches. When autotuning is on these are
-        # disabled (their values are only seeds and get overridden); "epochs" is not
-        # tuned and stays editable.
-        autotuned_params = [
-            batch_size_number,
-            learning_rate_number,
-            hidden_units_number,
-            dropout_number,
-            use_label_smoothing,
-            upsampling_mode,
-            upsampling_ratio,
-            use_mixup,
-            use_focal_loss,
-            focal_loss_gamma,
-            focal_loss_alpha,
-        ]
-
-        def on_autotune_change(value):
-            return [
-                gr.update(visible=value),  # autotune_params
-                *[gr.update(interactive=not value) for _ in autotuned_params],
-            ]
-
-        autotune_cb.change(
-            on_autotune_change,
-            inputs=autotune_cb,
-            outputs=[autotune_params, *autotuned_params],
-            show_progress="hidden",
+        state.retire(
+            "autotune_checkbox",
+            "autotune_trials_number",
+            "autotune_folds_number",
+            "autotune_repeats_number",
+            "epochs_number",
+            "batch_size_number",
+            "learning_rate_number",
+            "hidden_units_number",
+            "dropout_number",
+            "use_label_smoothing_checkbox",
+            "upsampling_mode_radio",
+            "upsampling_ratio_slider",
+            "use_mixup_checkbox",
+            "use_focal_loss_checkbox",
+            "focal_loss_gamma_slider",
+            "focal_loss_alpha_slider",
         )
 
         model_save_mode = state.persist(
@@ -1115,28 +797,12 @@ def build_train_tab() -> None:
                 cache_mode,
                 cache_file_state,
                 cache_file_name,
-                autotune_cb,
-                autotune_trials,
-                autotune_folds,
-                autotune_repeats,
-                epoch_number,
-                batch_size_number,
-                learning_rate_number,
-                use_focal_loss,
-                focal_loss_gamma,
-                focal_loss_alpha,
-                hidden_units_number,
-                dropout_number,
-                use_label_smoothing,
-                use_mixup,
-                upsampling_ratio,
-                upsampling_mode,
                 output_formats,
                 audio_speed_slider,
                 threads_number,
             ],
             outputs=[train_history_plot, metrics_table],
-        )
+        ).then(**refresh_download_note)
 
         preset_controls.wire(state)
 

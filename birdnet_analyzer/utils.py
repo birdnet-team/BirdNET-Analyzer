@@ -1,13 +1,24 @@
 """Module containing common function."""
 
+import logging
 import os
 import warnings
+from contextlib import suppress
 from functools import cache
 from pathlib import Path
 
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
 from birdnet_analyzer.logs import setup_logging
-from birdnet_analyzer.settings import write_error_log
+from birdnet_analyzer.settings import seed_bundled_models, write_error_log
+
+# The libraries that report usage to their vendor unless told not to. ONNX Runtime's
+# wheels would send a device id and the path of the executable to Microsoft.
+_TELEMETRY_OPT_OUTS = {
+    "ORT_DISABLE_TELEMETRY": "1",
+    "GRADIO_ANALYTICS_ENABLED": "False",
+    "HF_HUB_DISABLE_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1",
+}
 
 # Raised by gradio's own gr.List/gr.Matrix defaults and event loop helpers.
 _UNACTIONABLE_WARNINGS = [
@@ -21,15 +32,27 @@ _UNACTIONABLE_WARNINGS = [
 def configure_runtime():
     """Prepares the process of a shipped application (CLI or GUI).
 
-    Sets defaults for the environment variables read when tensorflow is first
-    imported, keeping any value the user set, and hides the warnings a user cannot
-    act on.
+    Sets defaults for the environment variables its libraries read when they are
+    first imported, keeping any value the user set, and hides the warnings a user
+    cannot act on.
     """
     os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
     os.environ.setdefault("WRAPT_DISABLE_EXTENSIONS", "true")
 
+    for name, off in _TELEMETRY_OPT_OUTS.items():
+        os.environ.setdefault(name, off)
+
     for category, module, message in _UNACTIONABLE_WARNINGS:
         warnings.filterwarnings("ignore", message, category, module)
+
+    seed_bundled_models()
+
+    # Model downloads verify against the operating system's certificates, which is
+    # where the root of a TLS-inspecting company or campus proxy is installed.
+    with suppress(Exception):
+        import truststore
+
+        truststore.inject_into_ssl()
 
 
 def runtime_error_handler(f):
@@ -363,6 +386,48 @@ def load_codes() -> dict[str, str]:
 
     with open(CODES_FILE, encoding="utf-8") as cfile:
         return json.load(cfile)
+
+
+@cache
+def _codes_by_name() -> tuple[dict[str, str], dict[str, str]]:
+    by_scientific_name: dict[str, str] = {}
+    by_common_name: dict[str, set[str]] = {}
+
+    for label, code in load_codes().items():
+        scientific_name, separator, common_name = label.partition("_")
+
+        if separator:
+            by_scientific_name[scientific_name] = code
+            by_common_name.setdefault(common_name.casefold(), set()).add(code)
+
+    return by_scientific_name, {
+        name: codes.pop() for name, codes in by_common_name.items() if len(codes) == 1
+    }
+
+
+def species_code(label: str) -> str:
+    """The eBird code of a ``Scientific name_Common name`` label.
+
+    Found by the scientific name, which is the same in every label language, and
+    for a species whose scientific name has changed since by its English name. A
+    label without a code is returned as it is.
+    """
+    scientific_name, _, common_name = label.partition("_")
+    by_scientific_name, by_common_name = _codes_by_name()
+
+    return by_scientific_name.get(scientific_name) or by_common_name.get(
+        common_name.casefold(), label
+    )
+
+
+def warn_about_location_minus_one(lat, lon) -> None:
+    """Up to v2.4.0, latitude and longitude -1 meant that no location is set."""
+    if lat == -1 and lon == -1:
+        logging.getLogger(__name__).warning(
+            "Latitude -1 and longitude -1 are a place in the Gulf of Guinea. Up to "
+            "version 2.4.0 they meant that no location is set: leave both out "
+            "for that."
+        )
 
 
 def img2base64(path):

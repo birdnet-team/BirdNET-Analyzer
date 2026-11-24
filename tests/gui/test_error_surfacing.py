@@ -23,12 +23,7 @@ TABS = {
     "search": (search.build_search_tab, {"on_crop_mode_change"}),
     "evaluation": (
         evaluation.build_evaluation_tab,
-        {
-            "_lock_calculation",
-            "_unlock_calculation",
-            "recompute_overall",
-            "toggle_after_selection",
-        },
+        {"_busy_calculating", "_lock_calculation", "_unlock_calculation"},
     ),
     "single_file": (
         single_file.build_single_analysis_tab,
@@ -54,10 +49,8 @@ TABS = {
         train.build_train_tab,
         {
             "<lambda>",
-            "on_autotune_change",
             "on_cache_mode_change",
             "on_crop_or_cache_mode_change",
-            "on_focal_loss_change",
             "train_and_show_metrics",
         },
     ),

@@ -13,6 +13,11 @@ from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import train  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
+from tests.params_files import (  # noqa: E402
+    V2_4_0_TRAIN_FILE,
+    V2_4_0_TRAIN_VALUES,
+    wide_file,
+)
 
 
 def _radio(label_key):
@@ -59,23 +64,6 @@ def test_the_base_choice_is_built_disabled_when_a_cache_is_persisted(appdir):
     assert not base_model.interactive
 
 
-def test_cache_model_version_reads_the_record_or_the_embeddings_width(tmp_path):
-    recorded = tmp_path / "recorded.npz"
-    np.savez(recorded, x_train=np.zeros((1, 1024)), model_version="3.0")
-    unrecorded = tmp_path / "unrecorded.npz"
-    np.savez(unrecorded, x_train=np.zeros((3, 1024), np.float32))
-    unknown = tmp_path / "unknown.npz"
-    np.savez(unknown, x_train=np.zeros((1, 512)))
-    foreign = tmp_path / "foreign.npz"
-    np.savez(foreign, labels=np.zeros(3))
-
-    assert train.cache_model_version(str(recorded)) == "3.0"
-    assert train.cache_model_version(str(unrecorded)) == "2.4"
-    assert train.cache_model_version(str(unknown)) is None
-    assert train.cache_model_version(str(foreign)) is None
-    assert train.cache_model_version(str(tmp_path / "missing.npz")) is None
-
-
 def _start_training(monkeypatch, tmp_path, fail_with=None, **overrides):
     from birdnet_analyzer.train import utils as train_utils
 
@@ -109,22 +97,6 @@ def _start_training(monkeypatch, tmp_path, fail_with=None, **overrides):
             "cache_mode": "none",
             "cache_file": None,
             "cache_file_name": "cache.npz",
-            "autotune": False,
-            "autotune_trials": 1,
-            "autotune_folds": 2,
-            "autotune_repeats": 1,
-            "epochs": 1,
-            "batch_size": 1,
-            "learning_rate": 0.001,
-            "focal_loss": False,
-            "focal_loss_gamma": 2.0,
-            "focal_loss_alpha": 0.25,
-            "hidden_units": 0,
-            "dropout": 0.0,
-            "label_smoothing": False,
-            "use_mixup": False,
-            "upsampling_ratio": 0.0,
-            "upsampling_mode": "repeat",
             "model_formats": ["tflite"],
             "audio_speed": 1.0,
             "threads": 1,
@@ -249,6 +221,26 @@ def test_any_other_training_error_is_shown_in_full(monkeypatch, tmp_path):
     assert len(logged) == 1
 
 
+def test_a_failed_download_during_training_shows_the_download_message(
+    monkeypatch, tmp_path
+):
+    import requests
+
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    monkeypatch.setenv("BIRDNET_APP_DATA", str(tmp_path))
+    monkeypatch.delenv("BIRDNET_OFFLINE", raising=False)
+    monkeypatch.setitem(
+        loc.LANGUAGE_LOOKUP, "model-download-failed-error", "{reason}|{directory}"
+    )
+    request = requests.Request("GET", "https://zenodo.org/records/1/model.zip")
+    error = requests.ConnectionError("Max retries exceeded", request=request.prepare())
+
+    with pytest.raises(gr.Error) as raised:
+        _start_training(monkeypatch, tmp_path, fail_with=error)
+
+    assert raised.value.message == f"ConnectionError, zenodo.org|{tmp_path}"
+
+
 def test_folder_labels_are_listed_without_surrounding_spaces(monkeypatch, tmp_path):
     (tmp_path / "a, b").mkdir()
     (tmp_path / "b").mkdir()
@@ -259,15 +251,131 @@ def test_folder_labels_are_listed_without_surrounding_spaces(monkeypatch, tmp_pa
     assert labels == [["a"], ["b"]]
 
 
-def test_the_autotune_folds_default_matches_the_cli(appdir):
-    from birdnet_analyzer.cli import train_parser
+@pytest.mark.parametrize(
+    ("version", "width", "learning_rate"), [("3.0", 1280, 0.1), ("2.4", 1024, 0.01)]
+)
+def test_a_classifier_trained_in_the_tab_has_the_default_settings_of_its_base(
+    tmp_path, version, width, learning_rate
+):
+    import inspect
 
-    with gr.Blocks():
-        train.build_train_tab()
+    from birdnet_analyzer import params
+    from birdnet_analyzer.train.core import train as train_api
+    from birdnet_analyzer.train.utils import _save_to_cache
 
-    folds = _persisted(gr.Number, "training-tab-autotune-folds-number-label")
+    rng = np.random.default_rng(0)
+    y = np.repeat(np.eye(2, dtype="float32"), 20, axis=0)
+    x = (rng.normal(size=(40, width)) + 2 * y[:, :1]).astype("float32")
+    cache = str(tmp_path / "cache.npz")
+    _save_to_cache(
+        cache, x, y, np.array([]), np.array([]), ["a", "b"], model_version=version
+    )
 
-    assert folds.value == train_parser().get_default("autotune_n_splits")
+    train.start_training(
+        data_dir=None,
+        test_data_dir=None,
+        crop_mode="center",
+        crop_overlap=0.0,
+        fmin=0,
+        fmax=15000,
+        output_dir=str(tmp_path),
+        classifier_name="cc",
+        model_save_mode="replace",
+        birdnet_version=cfg.DEFAULT_ACOUSTIC_MODEL_VERSION,
+        cache_mode="load",
+        cache_file=cache,
+        cache_file_name="",
+        model_formats=[],
+        audio_speed=1,
+        threads=1,
+        progress=None,
+    )
+
+    recorded = params.load_train_params(str(tmp_path / "cc") + cfg.TRAIN_PARAMS_SUFFIX)
+    defaults = inspect.signature(train_api).parameters
+    hyperparameters = [
+        "autotune",
+        "epochs",
+        "batch_size",
+        "hidden_units",
+        "dropout",
+        "label_smoothing",
+        "mixup",
+        "use_focal_loss",
+        "focal_loss_gamma",
+        "focal_loss_alpha",
+        "upsampling_mode",
+        "upsampling_ratio",
+    ]
+
+    assert recorded["learning_rate"] == learning_rate
+    assert {key: recorded[key] for key in hyperparameters} == {
+        key: defaults[key].default for key in hyperparameters
+    }
+
+
+def test_a_preset_of_the_previous_version_loads_without_a_warning(
+    appdir, handler, monkeypatch
+):
+    warned = []
+    monkeypatch.setattr(gr, "Warning", lambda message, **_: warned.append(message))
+    settings.save_preset(
+        "train",
+        "Before 3.0",
+        {
+            "classifier_name_textbox": "Gibbons",
+            "output_format_checkboxgroup": ["tflite"],
+            "birdnet_version_radio": "2.4",
+            "cache_mode_radio": "none",
+            "cache_file_name_textbox": "train_cache.npz",
+            "fmin_number": 0,
+            "fmax_number": 12000,
+            "audio_speed_slider": 0,
+            "crop_mode_radio": "first",
+            "crop_overlap_slider": 0.0,
+            "threads_number": 1,
+            "model_save_mode_radio": "replace",
+            "autotune_checkbox": False,
+            "autotune_trials_number": 50,
+            "autotune_folds_number": 1,
+            "autotune_repeats_number": 1,
+            "epochs_number": 50,
+            "batch_size_number": 32,
+            "learning_rate_number": 0.0001,
+            "hidden_units_number": 0,
+            "dropout_number": 0.0,
+            "use_label_smoothing_checkbox": False,
+            "upsampling_mode_radio": "repeat",
+            "upsampling_ratio_slider": 0.0,
+            "use_mixup_checkbox": False,
+            "use_focal_loss_checkbox": False,
+            "focal_loss_gamma_slider": 2.0,
+            "focal_loss_alpha_slider": 0.25,
+        },
+    )
+
+    handler(train.build_train_tab, "on_load")("Before 3.0")
+
+    restored = settings.get_tab_settings("train")
+    assert warned == []
+    assert restored["crop_mode_radio"] == "center"
+    assert restored["fmax_number"] == 12000
+
+
+def test_the_parameters_file_of_v2_4_0_loads_with_its_base_and_no_warning(
+    appdir, handler, monkeypatch, tmp_path
+):
+    warned = []
+    monkeypatch.setattr(gr, "Warning", lambda message, **_: warned.append(message))
+    file = wide_file(tmp_path, V2_4_0_TRAIN_VALUES, name=V2_4_0_TRAIN_FILE)
+    monkeypatch.setattr(gu, "select_file", lambda *a, **k: file)
+
+    handler(train.build_train_tab, "on_load_params_file")()
+
+    restored = settings.get_tab_settings("train")
+    assert warned == []
+    assert restored.get("birdnet_version_radio") == "2.4"
+    assert restored.get("crop_mode_radio") == "center"
 
 
 def _persisted(cls, label_key):
@@ -315,23 +423,6 @@ def test_the_crop_overlap_follows_cache_and_crop_mode_whichever_changed(
         ]
 
         assert {key: update.get(key) for key in expected} == expected
-
-
-@pytest.mark.parametrize(("folds", "editable"), [(1, False), (3, True)])
-def test_the_autotune_repeats_are_editable_only_with_several_folds(
-    appdir, folds, editable
-):
-    settings.set_tab_setting("train", "autotune_folds_number", folds)
-
-    with gr.Blocks() as demo:
-        train.build_train_tab()
-    autotune_folds = _persisted(gr.Number, "training-tab-autotune-folds-number-label")
-    repeats = _persisted(gr.Number, "training-tab-autotune-repeats-number-label")
-
-    update = _fire(demo, autotune_folds, {autotune_folds: folds})[repeats]
-
-    assert repeats.interactive is editable
-    assert update["interactive"] is editable
 
 
 def test_a_cache_mode_switch_is_a_single_update(appdir):
@@ -409,18 +500,3 @@ def test_a_failing_folder_listing_is_logged_and_shown(
         handler(train.build_train_tab, "selection_fn")()
 
     assert len(logged) == 1
-
-
-def test_cache_model_version_lets_an_unexpected_error_through(tmp_path, monkeypatch):
-    from birdnet_analyzer import base_models
-
-    cache = tmp_path / "cache.npz"
-    np.savez(cache, x_train=np.zeros((1, 1024)))
-
-    def fail(width):
-        raise TypeError("bug")
-
-    monkeypatch.setattr(base_models, "version_for_embeddings_dim", fail)
-
-    with pytest.raises(TypeError, match="bug"):
-        train.cache_model_version(str(cache))

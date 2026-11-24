@@ -88,6 +88,19 @@ def test_upsampling_balances_each_class_to_requested_ratio(mode):
     assert np.array_equal(y_upsampled.sum(axis=0), [5, 5])
 
 
+@pytest.mark.parametrize("mode", ["repeat", "mean", "linear", "smote"])
+def test_upsampling_balances_a_single_sound_detector(mode):
+    x = np.arange(6, dtype="float32").reshape(6, 1)
+    y = np.array([[1], [0], [0], [0], [0], [0]], dtype="float32")
+
+    x_upsampled, y_upsampled = upsampling(
+        x, y, np.random.default_rng(42), is_binary=True, ratio=1.0, mode=mode
+    )
+
+    assert len(x_upsampled) == 10
+    assert y_upsampled.sum() == 5
+
+
 @pytest.mark.parametrize("mode", ["repeat", "mean", "linear"])
 def test_upsampling_rejects_empty_classes(mode):
     x = np.arange(8, dtype="float32").reshape(4, 2)
@@ -374,6 +387,36 @@ def test_embeddings_width_identifies_the_base_model():
 
     with pytest.raises(ValueError, match="512"):
         base_models.version_for_embeddings_dim(512)
+
+
+def test_cache_model_version_reads_the_record_or_the_embeddings_width(tmp_path):
+    recorded = tmp_path / "recorded.npz"
+    np.savez(recorded, x_train=np.zeros((1, 1024)), model_version="3.0")
+    unrecorded = tmp_path / "unrecorded.npz"
+    np.savez(unrecorded, x_train=np.zeros((3, 1024), np.float32))
+    unknown = tmp_path / "unknown.npz"
+    np.savez(unknown, x_train=np.zeros((1, 512)))
+    foreign = tmp_path / "foreign.npz"
+    np.savez(foreign, labels=np.zeros(3))
+
+    assert base_models.cache_model_version(str(recorded)) == "3.0"
+    assert base_models.cache_model_version(str(unrecorded)) == "2.4"
+    assert base_models.cache_model_version(str(unknown)) is None
+    assert base_models.cache_model_version(str(foreign)) is None
+    assert base_models.cache_model_version(str(tmp_path / "missing.npz")) is None
+
+
+def test_cache_model_version_lets_an_unexpected_error_through(tmp_path, monkeypatch):
+    cache = tmp_path / "cache.npz"
+    np.savez(cache, x_train=np.zeros((1, 1024)))
+
+    def fail(width):
+        raise TypeError("bug")
+
+    monkeypatch.setattr(base_models, "version_for_embeddings_dim", fail)
+
+    with pytest.raises(TypeError, match="bug"):
+        base_models.cache_model_version(str(cache))
 
 
 def test_the_raven_tables_take_names_outside_the_windows_code_page(tmp_path):

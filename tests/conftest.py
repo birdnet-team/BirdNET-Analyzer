@@ -7,6 +7,8 @@ import pytest
 # Every gr.Blocks() would otherwise phone home from a thread, and the socket it
 # leaves behind can surface as a ResourceWarning in an unrelated test.
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
+# So would every import of ONNX Runtime; only the entry points switch that off.
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
 
 # Importing the package applies the GUI's persisted model directory to the birdnet
 # library; a test run must not depend on this machine's GUI settings.
@@ -36,6 +38,19 @@ def two_inference_workers():
         yield
 
 
+@pytest.fixture(autouse=True)
+def default_certificate_store():
+    """Undoes the process-wide switch an entry point makes to the system's store."""
+    yield
+
+    import ssl
+
+    if ssl.SSLContext.__module__.startswith("truststore"):
+        import truststore
+
+        truststore.extract_from_ssl()
+
+
 @pytest.fixture(autouse=True, scope="session")
 def session_tempdir(tmp_path_factory):
     """Keeps the run's temporary files, e.g. the birdnet session logs, out of TEMP.
@@ -63,6 +78,9 @@ def isolated_appdir(monkeypatch, tmp_path_factory):
     )
     monkeypatch.setattr(settings, "STATE_SETTINGS_PATH", str(appdir / "state.json"))
     monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(appdir / "error_log.txt"))
+    monkeypatch.setattr(
+        settings, "EARLIER_SETTINGS_DIR", str(tmp_path_factory.mktemp("package"))
+    )
 
 
 @pytest.fixture

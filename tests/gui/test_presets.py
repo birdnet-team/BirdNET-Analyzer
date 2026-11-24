@@ -8,6 +8,10 @@ from birdnet_analyzer.gui import state as gs  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 from tests.params_files import (  # noqa: E402
     TRAIN_FILE,
+    V2_4_0_ANALYSIS_VALUES,
+    V2_4_0_PERCH_ANALYSIS_VALUES,
+    V2_4_0_TRAIN_FILE,
+    V2_4_0_TRAIN_VALUES,
     analysis_values,
     tall_file,
     train_values,
@@ -214,6 +218,19 @@ def test_a_birdnet_3_0_analysis_restores_the_3_0_model_choice(appdir, tmp_path):
     assert values["model_selection_radio"] == gu.USE_BIRDNET_3_0
 
 
+def test_an_analysis_of_v2_4_0_restores_the_model_it_ran_with(appdir, tmp_path):
+    values = presets.load_analysis_params(wide_file(tmp_path, V2_4_0_ANALYSIS_VALUES))
+
+    assert values["model_selection_radio"] == gu.USE_BIRDNET_2_4
+
+    perch = presets.load_analysis_params(
+        wide_file(tmp_path, V2_4_0_PERCH_ANALYSIS_VALUES)
+    )
+
+    assert perch["model_selection_radio"] == gu.USE_PERCH
+    assert perch["overlap_slider"] == 4.5
+
+
 def test_a_top_n_analysis_does_not_restore_the_confidence_placeholder(appdir, tmp_path):
     # With top N in use the analysis runs without a confidence threshold and stores 0.
     values = presets.load_analysis_params(
@@ -318,22 +335,6 @@ def test_the_train_params_of_a_previous_run_are_read_back(appdir, tmp_path):
         "audio_speed_slider": 2,
         "crop_mode_radio": "segments",
         "crop_overlap_slider": 1.5,
-        "autotune_checkbox": False,
-        "autotune_trials_number": 50,
-        "autotune_folds_number": 5,
-        "autotune_repeats_number": 1,
-        "epochs_number": 100,
-        "batch_size_number": 64,
-        "learning_rate_number": 0.0005,
-        "hidden_units_number": 512,
-        "dropout_number": 0.25,
-        "use_label_smoothing_checkbox": True,
-        "use_mixup_checkbox": True,
-        "use_focal_loss_checkbox": True,
-        "focal_loss_gamma_slider": 2.0,
-        "focal_loss_alpha_slider": 0.25,
-        "upsampling_mode_radio": "repeat",
-        "upsampling_ratio_slider": 0.5,
         "birdnet_version_radio": "2.4",
     }
 
@@ -346,46 +347,15 @@ def test_a_train_params_file_without_a_version_is_a_2_4_one(appdir, tmp_path):
     assert loaded["birdnet_version_radio"] == "2.4"
 
 
-def test_an_old_train_params_file_is_still_understood(appdir, tmp_path):
-    # The layout and names the versions before 2.x saved next to the classifier.
-    old = {
-        "Hidden units": 512,
-        "Dropout": 0.25,
-        "Batchsize": 32,
-        "Learning rate": 0.0001,
-        "Weight decay": 0.004,
-        "Crop mode": "center",
-        "Crop overlap": 0.0,
-        "Audio speed": 0.5,
-        "Upsampling mode": "repeat",
-        "Upsampling ratio": 0.75,
-        "use mixup": True,
-        "use label smoothing": False,
-        "use focal loss": False,
-        "focal loss alpha": 0.25,
-        "focal loss gamma": 2.0,
-        "BirdNET Model version": "2.4",
-    }
-
+def test_the_train_params_file_of_v2_4_0_is_understood(appdir, tmp_path):
     values = presets.load_train_params(
-        wide_file(tmp_path, old, name="MyClassifier_Params.csv")
+        wide_file(tmp_path, V2_4_0_TRAIN_VALUES, name=V2_4_0_TRAIN_FILE)
     )
 
     assert values == {
-        "hidden_units_number": 512,
-        "dropout_number": 0.25,
-        "batch_size_number": 32,
-        "learning_rate_number": 0.0001,
-        "crop_mode_radio": "center",
+        "crop_mode_radio": "first",
         "crop_overlap_slider": 0.0,
         "audio_speed_slider": -2,
-        "upsampling_mode_radio": "repeat",
-        "upsampling_ratio_slider": 0.75,
-        "use_mixup_checkbox": True,
-        "use_label_smoothing_checkbox": False,
-        "use_focal_loss_checkbox": False,
-        "focal_loss_alpha_slider": 0.25,
-        "focal_loss_gamma_slider": 2.0,
         "birdnet_version_radio": "2.4",
     }
 

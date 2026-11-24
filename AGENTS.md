@@ -51,7 +51,10 @@ per tab exposing `build_*_tab`, assembled in `gui/__init__.py:main`.
 `settings.APPDIR` is a per-OS user data directory (`BirdNET-Analyzer-GUI`) holding
 GUI settings, tab state (`state.json`) and the logs — **not** the checkout. GUI
 behaviour can therefore differ between machines because of leftover local state, and
-deleting that directory is how you test a first-run experience.
+deleting that directory is how you test a first-run experience. Except in a checkout
+whose `birdnet_analyzer` folder still holds the gitignored `gui-settings.json` or
+`state.json` of an earlier version: the GUI copies them into an empty `APPDIR` at
+start, so delete those as well.
 
 ## Conventions that are easy to get wrong
 
@@ -79,8 +82,12 @@ deleting that directory is how you test a first-run experience.
   offering only the model's languages, …), cover all three: pass the dependency into
   the builder for the initial state, handle it in a `.change` handler (gradio fires
   it for programmatic updates too — `.input` does not), and have the handler *reset*
-  the dependent value when the loaded one is no longer valid, since the batch update
-  landed before the handler ran. Doing only (2) is the classic gap.
+  the dependent value when the loaded one is no longer valid. Doing only (2) is the
+  classic gap. **The page reports such a change with the values the other controls
+  had before the batch** (seen in a real browser with a preset that changes the model
+  and the overlap), so a handler that hands its other inputs back as values undoes
+  the load: take them from `TabState.shown_with` instead. A test that calls the
+  handler with the loaded values cannot see this; pass the values from before.
 - **Code comments: only when the code cannot say it.** Default to none. A comment
   earns its place for a constraint, a non-obvious *why*, or a measured value that
   justifies a bound. No history ("used to", "previously"), no narration of the next

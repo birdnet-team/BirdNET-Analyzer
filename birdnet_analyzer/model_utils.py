@@ -209,24 +209,14 @@ def acoustic_model_downloaded(version: str) -> bool:
     """Whether the acoustic model for ``version`` is already fully on disk.
 
     Lets a caller avoid triggering a large model download for a cheap best-effort
-    check (see :func:`acoustic_species_list`). Uses the birdnet downloader's own file
-    check; any failure (e.g. a library API change) reports False so the caller skips.
+    check (see :func:`acoustic_species_list`). False as well when the library cannot
+    tell, so the caller skips.
     """
-    try:
-        from birdnet.globals import MODEL_PRECISION_FP32
+    from birdnet_analyzer import model_store
 
-        if version == "3.0":
-            from birdnet.acoustic.models.v3_0.onnx import (
-                AcousticOnnxDownloaderV3_0 as downloader,
-            )
-        else:
-            from birdnet.acoustic.models.v2_4.tf import (
-                AcousticTFDownloaderV2_4 as downloader,
-            )
+    files = model_store.model_files(model_store.acoustic_key(version))
 
-        return bool(downloader._check_acoustic_model_available(MODEL_PRECISION_FP32))
-    except Exception:
-        return False
+    return files is not None and files.downloaded
 
 
 # Live sessions, so they can be cancelled from another thread. Lock-guarded: sessions
@@ -260,6 +250,11 @@ def active_session_count() -> int:
     """Return the number of inference sessions currently running."""
     with _ACTIVE_SESSIONS_LOCK:
         return len(_ACTIVE_SESSIONS)
+
+
+def shutting_down() -> bool:
+    """Whether the application is closing (see :func:`cancel_active_analyses`)."""
+    return _SHUTDOWN.is_set()
 
 
 def cancel_active_analyses() -> int:
@@ -352,6 +347,16 @@ def _model_class(model: str) -> type[AcousticModelBase]:
 def segment_length_s(model: str) -> float:
     """The length in seconds of the segments a model scores."""
     return _model_class(model).get_segment_size_s()
+
+
+def sample_rate(model: str) -> int:
+    """The sample rate in Hz of the audio a model takes."""
+    return _model_class(model).get_sample_rate()
+
+
+def embeddings_dim(model: str) -> int:
+    """The length of the embedding a model computes for a segment."""
+    return _model_class(model).get_embeddings_dim()
 
 
 def class_count(model: str) -> int:
@@ -635,7 +640,7 @@ def _load_acoustic_for_embeddings(version: ACOUSTIC_MODEL_VERSIONS):
 
 def get_embeddings(
     path: str,
-    version: ACOUSTIC_MODEL_VERSIONS = "2.4",
+    version: ACOUSTIC_MODEL_VERSIONS = "3.0",
     batch_size=1,
     n_workers: int | None = None,
     n_producers: int = 1,
@@ -718,7 +723,7 @@ def encode_arrays_batched(
 
 def get_embeddings_array(
     signals: list[np.ndarray],
-    version: ACOUSTIC_MODEL_VERSIONS = "2.4",
+    version: ACOUSTIC_MODEL_VERSIONS = "3.0",
     batch_size=1,
     n_workers: int | None = None,
     n_producers: int = 1,

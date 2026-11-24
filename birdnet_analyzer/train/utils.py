@@ -24,6 +24,7 @@ from birdnet_analyzer.config import (
     DEFAULT_ACOUSTIC_MODEL_VERSION,
     NON_EVENT_CLASSES,
     RANDOM_SEED,
+    TRAIN_EPOCHS,
     TRAIN_PARAMS_SUFFIX,
 )
 from birdnet_analyzer.model_utils import GLOBAL_PREFETCH_RATIO
@@ -602,10 +603,10 @@ def train_model(
     test_data: str | None = None,
     crop_mode: SAMPLE_CROP_MODES = "center",
     overlap: float = 0.0,
-    epochs: int = 50,
+    epochs: int = TRAIN_EPOCHS,
     batch_size: int = 32,
     val_split: float = 0.2,
-    learning_rate: float = 0.0001,
+    learning_rate: float | None = None,
     weight_decay: float = 0.004,
     use_focal_loss: bool = False,
     focal_loss_gamma: float = 2.0,
@@ -650,7 +651,8 @@ def train_model(
         batch_size: Training batch size. Defaults to 32.
         val_split: Fraction of the training data used for validation, above 0.
             Defaults to 0.2.
-        learning_rate: Learning rate. Defaults to 0.0001.
+        learning_rate: Learning rate. Defaults to the one measured for the base model
+            the classifier is trained on: 0.1 for BirdNET 3.0, 0.01 for 2.4.
         weight_decay: AdamW weight decay. Defaults to 0.004.
         use_focal_loss: Whether to use focal loss. Defaults to False.
         focal_loss_gamma: Focal loss gamma. Defaults to 2.0.
@@ -742,12 +744,31 @@ def train_model(
             birdnet,
         )
 
+    if learning_rate is None:
+        learning_rate = base_models.base_model(version).learning_rate
+
+        if hidden_units > 0 and not autotune:
+            logger.warning(
+                "The default learning rate of %s for BirdNET %s was measured for "
+                "classifiers without hidden units; with hidden units, set a lower "
+                "one, such as 0.003.",
+                learning_rate,
+                version,
+            )
+
     logger.info(
         f"...Done. Loaded {x_train_full.shape[0]} training samples "
         f"and {y_train_full.shape[1]} labels."
     )
     if len(x_test) > 0:
         logger.info(f"...Loaded {x_test.shape[0]} test samples.")
+
+    formats = [model_formats] if isinstance(model_formats, str) else model_formats
+    base = base_models.base_model(version)
+
+    # Ahead of the tuning and the fit, which a failed download would waste.
+    if "tflite" in formats or "raven" in formats:
+        base.fetch()
 
     if autotune:
         import gc
@@ -891,6 +912,7 @@ def train_model(
             focal_loss_alpha = best_params["focal_loss_alpha"]
             focal_loss_gamma = best_params["focal_loss_gamma"]
 
+    logger.info(f"...Training with a learning rate of {learning_rate}.")
     classifier = model.build_linear_classifier(
         y_train_full.shape[1], x_train_full.shape[1], hidden_units, dropout
     )
@@ -930,7 +952,6 @@ def train_model(
 
     # Remove activation from last layer before saving
     classifier.pop()
-    formats = [model_formats] if isinstance(model_formats, str) else model_formats
     classifier_path = output.removesuffix(".tflite")
 
     # The settings the classifier was trained with, saved next to it both as a

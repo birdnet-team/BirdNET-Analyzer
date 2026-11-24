@@ -11,6 +11,7 @@ from birdnet_analyzer import audio, model_utils
 from birdnet_analyzer.config import CROP_MODES, SCORE_FUNCTIONS
 
 if TYPE_CHECKING:
+    from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
     from perch_hoplite.db.sqlite_usearch_impl import SQLiteUSearchDB
 
 
@@ -54,17 +55,20 @@ def get_query_embedding(
     audio_speed=1.0,
     sig_length=3.0,
     sig_minlen=1.0,
+    model_version: ACOUSTIC_MODEL_VERSIONS = "3.0",
 ):
     """
     Extracts the embedding for a query file. Reads only the first 3 seconds
     Args:
         queryfile_path: The path to the query file.
+        model_version: The BirdNET version of the database to search.
     Returns:
         The query embedding.
     """
 
     sig, rate = audio.open_audio_file(
         queryfile_path,
+        sample_rate=model_utils.sample_rate(model_version),
         duration=sig_length * audio_speed if crop_mode == "first" else None,
         fmin=bandpass_fmin,
         fmax=bandpass_fmax,
@@ -80,7 +84,9 @@ def get_query_embedding(
     else:
         sig_splits = audio.split_signal(sig, rate, sig_length, crop_overlap, sig_minlen)
 
-    return model_utils.get_embeddings_array(sig_splits, n_workers=1)
+    return model_utils.get_embeddings_array(
+        sig_splits, version=model_version, n_workers=1
+    )
 
 
 def get_search_results(
@@ -96,6 +102,7 @@ def get_search_results(
     sig_length=3.0,
     sig_fmin=0,
     sig_fmax=15000,
+    model_version: ACOUSTIC_MODEL_VERSIONS = "3.0",
 ):
     bandpass_fmin = max(0, min(sig_fmax, int(fmin)))
     bandpass_fmax = max(sig_fmin, min(sig_fmax, int(fmax)))
@@ -109,6 +116,7 @@ def get_search_results(
         bandpass_fmax=bandpass_fmax,
         audio_speed=audio_speed,
         sig_length=sig_length,
+        model_version=model_version,
     )
 
     if score_function == "cosine":

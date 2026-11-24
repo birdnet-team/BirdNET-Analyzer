@@ -90,8 +90,37 @@ def test_download_progress_survives_ui_failures(monkeypatch):
         registered()(update("retrying", error="connection reset"))
 
     assert len(warnings) == 1
-    assert "connection reset" in warnings[0]
+    assert "connection reset" not in warnings[0]
     assert "(2/3)" in warnings[0]
+
+
+def test_the_progress_bar_says_that_a_download_is_being_retried(monkeypatch):
+    import birdnet
+    import gradio as gr
+
+    import birdnet_analyzer.gui.localization as loc
+    from birdnet_analyzer.gui import utils as gu
+
+    monkeypatch.setattr(gr, "Warning", lambda msg, **kw: None)
+    shown = []
+
+    with gu.download_progress(lambda value, desc=None, **kw: shown.append(desc)):
+        birdnet.get_download_progress_callback()(
+            birdnet.DownloadProgress(
+                description="Downloading acoustic model v3.0",
+                url="https://example.invalid/model",
+                bytes_done=0,
+                bytes_total=1000,
+                attempt=2,
+                max_attempts=5,
+                status="retrying",
+                error="connection reset",
+            )
+        )
+
+    assert shown == [
+        f"{loc.localize('progress-download-retrying')}: acoustic model v3.0 (2/5)"
+    ]
 
 
 def test_overlapping_gui_events_keep_their_own_sink_and_unregister_cleanly():
@@ -382,22 +411,6 @@ def test_train_tab_shows_the_download_on_its_progress_bar(monkeypatch):
         cache_mode="none",
         cache_file="",
         cache_file_name="",
-        autotune=False,
-        autotune_trials=1,
-        autotune_folds=1,
-        autotune_repeats=1,
-        epochs=1,
-        batch_size=1,
-        learning_rate=0.001,
-        focal_loss=False,
-        focal_loss_gamma=2.0,
-        focal_loss_alpha=0.25,
-        hidden_units=0,
-        dropout=0.0,
-        label_smoothing=False,
-        use_mixup=False,
-        upsampling_ratio=0.0,
-        upsampling_mode="repeat",
         model_formats=["tflite"],
         audio_speed=1.0,
         threads=1,
@@ -429,3 +442,113 @@ def test_species_tab_shows_the_download_on_its_progress_bar(monkeypatch):
     )
 
     _assert_download_reached_the_bar(_flatten(records), infos)
+
+
+@pytest.fixture
+def slow_download_url():
+    import threading
+    import time
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", str(200 * 65536))
+            self.end_headers()
+
+            with contextlib.suppress(OSError):
+                for _ in range(200):
+                    self.wfile.write(b"\0" * 65536)
+                    time.sleep(0.05)
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    yield f"http://127.0.0.1:{server.server_port}/model"
+
+    server.shutdown()
+    server.server_close()
+
+
+def test_closing_the_app_cancels_a_download_and_removes_its_partial_file(
+    slow_download_url, tmp_path, monkeypatch
+):
+    import threading
+    import time
+
+    from birdnet.utils.downloads import download_file_tqdm
+
+    from birdnet_analyzer import model_utils
+    from birdnet_analyzer.gui import utils as gu
+
+    monkeypatch.setattr(gr, "Info", lambda *a, **k: None)
+    outcome = []
+
+    def download():
+        try:
+            with gu.download_progress(None):
+                download_file_tqdm(slow_download_url, tmp_path / "model.onnx")
+        except Exception as e:
+            outcome.append(e)
+        else:
+            outcome.append(None)
+
+    thread = threading.Thread(target=download)
+    thread.start()
+
+    try:
+        deadline = time.monotonic() + 10
+        while not list(tmp_path.iterdir()) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert list(tmp_path.iterdir()), "the download never started"
+
+        gu.shutdown_running_analyses(timeout=8)
+
+        assert list(tmp_path.iterdir()) == []
+        thread.join(5)
+        assert isinstance(outcome[0], RuntimeError)
+        assert not gu._DOWNLOADING
+    finally:
+        model_utils._SHUTDOWN.clear()
+        thread.join(15)
+
+
+def test_closing_the_app_waits_while_a_finished_download_is_still_being_checked(
+    monkeypatch,
+):
+    import birdnet
+
+    from birdnet_analyzer import model_utils
+    from birdnet_analyzer.gui import utils as gu
+
+    monkeypatch.setattr(gr, "Info", lambda *a, **k: None)
+
+    def report(status):
+        birdnet.get_download_progress_callback()(
+            birdnet.DownloadProgress(
+                description="Downloading acoustic model v3.0",
+                url="https://example.invalid/model",
+                bytes_done=1000,
+                bytes_total=1000,
+                attempt=1,
+                max_attempts=3,
+                status=status,
+            )
+        )
+
+    try:
+        with gu.download_progress(None):
+            report("started")
+            report("finished")
+            assert gu._DOWNLOADING
+
+            model_utils.cancel_active_analyses()
+            with pytest.raises(RuntimeError):
+                report("finished")
+
+        assert not gu._DOWNLOADING
+    finally:
+        model_utils._SHUTDOWN.clear()

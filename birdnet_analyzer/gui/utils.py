@@ -7,11 +7,13 @@ import multiprocessing
 import os
 import sys
 import threading
+from abc import ABCMeta
 from collections.abc import Callable
 from concurrent.futures import Future
 from contextlib import contextmanager, suppress
 from html import escape
 from typing import TYPE_CHECKING, Literal, cast, get_args
+from urllib.parse import urlsplit
 
 import gradio as gr
 from birdnet.globals import ACOUSTIC_MODEL_VERSIONS, MODEL_LANGUAGE_EN_US
@@ -20,7 +22,7 @@ from gradio.context import Context
 import birdnet_analyzer.config as cfg
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.state as gs
-from birdnet_analyzer import settings, utils
+from birdnet_analyzer import model_store, settings, utils
 from birdnet_analyzer.gui.state import TabState
 
 if TYPE_CHECKING:
@@ -77,6 +79,7 @@ _SPECIES_KEYS = Literal[
     "sf_thresh_number",
     "yearlong_checkbox",
     "selected_classifier_state",
+    "location_download_note",
 ]
 
 _SETTINGS_TAB_ID = "settings"
@@ -236,9 +239,73 @@ def gui_runtime_error_handler(f):
             raise
         except Exception as e:
             utils.write_error_log(e)
-            raise gr.Error(message=str(e) or repr(e), duration=None) from e
+            message = _download_failure_message(e) or str(e) or repr(e)
+            raise gr.Error(message=message, duration=None) from e
 
     return wrapper
+
+
+def _download_failure_message(error: Exception) -> str | None:
+    """What to tell the user when ``error`` is a failed model download, else None."""
+    import requests
+    from birdnet.globals import ENV_VAR_OFFLINE
+    from birdnet.utils.downloads import DownloadError
+
+    if os.environ.get(ENV_VAR_OFFLINE, "0") not in ("", "0"):
+        return None
+
+    if isinstance(error, requests.RequestException):
+        url = getattr(error.request, "url", None)
+        host = urlsplit(url).hostname if url else None
+        reason = f"{type(error).__name__}, {host}" if host else type(error).__name__
+    elif isinstance(error, DownloadError):
+        reason = " ".join(str(error).split()).rstrip(".")
+    else:
+        return None
+
+    return loc.localize("model-download-failed-error").format(
+        reason=reason, directory=_effective_model_directory()
+    )
+
+
+_LEFT_TO_RIGHT_MARK = chr(0x200E)
+
+
+def _shown_path(textbox: gr.Textbox, value: str | None) -> str | None:
+    value = gr.Textbox.postprocess(textbox, value)
+
+    return f"{_LEFT_TO_RIGHT_MARK}{value}{_LEFT_TO_RIGHT_MARK}" if value else value
+
+
+def plain_path(shown: str | None) -> str | None:
+    """The path of a PathTextbox value as the page holds it.
+
+    A listener with preprocess=False gets that value, marks included.
+    """
+    return shown.strip(_LEFT_TO_RIGHT_MARK) if shown else shown
+
+
+def _path(textbox: gr.Textbox, payload: str | None) -> str | None:
+    return plain_path(gr.Textbox.preprocess(textbox, payload))
+
+
+# The textbox for a path, used with rtl=True, which keeps the end of a long path in
+# view. Right-to-left layout alone moves a leading "/" to the far end; between two
+# left-to-right marks the path stays in one piece, and no handler gets to see them.
+#
+# Not a class statement: gradio's metaclass writes a .pyi file beside the module of
+# every component class it is asked to create.
+PathTextbox: type[gr.Textbox] = ABCMeta.__new__(
+    type(gr.Textbox),
+    "PathTextbox",
+    (gr.Textbox,),
+    {
+        "__module__": __name__,
+        "is_template": True,
+        "postprocess": _shown_path,
+        "preprocess": _path,
+    },
+)
 
 
 def _format_bytes(n: int) -> str:
@@ -252,12 +319,93 @@ def _effective_model_directory() -> str:
     return str(get_birdnet_app_data_folder())
 
 
+_STORED_MODEL_NAMES = {
+    model_store.ACOUSTIC_3_0: "BirdNET 3.0",
+    model_store.ACOUSTIC_2_4: "BirdNET 2.4",
+    model_store.PERCH: "Perch v2",
+    model_store.GEO_3_0: "BirdNET Geomodel 3.0",
+    model_store.GEO_2_4: "BirdNET Geomodel 2.4",
+    model_store.TRAINING_3_0: "BirdNET 3.0 SavedModel",
+    model_store.TRAINING_2_4: "BirdNET 2.4 SavedModel",
+}
+_STORED_MODEL_USES = {
+    model_store.ACOUSTIC_3_0: "settings-tab-models-use-acoustic",
+    model_store.ACOUSTIC_2_4: "settings-tab-models-use-acoustic",
+    model_store.PERCH: "settings-tab-models-use-analysis",
+    model_store.GEO_3_0: "model-selection-facts-location-label",
+    model_store.GEO_2_4: "model-selection-facts-location-label",
+    model_store.TRAINING_3_0: "settings-tab-models-use-training",
+    model_store.TRAINING_2_4: "settings-tab-models-use-training",
+}
+
+
+def _stored_model_rows() -> list[list[str]]:
+    rows = []
+
+    for files in model_store.all_model_files():
+        use = loc.localize(_STORED_MODEL_USES[files.key])
+
+        if files.key == model_store.GEO_2_4:
+            use = f"{use} ({_BIRDNET_MODEL_LABELS[USE_BIRDNET_2_4]})"
+
+        status = loc.localize(
+            "settings-tab-models-status-downloaded"
+            if files.downloaded
+            else "settings-tab-models-status-missing"
+        )
+        rows.append(
+            [
+                _STORED_MODEL_NAMES[files.key],
+                use,
+                status,
+                _format_bytes(files.download_size),
+            ]
+        )
+
+    return rows
+
+
+def _stored_models_info() -> str:
+    size = model_store.stored_size(_effective_model_directory())
+
+    return loc.localize("settings-tab-models-info").format(size=_format_bytes(size))
+
+
+def download_note(*keys: str) -> str:
+    """Says that a first use of these models downloads them; empty when none will."""
+    size = model_store.missing_download_size(*keys)
+
+    if not size:
+        return ""
+
+    return loc.localize("model-download-note").format(size=_format_bytes(size))
+
+
+def _open_directory(directory: str) -> None:
+    with suppress(OSError):
+        os.makedirs(directory, exist_ok=True)
+
+    if sys.platform == "win32":
+        os.startfile(directory)
+    elif sys.platform == "darwin":
+        import subprocess
+
+        subprocess.Popen(["open", directory])
+    else:
+        import webbrowser
+        from pathlib import Path
+
+        webbrowser.open(Path(directory).as_uri())
+
+
 # Download sinks by the thread that runs birdnet.load; the library's callback fires
 # synchronously on that thread. One dispatcher is registered with the library while
 # any sink is active, so overlapping GUI events neither misroute nor clobber each
 # other's registration (the library's own scoped registration is a plain set/restore).
 _DOWNLOAD_SINKS: dict[int, "gr.Progress | None"] = {}
 _DOWNLOAD_SINKS_LOCK = threading.Lock()
+# Threads that started a download inside their current download_progress block.
+_DOWNLOADING: set[int] = set()
 
 
 def _show_download_update(update, progress: "gr.Progress | None") -> None:
@@ -285,19 +433,31 @@ def _show_download_update(update, progress: "gr.Progress | None") -> None:
         else:
             progress(0.0, desc=f"{label} ({_format_bytes(update.bytes_done)})")
     elif update.status == "retrying":
-        gr.Warning(
-            f"{loc.localize('progress-download-retrying')}: {name} - {update.error}"
-        )
+        retrying = f"{loc.localize('progress-download-retrying')}: {name}"
+        gr.Warning(retrying)
+
+        # The toast is gone long before the next attempt starts.
+        if progress is not None:
+            progress(0.0, desc=retrying)
     # "failed": the library raises right after; the operation reports it.
 
 
 def _dispatch_download_update(update) -> None:
-    with _DOWNLOAD_SINKS_LOCK:
-        if threading.get_ident() not in _DOWNLOAD_SINKS:
-            return
-        progress = _DOWNLOAD_SINKS[threading.get_ident()]
+    from birdnet_analyzer import model_utils
 
-    # An exception escaping the callback aborts the download in the library.
+    thread = threading.get_ident()
+
+    with _DOWNLOAD_SINKS_LOCK:
+        if thread not in _DOWNLOAD_SINKS:
+            return
+        progress = _DOWNLOAD_SINKS[thread]
+        _DOWNLOADING.add(thread)
+
+    # An exception escaping the callback aborts the download in the library, which
+    # then removes its partial files; a process that just exits leaves them behind.
+    if update.status != "failed" and model_utils.shutting_down():
+        raise RuntimeError("Model download cancelled: the application is closing.")
+
     try:
         _show_download_update(update, progress)
     except Exception:
@@ -325,6 +485,7 @@ def download_progress(progress: "gr.Progress | None" = None):
     finally:
         with _DOWNLOAD_SINKS_LOCK:
             _DOWNLOAD_SINKS.pop(thread, None)
+            _DOWNLOADING.discard(thread)
             if not _DOWNLOAD_SINKS:
                 birdnet.set_download_progress_callback(None)
 
@@ -563,7 +724,7 @@ def build_settings():
                 dir_name = select_folder(state_key="model-directory")
 
                 if not dir_name:
-                    return gr.update()
+                    return gr.skip()
 
                 verdict = settings.probe_model_directory(dir_name)
 
@@ -579,14 +740,26 @@ def build_settings():
 
                 gr.Info(loc.localize("settings-tab-model-dir-saved-info"))
 
-                return _effective_model_directory()
+                return (
+                    _effective_model_directory(),
+                    _stored_model_rows(),
+                    _stored_models_info(),
+                )
 
             @gui_runtime_error_handler
             def on_model_dir_reset():
                 _switch_model_directory("")
                 gr.Info(loc.localize("settings-tab-model-dir-saved-info"))
 
-                return _effective_model_directory()
+                return (
+                    _effective_model_directory(),
+                    _stored_model_rows(),
+                    _stored_models_info(),
+                )
+
+            @gui_runtime_error_handler
+            def on_model_dir_open():
+                _open_directory(_effective_model_directory())
 
             state = TabState(_SETTINGS_TAB_ID)
 
@@ -701,13 +874,32 @@ def build_settings():
                     loc.localize("settings-tab-model-dir-reset-button"),
                     interactive=not env_controlled,
                 )
+                model_dir_open_btn = gr.Button(
+                    loc.localize("settings-tab-model-dir-open-button")
+                )
+
+            # Filled when the tab is selected.
+            stored_models_df = gr.Dataframe(
+                headers=[
+                    loc.localize("settings-tab-models-model-header"),
+                    loc.localize("settings-tab-models-use-header"),
+                    loc.localize("settings-tab-models-status-header"),
+                    loc.localize("settings-tab-models-size-header"),
+                ],
+                label=loc.localize("settings-tab-models-label"),
+                interactive=False,
+                buttons=[],
+            )
+            stored_models_info = gr.Markdown(elem_classes="stored-models-info")
+            model_dir_outputs = [model_dir_tb, stored_models_df, stored_models_info]
 
             model_dir_select_btn.click(
-                on_model_dir_select, outputs=model_dir_tb, show_progress="hidden"
+                on_model_dir_select, outputs=model_dir_outputs, show_progress="hidden"
             )
             model_dir_reset_btn.click(
-                on_model_dir_reset, outputs=model_dir_tb, show_progress="hidden"
+                on_model_dir_reset, outputs=model_dir_outputs, show_progress="hidden"
             )
+            model_dir_open_btn.click(on_model_dir_open, show_progress="hidden")
 
             # Built last, so every tab has registered its settings by now.
             persisted_components = gs.persisted_components()
@@ -769,20 +961,27 @@ def build_settings():
 
         @gui_runtime_error_handler
         def on_tab_select(value: gr.SelectData):
-            if value.selected and os.path.exists(settings.ERROR_LOG_FILE):
+            if not value.selected:
+                return "", gr.skip(), gr.skip()
+
+            error_log = ""
+
+            if os.path.exists(settings.ERROR_LOG_FILE):
                 with open(settings.ERROR_LOG_FILE, mode="rb") as f:
                     lines = [line.decode("utf-8", errors="ignore") for line in f]
-                    last_100_lines = lines[-100:]
+                    error_log = "".join(lines[-100:])
 
-                    return "".join(last_100_lines)
-
-            return ""
+            return error_log, _stored_model_rows(), _stored_models_info()
 
         languages_dropdown.input(
             on_language_change, inputs=languages_dropdown, show_progress="hidden"
         )
         theme_radio.input(on_theme_change, inputs=theme_radio, show_progress="hidden")
-        settings_tab.select(on_tab_select, outputs=error_log_tb, show_progress="hidden")
+        settings_tab.select(
+            on_tab_select,
+            outputs=[error_log_tb, stored_models_df, stored_models_info],
+            show_progress="hidden",
+        )
 
 
 def birdnet_model_choices() -> list[tuple[str, str]]:
@@ -855,8 +1054,14 @@ def sample_species_model_settings(state: TabState, opened=True):
         is_perch=is_perch,
         sensitivity_enabled=model_supports_sensitivity(model_choice),
     )
-    species_settings = species_lists(state, opened=opened, is_perch=is_perch)
-    model_settings = model_selection(state, opened=opened)
+    species_settings = species_lists(
+        state, opened=opened, is_perch=is_perch, model_choice=model_choice
+    )
+    model_settings = model_selection(
+        state,
+        opened=opened,
+        location_note=species_settings["location_download_note"],
+    )
 
     def on_model_change(value, species_choice, overlap, current_locale):
         is_perch = value == USE_PERCH
@@ -925,6 +1130,11 @@ def sample_species_model_settings(state: TabState, opened=True):
     def on_model_selection_change(
         value, species_choice, overlap, current_locale, classifier
     ):
+        shown = state.shown_with("model_selection_radio", value)
+        species_choice = shown.get("species_list_radio", species_choice)
+        overlap = shown.get("overlap_slider", overlap)
+        current_locale = shown.get("locale_dropdown", current_locale)
+
         return [
             *on_model_change(value, species_choice, overlap, current_locale),
             *model_settings["updates_for_model"](value, classifier),
@@ -1174,8 +1384,14 @@ def locale(
 def plot_map_scatter_mapbox(lat, lon, zoom=4):
     import plotly.express as px
 
+    # plotly 7 no longer centres the map on its points.
     fig = px.scatter_map(
-        lat=[lat], lon=[lon], zoom=zoom, map_style="open-street-map", size=[10]
+        lat=[lat],
+        lon=[lon],
+        zoom=zoom,
+        center={"lat": lat, "lon": lon},
+        map_style="open-street-map",
+        size=[10],
     )
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
     return fig
@@ -1497,6 +1713,89 @@ def _model_facts(
     ], None
 
 
+_MODEL_CHOICE_FILES = {
+    USE_BIRDNET_3_0: model_store.ACOUSTIC_3_0,
+    USE_BIRDNET_2_4: model_store.ACOUSTIC_2_4,
+    USE_PERCH: model_store.PERCH,
+}
+
+
+def _model_choice_files(model_choice: str) -> tuple[str, ...]:
+    key = _MODEL_CHOICE_FILES.get(model_choice)
+
+    return (key,) if key else ()
+
+
+def _location_filter_files(
+    model_choice: str, classifier_file: str | None
+) -> tuple[str, ...]:
+    """The geo model a location filter loads for the selected model."""
+    if is_birdnet_model(model_choice):
+        return (model_store.geo_key(model_choice),)
+
+    if model_choice != CUSTOM_CLASSIFIER or classifier_file is None:
+        return ()
+
+    from birdnet_analyzer import model_utils
+
+    try:
+        version = model_utils.classifier_info(classifier_file).version
+    except (OSError, ValueError):
+        return ()
+
+    return (model_store.geo_key(version),)
+
+
+def _note_update(note: str) -> dict:
+    return gr.update(value=note, visible=bool(note))
+
+
+def _download_note_md(note: str) -> gr.Markdown:
+    return gr.Markdown(note, visible=bool(note), elem_classes="model-download-note")
+
+
+def _enclosing_tab() -> gr.Tab | None:
+    block = Context.block
+
+    while block is not None and not isinstance(block, gr.Tab):
+        block = block.parent
+
+    return block
+
+
+def download_note_line(
+    selector: gr.components.Component, files: Callable[[str], tuple[str, ...]]
+) -> tuple[gr.Markdown, dict]:
+    """A line that says when the choice of ``selector`` is downloaded on first use.
+
+    Returns it with the arguments of a listener that brings it up to date; selecting
+    the tab it is built in does so already.
+    """
+
+    @gui_runtime_error_handler
+    def refresh_download_note(choice: str):
+        return _note_update(download_note(*files(choice)))
+
+    line = _download_note_md(download_note(*files(selector.value)))
+
+    return line, _refreshed_with_its_tab(refresh_download_note, selector, line)
+
+
+def _refreshed_with_its_tab(fn, inputs, outputs) -> dict:
+    refresh = {
+        "fn": fn,
+        "inputs": inputs,
+        "outputs": outputs,
+        "show_progress": "hidden",
+    }
+    tab = _enclosing_tab()
+
+    if tab is not None:
+        tab.select(**refresh)
+
+    return refresh
+
+
 def _facts_updates(facts: list[tuple[str, str]], warning: str | None) -> list:
     return [
         gr.update(visible=bool(facts)),
@@ -1506,7 +1805,14 @@ def _facts_updates(facts: list[tuple[str, str]], warning: str | None) -> list:
     ]
 
 
-def model_selection(state: TabState, opened=True):
+def model_selection(
+    state: TabState, opened=True, location_note: gr.Markdown | None = None
+):
+    """Creates the gradio accordion for the model selection.
+
+    ``location_note`` is the line that says when a location filter downloads its
+    model, which depends on the model chosen here.
+    """
     with (
         gr.Group(),
         gr.Accordion(loc.localize("model-selection-accordion-label"), open=opened),
@@ -1564,7 +1870,10 @@ def model_selection(state: TabState, opened=True):
 
                     state.remember({CLASSIFIER_FILE_KEY: file})
                     labels = utils.read_classifier_labels(file)
-                    facts = _facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file))
+                    facts = [
+                        *_facts_updates(*_model_facts(CUSTOM_CLASSIFIER, file)),
+                        *note_updates(CUSTOM_CLASSIFIER, file),
+                    ]
 
                     if labels is None:
                         gr.Warning(
@@ -1606,7 +1915,30 @@ def model_selection(state: TabState, opened=True):
             visible=warning is not None,
             elem_classes="model-facts-warning",
         )
-        facts_outputs = [facts_row, *fact_boxes, facts_warning]
+        note_lines = [
+            _download_note_md(download_note(*_model_choice_files(selected_model))),
+            *([] if location_note is None else [location_note]),
+        ]
+
+        def note_updates(choice: str, classifier: str | None) -> list[dict]:
+            """One update per ``note_lines``."""
+            notes = [download_note(*_model_choice_files(choice))]
+
+            if location_note is not None:
+                notes.append(download_note(*_location_filter_files(choice, classifier)))
+
+            return [_note_update(note) for note in notes]
+
+        @gui_runtime_error_handler
+        def refresh_download_note(choice: str, classifier: str | None):
+            return note_updates(choice, classifier)
+
+        refresh_download_note = _refreshed_with_its_tab(
+            refresh_download_note,
+            [model_selection_radio, selected_classifier_state],
+            note_lines,
+        )
+        facts_outputs = [facts_row, *fact_boxes, facts_warning, *note_lines]
 
         # Shown: restrict locale to the model's languages. Hidden (Perch/custom): offer
         # the union so a saved locale from another version isn't dropped by persist.
@@ -1652,6 +1984,7 @@ def model_selection(state: TabState, opened=True):
             gr.update(visible=custom),
             gr.update(visible=labels is not None),
             *_facts_updates(*_model_facts(choice, classifier)),
+            *note_updates(choice, classifier),
         ]
 
     @gui_runtime_error_handler
@@ -1700,6 +2033,7 @@ def model_selection(state: TabState, opened=True):
         "model_facts_row": facts_row,
         "model_facts": fact_boxes,
         "model_facts_warning": facts_warning,
+        "refresh_download_note": refresh_download_note,
         "model_outputs": model_outputs,
         "updates_for_model": updates_for_model,
     }
@@ -1710,13 +2044,15 @@ def _read_species_rows(file: str) -> list[list[str]]:
 
 
 def species_lists(
-    state: TabState, opened=True, is_perch=False
+    state: TabState, opened=True, is_perch=False, model_choice: str | None = None
 ) -> dict[_SPECIES_KEYS, gr.components.Component]:
     """Creates the gradio accordion for species list selection.
     Args:
         state: The persisted settings of the tab the accordion belongs to.
         opened: If True the accordion is open on init.
         is_perch: If True the choices are limited to what the Perch model supports.
+        model_choice: The selected model, which decides the geo model a location
+            filter loads. A classifier's is known once its file was inspected.
     Returns:
         A dict with the created elements.
     """
@@ -1748,6 +2084,9 @@ def species_lists(
                     yearlong_checkbox,
                     _,
                 ) = species_list_coordinates(state)
+                location_download_note = _download_note_md(
+                    download_note(*_location_filter_files(model_choice or "", None))
+                )
 
             species_file = state.get_file(SPECIES_FILE_KEY)
 
@@ -1826,6 +2165,7 @@ def species_lists(
         "week_number": week_number,
         "sf_thresh_number": sf_thresh_number,
         "yearlong_checkbox": yearlong_checkbox,
+        "location_download_note": location_download_note,
     }
 
 
@@ -2035,7 +2375,9 @@ def shutdown_running_analyses(timeout: float = 15.0) -> None:
     model_utils.cancel_active_analyses()
 
     deadline = time.monotonic() + timeout
-    while model_utils.active_session_count() and time.monotonic() < deadline:
+    while (
+        model_utils.active_session_count() or _DOWNLOADING
+    ) and time.monotonic() < deadline:
         time.sleep(0.1)
 
     # Force terminate any subprocesses still alive, then join them so none are
@@ -2094,6 +2436,130 @@ def _close_splash():
         pyi_splash.close()
 
 
+@contextmanager
+def _loopback_bypasses_proxy():
+    """Keeps the requests gradio sends to its own server off a configured proxy.
+
+    launch() calls the local server through httpx, which applies a proxy from the
+    environment or the Windows settings to 127.0.0.1 as well. Scoped to the block,
+    because a proxy exclusion in the environment makes Python ignore the Windows
+    proxy settings altogether, and model downloads may depend on them.
+    """
+    names = ("NO_PROXY",) if os.name == "nt" else ("no_proxy", "NO_PROXY")
+    previous = {name: os.environ.get(name) for name in names}
+
+    for name, value in previous.items():
+        hosts = [host for host in (value or "").split(",") if host.strip()]
+        os.environ[name] = ",".join([*hosts, "127.0.0.1", "localhost", "::1"])
+
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+class _SourceSansPro(gr.themes.LocalFont):
+    def __init__(self):
+        super().__init__("Source Sans Pro", weights=(400, 700))
+
+    def stylesheet(self) -> dict:
+        sheet = super().stylesheet()
+        semibold = utils.img2base64(
+            os.path.join(SCRIPT_DIR, "assets/fonts/SourceSans3-SemiBold.woff2")
+        )
+        sheet["css"] += f"""
+@font-face {{
+    font-family: '{self.name}';
+    src: url('data:font/woff2;base64,{semibold}') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+}}
+"""
+
+        return sheet
+
+
+def _theme() -> gr.themes.Base:
+    # Gradio's font files for weight 600 hold a few glyphs only. The sans font has
+    # a complete one in the package; semibold mono text takes the bold face.
+    return gr.themes.Default(
+        font=[_SourceSansPro(), "ui-sans-serif", "system-ui", "sans-serif"],
+        font_mono=[
+            gr.themes.LocalFont("IBM Plex Mono", weights=(400, 700)),
+            "ui-monospace",
+            "Consolas",
+            "monospace",
+        ],
+    )
+
+
+def _webview_storage_path() -> str | None:
+    """A browser profile of the app's own, or None for pywebview's default.
+
+    The default is shared by every pywebview application and sits in the home
+    directory on Linux and in the roaming profile on Windows. The macOS backend
+    takes no path.
+    """
+    if sys.platform == "darwin":
+        return None
+
+    directory = settings.webview_storage_directory()
+
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+
+    # pywebview refuses to start with a path it cannot write to.
+    return str(directory) if os.access(directory, os.W_OK) else None
+
+
+def _open_links_as_the_desktop_would() -> None:
+    """Keeps the app's log file and libraries away from a browser a link opens.
+
+    A program the app starts inherits its output, which may be the log file, and the
+    library path of the bundle, whose libraries are not the browser's.
+    """
+    import subprocess
+    import webbrowser
+
+    # The user's own choice of browser, which a preferred one would go ahead of.
+    if os.environ.get("BROWSER"):
+        return
+
+    environment = dict(os.environ)
+    library_path = environment.pop("LD_LIBRARY_PATH_ORIG", None)
+
+    if library_path is None:
+        environment.pop("LD_LIBRARY_PATH", None)
+    else:
+        environment["LD_LIBRARY_PATH"] = library_path
+
+    stdout, stderr = settings.REPLACED_OUTPUT
+
+    class Desktop(webbrowser.BaseBrowser):
+        def open(self, url, new=0, autoraise=True):
+            try:
+                subprocess.Popen(
+                    ["xdg-open", url],
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout,
+                    stderr=stderr,
+                    env=environment,
+                    start_new_session=True,
+                )
+            except OSError:
+                return False
+
+            return True
+
+    webbrowser.register("xdg-open", None, Desktop(), preferred=True)
+
+
 def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
     """
     Opens a GUI window using the Gradio library and the webview module.
@@ -2121,11 +2587,12 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
 
         if _STARTUP_WARNINGS or settings.MODEL_DIR_STARTUP_WARNING:
             demo.load(_show_startup_warnings)
-    theme = gr.themes.Default()
+    theme = _theme()
 
     with (
         open(os.path.join(SCRIPT_DIR, "assets/gui.css")) as css_file,
         open(os.path.join(SCRIPT_DIR, "assets/gui.js")) as js_file,
+        _loopback_bypasses_proxy(),
     ):
         _URL = demo.queue(api_open=False).launch(
             css=css_file.read(),
@@ -2172,7 +2639,17 @@ def open_window(builder: list[Callable[[], None]] | Callable[[], None]):
         _WINDOW.events.shown += color_title_bar
         _WINDOW.events.loaded += color_title_bar
 
-    webview.start(private_mode=False)
+    if settings.FROZEN and sys.platform == "linux":
+        _open_links_as_the_desktop_would()
+
+    webview.start(
+        private_mode=False,
+        storage_path=_webview_storage_path(),
+        # Only the Linux backends take one; elsewhere it comes with the bundle.
+        icon=os.path.join(SCRIPT_DIR, "assets/img/birdnet_logo.png")
+        if sys.platform == "linux"
+        else None,
+    )
 
     _exit_within(EXIT_TIMEOUT_S)
     # Window closed: stop any analysis still running with no UI to control it.

@@ -73,7 +73,7 @@ def run_search(
     crop_overlap,
     progress=gr.Progress(),
 ):
-    from birdnet_analyzer.embeddings.core import SETTINGS_KEY
+    from birdnet_analyzer.embeddings.core import SETTINGS_KEY, database_model_version
     from birdnet_analyzer.search.utils import get_search_results
 
     gu.validate(db_path, loc.localize("embeddings-search-db-validation-message"))
@@ -99,6 +99,7 @@ def run_search(
                 score_fn,
                 crop_mode,
                 crop_overlap,
+                model_version=database_model_version(settings),
             )
 
     chunks = [results[i : i + PAGE_SIZE] for i in range(0, len(results), PAGE_SIZE)]
@@ -129,7 +130,7 @@ def build_search_tab() -> None:
                         loc.localize("embeddings-search-db-selection-button-label"),
                         variant="primary",
                     )
-                    db_selection_tb = gr.Textbox(
+                    db_selection_tb = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -171,7 +172,7 @@ def build_search_tab() -> None:
                         ),
                         variant="primary",
                     )
-                    audio_root_selection_tb = gr.Textbox(
+                    audio_root_selection_tb = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -190,7 +191,7 @@ def build_search_tab() -> None:
                         loc.localize("embeddings-search-select-query-button-label"),
                         variant="primary",
                     )
-                    query_sample_tb = gr.Textbox(
+                    query_sample_tb = gu.PathTextbox(
                         show_label=False,
                         interactive=False,
                         placeholder=loc.localize(
@@ -449,6 +450,9 @@ def build_search_tab() -> None:
         import numpy as np
 
         from birdnet_analyzer import audio, utils
+
+        audiofilepath = gu.plain_path(audiofilepath)
+        db_selection = gu.plain_path(db_selection)
 
         if audiofilepath and db_selection:
             try:

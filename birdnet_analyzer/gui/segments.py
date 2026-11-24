@@ -101,7 +101,7 @@ def build_segments_tab() -> None:
                 loc.localize("segments-tab-select-audio-input-directory-button-label"),
                 variant="primary",
             )
-            selected_audio_directory_tb = gr.Textbox(
+            selected_audio_directory_tb = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(
@@ -127,7 +127,7 @@ def build_segments_tab() -> None:
                 ),
                 variant="primary",
             )
-            selected_result_directory_tb = gr.Textbox(
+            selected_result_directory_tb = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(

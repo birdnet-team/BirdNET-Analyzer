@@ -5,7 +5,8 @@ This is a major release. Its central change is that analyses now use the **BirdN
 3.0** acoustic and geolocation models by default, which is not backwards compatible
 with the previous release in several ways. Breaking changes are expected for a major
 release; this page lists every user-visible incompatibility relative to the previous
-release (**v2.4.0**) and what to do about it.
+release (**v2.4.0**) and what to do about it. Users of a 1.x release find what else
+applies to them under :ref:`coming-from-1x`.
 
 .. contents::
    :local:
@@ -50,8 +51,54 @@ Inference runs on ONNX, not TensorFlow, on the default path
   (the 2.4 TFLite model was ~120 MB).
 
 **What to do.** Reinstall the package so ``onnxruntime`` is pulled in (your usual
-``pip install`` step). Nothing changes for the 2.4, Perch, custom-classifier or
-training paths.
+``pip install`` step). The 2.4, Perch, custom-classifier and training paths still run
+on TensorFlow.
+
+
+Scores of the BirdNET 2.4 model
+-------------------------------
+
+**What changed.** The birdnet library resamples and band-pass filters the audio segment
+by segment. v2.4.0 did both on the whole file, with another resampler.
+
+**Consequence.** With ``--birdnet 2.4``, recordings at 44.1 kHz and above give the
+detections of v2.4.0, with confidences that differ by less than 0.001; so do stereo
+files, flac and mp3, an overlap, a sensitivity, a location and a species list. The
+scores differ
+
+* for recordings below 44.1 kHz. On twenty field recordings at 32 kHz, about one
+  detection in six above a confidence of 0.25 was found by only one of the two versions,
+  the confidences of the others differed by 0.02 in the median and by up to 0.3, and the
+  most confident species of a recording was the same in 19 of 20;
+* with ``--audio_speed`` other than 1, to a similar degree;
+* with ``--fmin``, by up to 0.1 for single detections, and slightly with ``--fmax``.
+
+A custom classifier trained with v2.4.0 gives the scores of v2.4.0 under the same
+conditions.
+
+**What to do.** Do not continue a dataset analysed with v2.4.0 under one of these
+conditions with this version: analyse all of it with one version.
+
+
+The installers contain BirdNET 3.0, not 2.4
+-------------------------------------------
+
+**What changed.** The installers contain the default BirdNET 3.0 model and its
+geolocation model. The BirdNET 2.4 model, which the installer of v2.4.0 contained, is
+downloaded the first time it is used (about 80 MB), like every other model.
+
+**Consequence.** An analysis with the default model needs no internet connection.
+The first analysis with BirdNET 2.4 does, unless the model is there already: the
+settings tab lists the models and whether they are on the computer, and a line below
+the model choice says when the first use is going to download one. A location filter
+with BirdNET 2.4 uses the geolocation model of 2.4, a download of its own (about
+46 MB), which the location settings point out the same way.
+
+**What to do.** Nothing, with an internet connection. When the Windows installer
+replaces an installation of v2.4.0, it keeps that installation's BirdNET 2.4 model,
+so analyses with BirdNET 2.4 need no download. The geolocation model of 2.4 is not
+among the files it can keep: the first analysis with BirdNET 2.4 and a location
+still downloads it. For computers without internet access see :ref:`installation`.
 
 
 Custom species lists and the 3.0 taxonomy
@@ -103,8 +150,9 @@ Label languages
 **What changed.** The ``--locale`` codes depend on the model version. Compared with
 v2.4.0:
 
-* ``en``, ``el``, ``he``, ``in``, ``is``, ``ml`` and ``pt_BR`` are no longer accepted.
-  English is ``en_us``, the new default.
+* ``el``, ``he``, ``in``, ``is``, ``ml`` and ``pt_BR`` are no longer accepted.
+  English is ``en_us``, the new default; ``en`` is still understood as English, and
+  upper and lower case make no difference (``en_UK`` is ``en_uk``).
 * The 3.0 model has no ``af``, ``ar``, ``en_uk``, ``hu``, ``it``, ``ko``, ``ro``,
   ``sl`` or ``th``.
 * ``bg``, ``ca``, ``hr``, ``lt``, ``pt_pt`` and ``sr`` are only available with the 3.0
@@ -161,6 +209,30 @@ not comparable.
 ``--val_split 0`` is rejected. Compare scores only between runs of this version.
 
 
+Training chooses its learning rate for the base model
+-----------------------------------------------------
+
+**What changed.** Without ``--learning_rate``, training uses a learning rate chosen for
+the base model: 0.1 for BirdNET 3.0 and 0.01 for BirdNET 2.4. v2.4.0 used 0.0001, which
+leaves classifiers under-trained, on the 3.0 base badly. The train tab no longer offers
+the hyperparameters, autotune or the "first" crop mode and always trains with the
+defaults. All of them remain command-line options and arguments of ``train()``.
+
+**Consequence.** The same command trains a different classifier than v2.4.0, usually a
+much better one, with different confidence scores, so a threshold chosen for an older
+classifier no longer fits. Most trainings stop early, well before ``--epochs``. Presets
+and parameters files of earlier versions load in the train tab without their
+hyperparameters, with "first" as "center". ``--load_params`` still restores the
+hyperparameters of a run and its base model, so a v2.4.0 run comes back with its
+learning rate of 0.0001; a learning rate recorded for one base model is not used for
+training on the other.
+
+**What to do.** Check the ``--min_conf`` used with a retrained classifier. An explicit
+``--learning_rate`` overrides both the default and a restored one, and
+``--learning_rate 0.0001`` keeps the old value. With ``--hidden_units``, also pass a
+lower learning rate, such as 0.003.
+
+
 Locations and species lists
 ---------------------------
 
@@ -178,7 +250,8 @@ Locations and species lists
   acoustic model does not have, such as insects. They are sorted alphabetically; v2.4.0
   used the acoustic model's labels and sorted them by occurrence frequency.
 
-**Consequence.** Scripts that pass -1 get a filter for the wrong place or an error.
+**Consequence.** Scripts that pass -1 get a filter for the wrong place, which finds
+next to nothing, or an error. ``--lat -1 --lon -1`` logs a warning that says so.
 Using a location list as ``--slist`` logs the species the model lacks as skipped, and
 fails with ``--strict``. A species with another scientific name in the acoustic model
 is found by its common name, so it is skipped too when the list is neither in English
@@ -218,6 +291,10 @@ combined files only with ``--combine_results``.
 replaces the combined files. As in v2.4.0, an audio file without detections still gets
 its files, which hold only the header.
 
+Analyse into a new output folder when the old one holds the per-file results of an
+earlier analysis: they stay where they are, and the evaluation reads the per-file
+tables of a folder in place of a combined table beside them.
+
 
 Result and parameters file formats
 ----------------------------------
@@ -228,7 +305,15 @@ Result and parameters file formats
   differently. They have no ``nocall`` row for a file without detections, and no
   ``BirdNET_SelectionTable.list.txt`` is written. As before, the times of a combined
   table run on across all analysed files in path order, including those without
-  detections.
+  detections. The ``Species Code`` is found by the scientific name, in every label
+  language, and by the English name where the 3.0 model uses a newer scientific name.
+  A species the eBird list of the 2.4 model does not have, as close to half of the 3.0
+  model's, carries its label there.
+* Confidences are written with all their digits (``0.81405586``); v2.4.0 rounded them
+  to four decimals.
+* With ``--additional_columns``, ``lat``, ``lon`` and ``week`` are empty without a
+  location, where v2.4.0 wrote ``-1``, and ``model`` is the file name of the model in
+  the model directory.
 * Audacity labels read ``Scientific name_Common name`` instead of
   ``Scientific name, Common name``.
 * The analysis parameters are written to ``birdnet.analyze-params.csv`` instead of
@@ -241,7 +326,9 @@ Result and parameters file formats
 file name break.
 
 **What to do.** Read the columns by name. ``--load_params`` reads both the new and the
-v2.4.0 parameters files.
+v2.4.0 parameters files. An analysis file of v2.4.0 held only the overlap, the bandpass,
+the merging, the audio speed and the classifier; it is repeated with BirdNET 2.4, or
+with Perch if it was a Perch analysis, and with the defaults for everything else.
 
 
 Kaleidoscope output has seven columns
@@ -282,13 +369,18 @@ Search needs the audio root and a new database
 **What changed.** ``birdnet_analyzer.search`` requires ``--audio_root``, the folder the
 audio paths in the database are relative to, and ``search()`` takes it as its third
 argument, before ``queryfile``. Embedding databases now use the perch-hoplite 1.x
-format; v2.4.0 wrote them with perch-hoplite 0.x.
+format; v2.4.0 wrote them with perch-hoplite 0.x. A new database holds the embeddings
+of BirdNET 3.0, which have 1280 values per segment; v2.4.0 extracted them with BirdNET
+2.4, with 1024 values.
 
 **Consequence.** v2.4.0 search command lines and positional calls of ``search()`` fail.
-Databases written by v2.4.0 are in the older format.
+Databases written by v2.4.0 are in the older format. Embeddings and search scores are
+not comparable with those of v2.4.0.
 
 **What to do.** Pass ``--audio_root`` (the parent of the input that was embedded), and
-extract the embeddings again into a new database.
+extract the embeddings again into a new database. ``birdnet_analyzer.embeddings
+--birdnet 2.4`` fills a new database with BirdNET 2.4 embeddings; the GUI always uses
+BirdNET 3.0 for a new database.
 
 
 Evaluation needs a confidence column and scores every annotated recording
@@ -315,6 +407,47 @@ than in v2.4.0.
 the v2.4.0 metrics.
 
 
+Evaluation reads tables differently
+-----------------------------------
+
+**What changed.**
+
+* The columns are detected from the tables' headers. ``--columns_annotations`` and
+  ``--columns_predictions`` name only the columns that differ; v2.4.0 took every column
+  it was not given by its literal field name. A column named ``Duration`` is no longer
+  read as the recording length (BirdNET's ``File Duration (s)`` is).
+* The annotation and prediction paths are searched with their subfolders, for ``.txt``
+  and ``.csv`` tables; v2.4.0 read the ``.txt`` files directly in the folder. A recording
+  name in two subfolders, and the tables of one recording in two subfolders, such as two
+  analyses, are errors, and so is a table read on both sides.
+* Two named files (``--annotation_path`` and ``--prediction_path`` both naming a file)
+  are compared as one recording when each holds one recording, whatever their names;
+  v2.4.0 paired them only if their names matched. When the prediction file is a
+  combined table of several recordings, only the recording named like the annotation
+  file is scored, as with folders; v2.4.0 also scored the others, as recordings without
+  calls.
+* Tables of which no recording pairs are an error; v2.4.0 scored their annotations as
+  missed and their predictions as false positives.
+* ``process_data()`` returns an ``EvaluationResult`` instead of the 4-tuple
+  ``(metrics_df, pa, predictions, labels)``; its first four fields are those values.
+  ``read_and_concatenate_files_in_directory``, ``extract_recording_filename`` and
+  ``extract_recording_filename_from_filename`` were removed from
+  ``birdnet_analyzer.evaluation.preprocessing.utils``; use ``read_tables`` and
+  ``recording_key``.
+* The GUI's **Download results table** has one row per class and the overall row last,
+  with the metrics as columns; v2.4.0 had the metrics as rows. The command line's
+  ``results_table.csv`` keeps the metrics as rows.
+
+**Consequence.** Command lines and scripts that relied on the literal column names, on
+the folder holding only top-level ``.txt`` tables, or on the removed functions read other
+tables or fail, and file pairs of a combined table score other values than in v2.4.0.
+
+**What to do.** Name only the columns that are not detected, and select folders that hold
+one analysis or one set of annotations each. For a recording length column named
+``Duration``, pass ``--columns_annotations '{"Duration": "Duration"}'`` (or
+``--columns_predictions``), or ``--recording_duration``.
+
+
 Removed options and parameters
 ------------------------------
 
@@ -328,14 +461,18 @@ matching parameters.
   ``model="perch"``.
 * ``embeddings``: ``--threads`` (use ``--n_workers``).
 * ``species``: ``--sortby``.
-* ``train``: ``--model_format`` (use ``--model_formats``, ``tflite raven`` for
-  ``both``), ``--cache_mode`` and ``--cache_file`` (pass a cache file as ``INPUT`` to
+* ``train``: ``--model_format both`` (use ``--model_formats tflite raven``; with one
+  format the old spelling still works), ``--cache_mode`` and ``--cache_file`` (pass a cache file as ``INPUT`` to
   train from it, and ``--save_cache_to`` to write one), and
   ``--autotune_executions_per_trial`` (``--autotune_n_splits`` with
   ``--autotune_n_repeats`` repeats each trial).
 
 The HTTP server and client, ``birdnet_analyzer.network.server`` and ``.client``, were
-removed.
+removed. So were the modules the analysis was built from: ``birdnet_analyzer.analyze.utils``,
+``birdnet_analyzer.embeddings.utils``, the ``predict``, ``embeddings`` and ``load_model``
+functions of ``birdnet_analyzer.model``, and the run-time settings of
+``birdnet_analyzer.config`` such as ``cfg.MIN_CONFIDENCE``. ``analyze()`` returns the
+result of the birdnet library instead of ``None``.
 
 **What to do.** Update scripts as listed.
 
@@ -346,6 +483,14 @@ Other changes
 * **Search** with a query longer than one segment (``--crop_mode segments``) ranks the
   results by their mean score over all query segments. v2.4.0 counted a result only for
   the query segments whose own top results contained it, so its rankings differ.
+* **Merged detections** (``--merge_consecutive``) of more than three segments have the
+  mean confidence of all of them; v2.4.0 took the mean of the three highest.
+* **The GUI of a pip or source installation** keeps its language, theme and last used
+  folders in the user's application data folder, as the installed application always
+  did; v2.4.0 kept them in the package folder. The GUI takes them over from there when
+  it starts without settings of its own. The models v2.4.0 downloaded into the
+  ``checkpoints`` folder of the package are not used: this version downloads its own
+  (see :ref:`installation`), and that folder can be deleted.
 * **The GUI's worker count** is automatic by default: the birdnet library starts as
   many worker processes as fit the available memory, at most one per CPU core, where
   v2.4.0 started one per logical core. A count set in an earlier version is ignored
@@ -361,3 +506,69 @@ Other changes
   space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
   ``/`` (``Eurasian/Green-winged Teal``) and failed on Windows for a name with ``?``.
   Segments extracted again into an existing output folder land in the new folder.
+
+
+.. _coming-from-1x:
+
+Coming from 1.x
+---------------
+
+The 2.x releases changed more for users of 1.0.2 to 1.5.1 than this release does.
+Everything above applies to them as well, and so does the following.
+
+**Carried over.** The Windows installer keeps the GUI language and the last used
+folders of a 1.x installation, which kept them inside the installation folder, and
+its BirdNET 2.4 model (see :ref:`installation`). A source checkout of 1.4.0 or later
+keeps them too: the GUI takes over the files 1.x left in the ``birdnet_analyzer``
+folder when it starts without settings of its own. TFLite classifiers trained with
+1.x give the scores they gave in 1.x, at the default sensitivity and apart from the
+cases under `Scores of the BirdNET 2.4 model`_. Their ``<classifier>_Params.csv``
+loads with ``--load_params`` and in the train tab, and a training data cache of 1.x
+trains as ``INPUT``. Species lists and the result tables of 1.x are read like those
+of v2.4.0: the segments tool and tab read every result type, including the R tables,
+and the evaluation reads the Raven and CSV tables.
+
+**Not carried over.** The macOS app of 1.x kept its GUI settings inside the app, so
+they are gone with it. A source checkout of 1.3.1 or older kept them at its top level:
+move ``gui-settings.json`` and ``state.json`` into its ``birdnet_analyzer`` folder,
+and the GUI takes them over when it starts without settings of its own. A Raven model
+folder no longer works as a classifier (see above); the analysis says so and asks for
+the ``.tflite`` file. Nothing reads the embeddings text files of 1.x
+(``*.birdnet.embeddings.txt``): extract the embeddings again into a database to search
+them, with ``birdnet_analyzer.embeddings -i INPUT -db DATABASE``.
+
+**Changed meaning.** ``--sensitivity`` made the score curve steeper or flatter in 1.x;
+since 2.0 it shifts the scores, so a value other than 1.0 gives other confidences than
+in 1.x. With ``--classifier``, 1.x ignored ``--lat`` and ``--lon``; now a location
+limits the classes of a classifier that are species to the species of that place.
+
+**Command lines.** The tools take their input as the first argument and are installed
+as commands (``birdnet-analyze``, ``birdnet-train``, ...); ``python -m
+birdnet_analyzer.analyze`` still works. 1.x options that changed:
+
+.. list-table::
+   :header-rows: 1
+
+   * - 1.x
+     - Now
+   * - ``--i INPUT`` (analyze, train), ``--audio INPUT`` (segments)
+     - ``INPUT`` as the first argument. In ``segments``, ``--audio`` is now taken for
+       ``--audio_speed``.
+   * - ``--o OUTPUT``
+     - ``-o OUTPUT``. ``--o`` alone fails where another option starts with it, such
+       as ``--overlap``; in ``embeddings``, ``--o`` now means ``--overlap``.
+   * - ``--o OUTPUT`` (species)
+     - ``OUTPUT`` as the first argument
+   * - ``--batchsize`` (analyze, embeddings)
+     - ``--batch_size``
+   * - ``--rtype r``
+     - none; ``--rtype csv`` with ``--additional_columns`` holds the same values
+   * - ``--crop_overlap`` (train)
+     - ``--overlap``
+   * - ``--threshold`` (species)
+     - ``--sf_thresh``
+   * - ``--i``, ``--o`` (embeddings)
+     - ``-i INPUT``, ``-db DATABASE``: a database instead of a text file per recording
+
+The options under `Removed options and parameters`_ are gone as well. The default
+``--min_conf`` is 0.25; 1.x used 0.1, so the same command finds fewer detections.

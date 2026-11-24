@@ -22,7 +22,7 @@ DB_SETTINGS = {
 def _insert_window(path) -> int:
     from birdnet_analyzer.embeddings.core import get_or_create_database
 
-    db = get_or_create_database(path)
+    db = get_or_create_database(path, embedding_dim=8)
     deployment_id = db.insert_deployment(name="deployment", project="project")
     recording_id = db.insert_recording(filename="rec.wav", deployment_id=deployment_id)
     window_id = db.insert_window(recording_id, [0.0, 3.0], np.zeros(8, np.float32))
@@ -52,6 +52,31 @@ def test_a_failing_search_closes_the_database(
         )
 
     assert hoplite_connections.still_open() == []
+
+
+@pytest.mark.parametrize(
+    ("stored", "model"),
+    [({"MODEL_VERSION": "3.0"}, "3.0"), ({}, "2.4")],
+    ids=["stored model", "no stored model"],
+)
+def test_a_search_embeds_the_query_with_the_model_of_the_database(
+    hoplite_database, monkeypatch, tmp_path, stored, model
+):
+    path = hoplite_database({**DB_SETTINGS, **stored})
+    _insert_window(path)
+    embedded_with = []
+
+    def get_query_embedding(*args, model_version, **kwargs):
+        embedded_with.append(model_version)
+        return np.ones((1, 8), np.float32)
+
+    monkeypatch.setattr(search_utils, "get_query_embedding", get_query_embedding)
+
+    gui_search.run_search(
+        path, str(tmp_path), "query.wav", 10, "dot", "center", 0.0, progress=None
+    )
+
+    assert embedded_with == [model]
 
 
 def test_picking_a_folder_without_a_database_is_rejected_and_left_as_is(
@@ -121,6 +146,27 @@ def test_the_query_spectrogram_uses_the_database_settings(
     [kwargs] = opened
     assert (kwargs["speed"], kwargs["fmin"], kwargs["fmax"]) == (2.0, 500, 8000)
     assert hoplite_connections.still_open() == []
+
+
+def test_the_query_spectrogram_is_drawn_from_the_paths_as_the_page_holds_them(
+    appdir, handler, monkeypatch, hoplite_database, hoplite_connections
+):
+    opened = []
+
+    def open_audio_file(path, **kwargs):
+        opened.append(path)
+        return np.zeros(48000 * 6, np.float32), 48000
+
+    monkeypatch.setattr(audio, "open_audio_file", open_audio_file)
+    monkeypatch.setattr(utils, "spectrogram_from_audio", lambda *a, **k: "spec")
+    shown = gu.PathTextbox(rtl=True).postprocess
+
+    spectrogram, *_ = handler(gui_search.build_search_tab, "update_query_spectrogram")(
+        shown("query (1).wav"), shown(hoplite_database(DB_SETTINGS)), "center", 0.0
+    )
+
+    assert spectrogram["value"] == "spec"
+    assert opened == ["query (1).wav"]
 
 
 def test_the_query_spectrogram_reports_a_missing_database_without_creating_it(

@@ -55,7 +55,7 @@ def build_species_tab() -> None:
                 loc.localize("species-tab-select-output-directory-button-label"),
                 variant="primary",
             )
-            selected_output_textbox = gr.Textbox(
+            selected_output_textbox = gu.PathTextbox(
                 show_label=False,
                 interactive=False,
                 placeholder=loc.localize(

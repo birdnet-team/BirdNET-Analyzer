@@ -183,6 +183,35 @@ def test_kaleidoscope_results_of_2x_releases_are_still_read(tmp_path):
     assert _find_segments(audio, str(rfile)) == [expected]
 
 
+@pytest.mark.parametrize(
+    "rfile", ["soundscape.BirdNET.results.r.csv", "BirdNET_RTable.csv"]
+)
+def test_segments_are_cut_from_an_r_table_of_1x_releases(tmp_path, rfile):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio_dir.mkdir()
+    results_dir.mkdir()
+    audio = audio_dir / "soundscape.wav"
+    sig, rate = sf.read("birdnet_analyzer/example/soundscape.wav")
+    sf.write(audio, sig[: 9 * rate], rate)
+    columns = "-1.0000,-1.0000,-1,0.0,1.0,0.1,None,BirdNET_GLOBAL_6K_V2.4_Model.tflite"
+    (results_dir / rfile).write_text(
+        "filepath,start,end,scientific_name,common_name,confidence,lat,lon,week,"
+        "overlap,sensitivity,min_conf,species_list,model\n"
+        f"{audio},0,3.0,Turdus migratorius,American Robin,0.9000,{columns}\n"
+        f"{audio},3.0,6.0,Cardinalis cardinalis,Northern Cardinal,0.8000,{columns}\n",
+        encoding="utf-8",
+    )
+
+    segments(str(audio_dir), str(out), str(results_dir), collection_mode="confidence")
+
+    assert sorted(p.relative_to(out).as_posix() for p in out.rglob("*.wav")) == [
+        "American Robin/0.900_1_soundscape_0.00s_3.00s.wav",
+        "Northern Cardinal/0.800_2_soundscape_3.00s_6.00s.wav",
+    ]
+
+
 def test_kaleidoscope_rows_with_an_empty_indir_are_anchored_at_the_root(tmp_path):
     rfile = tmp_path / "BirdNET_Kaleidoscope.csv"
     rfile.write_text(

@@ -11,11 +11,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from birdnet.acoustic.inference.core.perf_tracker import AcousticProgressStats
+    from birdnet.globals import ACOUSTIC_MODEL_VERSIONS
     from perch_hoplite.db import sqlite_usearch_impl
 
 DATASET_NAME: str = "birdnet_analyzer_dataset"
 COMMIT_BS_SIZE = 512
 SETTINGS_KEY = "birdnet_analyzer_settings"
+MODEL_VERSION_KEY = "MODEL_VERSION"
 
 
 def embeddings(
@@ -30,6 +32,7 @@ def embeddings(
     file_output: str | None = None,
     n_workers: int | None = None,
     n_producers: int = 1,
+    birdnet: ACOUSTIC_MODEL_VERSIONS | None = None,
     on_update: Callable[[AcousticProgressStats], None] | None = None,
 ):
     """
@@ -59,12 +62,15 @@ def embeddings(
             most one per CPU core.
         n_producers (int, optional): Number of producer processes to use for
             processing. Defaults to 1.
+        birdnet (Literal["2.4", "3.0"] | None, optional): The BirdNET version to
+            extract the embeddings with. Defaults to None: the version of the
+            database if it exists, the newest version for a new one.
         on_update (Callable[[AcousticProgressStats], None] | None, optional): Callback
             function to report progress updates. Defaults to None.
     Raises:
         ValueError: If ``audio_input`` does not exist or holds no supported audio
             file, or if the database was created with a different ``fmin``, ``fmax``,
-            ``audio_speed`` or parent folder of ``audio_input``.
+            ``audio_speed``, parent folder of ``audio_input`` or BirdNET version.
     Example:
         embeddings(
             "path/to/audio",
@@ -76,11 +82,12 @@ def embeddings(
             batch_size=2,
         )
     """
-    from birdnet_analyzer.model_utils import get_embeddings
+    from birdnet_analyzer.model_utils import embeddings_dim, get_embeddings
 
+    version = _model_version_for(database, birdnet)
     result = get_embeddings(
         audio_input,
-        version="2.4",
+        version=version,
         batch_size=batch_size,
         overlap_duration_s=overlap,
         bandpass_fmin=fmin,
@@ -95,11 +102,16 @@ def embeddings(
 
     batchsize = COMMIT_BS_SIZE
     pending_since_commit = 0
-    db = get_or_create_database(database)
+    db = get_or_create_database(database, embeddings_dim(version))
 
     try:
         _check_database_settings(
-            db, fmin=fmin, fmax=fmax, audio_speed=audio_speed, audio_root=audio_root
+            db,
+            fmin=fmin,
+            fmax=fmax,
+            audio_speed=audio_speed,
+            audio_root=audio_root,
+            model_version=version,
         )
         deployment_id = _ensure_deployment(db)
 
@@ -226,7 +238,7 @@ def _ensure_recording(
 
 
 def get_or_create_database(
-    db_path: str, embedding_dim: int = 1024
+    db_path: str, embedding_dim: int
 ) -> sqlite_usearch_impl.SQLiteUSearchDB:
     """Get the database object. Creates or opens the databse.
     Args:
@@ -237,6 +249,10 @@ def get_or_create_database(
     import os
 
     from perch_hoplite.db import sqlite_usearch_impl
+
+    from birdnet_analyzer.index_paths import reach_any_path
+
+    reach_any_path()
 
     if not os.path.exists(db_path):
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
@@ -259,12 +275,42 @@ def get_or_create_database(
         )
 
 
+def database_model_version(settings) -> ACOUSTIC_MODEL_VERSIONS:
+    """The BirdNET version the embeddings of a database were extracted with.
+
+    Databases written before the version was stored hold BirdNET 2.4 embeddings.
+    """
+    return settings.get(MODEL_VERSION_KEY, "2.4")
+
+
+def _model_version_for(
+    database: str, requested: ACOUSTIC_MODEL_VERSIONS | None
+) -> ACOUSTIC_MODEL_VERSIONS:
+    from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
+    from birdnet_analyzer.search.core import read_database_settings
+
+    try:
+        stored = database_model_version(read_database_settings(database))
+    except (FileNotFoundError, KeyError):
+        return requested or DEFAULT_ACOUSTIC_MODEL_VERSION  # ty:ignore[invalid-return-type]
+
+    if requested and requested != stored:
+        raise ValueError(
+            f"The database holds BirdNET {stored} embeddings and cannot take "
+            f"BirdNET {requested} ones. Leave the version out to add to it, or "
+            "name a new database."
+        )
+
+    return stored
+
+
 def _check_database_settings(
     db: sqlite_usearch_impl.SQLiteUSearchDB,
     fmin: int = 0,
     fmax: int = 15000,
     audio_speed: float = 1.0,
     audio_root: str | None = None,
+    model_version: ACOUSTIC_MODEL_VERSIONS = "3.0",
 ):
     from ml_collections import ConfigDict
 
@@ -292,6 +338,7 @@ def _check_database_settings(
                 "BANDPASS_FMAX": fmax,
                 "AUDIO_SPEED": audio_speed,
                 "AUDIO_ROOT": audio_root,
+                MODEL_VERSION_KEY: model_version,
             }
         )
 

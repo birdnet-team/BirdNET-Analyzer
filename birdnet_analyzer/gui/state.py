@@ -13,7 +13,7 @@ tab from starting up.
 """
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from typing import Any, NamedTuple
 
 import gradio as gr
@@ -23,6 +23,7 @@ from birdnet_analyzer import settings
 # Every persisted component with its build default, for the settings tab's reset.
 # Populated in build order while the tabs are built.
 _PERSISTED: list[tuple[gr.components.Component, Any]] = []
+_TAB_STATES: list["TabState"] = []
 
 
 class _Field(NamedTuple):
@@ -105,6 +106,10 @@ class TabState:
         self._values = settings.get_tab_settings(tab)
         self._fields: dict[str, _Field] = {}
         self._fitters: list[tuple[Callable, list, list]] = []
+        self._retired: set[str] = set()
+        self._retired_values: dict[str, dict] = {}
+        self._shown: dict[str, Any] = {}
+        _TAB_STATES.append(self)
 
     def get(
         self,
@@ -131,7 +136,7 @@ class TabState:
             return default
 
         return _validate(
-            self._values[key],
+            self._replace_retired(key, self._values[key]),
             default,
             choices=choices,
             minimum=minimum,
@@ -219,7 +224,7 @@ class TabState:
             return field.default
 
         return _validate(
-            values[key],
+            self._replace_retired(key, values[key]),
             field.default,
             choices=field.choices,
             minimum=field.minimum,
@@ -235,6 +240,28 @@ class TabState:
         """
         settings.update_tab_settings(self.tab, values)
         self._values.update(values)
+
+    def retire(self, *keys: str) -> None:
+        """Declares settings of an older version that no component of the tab takes.
+
+        `updates_for` ignores them instead of reporting them as skipped, so presets
+        saved before they were removed apply without a warning.
+        """
+        self._retired.update(keys)
+
+    def retire_value(self, key: str, value, replacement) -> None:
+        """Declares a value of a setting that only an older version offered.
+
+        Restored values, presets and parameters files holding it apply ``replacement``
+        instead, without a warning.
+        """
+        self._retired_values.setdefault(key, {})[value] = replacement
+
+    def _replace_retired(self, key: str, value):
+        if not isinstance(value, Hashable):
+            return value
+
+        return self._retired_values.get(key, {}).get(value, value)
 
     def add_fitter(self, fn: Callable, inputs: list, outputs: list) -> None:
         """Registers a handler that fits components to the values of others.
@@ -265,10 +292,11 @@ class TabState:
 
         Every value is validated against the component it belongs to, exactly like a
         value restored from a previous session, or against what the component
-        ``accepts``. A value that does not fit -- or a key no component was built for --
-        is skipped and the component keeps its current value. The applied values are
-        persisted, so they survive a restart just like user edits. The handlers
-        registered with `add_fitter` then fit the updates to each other.
+        ``accepts``. A value that does not fit -- or a key no component was built for,
+        unless it is retired -- is skipped and the component keeps its current value.
+        A retired value applies as its replacement. The applied values are persisted,
+        so they survive a restart just like user edits. The handlers registered with
+        `add_fitter` then fit the updates to each other.
 
         Args:
             values: The values to show, by setting key. E.g. a saved preset.
@@ -280,14 +308,18 @@ class TabState:
         """
         updates = {}
         applied = {}
-        skipped = [key for key in values if key not in self._fields]
+        skipped = [
+            key
+            for key in values
+            if key not in self._fields and key not in self._retired
+        ]
 
         for key, field in self._fields.items():
             if key not in values:
                 updates[key] = gr.update()
                 continue
 
-            value = values[key]
+            value = self._replace_retired(key, values[key])
             accepted = _validate(
                 value,
                 field.default,
@@ -317,7 +349,22 @@ class TabState:
             for component, update in zip(outputs, fn(*args), strict=True):
                 updates[keys[component]] = {**updates[keys[component]], **update}
 
+        self._shown = {
+            key: update["value"] for key, update in updates.items() if "value" in update
+        }
+
         return list(updates.values()), skipped
+
+    def shown_with(self, key: str, value) -> dict[str, Any]:
+        """The values the last batch of updates showed, if ``key`` got ``value`` in it.
+
+        The page reports the change of a component such a batch set with the values
+        the other components had before the batch, so a handler that returns them
+        would undo it. Taken once: the change after that is the user's.
+        """
+        shown, self._shown = self._shown, {}
+
+        return shown if key in shown and shown[key] == value else {}
 
 
 def persisted_components() -> list[gr.components.Component]:
@@ -335,5 +382,8 @@ def reset_to_defaults() -> list[dict]:
         An update per component built through a `TabState`, in build order.
     """
     settings.reset_tab_settings()
+
+    for state in _TAB_STATES:
+        state._shown = {key: field.default for key, field in state._fields.items()}
 
     return [gr.update(value=default) for _, default in _PERSISTED]

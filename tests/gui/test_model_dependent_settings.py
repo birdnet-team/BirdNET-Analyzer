@@ -792,3 +792,65 @@ def test_the_summary_follows_the_picked_classifier(appdir, tmp_path, monkeypatch
 
     shown = summary(tab, dict(zip(event.outputs, updates, strict=True)))
     assert shown["tiles"][1] == ("Classes", "12")
+
+
+LOADED_WITH_A_MODEL = {
+    "model_selection_radio": gu.USE_BIRDNET_3_0,
+    "species_list_radio": gu.PREDICT_SPECIES,
+    "overlap_slider": 1.5,
+    "locale_dropdown": ONLY_3_0_LOCALE,
+}
+
+
+def as_the_page_reports_it(tab: Tab, model) -> dict:
+    """The model's change, with the other controls as they were before the load."""
+    return change_model(tab, model, species=gu.ALL_SPECIES, overlap=0.0, locale="en_us")
+
+
+def test_settings_loaded_together_with_another_model_stay_as_loaded(appdir):
+    tab = build(model_selection_radio=gu.USE_BIRDNET_2_4)
+    apply(tab, LOADED_WITH_A_MODEL)
+
+    updates = as_the_page_reports_it(tab, gu.USE_BIRDNET_3_0)
+
+    assert updates[tab.species]["value"] == gu.PREDICT_SPECIES
+    assert updates[tab.overlap]["value"] == 1.5
+    assert updates[tab.locale]["value"] == ONLY_3_0_LOCALE
+    assert settings.get_tab_settings("multi")["overlap_slider"] == 1.5
+
+
+def test_the_model_switch_after_a_loaded_one_takes_what_the_page_reports(appdir):
+    tab = build(model_selection_radio=gu.USE_BIRDNET_2_4)
+    apply(tab, LOADED_WITH_A_MODEL)
+    as_the_page_reports_it(tab, gu.USE_BIRDNET_3_0)
+
+    updates = change_model(tab, gu.USE_BIRDNET_3_0, overlap=0.5)
+
+    assert updates[tab.overlap]["value"] == 0.5
+    assert updates[tab.species]["value"] == gu.ALL_SPECIES
+
+
+def test_a_switch_to_another_model_than_the_loaded_one_is_the_users(appdir):
+    tab = build(model_selection_radio=gu.USE_BIRDNET_3_0)
+    apply(tab, LOADED_WITH_A_MODEL)
+
+    updates = change_model(tab, gu.USE_BIRDNET_2_4, overlap=0.5)
+
+    assert updates[tab.overlap]["value"] == 0.5
+
+
+def test_a_reset_that_changes_the_model_resets_the_other_settings_too(appdir):
+    tab = build(
+        model_selection_radio=gu.USE_BIRDNET_2_4,
+        species_list_radio=gu.PREDICT_SPECIES,
+        overlap_slider=1.5,
+    )
+    gs.reset_to_defaults()
+
+    updates = change_model(
+        tab, gu.default_model(), species=gu.PREDICT_SPECIES, overlap=1.5
+    )
+
+    assert updates[tab.species]["value"] == gu.ALL_SPECIES
+    assert updates[tab.overlap]["value"] == 0.0
+    assert settings.get_tab_settings("multi") == {}

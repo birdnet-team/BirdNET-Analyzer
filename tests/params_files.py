@@ -1,4 +1,4 @@
-"""Parameters files in the one-column-per-parameter layout of the versions before 2.x
+"""Parameters files in the one-column-per-parameter layout of v2.4.0 and earlier
 (``wide_file``) and in the one-row-per-parameter layout of the current version
 (``tall_file``)."""
 
@@ -66,6 +66,46 @@ TRAIN_DEFAULTS = {
 }
 
 TRAIN_FILE = "MyClassifier.birdnet.train-params.csv"
+
+# Header for header as v2.4.0 wrote them, misspellings included.
+V2_4_0_TRAIN_VALUES = {
+    "Hidden units": 512,
+    "Dropout": 0.25,
+    "Batchsize": 32,
+    "Learning rate": 0.0001,
+    "Crop mode": "first",
+    "Crop overlap": 0.0,
+    "Audio speed": 0.5,
+    "Upsamling mode": "smote",
+    "Upsamling ratio": 0.75,
+    "use mixup": True,
+    "use label smoothing": False,
+    "use focal loss": False,
+    "focal loss alpha": 0.25,
+    "focal loss gamma": 2.0,
+    "BirdNET Model version": "V2.4",
+}
+V2_4_0_TRAIN_FILE = "MyClassifier_Params.csv"
+
+# Header for header as the analysis of v2.4.0 wrote them.
+V2_4_0_ANALYSIS_VALUES = {
+    "File splitting duration": 600,
+    "Segment length": 3.0,
+    "Sample rate": 48000,
+    "Segment overlap": 1.5,
+    "Minimum Segment length": 1.0,
+    "Bandpass filter minimum": 500,
+    "Bandpass filter maximum": 10000,
+    "Merge consecutive detections": 1,
+    "Audio speed": 1.0,
+    "Custom classifier path": "",
+}
+V2_4_0_PERCH_ANALYSIS_VALUES = {
+    **V2_4_0_ANALYSIS_VALUES,
+    "Segment length": 5.0,
+    "Sample rate": 32000,
+    "Segment overlap": 4.5,
+}
 
 
 def analysis_values(**overrides):

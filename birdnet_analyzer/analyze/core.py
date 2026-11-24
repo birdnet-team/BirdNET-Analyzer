@@ -160,9 +160,10 @@ def analyze(
         returns those of the files it analyzed, or None if none were left.
     Raises:
         ValueError: If only one of ``lat`` and ``lon`` is given, they are combined
-            with ``slist``, ``classifier`` is combined with ``model`` "perch",
-            ``lat``, ``lon``, ``week`` or ``min_conf`` is out of range, ``model`` is
-            unknown, ``audio_input`` does not exist or holds no supported audio file,
+            with ``slist``, ``classifier`` is a folder or combined with ``model``
+            "perch", ``lat``, ``lon``, ``week`` or ``min_conf`` is out of range,
+            ``model`` is unknown, ``audio_input`` does not exist or holds no supported
+            audio file,
             or none of the species in an ``slist`` file (with
             ``strict_species_list``, not all of them) are in the model.
         FileNotFoundError: If the ``slist`` file or ``classifier`` does not exist.
@@ -187,6 +188,13 @@ def analyze(
 
     if classifier and model == "perch":
         raise ValueError("Select either Perch or a custom classifier, not both.")
+
+    if classifier and os.path.isdir(classifier):
+        raise ValueError(
+            f"{classifier} is a folder, such as the Raven model of a classifier. "
+            "Pass the classifier's .tflite file instead; training writes one with "
+            "the tflite model format."
+        )
 
     if (lat is None) != (lon is None):
         raise ValueError(
@@ -229,6 +237,10 @@ def analyze(
     species_from_location = lat is not None and lon is not None
 
     if species_from_location:
+        from birdnet_analyzer.utils import warn_about_location_minus_one
+
+        warn_about_location_minus_one(lat, lon)
+
         if slist is not None:
             raise ValueError(
                 "Cannot use both location (lat/lon) and custom species list (slist) "
@@ -358,7 +370,9 @@ def analyze(
                 ANALYSIS_PARAMS,
                 {
                     "model": model,
-                    "birdnet": birdnet,
+                    "birdnet": classifier_version(classifier)
+                    if classifier
+                    else birdnet,
                     "segment_length": meta.segment_duration_s,
                     "sample_rate": meta.model_sr,
                     "overlap": overlap,
@@ -512,6 +526,11 @@ def result_dataframe(predictions, merge_consecutive: int) -> pd.DataFrame:
     )
 
 
+# Times are float32 products of a segment index and the step; a hundredth of a
+# step is far above their rounding and far below a missing segment.
+_MERGE_TOLERANCE = 0.01
+
+
 def _merge_consecutive_segments(
     df: pd.DataFrame, merge_consecutive: int, hop_size: float = 3.0
 ) -> pd.DataFrame:
@@ -527,8 +546,10 @@ def _merge_consecutive_segments(
         segment. Runs longer than this are split into chunks of at most
         ``merge_consecutive`` rows; runs shorter than it are still merged.
     hop_size : float, optional
-        Allowed tolerance (in seconds) between the end of one segment and the start of
-        the next to consider them consecutive, by default 3.0.
+        The step (in seconds) from one segment to the next, by default 3.0. A row
+        follows the one before it when it starts where that one ends, or before,
+        as in v2.4.0: touching and overlapping segments are consecutive. The step
+        only sets how much rounding of the times is allowed for.
     Returns
     -------
     pandas.DataFrame
@@ -575,7 +596,7 @@ def _merge_consecutive_segments(
     run_break[1:] = ~(
         (inputs[1:] == inputs[:-1])
         & (species[1:] == species[:-1])
-        & (np.abs(start[1:] - end[:-1]) <= hop_size)
+        & (start[1:] - end[:-1] <= hop_size * _MERGE_TOLERANCE)
     )
     run_start = np.maximum.accumulate(np.where(run_break, rows, 0))
     firsts = np.flatnonzero((rows - run_start) % merge_consecutive == 0)
@@ -624,7 +645,7 @@ def save_as_rtable(
     from functools import partial
 
     from birdnet_analyzer.audio import get_audio_info
-    from birdnet_analyzer.utils import load_codes
+    from birdnet_analyzer.utils import species_code
 
     def read_high_freq(file_path, sig_fmax, bandpass_fmax, audio_speed, file_infos):
         high_freq = file_infos[file_path]["samplerate"] / 2
@@ -632,7 +653,6 @@ def save_as_rtable(
         return int(min(high_freq, int(bandpass_fmax / audio_speed)))
 
     df = df.copy()
-    codes = load_codes()
     files = df["input"].unique()
     file_infos = {file: get_audio_info(file) for file in files}
     n_rows = df.shape[0]
@@ -651,7 +671,7 @@ def save_as_rtable(
     df["Low Freq (Hz)"] = [max(model_fmin, int(bandpass_fmin / audio_speed))] * n_rows
     df["File Offset (s)"] = df["start_time"]
     df["Scientific Name"], df["Common Name"] = _split_species_name(df["species_name"])
-    df["Species Code"] = df["species_name"].map(lambda x: codes.get(str(x), str(x)))
+    df["Species Code"] = df["species_name"].map(lambda x: species_code(str(x)))
     df = df.rename(
         columns={
             "start_time": "Begin Time (s)",

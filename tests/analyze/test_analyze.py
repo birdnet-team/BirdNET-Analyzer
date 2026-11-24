@@ -29,7 +29,7 @@ from birdnet_analyzer.analyze.core import (
 from birdnet_analyzer.analyze.resume import RunMetadata
 from birdnet_analyzer.cli import analyzer_parser
 from birdnet_analyzer.params import load_analysis_params
-from birdnet_analyzer.utils import load_codes
+from birdnet_analyzer.utils import _codes_by_name, load_codes
 
 SOUNDSCAPE = "birdnet_analyzer/example/soundscape.wav"
 
@@ -355,6 +355,14 @@ def test_analyze_rejects_a_single_coordinate(
 
     mock_run_geomodel.assert_not_called()
     mock_run_inference.assert_not_called()
+
+
+def test_a_raven_model_folder_as_classifier_is_refused_with_what_to_pass(tmp_path):
+    raven_model = tmp_path / "Custom"
+    (raven_model / "labels").mkdir(parents=True)
+
+    with pytest.raises(ValueError, match=r"is a folder.*\.tflite file"):
+        analyze(SOUNDSCAPE, str(tmp_path / "out"), classifier=str(raven_model))
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
@@ -1013,6 +1021,7 @@ def test_a_split_run_parses_the_species_codes_once(tmp_path, monkeypatch):
 
     monkeypatch.setattr(json, "load", counting_load)
     load_codes.cache_clear()
+    _codes_by_name.cache_clear()
 
     _split(detections, tmp_path / "in", tmp_path / "out", ["table"])
 
@@ -1053,6 +1062,67 @@ def test_split_tables_write_every_result_type_for_each_analysed_input(
         for suffix in SPLIT_SUFFIXES
     ]
     assert pd.read_csv(tmp_path / "out" / "b.BirdNET.results.csv").empty
+
+
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_the_selection_table_has_the_species_code_in_any_label_language(
+    mock_run_inference, tmp_path
+):
+    detections = _detections_in_three_files(tmp_path / "in").iloc[:4].copy()
+    detections["species_name"] = [
+        "Lanius collurio_Neunt" + chr(0xF6) + "ter",
+        "Turdus merula_Common Blackbird",
+        "Astur cooperii_Cooper" + chr(39) + "s Hawk",
+        "Nomen nescio_No such species",
+    ]
+    _mock_result(mock_run_inference, detections)
+
+    analyze(str(tmp_path / "in"), str(tmp_path / "out"))
+
+    table = pd.read_csv(tmp_path / "out" / cfg.OUTPUT_RAVEN_FILENAME, sep="\t")
+    assert table["Species Code"].tolist() == [
+        "rebshr1",
+        "eurbla",
+        "coohaw",
+        "Nomen nescio_No such species",
+    ]
+
+
+@patch("birdnet_analyzer.model_utils.run_geomodel")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_the_no_location_values_of_v2_4_0_are_pointed_out(
+    mock_run_inference, mock_run_geomodel, tmp_path, caplog
+):
+    _mock_result(mock_run_inference, _detections_in_three_files(tmp_path / "in"))
+
+    with caplog.at_level(logging.WARNING):
+        analyze(str(tmp_path / "in"), str(tmp_path / "out"), lat=-1, lon=-1)
+
+    assert "meant that no location is set" in caplog.text
+    caplog.clear()
+
+    with caplog.at_level(logging.WARNING):
+        analyze(str(tmp_path / "in"), str(tmp_path / "out2"), lat=-1, lon=12.9)
+
+    assert "no location" not in caplog.text
+
+
+@patch("birdnet_analyzer.model_utils.classifier_version", new=lambda _: "2.4")
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_the_params_file_names_the_birdnet_version_of_the_classifier(
+    mock_run_inference, tmp_path
+):
+    _mock_result(mock_run_inference, _detections_in_three_files(tmp_path / "in"))
+
+    analyze(
+        str(tmp_path / "in"),
+        str(tmp_path / "out"),
+        classifier="classifier.tflite",
+        save_params=True,
+    )
+
+    kwargs = load_analysis_params(tmp_path / "out" / cfg.ANALYSIS_PARAMS_FILENAME)
+    assert kwargs["birdnet"] == "2.4"
 
 
 @patch("birdnet_analyzer.model_utils.run_inference")
