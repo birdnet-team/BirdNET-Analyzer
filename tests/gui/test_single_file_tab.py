@@ -110,6 +110,18 @@ def test_a_detection_clicked_in_the_player_plays(appdir):
     assert '"playOnLabelClick": true' in player.js_on_load
 
 
+def test_the_player_ui_speaks_the_gui_language(appdir, monkeypatch):
+    from birdnet_analyzer.gui import localization as loc
+
+    monkeypatch.setattr(loc, "TARGET_LANGUAGE", "de")
+    with gr.Blocks() as demo:
+        single_file.build_single_analysis_tab()
+
+    player = next(c for c in demo.blocks.values() if isinstance(c, SignaVisPlayer))
+
+    assert '"locale": "de"' in player.js_on_load
+
+
 def test_the_confidence_choice_is_remembered(appdir):
     from birdnet_analyzer import settings
     from birdnet_analyzer.gui import localization as loc

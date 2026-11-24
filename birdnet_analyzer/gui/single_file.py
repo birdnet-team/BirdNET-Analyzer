@@ -353,6 +353,8 @@ def build_single_analysis_tab() -> None:
                 "defaultPreset": "classicSmall",
                 # A detection clicked in the player plays, as a click in the table does.
                 "playOnLabelClick": True,
+                # The player's own UI in the GUI language (English if it has none).
+                "locale": loc.TARGET_LANGUAGE,
             },
         )
         show_confidence_checkbox = state.persist(
