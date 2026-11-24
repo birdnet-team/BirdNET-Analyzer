@@ -436,7 +436,9 @@ def _synthetic_training_data(version="3.0"):
     )
 
 
-def _files_of_labels(monkeypatch, files_per_label, labels, is_binary=False):
+def _files_of_labels(
+    monkeypatch, files_per_label, labels, is_binary=False, is_multi_label=False
+):
     """Loads four rows per file for each (label vector, number of files) pair."""
     from birdnet_analyzer.train import utils as train_utils
 
@@ -446,20 +448,33 @@ def _files_of_labels(monkeypatch, files_per_label, labels, is_binary=False):
     )
     files = np.repeat(np.arange(len(y) // 4), 4)
     x = (np.random.default_rng(0).normal(size=(len(y), 8)) + y[:, :1]).astype("float32")
-    data = (x, y, files, np.array([]), np.array([]), labels, is_binary, False, "3.0")
+    data = (
+        *(x, y, files, np.array([]), np.array([]), labels),
+        *(is_binary, is_multi_label, "3.0"),
+    )
     monkeypatch.setattr(train_utils, "_load_training_data", lambda *a, **k: data)
 
 
+@pytest.mark.parametrize(
+    ("files_per_label", "is_multi_label", "named"),
+    [
+        ([([1, 0], 5), ([0, 1], 1), ([0, 0], 1)], False, "b, non-event"),
+        ([([1, 0], 5), ([0, 1], 1), ([-1, 1], 2)], True, "b"),
+    ],
+    ids=["single-label", "multi-label with a negative label"],
+)
 def test_classes_of_one_file_train_and_are_named_as_left_out_of_the_validation(
-    monkeypatch, tmp_path, caplog
+    monkeypatch, tmp_path, caplog, files_per_label, is_multi_label, named
 ):
     from birdnet_analyzer.train.utils import train_model
 
-    _files_of_labels(monkeypatch, [([1, 0], 5), ([0, 1], 1), ([0, 0], 1)], ["a", "b"])
+    _files_of_labels(
+        monkeypatch, files_per_label, ["a", "b"], is_multi_label=is_multi_label
+    )
 
     train_model("unused", output=str(tmp_path / "cc"), epochs=1, model_formats=[])
 
-    assert "the validation score does not cover them: b, non-event" in caplog.text
+    assert f"the validation score does not cover them: {named}\n" in caplog.text
 
 
 @pytest.mark.usefixtures("fit_refused")
