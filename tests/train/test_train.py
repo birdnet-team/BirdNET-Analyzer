@@ -103,6 +103,7 @@ def test_train_cli_accepts_full_parser_surface(mock_train_model, tmp_path):
     assert call_kwargs["birdnet"] == "2.4"
 
 
+@pytest.mark.timeout(300)
 @pytest.mark.skipif(not pb_model_cached("3.0"), reason="3.0 pb model not cached")
 def test_a_classifier_trained_on_the_example_folder_analyses_the_soundscape(tmp_path):
     from birdnet_analyzer import analyze, params
