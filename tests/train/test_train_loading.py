@@ -72,14 +72,32 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
     mock_load.assert_not_called()
 
 
-def test_read_and_crop_first_short_file_fails_soft(tmp_path):
-    # Below the 1 s minimum split_signal yields nothing, and "first" must not index it.
+@pytest.mark.parametrize("crop_mode", ["first", "segments"])
+def test_a_file_shorter_than_one_second_is_one_zero_padded_segment(tmp_path, crop_mode):
+    duration = 0.4
     segs, labels = _read_and_crop_file(
-        _sine_wav(tmp_path / "short.wav", 0.4),
+        _sine_wav(tmp_path / "call.wav", duration),
         _label(),
         sample_rate=SR,
-        crop_mode="first",
+        crop_mode=crop_mode,
         sig_length=SIG_LENGTH,
+    )
+
+    (segment,) = segs
+    call_end = int(duration * SR)
+    assert segment.shape == (int(SIG_LENGTH * SR),)
+    assert np.abs(segment[:call_end]).max() > 0.2
+    assert not segment[call_end:].any()
+    np.testing.assert_array_equal(labels, [_label()])
+
+
+@pytest.mark.parametrize("crop_mode", ["first", "segments"])
+def test_an_empty_file_gives_no_segment(tmp_path, crop_mode):
+    path = tmp_path / "empty.wav"
+    sf.write(path, np.zeros(0, dtype="float32"), SR)
+
+    segs, labels = _read_and_crop_file(
+        str(path), _label(), sample_rate=SR, crop_mode=crop_mode, sig_length=SIG_LENGTH
     )
 
     assert segs == []

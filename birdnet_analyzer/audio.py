@@ -186,7 +186,8 @@ def split_signal(
         rate: The sampling rate.
         seconds: The duration of a segment.
         overlap: The overlapping seconds of segments.
-        minlen: Minimum length of a split.
+        minlen: Minimum length of the signal left for the last split. A shorter rest
+            is dropped, unless it is the whole signal.
         use_noise_for_padding: Whether to use noise for padding.
     Returns:
         A list of splits.
@@ -206,16 +207,18 @@ def split_signal(
     if isclose(overlap, seconds):
         overlap = seconds - 0.01
 
+    if sig.size == 0:
+        return []
+
     chunksize = int(rate * seconds)
     stepsize = int(rate * (seconds - overlap))
     minsize = int(rate * minlen)
 
-    lastchunkpos = int((sig.size - chunksize + stepsize - 1) / stepsize) * stepsize
-    # Make sure at least one chunk is returned
-    if lastchunkpos < 0:
-        lastchunkpos = 0
-    elif sig.size - lastchunkpos < minsize:
-        lastchunkpos = lastchunkpos - stepsize
+    lastchunkpos = max(
+        0, int((sig.size - chunksize + stepsize - 1) / stepsize) * stepsize
+    )
+    if lastchunkpos > 0 and sig.size - lastchunkpos < minsize:
+        lastchunkpos -= stepsize
 
     # Append noise or empty signal of chunk duration, so all splits have desired length
     if use_noise_for_padding:
