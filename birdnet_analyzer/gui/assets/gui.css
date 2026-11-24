@@ -2,10 +2,24 @@ footer {
     display: none !important;
 }
 
-#single_file_audio,
-#single_file_audio * {
-    max-height: 81.6px;
-    min-height: 0;
+/* WebKit's 31px player loses gradio's padding; Chromium's is 54px by itself. */
+audio.standard-player {
+    height: 54px;
+}
+
+/* WebKit keeps the height of the rows gradio hides with visibility: collapse. */
+.sizing-body td,
+.sizing-body td * {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border-top-width: 0 !important;
+    border-bottom-width: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
 }
 
 #update-available a {
