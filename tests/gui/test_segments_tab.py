@@ -1,3 +1,6 @@
+import os
+import sys
+
 import pytest
 
 gr = pytest.importorskip("gradio")
@@ -153,3 +156,40 @@ def test_nothing_found_because_the_recordings_are_gone_is_reported_as_such(
     assert raised.value.message == loc.LANGUAGE_LOOKUP["error-path-not-found"].format(
         path=str(tmp_path / "May & June").replace("&", "&amp;")
     )
+
+
+@pytest.mark.parametrize(
+    ("skipped", "shown"),
+    [
+        (os.path.join("audio", "site", "rec.wav"), os.path.join("site", "rec.wav")),
+        (os.path.join("elsewhere", "rec.wav"), None),
+    ],
+    ids=["below the audio folder", "outside of it"],
+)
+def test_recordings_that_could_not_be_cut_are_listed(
+    monkeypatch, tmp_path, skipped, shown
+):
+    (tmp_path / "audio").mkdir()
+    skipped = str(tmp_path / skipped)
+    monkeypatch.setattr(
+        gui_segments, "segments", lambda *args, **kwargs: [(skipped, False)]
+    )
+
+    update = _extract(str(tmp_path / "audio"), None)
+
+    assert update["value"] == [shown or skipped]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="drive letters")
+def test_a_recording_on_another_drive_that_could_not_be_cut_is_listed(
+    monkeypatch, tmp_path
+):
+    drive = "E:" if tmp_path.drive.upper() != "E:" else "F:"
+    skipped = os.path.join(drive + os.sep, "audio", "rec.wav")
+    monkeypatch.setattr(
+        gui_segments, "segments", lambda *args, **kwargs: [(skipped, False)]
+    )
+
+    update = _extract(str(tmp_path), None)
+
+    assert update["value"] == [skipped]

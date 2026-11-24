@@ -9,6 +9,15 @@ from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.segments.core import segments
 
 
+def _shown_path(path: str, audio_dir: str) -> str:
+    try:
+        relative = os.path.relpath(path, audio_dir)
+    except ValueError:  # on another drive
+        return path
+
+    return path if relative.startswith(os.pardir) else relative
+
+
 @gu.gui_runtime_error_handler
 def _extract_segments(
     audio_dir,
@@ -64,9 +73,7 @@ def _extract_segments(
 
         raise gr.Error(loc.localize("segments-tab-no-segments-error"))
 
-    skipped_files = [
-        os.path.relpath(r[0], audio_dir) for r in segments_list if not r[1]
-    ]
+    skipped_files = [_shown_path(r[0], audio_dir) for r in segments_list if not r[1]]
     header = (
         [loc.localize("multi-tab-result-dataframe-column-invalid-file-header")]
         if skipped_files
