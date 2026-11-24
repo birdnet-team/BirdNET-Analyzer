@@ -58,6 +58,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#label-languages">Label languages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#training-defaults-to-the-3-0-base">Training defaults to the 3.0 base</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#training-validates-on-the-training-data">Training validates on the training data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-validation-split-keeps-the-segments-of-a-file-together">The validation split keeps the segments of a file together</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#training-chooses-its-learning-rate-for-the-base-model">Training chooses its learning rate for the base model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#locations-and-species-lists">Locations and species lists</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#top-n-results-keep-the-confidence-threshold">Top-N results keep the confidence threshold</a></li>
@@ -127,19 +128,20 @@ applies to them under <a class="reference internal" href="#coming-from-1x"><span
 <li><p><a class="reference internal" href="#label-languages" id="id6">Label languages</a></p></li>
 <li><p><a class="reference internal" href="#training-defaults-to-the-3-0-base" id="id7">Training defaults to the 3.0 base</a></p></li>
 <li><p><a class="reference internal" href="#training-validates-on-the-training-data" id="id8">Training validates on the training data</a></p></li>
-<li><p><a class="reference internal" href="#training-chooses-its-learning-rate-for-the-base-model" id="id9">Training chooses its learning rate for the base model</a></p></li>
-<li><p><a class="reference internal" href="#locations-and-species-lists" id="id10">Locations and species lists</a></p></li>
-<li><p><a class="reference internal" href="#top-n-results-keep-the-confidence-threshold" id="id11">Top-N results keep the confidence threshold</a></p></li>
-<li><p><a class="reference internal" href="#results-are-written-to-combined-files-by-default" id="id12">Results are written to combined files by default</a></p></li>
-<li><p><a class="reference internal" href="#result-and-parameters-file-formats" id="id13">Result and parameters file formats</a></p></li>
-<li><p><a class="reference internal" href="#kaleidoscope-output-has-seven-columns" id="id14">Kaleidoscope output has seven columns</a></p></li>
-<li><p><a class="reference internal" href="#custom-classifiers-must-be-tflite-files" id="id15">Custom classifiers must be tflite files</a></p></li>
-<li><p><a class="reference internal" href="#search-needs-the-audio-root-databases-keep-their-model" id="id16">Search needs the audio root; databases keep their model</a></p></li>
-<li><p><a class="reference internal" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" id="id17">Evaluation needs a confidence column and scores every annotated recording</a></p></li>
-<li><p><a class="reference internal" href="#evaluation-reads-tables-differently" id="id18">Evaluation reads tables differently</a></p></li>
-<li><p><a class="reference internal" href="#removed-options-and-parameters" id="id19">Removed options and parameters</a></p></li>
-<li><p><a class="reference internal" href="#other-changes" id="id20">Other changes</a></p></li>
-<li><p><a class="reference internal" href="#coming-from-1-x" id="id21">Coming from 1.x</a></p></li>
+<li><p><a class="reference internal" href="#the-validation-split-keeps-the-segments-of-a-file-together" id="id9">The validation split keeps the segments of a file together</a></p></li>
+<li><p><a class="reference internal" href="#training-chooses-its-learning-rate-for-the-base-model" id="id10">Training chooses its learning rate for the base model</a></p></li>
+<li><p><a class="reference internal" href="#locations-and-species-lists" id="id11">Locations and species lists</a></p></li>
+<li><p><a class="reference internal" href="#top-n-results-keep-the-confidence-threshold" id="id12">Top-N results keep the confidence threshold</a></p></li>
+<li><p><a class="reference internal" href="#results-are-written-to-combined-files-by-default" id="id13">Results are written to combined files by default</a></p></li>
+<li><p><a class="reference internal" href="#result-and-parameters-file-formats" id="id14">Result and parameters file formats</a></p></li>
+<li><p><a class="reference internal" href="#kaleidoscope-output-has-seven-columns" id="id15">Kaleidoscope output has seven columns</a></p></li>
+<li><p><a class="reference internal" href="#custom-classifiers-must-be-tflite-files" id="id16">Custom classifiers must be tflite files</a></p></li>
+<li><p><a class="reference internal" href="#search-needs-the-audio-root-databases-keep-their-model" id="id17">Search needs the audio root; databases keep their model</a></p></li>
+<li><p><a class="reference internal" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" id="id18">Evaluation needs a confidence column and scores every annotated recording</a></p></li>
+<li><p><a class="reference internal" href="#evaluation-reads-tables-differently" id="id19">Evaluation reads tables differently</a></p></li>
+<li><p><a class="reference internal" href="#removed-options-and-parameters" id="id20">Removed options and parameters</a></p></li>
+<li><p><a class="reference internal" href="#other-changes" id="id21">Other changes</a></p></li>
+<li><p><a class="reference internal" href="#coming-from-1-x" id="id22">Coming from 1.x</a></p></li>
 </ul>
 </nav>
 <section id="default-model-is-now-birdnet-3-0">
@@ -303,11 +305,32 @@ apply the sigmoid twice, and <code class="docutils literal notranslate"><span cl
 the validation split; v2.4.0 trained on all of it and validated on the test data. The
 same command trains a different classifier than v2.4.0, and its validation scores are
 not comparable.</p>
-<p><strong>What to do.</strong> Choose <code class="docutils literal notranslate"><span class="pre">--val_split</span></code> for the share of the training data to hold out;
+<p><strong>What to do.</strong> Choose <code class="docutils literal notranslate"><span class="pre">--val_split</span></code> for the share of the training files to hold out;
 <code class="docutils literal notranslate"><span class="pre">--val_split</span> <span class="pre">0</span></code> is rejected. Compare scores only between runs of this version.</p>
 </section>
+<section id="the-validation-split-keeps-the-segments-of-a-file-together">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">The validation split keeps the segments of a file together</a><a class="headerlink" href="#the-validation-split-keeps-the-segments-of-a-file-together" title="Link to this heading"></a></h2>
+<p><strong>What changed.</strong> With <code class="docutils literal notranslate"><span class="pre">--crop_mode</span> <span class="pre">segments</span></code> or <code class="docutils literal notranslate"><span class="pre">smart</span></code>, one file gives several
+training samples. The validation split now holds out whole files, <code class="docutils literal notranslate"><span class="pre">--val_split</span></code> of
+each class’s files, so a file is either trained on or validated on. v2.4.0 split the
+segments one by one and validated on segments of files it also trained on. The folds
+of <code class="docutils literal notranslate"><span class="pre">--autotune_n_splits</span></code> take whole files too. A class with only one file is always
+trained on and not validated. In every crop mode, a training stops with an error if no
+class has a second file, or if a classifier for a single class has only one file of
+the class or of non-event samples. The “center” and “first” crop modes give one sample
+per file and split as before.</p>
+<p><strong>Consequence.</strong> In the “segments” and “smart” modes the same command trains on other
+samples than v2.4.0 and usually reports a lower validation score, as it no longer
+scores segments of files the classifier trained on. With overlapping segments, the
+split by segment overstated the validation AUPRC by about 0.02 to 0.04 on the datasets
+we measured. A training data cache of v2.4.0 does not record the file each sample came
+from. It still trains, splitting its samples one by one, and warns if it was made in
+the “segments” or “smart” mode. v2.4.0 ignores that record in a cache of this version.</p>
+<p><strong>What to do.</strong> Create a “segments” or “smart” cache again to split it by file. Give
+each class at least two files, or it is not validated.</p>
+</section>
 <section id="training-chooses-its-learning-rate-for-the-base-model">
-<h2><a class="toc-backref" href="#id9" role="doc-backlink">Training chooses its learning rate for the base model</a><a class="headerlink" href="#training-chooses-its-learning-rate-for-the-base-model" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">Training chooses its learning rate for the base model</a><a class="headerlink" href="#training-chooses-its-learning-rate-for-the-base-model" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> Without <code class="docutils literal notranslate"><span class="pre">--learning_rate</span></code>, training uses a learning rate chosen for
 the base model: 0.1 for BirdNET 3.0 and 0.01 for BirdNET 2.4. v2.4.0 used 0.0001, which
 leaves classifiers under-trained, on the 3.0 base badly. The train tab no longer offers
@@ -327,7 +350,7 @@ training on the other.</p>
 lower learning rate, such as 0.003.</p>
 </section>
 <section id="locations-and-species-lists">
-<h2><a class="toc-backref" href="#id10" role="doc-backlink">Locations and species lists</a><a class="headerlink" href="#locations-and-species-lists" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id11" role="doc-backlink">Locations and species lists</a><a class="headerlink" href="#locations-and-species-lists" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">-1</span></code> no longer means “not set”. <code class="docutils literal notranslate"><span class="pre">--lat</span> <span class="pre">-1</span> <span class="pre">--lon</span> <span class="pre">-1</span></code> is a location in the Gulf of
@@ -356,7 +379,7 @@ English or in the <code class="docutils literal notranslate"><span class="pre">-
 and <code class="docutils literal notranslate"><span class="pre">--lon</span></code> to the analysis instead of a list.</p>
 </section>
 <section id="top-n-results-keep-the-confidence-threshold">
-<h2><a class="toc-backref" href="#id11" role="doc-backlink">Top-N results keep the confidence threshold</a><a class="headerlink" href="#top-n-results-keep-the-confidence-threshold" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Top-N results keep the confidence threshold</a><a class="headerlink" href="#top-n-results-keep-the-confidence-threshold" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--top_n</span></code> keeps at most N detections per segment among those above
 <code class="docutils literal notranslate"><span class="pre">--min_conf</span></code>. v2.4.0 ignored the threshold when <code class="docutils literal notranslate"><span class="pre">--top_n</span></code> was set.</p>
 <p><strong>Consequence.</strong> The same command returns fewer detections than in v2.4.0.</p>
@@ -364,7 +387,7 @@ and <code class="docutils literal notranslate"><span class="pre">--lon</span></c
 regardless of their score.</p>
 </section>
 <section id="results-are-written-to-combined-files-by-default">
-<h2><a class="toc-backref" href="#id12" role="doc-backlink">Results are written to combined files by default</a><a class="headerlink" href="#results-are-written-to-combined-files-by-default" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id13" role="doc-backlink">Results are written to combined files by default</a><a class="headerlink" href="#results-are-written-to-combined-files-by-default" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> An analysis writes one combined result file per result type, such as
 <code class="docutils literal notranslate"><span class="pre">BirdNET_SelectionTable.txt</span></code>. v2.4.0 wrote one file per audio file and added
 combined files only with <code class="docutils literal notranslate"><span class="pre">--combine_results</span></code>.</p>
@@ -378,7 +401,7 @@ earlier analysis: they stay where they are, and the evaluation reads the per-fil
 tables of a folder in place of a combined table beside them.</p>
 </section>
 <section id="result-and-parameters-file-formats">
-<h2><a class="toc-backref" href="#id13" role="doc-backlink">Result and parameters file formats</a><a class="headerlink" href="#result-and-parameters-file-formats" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id14" role="doc-backlink">Result and parameters file formats</a><a class="headerlink" href="#result-and-parameters-file-formats" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p>Raven selection tables add a <code class="docutils literal notranslate"><span class="pre">Scientific</span> <span class="pre">Name</span></code> column and order the columns
@@ -410,7 +433,7 @@ the merging, the audio speed and the classifier; it is repeated with BirdNET 2.4
 with Perch if it was a Perch analysis, and with the defaults for everything else.</p>
 </section>
 <section id="kaleidoscope-output-has-seven-columns">
-<h2><a class="toc-backref" href="#id14" role="doc-backlink">Kaleidoscope output has seven columns</a><a class="headerlink" href="#kaleidoscope-output-has-seven-columns" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id15" role="doc-backlink">Kaleidoscope output has seven columns</a><a class="headerlink" href="#kaleidoscope-output-has-seven-columns" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--rtype</span> <span class="pre">kaleidoscope</span></code> writes <code class="docutils literal notranslate"><span class="pre">INDIR</span></code>, <code class="docutils literal notranslate"><span class="pre">FOLDER</span></code>, <code class="docutils literal notranslate"><span class="pre">IN</span> <span class="pre">FILE</span></code>,
 <code class="docutils literal notranslate"><span class="pre">OFFSET</span></code>, <code class="docutils literal notranslate"><span class="pre">DURATION</span></code>, <code class="docutils literal notranslate"><span class="pre">TOP1MATCH</span></code> and <code class="docutils literal notranslate"><span class="pre">TOP1DIST</span></code>. v2.4.0 wrote 13 columns: the
 scientific and common name, <code class="docutils literal notranslate"><span class="pre">confidence</span></code>, <code class="docutils literal notranslate"><span class="pre">lat</span></code>, <code class="docutils literal notranslate"><span class="pre">lon</span></code>, <code class="docutils literal notranslate"><span class="pre">week</span></code>, <code class="docutils literal notranslate"><span class="pre">overlap</span></code> and
@@ -423,7 +446,7 @@ Kaleidoscope files.</p>
 with <code class="docutils literal notranslate"><span class="pre">--additional_columns</span></code>.</p>
 </section>
 <section id="custom-classifiers-must-be-tflite-files">
-<h2><a class="toc-backref" href="#id15" role="doc-backlink">Custom classifiers must be tflite files</a><a class="headerlink" href="#custom-classifiers-must-be-tflite-files" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">Custom classifiers must be tflite files</a><a class="headerlink" href="#custom-classifiers-must-be-tflite-files" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">--classifier</span></code> takes a <code class="docutils literal notranslate"><span class="pre">.tflite</span></code> file only; v2.4.0 also loaded a
 Raven model folder. The labels are read from <code class="docutils literal notranslate"><span class="pre">&lt;classifier&gt;_Labels.txt</span></code> or
 <code class="docutils literal notranslate"><span class="pre">--cc_species_list</span></code>; v2.4.0 also found <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_Labels.txt</span></code> next to an older
@@ -434,7 +457,7 @@ its labels file named explicitly.</p>
 for older BirdNET models.</p>
 </section>
 <section id="search-needs-the-audio-root-databases-keep-their-model">
-<h2><a class="toc-backref" href="#id16" role="doc-backlink">Search needs the audio root; databases keep their model</a><a class="headerlink" href="#search-needs-the-audio-root-databases-keep-their-model" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Search needs the audio root; databases keep their model</a><a class="headerlink" href="#search-needs-the-audio-root-databases-keep-their-model" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.search</span></code> requires <code class="docutils literal notranslate"><span class="pre">--audio_root</span></code>, the folder the
 audio paths in the database are relative to, and <code class="docutils literal notranslate"><span class="pre">search()</span></code> takes it as its third
 argument, before <code class="docutils literal notranslate"><span class="pre">queryfile</span></code>. Embedding databases now use the perch-hoplite 1.x
@@ -456,7 +479,7 @@ fills a new database with BirdNET 2.4 embeddings; the GUI always uses BirdNET 3.
 a new database.</p>
 </section>
 <section id="evaluation-needs-a-confidence-column-and-scores-every-annotated-recording">
-<h2><a class="toc-backref" href="#id17" role="doc-backlink">Evaluation needs a confidence column and scores every annotated recording</a><a class="headerlink" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id18" role="doc-backlink">Evaluation needs a confidence column and scores every annotated recording</a><a class="headerlink" href="#evaluation-needs-a-confidence-column-and-scores-every-annotated-recording" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p>A prediction table without the mapped confidence column, or with an empty one, is an
@@ -477,7 +500,7 @@ than in v2.4.0.</p>
 the v2.4.0 metrics.</p>
 </section>
 <section id="evaluation-reads-tables-differently">
-<h2><a class="toc-backref" href="#id18" role="doc-backlink">Evaluation reads tables differently</a><a class="headerlink" href="#evaluation-reads-tables-differently" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id19" role="doc-backlink">Evaluation reads tables differently</a><a class="headerlink" href="#evaluation-reads-tables-differently" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong></p>
 <ul class="simple">
 <li><p>The columns are detected from the tables’ headers. <code class="docutils literal notranslate"><span class="pre">--columns_annotations</span></code> and
@@ -515,7 +538,7 @@ one analysis or one set of annotations each. For a recording length column named
 <code class="docutils literal notranslate"><span class="pre">--columns_predictions</span></code>), or <code class="docutils literal notranslate"><span class="pre">--recording_duration</span></code>.</p>
 </section>
 <section id="removed-options-and-parameters">
-<h2><a class="toc-backref" href="#id19" role="doc-backlink">Removed options and parameters</a><a class="headerlink" href="#removed-options-and-parameters" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id20" role="doc-backlink">Removed options and parameters</a><a class="headerlink" href="#removed-options-and-parameters" title="Link to this heading"></a></h2>
 <p><strong>What changed.</strong> These v2.4.0 command-line options no longer exist, so command lines
 that use them fail with “unrecognized arguments”. The Python functions lost the
 matching parameters.</p>
@@ -541,7 +564,7 @@ result of the birdnet library instead of <code class="docutils literal notransla
 <p><strong>What to do.</strong> Update scripts as listed.</p>
 </section>
 <section id="other-changes">
-<h2><a class="toc-backref" href="#id20" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id21" role="doc-backlink">Other changes</a><a class="headerlink" href="#other-changes" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong>Search</strong> with a query longer than one segment (<code class="docutils literal notranslate"><span class="pre">--crop_mode</span> <span class="pre">segments</span></code>) ranks the
 results by their mean score over all query segments. v2.4.0 counted a result only for
@@ -582,7 +605,7 @@ Segments extracted again into an existing output folder land in the new folder.<
 </ul>
 </section>
 <section id="coming-from-1-x">
-<span id="coming-from-1x"></span><h2><a class="toc-backref" href="#id21" role="doc-backlink">Coming from 1.x</a><a class="headerlink" href="#coming-from-1-x" title="Link to this heading"></a></h2>
+<span id="coming-from-1x"></span><h2><a class="toc-backref" href="#id22" role="doc-backlink">Coming from 1.x</a><a class="headerlink" href="#coming-from-1-x" title="Link to this heading"></a></h2>
 <p>The 2.x releases changed more for users of 1.0.2 to 1.5.1 than this release does.
 Everything above applies to them as well, and so does the following.</p>
 <p><strong>Carried over.</strong> The Windows installer keeps the GUI language and the last used

@@ -613,7 +613,7 @@ Negative samples cannot be used for binary classification, instead include these
 <p>To train with multi-label data separate the class labels with commas in the folder names (e.g., <code class="docutils literal notranslate"><span class="pre">Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee,Cardinalis</span> <span class="pre">cardinalis_Northern</span> <span class="pre">Cardinal</span></code>).
 This can also be combined with negative samples as described above.
 A negative sample also counts as not containing any other class, so a recording that does contain another trained species belongs in a combined folder (e.g., <code class="docutils literal notranslate"><span class="pre">Cardinalis</span> <span class="pre">cardinalis_Northern</span> <span class="pre">Cardinal,-Poecile</span> <span class="pre">atricapillus_Black-capped</span> <span class="pre">Chickadee</span></code>).
-The validation split will be performed combination of classes, so you might want to ensure sufficient data for each combination of classes.
+The validation split is made per combination of classes, so give each combination at least two files.
 When using multi-label data the upsampling mode will be limited to ‘repeat’.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -714,7 +714,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
 </dd>
 <dt><kbd>--val_split</kbd></dt>
-<dd><p>A small percentage of the training data that is not used for training, but for validation scores and early stopping during training. Must be above 0.</p>
+<dd><p>The share of each class’s training files that is not used for training, but for validation scores and early stopping during training. All segments of a file stay on the same side. Must be above 0.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0.2</span></code></p>
 </dd>
 <dt><kbd>--learning_rate</kbd></dt>
@@ -779,7 +779,7 @@ When using multi-label data the upsampling mode will be limited to ‘repeat’.
 <p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
 </dd>
 <dt><kbd>--autotune_n_splits</kbd></dt>
-<dd><p>Number of folds for cross-validation during hyperparameter tuning. If set to &gt;1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred samples.</p>
+<dd><p>Number of folds for cross-validation during hyperparameter tuning. If set to &gt;1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. A fold takes whole files. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred files.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
 </dd>
 <dt><kbd>--autotune_n_repeats</kbd></dt>
