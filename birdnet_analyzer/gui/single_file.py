@@ -315,7 +315,7 @@ def run_single_file_analysis(
 def build_single_analysis_tab() -> None:
     state = TabState("single")
 
-    with gr.Tab(loc.localize("single-tab-title")):
+    with gr.Tab(loc.localize("single-tab-title")) as single_tab:
         gu.info_box(
             description=loc.localize("single-tab-info-text"),
             title=loc.localize("single-tab-info-title"),
@@ -611,6 +611,23 @@ def build_single_analysis_tab() -> None:
                         prediction_state["table"],
                         Path(file_location),
                     )
+
+        @gu.gui_runtime_error_handler
+        def apply_spectrogram_settings(player_src):
+            if not player_src:
+                return gr.skip()
+
+            return player_value(
+                player_src, spectrogram=gu.player_spectrogram_settings()
+            )
+
+        # The settings tab is the only place they change.
+        single_tab.select(
+            apply_spectrogram_settings,
+            inputs=player_src_state,
+            outputs=player,
+            show_progress="hidden",
+        )
 
         detection_inputs = [
             last_prediction_state,

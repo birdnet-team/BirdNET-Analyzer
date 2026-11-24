@@ -224,6 +224,18 @@ def test_the_player_draws_with_the_spectrogram_settings(appdir, handler, tmp_pat
     }
 
 
+def test_returning_to_the_tab_brings_changed_spectrogram_settings(appdir, handler):
+    apply = handler(single_file.build_single_analysis_tab, "apply_spectrogram_settings")
+    settings.set_tab_setting("settings", "spectrogram_colormap_dropdown", "jet")
+
+    value = apply("clip.wav")
+
+    assert value["src"] == "clip.wav"
+    assert value["spectrogram"]["colorScheme"] == "jet"
+    assert "detections" not in value, "the player keeps its detections"
+    assert apply(None) == gr.skip()
+
+
 @pytest.mark.parametrize(("show", "view"), [(False, "waveform"), (True, "spectrogram")])
 def test_a_long_recording_shows_its_spectrogram_on_request(
     appdir, handler, monkeypatch, tmp_path, show, view
