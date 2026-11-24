@@ -73,8 +73,9 @@ def train(
             "segments" and "smart" crop modes. Defaults to 0.0.
         epochs (int, optional): Number of training epochs. Defaults to 50.
         batch_size (int, optional): Batch size for training. Defaults to 32.
-        val_split (float, optional): Fraction of data to use for validation.
-                                     Defaults to 0.2.
+        val_split (float, optional): Fraction of each class's training files to use
+            for validation; all segments of a file stay on the same side.
+            Defaults to 0.2.
         learning_rate (float, optional): Learning rate for the optimizer. Defaults
             to the one measured for the base model: 0.1 for BirdNET 3.0, 0.01 for 2.4.
         use_focal_loss (bool, optional): Whether to use focal loss for training.

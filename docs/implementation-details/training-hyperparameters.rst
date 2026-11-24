@@ -81,6 +81,7 @@ Its first trial uses the given settings. The parameters used for training the fi
 You can specify the number of trials, the number of folds and the number of repeats.
 
 Each trial is scored on the validation split of the training data. With more than one fold, each trial is trained once per fold instead and scored by the mean over the folds.
+Like the validation split, the folds take whole files, and a class with only one file is trained on in every fold.
 That makes the scores steadier, but multiplies the tuning time by roughly the number of folds.
 Folds are mainly worth it for small datasets of a few hundred samples, where the validation split holds only a handful of examples per class.
 From about 1,000 samples on, keep 1 fold and spend the time on more trials instead. Repeats run the folds again on a new split and cost as much time again.

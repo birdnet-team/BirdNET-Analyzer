@@ -211,6 +211,30 @@ not comparable.
 ``--val_split 0`` is rejected. Compare scores only between runs of this version.
 
 
+The validation split keeps the segments of a file together
+----------------------------------------------------------
+
+**What changed.** With ``--crop_mode segments`` or ``smart``, one file gives several
+training samples. The validation split now holds out whole files, ``--val_split`` of
+each class's files, so a file is either trained on or validated on. v2.4.0 split the
+segments one by one and validated on segments of files it also trained on. The folds
+of ``--autotune_n_splits`` take whole files too. A class with only one file is always
+trained on and not validated, and a training in which no class has a second file
+stops with an error, in every crop mode. The "center" and "first" crop modes give one
+sample per file and split as before.
+
+**Consequence.** In the "segments" and "smart" modes the same command trains on other
+samples than v2.4.0 and usually reports a lower validation score, as it no longer
+scores segments of files the classifier trained on. With overlapping segments, the
+split by segment overstated the validation AUPRC by about 0.02 to 0.04 on the datasets
+we measured. A training data cache of v2.4.0 does not record the file each sample came
+from. It still trains, splitting its samples one by one, and warns if it was made in
+the "segments" or "smart" mode. v2.4.0 ignores that record in a cache of this version.
+
+**What to do.** Create a "segments" or "smart" cache again to split it by file. Give
+each class at least two files, or it is not validated.
+
+
 Training chooses its learning rate for the base model
 -----------------------------------------------------
 

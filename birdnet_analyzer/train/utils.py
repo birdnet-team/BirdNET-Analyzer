@@ -712,8 +712,8 @@ def train_model(
             crop modes. Defaults to 0.0.
         epochs: Maximum number of epochs. Defaults to 50.
         batch_size: Training batch size. Defaults to 32.
-        val_split: Fraction of the training data used for validation, above 0.
-            Defaults to 0.2.
+        val_split: Fraction of each class's training files used for validation,
+            above 0; all segments of a file stay on the same side. Defaults to 0.2.
         learning_rate: Learning rate. Defaults to the one measured for the base model
             the classifier is trained on: 0.1 for BirdNET 3.0, 0.01 for 2.4.
         weight_decay: AdamW weight decay. Defaults to 0.004.
