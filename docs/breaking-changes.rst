@@ -365,8 +365,8 @@ its labels file named explicitly.
 for older BirdNET models.
 
 
-Search needs the audio root and a new database
-----------------------------------------------
+Search needs the audio root; databases keep their model
+-------------------------------------------------------
 
 **What changed.** ``birdnet_analyzer.search`` requires ``--audio_root``, the folder the
 audio paths in the database are relative to, and ``search()`` takes it as its third
@@ -376,13 +376,19 @@ of BirdNET 3.0, which have 1280 values per segment; v2.4.0 extracted them with B
 2.4, with 1024 values.
 
 **Consequence.** v2.4.0 search command lines and positional calls of ``search()`` fail.
-Databases written by v2.4.0 are in the older format. Embeddings and search scores are
-not comparable with those of v2.4.0.
+A database written by v2.4.0 is converted the first time it is opened, by the GUI or
+on the command line: its ``hoplite.sqlite`` is rewritten in the new format and the
+previous file is kept beside it as ``hoplite.sqlite.v2-backup``. The embeddings
+themselves are not touched. Such a database stays on BirdNET 2.4 for searching it and
+for adding recordings to it; that model is downloaded when it is first needed. Search
+scores of a BirdNET 2.4 database are not comparable with those of a BirdNET 3.0 one.
 
-**What to do.** Pass ``--audio_root`` (the parent of the input that was embedded), and
-extract the embeddings again into a new database. ``birdnet_analyzer.embeddings
---birdnet 2.4`` fills a new database with BirdNET 2.4 embeddings; the GUI always uses
-BirdNET 3.0 for a new database.
+**What to do.** Pass ``--audio_root`` (the parent of the input that was embedded).
+Existing databases need nothing; the Search and Embeddings tabs show the model of the
+selected database. To use a converted database with v2.4.0 again, put the kept file
+back under the name ``hoplite.sqlite``. ``birdnet_analyzer.embeddings --birdnet 2.4``
+fills a new database with BirdNET 2.4 embeddings; the GUI always uses BirdNET 3.0 for
+a new database.
 
 
 Evaluation needs a confidence column and scores every annotated recording

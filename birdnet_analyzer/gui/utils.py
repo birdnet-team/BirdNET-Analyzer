@@ -102,6 +102,11 @@ def _label(choice: str) -> str:
     return loc.localize(_LABEL_KEYS[choice])
 
 
+def birdnet_label(version: str) -> str:
+    """The name of a BirdNET version as the GUI shows it."""
+    return _BIRDNET_MODEL_LABELS[version]
+
+
 def _choices(*ids: str) -> list[tuple[str, str]]:
     return [(_label(choice), choice) for choice in ids]
 

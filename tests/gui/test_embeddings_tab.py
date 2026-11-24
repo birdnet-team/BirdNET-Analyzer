@@ -131,11 +131,12 @@ def test_picking_a_folder_for_a_new_database_leaves_it_empty(
     folder.mkdir()
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: str(folder))
 
-    _, _, speed, fmin, fmax, _ = handler(
+    _, _, model, speed, fmin, fmax, _ = handler(
         gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY
     )(None)
 
     assert list(folder.iterdir()) == []
+    assert model == "BirdNET 3.0"
     assert [u["interactive"] for u in (speed, fmin, fmax)] == [True, True, True]
 
 
@@ -144,7 +145,7 @@ def test_picking_a_leftover_folder_treats_it_as_new_and_leaves_it_as_is(
 ):
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: hoplite_leftover)
 
-    _, _, speed, fmin, fmax, _ = handler(
+    _, _, _, speed, fmin, fmax, _ = handler(
         gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY
     )(None)
 
@@ -159,10 +160,11 @@ def test_picking_an_existing_database_shows_and_locks_its_settings(
     monkeypatch.setattr(gu, "select_directory", lambda *a, **k: path)
     monkeypatch.setattr(gr, "Info", lambda *a, **k: None)
 
-    _, _, speed, fmin, fmax, _ = handler(
+    _, _, model, speed, fmin, fmax, _ = handler(
         gui_embeddings.build_embeddings_tab, SELECT_DB_DIRECTORY
     )(None)
 
+    assert model == "BirdNET 2.4"
     assert speed == gr.update(value=2.0, interactive=False)
     assert fmin == gr.update(value=500, interactive=False)
     assert fmax == gr.update(value=8000, interactive=False)
