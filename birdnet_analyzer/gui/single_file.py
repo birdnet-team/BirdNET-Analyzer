@@ -457,6 +457,7 @@ def build_single_analysis_tab() -> None:
                     preview,
                     show_confidence=show_confidence,
                     view_mode=view_mode(long_recording, show_long_spectrogram),
+                    spectrogram=gu.player_spectrogram_settings(),
                 ),
                 gr.update(interactive=True),
                 long_recording,

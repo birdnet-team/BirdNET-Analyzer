@@ -11,6 +11,7 @@ pytest.importorskip("signavis")
 
 from signavis.gradio import SignaVisPlayer  # noqa: E402
 
+from birdnet_analyzer import settings  # noqa: E402
 from birdnet_analyzer.gui import single_file  # noqa: E402
 from birdnet_analyzer.gui import utils as gu  # noqa: E402
 
@@ -183,10 +184,44 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
         "src": str(clip),
         "showConfidence": True,
         "viewMode": "spectrogram",
+        "spectrogram": {
+            "colorScheme": "viridis",
+            "windowSize": 1024,
+            "overlapLevel": 2,
+            "oversamplingLevel": 0,
+            "scale": "linear",
+            "contrastRangeDb": 80,
+        },
     }
     assert analyze["interactive"] is True
     assert long_recording is False
     assert spectrogram_checkbox["visible"] is False
+
+
+def test_the_player_draws_with_the_spectrogram_settings(appdir, handler, tmp_path):
+    clip = tmp_path / "clip.wav"
+    sf.write(clip, np.zeros(4800, dtype="float32"), 48000)
+    for key, value in {
+        "spectrogram_colormap_dropdown": "Greys",
+        "spectrogram_fft_size_dropdown": 2048,
+        "spectrogram_overlap_slider": 90,
+        "spectrogram_dynamic_range_slider": 60,
+        "spectrogram_freq_scale_radio": "log",
+    }.items():
+        settings.set_tab_setting("settings", key, value)
+
+    _, player, *_ = handler(single_file.build_single_analysis_tab, "load_player")(
+        str(clip), False, False
+    )
+
+    assert player["spectrogram"] == {
+        "colorScheme": "grayscale",
+        "windowSize": 2048,
+        "overlapLevel": 4,
+        "oversamplingLevel": 0,
+        "scale": "cqt",
+        "contrastRangeDb": 60,
+    }
 
 
 @pytest.mark.parametrize(("show", "view"), [(False, "waveform"), (True, "spectrogram")])
