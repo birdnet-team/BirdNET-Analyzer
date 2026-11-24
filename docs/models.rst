@@ -2,6 +2,17 @@ Models
 ======
 
 
+V3.0
+----
+
+* default model of BirdNET-Analyzer 3.0
+* 11,725 classes: 11,709 species (birds, insects, amphibians, mammals and a few others) and 16 sound classes
+* 32 kHz sampling rate, 3-second segments
+* embedding size of 1280
+* species names in 29 languages
+* runs on ONNX Runtime
+
+
 V2.4, June 2023
 ---------------
 
@@ -48,7 +59,7 @@ Just download your desired model version and unzip.
 Model Version History
 ---------------------
 
-.. note:: All models listed here are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
+.. note:: The BirdNET 3.0 acoustic model is licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and comes with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. The other BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
 
 V2.4
 ^^^^

@@ -8,7 +8,7 @@ We provide a stand-alone GUI which lets you launch the analysis through a web in
     :align: center
 
 
-You need to install two additional packages in order to use the GUI with ``pip install pywebview gradio``
+To use the GUI, install the package with the ``gui`` extra: ``pip install "birdnet_analyzer[gui]"``
 
 Launch the GUI with ``python -m birdnet_analyzer.gui``.
 
@@ -69,7 +69,7 @@ and the previous one is kept with ``.1`` added to its name.
 GUI Language
 ------------
 
-The default language of the GUI is English, but you can change it to German, French, Chinese or Portuguese in the Settings tab of the GUI.
+The default language of the GUI is English, but you can change it to German, Finnish, French, Indonesian, Brazilian Portuguese, Russian, Swedish, Klingon, Simplified Chinese or Traditional Chinese in the Settings tab of the GUI.
 If you want to contribute a translation to another language you, use the files inside the lang folder as a template.
 You can then send us the translated files or create a pull request.
 To check your translation, place your file inside the ``lang`` folder and start the GUI, your language should now be available in the **Settings** tab.

@@ -14,7 +14,7 @@ How do I install BirdNET-Analyzer?
 BirdNET-Analyzer can be installed using different methods, including:
 
 - | **Raven Pro**: Follow the instructions provided in the Raven Pro documentation.
-- | **Python Package**: Install via pip using `pip install birdnet`.
+- | **Python Package**: Install via pip using `pip install birdnet_analyzer`.
 - | **Command Line**: Download the repository and run the scripts from the command line.
 - | **GUI**: Download the GUI version from the `releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_ and follow the installation instructions.
 
@@ -40,7 +40,9 @@ If you have large amounts of validated detections, please get in touch with us a
 What are the non-event classes in BirdNET?
 ------------------------------------------
 
-There are currently 11 non-event classes in BirdNET:
+BirdNET 3.0 has 16 classes for sounds that do not come from animals: Aircraft, Boat, Chainsaw, Engine, Explosion, Fire, Fireworks, Gun, Hammer, Motor vehicle, Music, Power tool, Sawing, Siren, Train and Vehicle horn.
+
+BirdNET 2.4 has 11 non-event classes:
 
 * Human non-vocal_Human non-vocal
 * Human vocal_Human vocal
