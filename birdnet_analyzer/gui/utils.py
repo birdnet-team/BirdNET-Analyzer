@@ -1,11 +1,13 @@
 # ruff: noqa: PLW0603
 import base64
+import errno
 import functools
 import io
 import logging
 import multiprocessing
 import os
 import sys
+import textwrap
 import threading
 from abc import ABCMeta
 from collections.abc import Callable
@@ -244,10 +246,60 @@ def gui_runtime_error_handler(f):
             raise
         except Exception as e:
             utils.write_error_log(e)
-            message = _download_failure_message(e) or str(e) or repr(e)
+            message = _download_failure_message(e) or _explanation(e)
             raise gr.Error(message=message, duration=None) from e
 
     return wrapper
+
+
+# The error types that mean a mistake in the program rather than in its input.
+_PROGRAMMING_ERRORS = (
+    ArithmeticError,
+    AssertionError,
+    AttributeError,
+    LookupError,
+    NameError,
+    TypeError,
+)
+
+
+def _explanation(error: Exception) -> str:
+    """What to tell the user about an error no handler explained."""
+    if isinstance(error, OSError):
+        if error.errno == errno.ENOSPC:
+            return loc.localize("error-disk-full")
+
+        if error.filename and isinstance(error, FileNotFoundError):
+            return loc.localize("error-path-not-found").format(
+                path=escape(_missing_part(str(error.filename)), quote=False)
+            )
+
+        if error.filename and (
+            isinstance(error, PermissionError) or error.errno == errno.EROFS
+        ):
+            return loc.localize("error-path-no-access").format(
+                path=escape(str(error.filename), quote=False)
+            )
+
+    if isinstance(error, _PROGRAMMING_ERRORS):
+        name = type(error).__name__
+        text = textwrap.shorten(str(error), 300, placeholder=" ...")
+
+        return loc.localize("error-unexpected").format(
+            error=escape(f"{name}: {text}" if text else name, quote=False)
+        )
+
+    return escape(str(error) or repr(error), quote=False)
+
+
+def _missing_part(path: str) -> str:
+    """The outermost folder of ``path`` that is not there, or ``path`` itself."""
+    parent = os.path.dirname(path)
+
+    while parent and parent != path and not os.path.exists(parent):
+        path, parent = parent, os.path.dirname(parent)
+
+    return path
 
 
 def _download_failure_message(error: Exception) -> str | None:
@@ -605,6 +657,86 @@ def validate(value, msg):
     """
     if not value:
         raise gr.Error(msg)
+
+
+def validate_exists(path: str):
+    """Checks that a file or folder the user selected is still there.
+
+    Args:
+        path: The selected file or folder.
+
+    Raises:
+        gr.Error: If ``path`` is gone.
+    """
+    if not os.path.exists(path):
+        raise gr.Error(
+            loc.localize("error-path-not-found").format(path=escape(path, quote=False))
+        )
+
+
+def validate_audio_input(path: str):
+    """Checks that an audio file or a folder holding audio files is there to read.
+
+    Args:
+        path: The audio file or the folder the user selected.
+
+    Raises:
+        gr.Error: If ``path`` is gone or is a folder without readable audio files.
+    """
+    from pathlib import Path
+
+    from birdnet.utils.audio_files import get_supported_audio_files_recursive
+
+    validate_exists(path)
+
+    if not os.path.isdir(path):
+        return
+
+    shown = escape(path, quote=False)
+
+    try:
+        os.scandir(path).close()
+    except PermissionError as e:
+        raise gr.Error(
+            loc.localize("error-path-not-readable").format(path=shown)
+        ) from e
+
+    if not any(get_supported_audio_files_recursive(Path(path))):
+        raise gr.Error(
+            loc.localize("validation-no-audio-files-found").format(path=shown)
+        )
+
+
+def validate_output_folder(path: str):
+    """Checks that results can be written into a folder, creating it if it is gone.
+
+    Args:
+        path: The folder the user selected for the results.
+
+    Raises:
+        gr.Error: If the folder cannot be created or cannot be written to.
+    """
+    import tempfile
+
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError as e:
+        raise gr.Error(
+            loc.localize("error-path-not-found").format(
+                path=escape(_missing_part(path), quote=False)
+            )
+        ) from e
+
+    try:
+        with tempfile.TemporaryFile(dir=path):
+            pass
+    except OSError as e:
+        if e.errno == errno.ENOSPC:
+            raise
+
+        raise gr.Error(
+            loc.localize("error-path-no-access").format(path=escape(path, quote=False))
+        ) from e
 
 
 def format_seconds(secs: float):

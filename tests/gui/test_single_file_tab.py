@@ -131,3 +131,43 @@ def test_a_failed_export_is_logged_and_shown(
         handler(single_file.build_single_analysis_tab, "download_csv")({"table": None})
 
     assert len(logged) == 1
+
+
+def test_a_damaged_recording_is_reported_in_plain_words_when_it_is_picked(
+    appdir, handler, monkeypatch, logged, tmp_path
+):
+    damaged = tmp_path / "May & June" / "clip.wav"
+    damaged.parent.mkdir()
+    damaged.write_bytes(bytes(2000))
+    monkeypatch.setattr(gu, "select_file", lambda *a, **k: str(damaged))
+
+    with pytest.raises(gr.Error) as raised:
+        handler(single_file.build_single_analysis_tab, "select_and_load_audio_file")()
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP[
+        "validation-audio-file-unreadable"
+    ].format(path=str(damaged).replace("&", "&amp;"))
+    assert len(logged) == 1
+
+
+def test_an_analysis_starts_without_the_results_of_the_file_before(appdir, handler):
+    table, downloads, predictions = handler(
+        single_file.build_single_analysis_tab, "prepare_run_ui"
+    )()
+
+    assert (table["value"], table["visible"]) == (None, True)
+    assert downloads["visible"] is False
+    assert predictions is None
+
+
+def test_the_reset_before_an_analysis_goes_to_the_table_the_downloads_and_the_results(
+    appdir,
+):
+    with gr.Blocks() as demo:
+        single_file.build_single_analysis_tab()
+
+    events = {getattr(e.fn, "__name__", None): e for e in demo.fns.values()}
+    reset, run = events["prepare_run_ui"], events["run_single_file_analysis"]
+
+    assert [type(c) for c in reset.outputs] == [gr.Dataframe, gr.Row, gr.State]
+    assert reset.outputs == run.outputs

@@ -18,6 +18,14 @@ def appdir(monkeypatch):
 
 
 @pytest.fixture
+def made_up_inputs(monkeypatch):
+    """Lets a handler whose analysis is stubbed take an input that is not there."""
+    from birdnet_analyzer.gui import utils as gu
+
+    monkeypatch.setattr(gu, "validate_audio_input", lambda path: None)
+
+
+@pytest.fixture
 def handler():
     import gradio as gr
 

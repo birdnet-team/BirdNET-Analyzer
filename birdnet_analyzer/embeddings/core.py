@@ -67,6 +67,8 @@ def embeddings(
             database if it exists, the newest version for a new one.
         on_update (Callable[[AcousticProgressStats], None] | None, optional): Callback
             function to report progress updates. Defaults to None.
+    Returns:
+        list[str]: The audio files that could not be read and were skipped.
     Raises:
         ValueError: If ``audio_input`` does not exist or holds no supported audio
             file, or if the database was created with a different ``fmin``, ``fmax``,
@@ -83,6 +85,7 @@ def embeddings(
         )
     """
     from birdnet_analyzer.model_utils import embeddings_dim, get_embeddings
+    from birdnet_analyzer.utils import warn_about_unreadable_files
 
     version = _model_version_for(database, birdnet)
     result = get_embeddings(
@@ -97,6 +100,11 @@ def embeddings(
         n_producers=n_producers,
         callback=on_update,
     )
+    # A method here, a property on the result of an analysis: either is accepted.
+    skipped = result.unprocessable_inputs
+    skipped = skipped() if callable(skipped) else skipped
+    unreadable = [str(result.inputs[i]) for i in skipped]
+    warn_about_unreadable_files(unreadable, result.n_inputs)
 
     audio_root = str(pathlib.Path(audio_input).parent)
 
@@ -172,6 +180,8 @@ def embeddings(
 
     if file_output:
         create_csv_output(file_output, database)
+
+    return unreadable
 
 
 def create_csv_output(output_path: str, database: str):

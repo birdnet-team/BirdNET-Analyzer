@@ -199,25 +199,45 @@ def test_a_cache_file_name_is_used_without_surrounding_spaces(monkeypatch, tmp_p
 def test_a_training_error_with_a_localization_key_is_shown_translated(
     monkeypatch, tmp_path
 ):
+    from birdnet_analyzer.train.errors import TrainingInputError
+
     key = "validation-no-audio-files-in-training-folders"
-    error = ValueError("untranslated", key, "a, b")
+    error = TrainingInputError(key, "untranslated", "R&D, b")
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
-    with pytest.raises(gr.Error, match=re.escape(loc.localize(key).format("a, b"))):
+    with pytest.raises(gr.Error) as raised:
         _start_training(monkeypatch, tmp_path, fail_with=error)
 
+    assert raised.value.message == loc.LANGUAGE_LOOKUP[key].format("R&amp;D, b")
     assert logged == []
 
 
-def test_any_other_training_error_is_shown_in_full(monkeypatch, tmp_path):
+def test_a_training_error_without_a_text_in_the_gui_keeps_its_own(
+    monkeypatch, tmp_path
+):
+    from birdnet_analyzer.train.errors import TrainingInputError
+
+    error = TrainingInputError("validation-not-translated-yet", "Only in English.")
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+
+    with pytest.raises(gr.Error) as raised:
+        _start_training(monkeypatch, tmp_path, fail_with=error)
+
+    assert raised.value.message == "Only in English."
+
+
+def test_any_other_training_error_is_logged_and_explained(monkeypatch, tmp_path):
     error = PermissionError(13, "Permission denied", "cc.tflite")
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)
 
-    with pytest.raises(gr.Error, match=r"Errno 13.*cc\.tflite"):
+    with pytest.raises(gr.Error) as raised:
         _start_training(monkeypatch, tmp_path, fail_with=error)
 
+    assert raised.value.message == loc.LANGUAGE_LOOKUP["error-path-no-access"].format(
+        path="cc.tflite"
+    )
     assert len(logged) == 1
 
 

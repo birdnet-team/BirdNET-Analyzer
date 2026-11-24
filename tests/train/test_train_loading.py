@@ -1,4 +1,5 @@
 import contextlib
+import pickle
 from unittest.mock import patch
 
 import numpy as np
@@ -6,6 +7,7 @@ import pytest
 import soundfile as sf
 
 from birdnet_analyzer import model_utils
+from birdnet_analyzer.train.errors import TrainingInputError
 from birdnet_analyzer.train.utils import (
     _check_cache_destination,
     _load_from_cache,
@@ -71,7 +73,7 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
         _load_training_data(str(tmp_path))
 
     assert "robin" not in str(error.value)
-    assert error.value.args[1] == "validation-no-audio-files-in-training-folders"
+    assert error.value.key == "validation-no-audio-files-in-training-folders"
     mock_load.assert_not_called()
 
 
@@ -244,11 +246,12 @@ def test_invalid_training_folders_raise_a_localizable_value_error(
     for folder in folders:
         (tmp_path / folder).mkdir()
 
-    with pytest.raises(ValueError, match=key) as error:
+    with pytest.raises(TrainingInputError) as error:
         _load_training_data(str(tmp_path), **options)
 
-    assert len(error.value.args) == 2
-    assert error.value.args[1] == key
+    assert (error.value.key, error.value.values) == (key, ())
+    assert isinstance(error.value, ValueError)
+    assert error.value.args == (str(error.value),)
 
 
 class _FakeAcousticModel:
@@ -403,3 +406,53 @@ def test_a_directory_where_the_cache_would_go_is_reported_as_one(tmp_path):
 
     with pytest.raises(IsADirectoryError, match=r"cache\.npz"):
         _check_cache_destination(str(tmp_path / "cache"))
+
+
+@pytest.mark.parametrize("folders", [[], ["Noise"], ["-a"]])
+def test_training_data_without_a_class_folder_is_rejected_before_loading(
+    tmp_path, folders
+):
+    (tmp_path / "recording.wav").touch()
+
+    for folder in folders:
+        (tmp_path / folder).mkdir()
+
+    with (
+        patch.object(model_utils, "_load_acoustic_for_embeddings") as mock_load,
+        pytest.raises(ValueError, match="do not count as classes") as error,
+    ):
+        _load_training_data(str(tmp_path))
+
+    assert (error.value.key, error.value.values) == (
+        "validation-no-class-folders-in-training-data",
+        (str(tmp_path),),
+    )
+    mock_load.assert_not_called()
+
+
+@pytest.mark.usefixtures("fake_encoder")
+def test_training_data_of_which_no_recording_can_be_read_is_rejected(tmp_path):
+    for folder in ("a", "b"):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / "damaged.wav").write_bytes(bytes(2000))
+
+    with pytest.raises(TrainingInputError, match="could be read") as error:
+        _load_training_data(str(tmp_path))
+
+    assert (error.value.key, error.value.values) == (
+        "validation-no-readable-training-audio",
+        (str(tmp_path),),
+    )
+
+
+def test_a_training_error_arrives_whole_from_another_process():
+    error = TrainingInputError("a-key", "No class folders.", "recordings")
+
+    arrived = pickle.loads(pickle.dumps(error))
+
+    assert (type(arrived), str(arrived), arrived.key, arrived.values) == (
+        TrainingInputError,
+        "No class folders.",
+        "a-key",
+        ("recordings",),
+    )

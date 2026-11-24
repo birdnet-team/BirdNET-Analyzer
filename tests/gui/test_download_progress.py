@@ -249,6 +249,7 @@ def _run_single_file_tab(monkeypatch, report):
 
     class FakePredictions:
         hop_duration_s = 3.0
+        unprocessable_inputs = ()
 
         def to_dataframe(self):
             return pd.DataFrame(
@@ -287,6 +288,7 @@ def _run_single_file_tab(monkeypatch, report):
     return _flatten(records), infos
 
 
+@pytest.mark.usefixtures("made_up_inputs")
 def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
     updates, infos = _run_single_file_tab(
         monkeypatch, lambda **kwargs: _emit_download()
@@ -295,6 +297,7 @@ def test_single_file_tab_shows_the_download_on_its_progress_bar(monkeypatch):
     _assert_download_reached_the_bar(updates, infos)
 
 
+@pytest.mark.usefixtures("made_up_inputs")
 def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch):
     from types import SimpleNamespace
 
@@ -317,6 +320,7 @@ def test_single_file_tab_shows_analysis_progress_on_its_progress_bar(monkeypatch
     assert unit != "progress-unit-segments", "the unit label is an untranslated key"
 
 
+@pytest.mark.usefixtures("made_up_inputs")
 def test_embeddings_tab_shows_the_download_on_its_progress_bar(monkeypatch, tmp_path):
     from birdnet_analyzer.gui import embeddings as gui_embeddings
 
