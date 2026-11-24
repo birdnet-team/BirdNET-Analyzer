@@ -64,7 +64,7 @@ def test_an_unreadable_file_is_reported_as_such(appdir, handler, monkeypatch, lo
 
     with pytest.raises(gr.Error) as raised:
         handler(single_file.build_single_analysis_tab, "load_player")(
-            "clip.wav", False, False
+            "clip.wav", False, False, True
         )
 
     assert "disk" in raised.value.message
@@ -155,14 +155,14 @@ def test_cancelling_the_dialog_changes_nothing(appdir, handler, monkeypatch):
         single_file.build_single_analysis_tab, "select_and_load_audio_file"
     )()
 
-    assert list(result) == [gr.skip()] * 9 + [None]
+    assert list(result) == [gr.skip()] * 10 + [None]
 
 
 def test_a_cancelled_dialog_stops_the_chained_steps(appdir, handler):
     tab = single_file.build_single_analysis_tab
 
     assert handler(tab, "lock_analyze")(None) == gr.skip()
-    assert handler(tab, "load_player")(None, False, False) == (gr.skip(),) * 4
+    assert handler(tab, "load_player")(None, False, False, True) == (gr.skip(),) * 4
 
 
 def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path):
@@ -177,6 +177,7 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
         player,
         checkbox,
         spectrogram_checkbox,
+        freq_checkbox,
         predictions,
         table,
         actions,
@@ -188,6 +189,7 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
     assert player["visible"] is True, "the player shows up before the audio is ready"
     assert checkbox["visible"] is True
     assert spectrogram_checkbox["visible"] is True, "it can be turned off for any file"
+    assert freq_checkbox["visible"] is True
     assert predictions is None, "a new file drops the last results"
     assert table["visible"] is False
     assert table["value"] is None
@@ -196,13 +198,14 @@ def test_the_player_gets_the_file_itself(appdir, handler, monkeypatch, tmp_path)
 
     src, player, analyze, long_recording = handler(
         single_file.build_single_analysis_tab, "load_player"
-    )(path, True, False)
+    )(path, True, False, False)
 
     assert src == str(clip)
     assert player == {
         "src": str(clip),
         "showConfidence": True,
         "viewMode": "spectrogram",
+        "autoFreqView": False,
         "spectrogram": {
             "colorScheme": "viridis",
             "windowSize": 1024,
@@ -229,7 +232,7 @@ def test_the_player_draws_with_the_spectrogram_settings(appdir, handler, tmp_pat
         settings.set_tab_setting("settings", key, value)
 
     _, player, *_ = handler(single_file.build_single_analysis_tab, "load_player")(
-        str(clip), False, False
+        str(clip), False, False, True
     )
 
     assert player["spectrogram"] == {
@@ -240,6 +243,13 @@ def test_the_player_draws_with_the_spectrogram_settings(appdir, handler, tmp_pat
         "scale": "cqt",
         "contrastRangeDb": 60,
     }
+
+
+def test_the_frequency_range_fit_can_be_switched_off(appdir, handler):
+    apply = handler(single_file.build_single_analysis_tab, "apply_auto_freq")
+
+    assert apply("clip.wav", False) == {"src": "clip.wav", "autoFreqView": False}
+    assert apply(None, False) == gr.skip()
 
 
 def test_returning_to_the_tab_brings_changed_spectrogram_settings(appdir, handler):
@@ -271,7 +281,7 @@ def test_a_long_recording_shows_its_spectrogram_on_request(
 
     _, player, _, long_recording = handler(
         single_file.build_single_analysis_tab, "load_player"
-    )(str(clip), False, show)
+    )(str(clip), False, show, True)
 
     assert player["viewMode"] == view
     assert long_recording is True

@@ -371,6 +371,13 @@ def build_single_analysis_tab() -> None:
             value=False,
             visible=False,
         )
+        auto_freq_checkbox = state.persist(
+            "auto_freq_view",
+            gr.Checkbox,
+            label=loc.localize("single-tab-auto-freq-label"),
+            value=True,
+            visible=False,
+        )
         long_recording_state = gr.State(False)
         audio_path_state = gr.State()
         player_src_state = gr.State()
@@ -417,7 +424,7 @@ def build_single_analysis_tab() -> None:
             # The last value is the selection request: None tells the
             # steps chained below that the dialog was cancelled.
             if not file_path:
-                return (*(gr.skip(),) * 9, None)
+                return (*(gr.skip(),) * 10, None)
 
             # The player shows up right away: decoding an mp3/ogg into a
             # preview below can take a while for long recordings.
@@ -428,6 +435,7 @@ def build_single_analysis_tab() -> None:
                 gr.update(visible=True, value=player_value(None)),
                 gr.update(visible=True),
                 # Shown for every file: it can only be turned off where it is shown.
+                gr.update(visible=True),
                 gr.update(visible=True),
                 None,
                 # The results of the last recording go with its predictions.
@@ -444,7 +452,7 @@ def build_single_analysis_tab() -> None:
             return gr.update(interactive=False)
 
         @gu.gui_runtime_error_handler
-        def load_player(file_path, show_confidence, show_long_spectrogram):
+        def load_player(file_path, show_confidence, show_long_spectrogram, auto_freq):
             if not file_path:
                 return (gr.skip(),) * 4
 
@@ -460,6 +468,7 @@ def build_single_analysis_tab() -> None:
                     show_confidence=show_confidence,
                     view_mode=view_mode(long_recording, show_long_spectrogram),
                     spectrogram=gu.player_spectrogram_settings(),
+                    auto_freq_view=auto_freq,
                 ),
                 gr.update(interactive=True),
                 long_recording,
@@ -474,6 +483,7 @@ def build_single_analysis_tab() -> None:
                 player,
                 show_confidence_checkbox,
                 long_spectrogram_checkbox,
+                auto_freq_checkbox,
                 last_prediction_state,
                 output_dataframe,
                 action_row,
@@ -490,6 +500,7 @@ def build_single_analysis_tab() -> None:
                 selection_state,
                 show_confidence_checkbox,
                 long_spectrogram_checkbox,
+                auto_freq_checkbox,
             ],
             outputs=[
                 player_src_state,
@@ -614,6 +625,13 @@ def build_single_analysis_tab() -> None:
                     )
 
         @gu.gui_runtime_error_handler
+        def apply_auto_freq(player_src, auto_freq):
+            if not player_src:
+                return gr.skip()
+
+            return player_value(player_src, auto_freq_view=auto_freq)
+
+        @gu.gui_runtime_error_handler
         def apply_spectrogram_settings(player_src):
             if not player_src:
                 return gr.skip()
@@ -640,6 +658,12 @@ def build_single_analysis_tab() -> None:
         output_dataframe.select(
             play_selected_detection,
             inputs=[last_prediction_state, player_src_state, show_confidence_checkbox],
+            outputs=player,
+            show_progress="hidden",
+        )
+        auto_freq_checkbox.change(
+            apply_auto_freq,
+            inputs=[player_src_state, auto_freq_checkbox],
             outputs=player,
             show_progress="hidden",
         )

@@ -411,6 +411,7 @@
     "settings-tab-theme-dropdown-label": "Theme",
     "settings-tab-theme-dropdown-light-option": "Light",
     "settings-tab-title": "Settings",
+    "single-tab-auto-freq-label": "Fit the frequency range to the recording",
     "single-tab-download-csv-button-label": "Download CSV",
     "single-tab-download-kaleidoscope-button-label": "Download Kaleidoscope table",
     "single-tab-download-rtable-button-label": "Download Raven table",
