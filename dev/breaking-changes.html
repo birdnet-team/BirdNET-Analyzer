@@ -540,6 +540,16 @@ result of the birdnet library instead of <code class="docutils literal notransla
 <li><p><strong>Search</strong> with a query longer than one segment (<code class="docutils literal notranslate"><span class="pre">--crop_mode</span> <span class="pre">segments</span></code>) ranks the
 results by their mean score over all query segments. v2.4.0 counted a result only for
 the query segments whose own top results contained it, so its rankings differ.</p></li>
+<li><p><strong>Training files and search queries shorter than 1 second</strong> are used in the
+<code class="docutils literal notranslate"><span class="pre">segments</span></code> and <code class="docutils literal notranslate"><span class="pre">first</span></code> crop modes too: such a file is one segment, padded with
+zeros to 3 seconds as in the other crop modes. At the default overlap, v2.4.0 left them
+out with <code class="docutils literal notranslate"><span class="pre">segments</span></code>, so a class of short calls had fewer samples than files, or
+none. With <code class="docutils literal notranslate"><span class="pre">first</span></code>, the training stopped with an error, and so did a search with
+such a query.</p></li>
+<li><p><strong>Training with ``–crop_mode first`` and an ``–audio_speed`` above 1</strong> uses the
+first 3 seconds of the sped-up audio. v2.4.0 sped up only the first 3 seconds of the
+recording, so the rest of the segment was silence, and above a speed of 3 the
+training stopped with an error.</p></li>
 <li><p><strong>Merged detections</strong> (<code class="docutils literal notranslate"><span class="pre">--merge_consecutive</span></code>) of more than three segments have the
 mean confidence of all of them; v2.4.0 took the mean of the three highest.</p></li>
 <li><p><strong>The GUI of a pip or source installation</strong> keeps its language, theme and last used
