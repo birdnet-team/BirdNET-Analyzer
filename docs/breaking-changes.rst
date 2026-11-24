@@ -207,7 +207,7 @@ the validation split; v2.4.0 trained on all of it and validated on the test data
 same command trains a different classifier than v2.4.0, and its validation scores are
 not comparable.
 
-**What to do.** Choose ``--val_split`` for the share of the training data to hold out;
+**What to do.** Choose ``--val_split`` for the share of the training files to hold out;
 ``--val_split 0`` is rejected. Compare scores only between runs of this version.
 
 
@@ -219,9 +219,10 @@ training samples. The validation split now holds out whole files, ``--val_split`
 each class's files, so a file is either trained on or validated on. v2.4.0 split the
 segments one by one and validated on segments of files it also trained on. The folds
 of ``--autotune_n_splits`` take whole files too. A class with only one file is always
-trained on and not validated, and a training in which no class has a second file
-stops with an error, in every crop mode. The "center" and "first" crop modes give one
-sample per file and split as before.
+trained on and not validated. In every crop mode, a training stops with an error if no
+class has a second file, or if a classifier for a single class has only one file of
+the class or of non-event samples. The "center" and "first" crop modes give one sample
+per file and split as before.
 
 **Consequence.** In the "segments" and "smart" modes the same command trains on other
 samples than v2.4.0 and usually reports a lower validation score, as it no longer
