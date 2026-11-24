@@ -329,6 +329,31 @@ def test_non_event_rows_form_their_own_stratum():
         assert np.sum(y[val_idx].sum(axis=1) == 0) == 1
 
 
+def test_every_fold_validates_whole_files_and_trains_a_class_of_one_file():
+    from birdnet_analyzer.train.utils import _kfold_splits
+
+    files = np.repeat(np.arange(13), 3)
+    y = np.zeros((39, 3), dtype="float32")
+    y[:18, 0] = y[18:36, 1] = y[36:, 2] = 1
+    validated = []
+
+    for train_idx, val_idx in _kfold_splits(y, 3, 1, False, False, files):
+        assert not set(files[train_idx]) & set(files[val_idx])
+        assert {36, 37, 38} <= set(train_idx)
+        validated.extend(files[val_idx])
+
+    assert sorted(validated) == list(np.repeat(np.arange(12), 3))
+
+
+def test_more_folds_than_files_to_validate_on_are_refused():
+    from birdnet_analyzer.train.utils import _kfold_splits
+
+    y = np.repeat(np.eye(2, dtype="float32"), 6, axis=0)
+
+    with pytest.raises(ValueError, match="5 folds needs at least 5 files"):
+        list(_kfold_splits(y, 5, 1, False, False, np.repeat(np.arange(4), 3)))
+
+
 def test_off_grid_defaults_are_snapped_to_the_search_space(caplog):
     from birdnet_analyzer.train.utils import _search_space, _snap_to_search_space
 
@@ -404,6 +429,60 @@ def _synthetic_training_data(version="3.0"):
         False,
         version,
     )
+
+
+def _synthetic_training_files(monkeypatch, files):
+    from birdnet_analyzer.train import utils as train_utils
+
+    x, y, _, *rest = _synthetic_training_data()
+    monkeypatch.setattr(
+        train_utils, "_load_training_data", lambda *a, **k: (x, y, files, *rest)
+    )
+
+
+def test_a_class_of_one_file_is_named_as_left_out_of_the_validation(
+    monkeypatch, tmp_path, caplog
+):
+    from birdnet_analyzer.train.utils import train_model
+
+    _synthetic_training_files(monkeypatch, np.r_[np.arange(20), np.full(20, 20)])
+
+    train_model("unused", output=str(tmp_path / "cc"), epochs=1, model_formats=[])
+
+    assert "the validation score does not cover them: b" in caplog.text
+
+
+@pytest.mark.usefixtures("fit_refused")
+def test_a_training_where_no_class_has_a_second_file_is_refused(monkeypatch, tmp_path):
+    from birdnet_analyzer.train.utils import train_model
+
+    _synthetic_training_files(monkeypatch, np.repeat([0, 1], 20))
+
+    with pytest.raises(ValueError, match="only one file") as error:
+        train_model("unused", output=str(tmp_path / "cc"), model_formats=[])
+
+    assert error.value.args[1] == "validation-no-class-with-two-files"
+
+
+@pytest.mark.parametrize(
+    ("crop_mode", "warned"), [("segments", True), ("smart", True), ("center", False)]
+)
+def test_a_cache_without_its_files_trains_with_a_warning_if_files_gave_several_samples(
+    tmp_path, caplog, crop_mode, warned
+):
+    from birdnet_analyzer.train import utils as train_utils
+
+    x, y, *_ = _synthetic_training_data()
+    cache = str(tmp_path / "cache.npz")
+    train_utils._save_to_cache(
+        cache, x, y, np.array([]), np.array([]), ["a", "b"], crop_mode=crop_mode
+    )
+
+    train_utils.train_model(
+        cache, output=str(tmp_path / "cc"), epochs=1, model_formats=[]
+    )
+
+    assert ("does not record the file" in caplog.text) is warned
 
 
 @pytest.fixture

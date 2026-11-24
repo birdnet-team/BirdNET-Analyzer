@@ -18,9 +18,9 @@ SR = 48000
 SIG_LENGTH = 3.0
 
 
-def _sine_wav(path, duration):
+def _sine_wav(path, duration, amplitude=0.3):
     t = np.linspace(0, duration, int(SR * duration), endpoint=False, dtype="float32")
-    sf.write(path, (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
+    sf.write(path, (amplitude * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
 
     return str(path)
 
@@ -269,7 +269,7 @@ def fake_encoder(monkeypatch):
         model_utils,
         "encode_arrays_batched",
         lambda _, signals: (
-            np.zeros((len(signals), 4), dtype="float32"),
+            np.array([[np.abs(s).max()] * 4 for s, _ in signals], dtype="float32"),
             np.ones(len(signals), dtype=bool),
         ),
     )
@@ -288,6 +288,47 @@ def test_a_folder_of_spaced_labels_sets_each_label(tmp_path):
 
     assert labels == ["a", "b"]
     np.testing.assert_array_equal(y_train, [[1, 1]])
+
+
+@pytest.mark.usefixtures("fake_encoder")
+def test_no_file_trains_and_validates_from_its_audio_or_its_cache(
+    tmp_path, monkeypatch
+):
+    import keras
+
+    from birdnet_analyzer.train.utils import train_model
+
+    for k in range(10):
+        folder = tmp_path / "data" / "ab"[k % 2]
+        folder.mkdir(parents=True, exist_ok=True)
+        _sine_wav(folder / f"{k}.wav", 9.0, amplitude=0.1 + 0.05 * k)
+
+    fits = []
+    fit = keras.Model.fit
+
+    def recording_fit(self, x, y, validation_data, **kwargs):
+        fits.append((x[:, 0], validation_data[0][:, 0]))
+        return fit(self, x, y, validation_data=validation_data, **kwargs)
+
+    monkeypatch.setattr(keras.Model, "fit", recording_fit)
+    cache = str(tmp_path / "cache.npz")
+    options = {
+        "crop_mode": "segments",
+        "overlap": 1.5,
+        "epochs": 1,
+        "model_formats": [],
+    }
+
+    train_model(
+        str(tmp_path / "data"), str(tmp_path / "cc"), save_cache_to=cache, **options
+    )
+    train_model(cache, str(tmp_path / "cc"), **options)
+
+    assert len(fits) == 2
+
+    for trained, validated in fits:
+        assert len(validated)
+        assert not set(np.round(trained, 2)) & set(np.round(validated, 2))
 
 
 @pytest.mark.usefixtures("fake_encoder")
