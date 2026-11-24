@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Пожалуйста, введите имя для классификатора.",
     "validation-no-valid-frequency": "Введите допустимую частоту в",
     "validation-non-event-samples-required-in-binary-classification": "Для бинарной классификации требуются образцы без событий",
-    "validation-only-repeat-upsampling-for-multi-label": "Для обучения с несколькими метками доступен только режим повышающей дискретизации «повтор»"
+    "validation-only-repeat-upsampling-for-multi-label": "Для обучения с несколькими метками доступен только режим повышающей дискретизации «повтор»",
+    "validation-too-few-files-to-validate": "Слишком мало файлов для валидации. Хотя бы в одном классе должно быть два или больше файлов, а классификатору для одного класса нужны ещё два или больше файлов без событий."
 }

@@ -772,7 +772,7 @@ def train_parser():
         "--val_split",
         type=float,
         default=0.2,
-        help="A small percentage of the training data that is not used for training, but for validation scores and early stopping during training. Must be above 0.",
+        help="The share of each class's training files that is not used for training, but for validation scores and early stopping during training. All segments of a file stay on the same side. Must be above 0.",
     )
     parser.add_argument(
         "--learning_rate",
@@ -867,7 +867,7 @@ def train_parser():
         "--autotune_n_splits",
         type=int,
         default=1,
-        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred samples.",
+        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. A fold takes whole files. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred files.",
     )
     parser.add_argument(
         "--autotune_n_repeats",

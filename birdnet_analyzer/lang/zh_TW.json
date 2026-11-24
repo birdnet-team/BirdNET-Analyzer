@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "請輸入有效的分類器名稱",
     "validation-no-valid-frequency": "請輸入有效的頻率",
     "validation-non-event-samples-required-in-binary-classification": "二元分類需要非事件樣本",
-    "validation-only-repeat-upsampling-for-multi-label": "多標籤訓練僅支援重覆上取樣"
+    "validation-only-repeat-upsampling-for-multi-label": "多標籤訓練僅支援重覆上取樣",
+    "validation-too-few-files-to-validate": "可用於驗證的檔案太少。至少一個類別需要兩個或更多檔案，只針對一個類別的分類器還需要兩個或更多非事件檔案。"
 }

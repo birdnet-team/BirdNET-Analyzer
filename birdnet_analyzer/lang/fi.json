@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Anna kelvollinen nimi luokittelijalle.",
     "validation-no-valid-frequency": "Anna kelvollinen taajuus",
     "validation-non-event-samples-required-in-binary-classification": "Binääriluokittelu vaatii ei-tapahtumanäytteitä",
-    "validation-only-repeat-upsampling-for-multi-label": "Monileimakoulutuksessa on käytettävissä vain toista-ylösnäytteistys"
+    "validation-only-repeat-upsampling-for-multi-label": "Monileimakoulutuksessa on käytettävissä vain toista-ylösnäytteistys",
+    "validation-too-few-files-to-validate": "Liian vähän tiedostoja validointiin. Vähintään yhdessä luokassa on oltava kaksi tai useampia tiedostoja, ja yhden luokan luokittelija tarvitsee lisäksi kaksi tai useampia ei-tapahtumatiedostoja."
 }

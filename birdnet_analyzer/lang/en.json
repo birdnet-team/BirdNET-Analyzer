@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Please enter a valid name for the classifier.",
     "validation-no-valid-frequency": "Please enter a valid frequency in",
     "validation-non-event-samples-required-in-binary-classification": "Non-event samples are required for binary classification",
-    "validation-only-repeat-upsampling-for-multi-label": "Only repeat-upsampling is available for multi-label training"
+    "validation-only-repeat-upsampling-for-multi-label": "Only repeat-upsampling is available for multi-label training",
+    "validation-too-few-files-to-validate": "Too few files to validate on. At least one class needs two or more files, and a classifier for a single class also needs two or more non-event files."
 }

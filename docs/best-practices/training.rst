@@ -50,6 +50,9 @@ The following class names can be used for the non-event samples:
 BirdNET will process 3-second audio segments from your recordings and we recommend using 3-second audio files for training.
 In case your audio files are longer than 3 seconds, you can specify a crop mode to choose how these audio files are processed. See :doc:`crop modes <../implementation-details/crop-modes>` for more details. 
 
+The training holds back a part of the files of each class to validate on, and it keeps all samples of a file together, so the validation score shows how the classifier does on files it has not been trained on. Clips cut from one recording count as separate files.
+A class therefore needs at least two files to be validated: a class with a single file is only trained on. The training stops with an error if no class has a second file, and a classifier for a single class also needs two or more non-event files.
+
 3. Training Process
 ----------------------
 

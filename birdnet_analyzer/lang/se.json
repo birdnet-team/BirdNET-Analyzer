@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Ange ett giltigt namn för klassificeraren.",
     "validation-no-valid-frequency": "Ange en giltig frekvens i",
     "validation-non-event-samples-required-in-binary-classification": "Prover utan händelser krävs för binär klassificering",
-    "validation-only-repeat-upsampling-for-multi-label": "Endast upsampling med upprepning är tillgänglig för träning med flera etiketter"
+    "validation-only-repeat-upsampling-for-multi-label": "Endast upsampling med upprepning är tillgänglig för träning med flera etiketter",
+    "validation-too-few-files-to-validate": "För få filer för validering. Minst en klass behöver två eller fler filer, och en klassificerare för en enda klass behöver dessutom två eller fler filer utan händelser."
 }

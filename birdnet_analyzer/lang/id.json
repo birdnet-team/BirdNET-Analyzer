@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Silakan masukkan nama yang valid untuk klasifikator.",
     "validation-no-valid-frequency": "Silakan masukkan frekuensi yang valid dalam",
     "validation-non-event-samples-required-in-binary-classification": "Sampel non-event diperlukan untuk klasifikasi biner",
-    "validation-only-repeat-upsampling-for-multi-label": "Hanya peningkatan sampel mode ulang yang tersedia untuk pelatihan multi-label"
+    "validation-only-repeat-upsampling-for-multi-label": "Hanya peningkatan sampel mode ulang yang tersedia untuk pelatihan multi-label",
+    "validation-too-few-files-to-validate": "Terlalu sedikit berkas untuk validasi. Setidaknya satu kelas memerlukan dua berkas atau lebih, dan pengklasifikasi untuk satu kelas juga memerlukan dua berkas non-event atau lebih."
 }

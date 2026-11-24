@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Veuillez saisir un nom valide pour le classificateur.",
     "validation-no-valid-frequency": "Veuillez saisir une fréquence valide dans",
     "validation-non-event-samples-required-in-binary-classification": "Des échantillons non-événement sont requis pour la classification binaire",
-    "validation-only-repeat-upsampling-for-multi-label": "Seul le suréchantillonnage par répétition est disponible pour l'entraînement multi-étiquettes"
+    "validation-only-repeat-upsampling-for-multi-label": "Seul le suréchantillonnage par répétition est disponible pour l'entraînement multi-étiquettes",
+    "validation-too-few-files-to-validate": "Trop peu de fichiers pour la validation. Au moins une classe doit contenir deux fichiers ou plus, et un classificateur pour une seule classe a aussi besoin de deux fichiers non-événement ou plus."
 }

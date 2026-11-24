@@ -20,6 +20,7 @@ Segments
 
 With this crop mode you can also specify an overlap. The crop mode will then split the audio file into 3 second segments with the specified overlap.
 In the training feature this will result in multiple training examples that are generated from the same audio file.
+They stay together in the validation split: all segments of a file are either trained on or validated on.
 In the search feature the similarity measure will be averaged over all segments of the query example. 
 
 Smart
@@ -28,3 +29,4 @@ Smart
 In Smart mode, the system analyzes the audio signal to detect segments with the highest energy or amplitude peaks, the points where relevant events such as bird calls are most likely to occur.
 From the full recording, the top 5 segments with the strongest peaks are selected; if fewer than five segments are detected, all are returned.
 This mode is particularly useful for longer audio files (around 15 seconds or more, or whenever overlap produces more than five segments).
+As in the segments mode, the selected segments of a file stay together in the validation split.

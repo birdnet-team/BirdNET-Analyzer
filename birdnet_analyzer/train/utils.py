@@ -249,8 +249,9 @@ def _load_training_data(
                        returned instead.
 
     Returns:
-        A tuple of (x_train, y_train, x_test, y_test, labels, is_binary, is_multi_label,
-        model_version)
+        A tuple of (x_train, y_train, files_train, x_test, y_test, labels, is_binary,
+        is_multi_label, model_version), where files_train numbers the file each
+        training sample was cut from, or is None for a cache without that record.
     """
 
     if audio_input.endswith(".npz"):
@@ -318,11 +319,15 @@ def _load_training_data(
     ) as session:
 
         def load_data(data_path, allowed_folders):
-            # Accumulated embeddings/labels, plus a buffer of not-yet-encoded segments.
+            # Accumulated embeddings/labels/files, plus a buffer of not-yet-encoded
+            # segments.
             x_chunks: list[np.ndarray] = []
             y_chunks: list[np.ndarray] = []
+            file_chunks: list[np.ndarray] = []
             seg_buffer: list[np.ndarray] = []
             lab_buffer: list[np.ndarray] = []
+            file_buffer: list[int] = []
+            num_files = 0
 
             def flush():
                 """Encode buffered segments in one batched call, keeping valid rows."""
@@ -334,8 +339,10 @@ def _load_training_data(
                 labels = np.asarray(lab_buffer, dtype="float32")
                 x_chunks.append(embeddings[valid])
                 y_chunks.append(labels[valid])
+                file_chunks.append(np.asarray(file_buffer)[valid])
                 seg_buffer.clear()
                 lab_buffer.clear()
+                file_buffer.clear()
 
             folders = sorted(utils.list_subdirectories(data_path))
 
@@ -399,6 +406,8 @@ def _load_training_data(
                         sig_splits, labels = fut.result()
                         seg_buffer.extend(sig_splits)
                         lab_buffer.extend(labels)
+                        file_buffer.extend([num_files] * len(sig_splits))
+                        num_files += 1
 
                         num_files_processed += 1
                         progress_bar.update(1)
@@ -415,14 +424,16 @@ def _load_training_data(
                 return (
                     np.array([], dtype="float32"),
                     np.array([], dtype="float32"),
+                    np.array([], dtype=int),
                 )
 
             return (
                 np.concatenate(x_chunks).astype("float32"),
                 np.concatenate(y_chunks).astype("float32"),
+                np.concatenate(file_chunks),
             )
 
-        x_train, y_train = load_data(audio_input, train_folders)
+        x_train, y_train, files_train = load_data(audio_input, train_folders)
 
         if test_data and test_data != audio_input:
             test_folders = sorted(utils.list_subdirectories(test_data))
@@ -431,7 +442,7 @@ def _load_training_data(
                 for folder in test_folders
                 if folder in train_folders and not folder.startswith("-")
             ]
-            x_test, y_test = load_data(test_data, allowed_test_folders)
+            x_test, y_test, _ = load_data(test_data, allowed_test_folders)
         else:
             x_test = np.array([])
             y_test = np.array([])
@@ -445,6 +456,7 @@ def _load_training_data(
                 x_test,
                 y_test,
                 valid_labels,
+                files_train=files_train,
                 overlap=overlap,
                 fmin=fmin,
                 fmax=fmax,
@@ -461,6 +473,7 @@ def _load_training_data(
     return (
         x_train,
         y_train,
+        files_train,
         x_test,
         y_test,
         valid_labels,
@@ -553,14 +566,9 @@ def _snap_to_search_space(defaults: dict, space: dict[str, list | _FloatRange]) 
     return snapped
 
 
-def _stratification_labels(
-    y: np.ndarray, is_binary: bool, is_multi_label: bool
-) -> np.ndarray:
+def _stratification_labels(y: np.ndarray, is_binary: bool) -> np.ndarray:
     if is_binary:
         return (y[:, 0] > 0).astype(int)
-
-    if is_multi_label:
-        return np.sum(y > 0, axis=1)
 
     num_classes = y.shape[1]
     no_positive = np.where(np.any(y < 0, axis=1), num_classes + 1, num_classes)
@@ -568,21 +576,127 @@ def _stratification_labels(
     return np.where(np.any(y > 0, axis=1), np.argmax(y, axis=1), no_positive)
 
 
+_BLOCK_ROWS = 8192
+
+
+def _by_blocks(function, y: np.ndarray, rows: np.ndarray | None = None) -> np.ndarray:
+    """Applies a function of label rows block by block, so that the labels are never
+    copied as a whole."""
+    count = len(y) if rows is None else len(rows)
+    blocks = [
+        function(
+            y[start : start + _BLOCK_ROWS]
+            if rows is None
+            else y[rows[start : start + _BLOCK_ROWS]]
+        )
+        for start in range(0, count, _BLOCK_ROWS)
+    ]
+
+    return np.concatenate(blocks) if blocks else function(y[:0])
+
+
+def _label_keys(y: np.ndarray) -> np.ndarray:
+    """One value per row, equal for rows with equal labels of -1, 0 and 1."""
+
+    def keys(block):
+        signs = np.packbits(np.concatenate([block > 0, block < 0], axis=1), axis=1)
+
+        return signs.view(f"V{signs.shape[1]}").ravel()
+
+    return _by_blocks(keys, y)
+
+
+def _only_file_of_their_labels(keys: np.ndarray, files: np.ndarray) -> np.ndarray:
+    """Marks the rows of files that no other file shares the labels with."""
+    _, labels_of_row = np.unique(keys, return_inverse=True)
+    files_per_label = files.max(initial=0) + 1
+    labels_of_file = (
+        np.unique(labels_of_row.astype(np.int64) * files_per_label + files)
+        // files_per_label
+    )
+
+    return np.bincount(labels_of_file)[labels_of_row] == 1
+
+
 def _kfold_splits(
-    y: np.ndarray, n_splits: int, n_repeats: int, is_binary: bool, is_multi_label: bool
+    y: np.ndarray,
+    n_splits: int,
+    n_repeats: int,
+    is_binary: bool,
+    is_multi_label: bool,
+    files: np.ndarray,
 ) -> Generator[tuple[np.ndarray, np.ndarray], None, None]:
-    """Yields the training and validation row indices of each fold."""
-    negative = np.any(y < 0, axis=1)
-    candidates = np.flatnonzero(~negative)
+    """Yields the training and validation row indices of each fold. The folds are
+    made of files, and a file whose labels no other file has always trains."""
+    keys = _label_keys(y)
+    negative = _by_blocks(lambda block: np.any(block < 0, axis=1), y)
+    always_trains = negative | _only_file_of_their_labels(keys, files)
+    candidates = np.flatnonzero(~always_trains)
+    candidate_files, first_row, file_of_candidate = np.unique(
+        files[candidates], return_index=True, return_inverse=True
+    )
+    file_rows = candidates[first_row]
+    strata = (
+        np.unique(keys[file_rows], return_inverse=True)[1]
+        if is_multi_label
+        else _by_blocks(
+            lambda block: _stratification_labels(block, is_binary), y, file_rows
+        )
+    )
+    largest = np.bincount(strata, minlength=1).max()
+
+    if largest < n_splits:
+        raise ValueError(
+            f"Autotune with {n_splits} folds needs a class with at least {n_splits} "
+            f"files to validate on, but the largest has {largest}."
+        )
+
     folds = RepeatedStratifiedKFold(
         n_splits=n_splits, n_repeats=n_repeats, random_state=RANDOM_SEED
     )
-    strata = _stratification_labels(y[candidates], is_binary, is_multi_label)
 
-    for train_idx, val_idx in folds.split(candidates, strata):
+    for _, val_files in folds.split(candidate_files, strata):
+        validates = np.isin(file_of_candidate, val_files)
         yield (
-            np.concatenate([candidates[train_idx], np.flatnonzero(negative)]),
-            candidates[val_idx],
+            np.concatenate([candidates[~validates], np.flatnonzero(always_trains)]),
+            candidates[validates],
+        )
+
+
+def _check_validation_files(y: np.ndarray, files: np.ndarray, labels) -> None:
+    """Fails unless the validation split can hold positive and negative labels."""
+    keys = _label_keys(y)
+    negative, has_one, has_zero = _by_blocks(
+        lambda block: np.stack(
+            [
+                np.any(block < 0, axis=1),
+                np.any(block == 1, axis=1),
+                np.any(block == 0, axis=1),
+            ],
+            axis=1,
+        ),
+        y,
+    ).T
+    alone = _only_file_of_their_labels(keys, files) & ~negative
+    validated = ~negative & ~alone
+
+    if not (np.any(has_one[validated]) and np.any(has_zero[validated])):
+        raise ValueError(
+            "Too few files to validate on. At least one class needs two or more "
+            "files, and a classifier for a single class also needs two or more "
+            "non-event files.",
+            "validation-too-few-files-to-validate",
+        )
+
+    if np.any(alone):
+        rows = np.flatnonzero(alone)[np.unique(keys[alone], return_index=True)[1]]
+        names = [
+            "+".join(np.asarray(labels)[row > 0]) or "non-event" for row in y[rows]
+        ]
+        logger.warning(
+            "These classes have only one file each, which always trains, so the "
+            "validation score does not cover them: %s",
+            ", ".join(sorted(names)),
         )
 
 
@@ -648,8 +762,8 @@ def train_model(
             crop modes. Defaults to 0.0.
         epochs: Maximum number of epochs. Defaults to 50.
         batch_size: Training batch size. Defaults to 32.
-        val_split: Fraction of the training data used for validation, above 0.
-            Defaults to 0.2.
+        val_split: Fraction of each class's training files used for validation,
+            above 0; all segments of a file stay on the same side. Defaults to 0.2.
         learning_rate: Learning rate. Defaults to the one measured for the base model
             the classifier is trained on: 0.1 for BirdNET 3.0, 0.01 for 2.4.
         weight_decay: AdamW weight decay. Defaults to 0.004.
@@ -712,6 +826,7 @@ def train_model(
     (
         x_train_full,
         y_train_full,
+        files_train,
         x_test,
         y_test,
         labels,
@@ -762,6 +877,11 @@ def train_model(
     if len(x_test) > 0:
         logger.info(f"...Loaded {x_test.shape[0]} test samples.")
 
+    if files_train is None:
+        files_train = np.arange(len(y_train_full))
+
+    _check_validation_files(y_train_full, files_train, labels)
+
     formats = [model_formats] if isinstance(model_formats, str) else model_formats
     base = base_models.base_model(version)
 
@@ -794,6 +914,7 @@ def train_model(
                     autotune_n_repeats,
                     is_binary,
                     is_multi_label,
+                    files_train,
                 )
             )
             if autotune_n_splits > 1
@@ -851,6 +972,7 @@ def train_model(
                         weight_decay=params["weight_decay"],
                         monitor=autotune_metric,
                         monitor_mode="max",
+                        groups=files_train if val_idx is None else None,
                     )
                     scores.append(
                         history.history[autotune_metric][history.restored_epoch]
@@ -940,6 +1062,7 @@ def train_model(
             weight_decay=weight_decay,
             monitor=autotune_metric,
             monitor_mode="max",
+            groups=files_train,
         )
     except model.get_empty_class_exception() as e:
         e.message = (
@@ -1295,6 +1418,7 @@ def _save_to_cache(
     x_test,
     y_test,
     labels,
+    files_train=None,
     overlap=0.0,
     fmin=0.0,
     fmax=15000.0,
@@ -1313,6 +1437,7 @@ def _save_to_cache(
         x_test: Test samples.
         y_test: Test labels.
         labels: Labels.
+        files_train: The number of the file each training sample was cut from.
         overlap: Overlap between samples.
         fmin: Minimum frequency for bandpass filter.
         fmax: Maximum frequency for bandpass filter.
@@ -1343,6 +1468,7 @@ def _save_to_cache(
         crop_mode=crop_mode,
         overlap=overlap,
         model_version=model_version,
+        **({} if files_train is None else {"files_train": files_train}),
     )
 
 
@@ -1353,14 +1479,26 @@ def _load_from_cache(path):
         path: Path to the cache file.
 
     Returns:
-        A tuple of (x_train, y_train, x_test, y_test, labels, binary_classification,
-        multi_label, model_version).
+        A tuple of (x_train, y_train, files_train, x_test, y_test, labels,
+        binary_classification, multi_label, model_version), files_train being None
+        if the cache does not record the files.
     """
     import numpy as np
 
     data: dict = np.load(path, allow_pickle=True)
     x_train = data["x_train"]
     y_train = data["y_train"]
+    files_train = data.get("files_train")
+    one_sample_per_file = str(data.get("crop_mode")) in {"center", "first"}
+
+    if files_train is None and not one_sample_per_file:
+        logger.warning(
+            "This training data cache does not record the file each sample was cut "
+            "from, so the validation split can hold samples of files it trains on, "
+            "which makes the validation score too good. Create the cache again to "
+            "split by file."
+        )
+
     x_test = data.get("x_test", np.array([]))
     y_test = data.get("y_test", np.array([]))
     labels = data["labels"]
@@ -1375,6 +1513,7 @@ def _load_from_cache(path):
     return (
         x_train,
         y_train,
+        files_train,
         x_test,
         y_test,
         labels,

@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "Adicionar um nome válido para o classificador.",
     "validation-no-valid-frequency": "Adicionar uma frequência válida em",
     "validation-non-event-samples-required-in-binary-classification": "Amostras de não-evento são necessárias para a classificação binária",
-    "validation-only-repeat-upsampling-for-multi-label": "Apenas o upsampling de repetição está disponível para treinamento multirrótulo"
+    "validation-only-repeat-upsampling-for-multi-label": "Apenas o upsampling de repetição está disponível para treinamento multirrótulo",
+    "validation-too-few-files-to-validate": "Poucos arquivos para a validação. Pelo menos uma classe precisa de dois ou mais arquivos, e um classificador de uma única classe também precisa de dois ou mais arquivos de não-evento."
 }

@@ -18,9 +18,9 @@ SR = 48000
 SIG_LENGTH = 3.0
 
 
-def _sine_wav(path, duration):
+def _sine_wav(path, duration, amplitude=0.3):
     t = np.linspace(0, duration, int(SR * duration), endpoint=False, dtype="float32")
-    sf.write(path, (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
+    sf.write(path, (amplitude * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
 
     return str(path)
 
@@ -269,7 +269,7 @@ def fake_encoder(monkeypatch):
         model_utils,
         "encode_arrays_batched",
         lambda _, signals: (
-            np.zeros((len(signals), 4), dtype="float32"),
+            np.array([[np.abs(s).max()] * 4 for s, _ in signals], dtype="float32"),
             np.ones(len(signals), dtype=bool),
         ),
     )
@@ -284,10 +284,72 @@ def _write_wav(path):
 def test_a_folder_of_spaced_labels_sets_each_label(tmp_path):
     _write_wav(tmp_path / "a, b" / "x.wav")
 
-    _, y_train, _, _, labels, *_ = _load_training_data(str(tmp_path))
+    _, y_train, _, _, _, labels, *_ = _load_training_data(str(tmp_path))
 
     assert labels == ["a", "b"]
     np.testing.assert_array_equal(y_train, [[1, 1]])
+
+
+@pytest.mark.usefixtures("fake_encoder")
+@pytest.mark.parametrize(
+    "files_per_folder",
+    [
+        {"a": 5, "b": 5, "c": 1, "noise": 3},
+        {"a": 4, "b": 4, "a,b": 3, "c": 1, "noise": 2},
+    ],
+    ids=["single-label", "multi-label"],
+)
+def test_no_file_trains_and_validates_from_its_audio_or_its_cache(
+    tmp_path, monkeypatch, files_per_folder
+):
+    import keras
+
+    from birdnet_analyzer.train.utils import train_model
+
+    amplitudes = iter(np.arange(0.1, 1.0, 0.05))
+
+    for folder, n_files in files_per_folder.items():
+        (tmp_path / "data" / folder).mkdir(parents=True)
+
+        for k in range(n_files):
+            _sine_wav(tmp_path / "data" / folder / f"{k}.wav", 9.0, next(amplitudes))
+
+    fits = []
+    fit = keras.Model.fit
+
+    def recording_fit(self, x, y, validation_data, **kwargs):
+        fits.append((x[:, 0], y, validation_data[0][:, 0]))
+        return fit(self, x, y, validation_data=validation_data, **kwargs)
+
+    monkeypatch.setattr(keras.Model, "fit", recording_fit)
+    cache = str(tmp_path / "cache.npz")
+    output = str(tmp_path / "cc")
+    options = {
+        "crop_mode": "segments",
+        "overlap": 1.5,
+        "epochs": 1,
+        "model_formats": [],
+    }
+
+    train_model(str(tmp_path / "data"), output, save_cache_to=cache, **options)
+    train_model(cache, output, **options)
+
+    for n_splits in (1, 2):
+        train_model(
+            cache,
+            output,
+            autotune=True,
+            autotune_trials=1,
+            autotune_n_splits=n_splits,
+            **options,
+        )
+
+    assert len(fits) == 7
+
+    for trained, y_train, validated in fits:
+        assert len(validated)
+        assert not set(np.round(trained, 2)) & set(np.round(validated, 2))
+        assert np.all(np.any(y_train > 0, axis=0))
 
 
 @pytest.mark.usefixtures("fake_encoder")

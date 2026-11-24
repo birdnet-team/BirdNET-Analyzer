@@ -264,7 +264,7 @@ def test_binary_data_is_stratified_on_its_column():
 
     y = np.array([[1], [0], [0], [1]], dtype="float32")
 
-    assert _stratification_labels(y, True, False).tolist() == [1, 0, 0, 1]
+    assert _stratification_labels(y, True).tolist() == [1, 0, 0, 1]
 
 
 def test_single_label_strata_keep_non_events_and_negatives_apart():
@@ -272,18 +272,22 @@ def test_single_label_strata_keep_non_events_and_negatives_apart():
 
     y = np.array([[1, 0, 0], [0, 0, 1], [0, 0, 0], [-1, 0, 0], [0, 1, 0]])
 
-    strata = _stratification_labels(y, False, False)
+    strata = _stratification_labels(y, False)
 
     assert strata[[0, 4, 1]].tolist() == [0, 1, 2]
     assert len(set(strata.tolist())) == 5
 
 
-def test_multi_label_strata_count_the_active_labels():
-    from birdnet_analyzer.train.utils import _stratification_labels
+def test_every_label_trains_in_every_multi_label_fold():
+    from birdnet_analyzer.train.utils import _kfold_splits
 
-    y = np.array([[1, 1, 0], [1, 0, 0], [0, 0, 0], [1, -1, 1]])
+    y = np.array(
+        [[1, 0, 0]] * 8 + [[0, 1, 0]] * 8 + [[1, 1, 0]] * 2 + [[0, 1, 1]] * 2,
+        dtype="float32",
+    )
 
-    assert _stratification_labels(y, False, True).tolist() == [2, 1, 0, 2]
+    for train_idx, _ in _kfold_splits(y, 2, 1, False, True, np.arange(20)):
+        assert np.all(np.any(y[train_idx] > 0, axis=0))
 
 
 @pytest.mark.parametrize("is_multi_label", [False, True])
@@ -298,7 +302,9 @@ def test_negative_label_rows_train_in_every_fold_and_never_validate(is_multi_lab
     negatives = set(range(18, 21))
     validated = []
 
-    for train_idx, val_idx in _kfold_splits(y, 3, 1, False, is_multi_label):
+    for train_idx, val_idx in _kfold_splits(
+        y, 3, 1, False, is_multi_label, np.arange(24)
+    ):
         assert negatives <= set(train_idx)
         assert not negatives & set(val_idx)
         assert not set(train_idx) & set(val_idx)
@@ -313,7 +319,7 @@ def test_binary_folds_are_stratified():
     y = np.zeros((30, 1), dtype="float32")
     y[:10] = 1
 
-    for _, val_idx in _kfold_splits(y, 5, 1, True, False):
+    for _, val_idx in _kfold_splits(y, 5, 1, True, False, np.arange(30)):
         assert y[val_idx].sum() == 2
 
 
@@ -323,8 +329,34 @@ def test_non_event_rows_form_their_own_stratum():
     y = np.zeros((25, 2), dtype="float32")
     y[:10, 0] = y[10:20, 1] = 1
 
-    for _, val_idx in _kfold_splits(y, 5, 1, False, False):
+    for _, val_idx in _kfold_splits(y, 5, 1, False, False, np.arange(25)):
         assert np.sum(y[val_idx].sum(axis=1) == 0) == 1
+
+
+def test_every_fold_validates_whole_files_and_trains_a_class_of_one_file():
+    from birdnet_analyzer.train.utils import _kfold_splits
+
+    files = np.repeat(np.arange(13), 3)
+    y = np.zeros((39, 3), dtype="float32")
+    y[:3, 2] = y[3:21, 0] = y[21:, 1] = 1
+    validated = []
+
+    for train_idx, val_idx in _kfold_splits(y, 3, 1, False, False, files):
+        assert not set(files[train_idx]) & set(files[val_idx])
+        assert {0, 1, 2} <= set(train_idx)
+        assert [len(set(files[val_idx][y[val_idx, c] == 1])) for c in (0, 1)] == [2, 2]
+        validated.extend(files[val_idx])
+
+    assert sorted(validated) == list(np.repeat(np.arange(1, 13), 3))
+
+
+def test_more_folds_than_files_of_any_class_are_refused():
+    from birdnet_analyzer.train.utils import _kfold_splits
+
+    y = np.repeat(np.eye(3, dtype="float32"), 12, axis=0)
+
+    with pytest.raises(ValueError, match="5 folds needs a class with at least 5 files"):
+        list(_kfold_splits(y, 5, 1, False, False, np.repeat(np.arange(12), 3)))
 
 
 def test_off_grid_defaults_are_snapped_to_the_search_space(caplog):
@@ -391,7 +423,104 @@ def _synthetic_training_data(version="3.0"):
     y[20:, 1] = 1
     x = (rng.normal(size=(40, 8)) + 2 * y[:, :1]).astype("float32")
 
-    return x, y, np.array([]), np.array([]), ["a", "b"], False, False, version
+    return (
+        x,
+        y,
+        np.arange(40),
+        np.array([]),
+        np.array([]),
+        ["a", "b"],
+        False,
+        False,
+        version,
+    )
+
+
+def _files_of_labels(
+    monkeypatch, files_per_label, labels, is_binary=False, is_multi_label=False
+):
+    """Loads four rows per file for each (label vector, number of files) pair."""
+    from birdnet_analyzer.train import utils as train_utils
+
+    y = np.array(
+        [vector for vector, n in files_per_label for _ in range(4 * n)],
+        dtype="float32",
+    )
+    files = np.repeat(np.arange(len(y) // 4), 4)
+    x = (np.random.default_rng(0).normal(size=(len(y), 8)) + y[:, :1]).astype("float32")
+    data = (
+        *(x, y, files, np.array([]), np.array([]), labels),
+        *(is_binary, is_multi_label, "3.0"),
+    )
+    monkeypatch.setattr(train_utils, "_load_training_data", lambda *a, **k: data)
+
+
+@pytest.mark.parametrize(
+    ("files_per_label", "is_multi_label", "named"),
+    [
+        ([([1, 0], 5), ([0, 1], 1), ([0, 0], 1)], False, "b, non-event"),
+        ([([1, 0], 5), ([0, 1], 1), ([-1, 1], 2)], True, "b"),
+    ],
+    ids=["single-label", "multi-label with a negative label"],
+)
+def test_classes_of_one_file_train_and_are_named_as_left_out_of_the_validation(
+    monkeypatch, tmp_path, caplog, files_per_label, is_multi_label, named
+):
+    from birdnet_analyzer.train.utils import train_model
+
+    _files_of_labels(
+        monkeypatch, files_per_label, ["a", "b"], is_multi_label=is_multi_label
+    )
+
+    train_model("unused", output=str(tmp_path / "cc"), epochs=1, model_formats=[])
+
+    assert f"the validation score does not cover them: {named}\n" in caplog.text
+
+
+@pytest.mark.usefixtures("fit_refused")
+@pytest.mark.parametrize(
+    ("files_per_label", "is_binary"),
+    [
+        ([([1, 0], 1), ([0, 1], 1)], False),
+        ([([1, 0], 1), ([0, 1], 1), ([0, 0], 5)], False),
+        ([([1], 5), ([0], 1)], True),
+        ([([1], 1), ([0], 5)], True),
+    ],
+    ids=["one file each", "only non-events", "one non-event file", "one class file"],
+)
+def test_a_training_with_too_few_files_to_validate_on_is_refused(
+    monkeypatch, tmp_path, files_per_label, is_binary
+):
+    from birdnet_analyzer.train.utils import train_model
+
+    labels = ["a"] if is_binary else ["a", "b"]
+    _files_of_labels(monkeypatch, files_per_label, labels, is_binary)
+
+    with pytest.raises(ValueError, match="Too few files") as error:
+        train_model("unused", output=str(tmp_path / "cc"), model_formats=[])
+
+    assert error.value.args[1] == "validation-too-few-files-to-validate"
+
+
+@pytest.mark.parametrize(
+    ("crop_mode", "warned"), [("segments", True), ("smart", True), ("center", False)]
+)
+def test_a_cache_without_its_files_trains_with_a_warning_if_files_gave_several_samples(
+    tmp_path, caplog, crop_mode, warned
+):
+    from birdnet_analyzer.train import utils as train_utils
+
+    x, y, *_ = _synthetic_training_data()
+    cache = str(tmp_path / "cache.npz")
+    train_utils._save_to_cache(
+        cache, x, y, np.array([]), np.array([]), ["a", "b"], crop_mode=crop_mode
+    )
+
+    train_utils.train_model(
+        cache, output=str(tmp_path / "cc"), epochs=1, model_formats=[]
+    )
+
+    assert ("does not record the file" in caplog.text) is warned
 
 
 @pytest.fixture
@@ -544,7 +673,7 @@ def test_tuning_and_early_stopping_never_see_the_test_data(monkeypatch, tmp_path
     monkeypatch.setattr(
         train_utils,
         "_load_training_data",
-        lambda *a, **k: (x, y, x_test, y_test, ["a", "b"], False, False, "3.0"),
+        lambda *a, **k: (x, y, None, x_test, y_test, ["a", "b"], False, False, "3.0"),
     )
     fits = []
     evaluated = []
@@ -643,7 +772,7 @@ def test_the_result_tables_take_a_label_outside_the_windows_code_page(
     monkeypatch.setattr(
         train_utils,
         "_load_training_data",
-        lambda *a, **k: (x, y, x[::4], y[::4], labels, False, False, "3.0"),
+        lambda *a, **k: (x, y, None, x[::4], y[::4], labels, False, False, "3.0"),
     )
 
     train_utils.train_model(

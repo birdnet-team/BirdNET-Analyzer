@@ -536,5 +536,6 @@
     "validation-no-valid-classifier-name": "tu'law' pong yIchoH.",
     "validation-no-valid-frequency": "qeq 'eS patlh yIchoH",
     "validation-non-event-samples-required-in-binary-classification": "cha' buv qeqvaD wanI'Ha' De' poQlu'",
-    "validation-only-repeat-upsampling-for-multi-label": "multi-label qeqvaD qechmey ghun neH lo'laH"
+    "validation-only-repeat-upsampling-for-multi-label": "multi-label qeqvaD qechmey ghun neH lo'laH",
+    "validation-too-few-files-to-validate": "QelmeH wav puS law'. wa' SeghvaD cha' wav pagh latlh poQlu'. wa' Segh neH ghajchugh buvwI', cha' wanI'Ha' De' wav pagh latlh poQlu' je."
 }
