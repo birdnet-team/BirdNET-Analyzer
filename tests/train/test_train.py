@@ -278,12 +278,16 @@ def test_single_label_strata_keep_non_events_and_negatives_apart():
     assert len(set(strata.tolist())) == 5
 
 
-def test_multi_label_strata_count_the_active_labels():
-    from birdnet_analyzer.train.utils import _stratification_labels
+def test_every_label_trains_in_every_multi_label_fold():
+    from birdnet_analyzer.train.utils import _kfold_splits
 
-    y = np.array([[1, 1, 0], [1, 0, 0], [0, 0, 0], [1, -1, 1]])
+    y = np.array(
+        [[1, 0, 0]] * 8 + [[0, 1, 0]] * 8 + [[1, 1, 0]] * 2 + [[0, 1, 1]] * 2,
+        dtype="float32",
+    )
 
-    assert _stratification_labels(y, False, True).tolist() == [2, 1, 0, 2]
+    for train_idx, _ in _kfold_splits(y, 2, 1, False, True, np.arange(20)):
+        assert np.all(np.any(y[train_idx] > 0, axis=0))
 
 
 @pytest.mark.parametrize("is_multi_label", [False, True])
@@ -334,24 +338,25 @@ def test_every_fold_validates_whole_files_and_trains_a_class_of_one_file():
 
     files = np.repeat(np.arange(13), 3)
     y = np.zeros((39, 3), dtype="float32")
-    y[:18, 0] = y[18:36, 1] = y[36:, 2] = 1
+    y[:3, 2] = y[3:21, 0] = y[21:, 1] = 1
     validated = []
 
     for train_idx, val_idx in _kfold_splits(y, 3, 1, False, False, files):
         assert not set(files[train_idx]) & set(files[val_idx])
-        assert {36, 37, 38} <= set(train_idx)
+        assert {0, 1, 2} <= set(train_idx)
+        assert [len(set(files[val_idx][y[val_idx, c] == 1])) for c in (0, 1)] == [2, 2]
         validated.extend(files[val_idx])
 
-    assert sorted(validated) == list(np.repeat(np.arange(12), 3))
+    assert sorted(validated) == list(np.repeat(np.arange(1, 13), 3))
 
 
-def test_more_folds_than_files_to_validate_on_are_refused():
+def test_more_folds_than_files_of_any_class_are_refused():
     from birdnet_analyzer.train.utils import _kfold_splits
 
-    y = np.repeat(np.eye(2, dtype="float32"), 6, axis=0)
+    y = np.repeat(np.eye(3, dtype="float32"), 12, axis=0)
 
-    with pytest.raises(ValueError, match="5 folds needs at least 5 files"):
-        list(_kfold_splits(y, 5, 1, False, False, np.repeat(np.arange(4), 3)))
+    with pytest.raises(ValueError, match="5 folds needs a class with at least 5 files"):
+        list(_kfold_splits(y, 5, 1, False, False, np.repeat(np.arange(12), 3)))
 
 
 def test_off_grid_defaults_are_snapped_to_the_search_space(caplog):
@@ -431,37 +436,55 @@ def _synthetic_training_data(version="3.0"):
     )
 
 
-def _synthetic_training_files(monkeypatch, files):
+def _files_of_labels(monkeypatch, files_per_label, labels, is_binary=False):
+    """Loads four rows per file for each (label vector, number of files) pair."""
     from birdnet_analyzer.train import utils as train_utils
 
-    x, y, _, *rest = _synthetic_training_data()
-    monkeypatch.setattr(
-        train_utils, "_load_training_data", lambda *a, **k: (x, y, files, *rest)
+    y = np.array(
+        [vector for vector, n in files_per_label for _ in range(4 * n)],
+        dtype="float32",
     )
+    files = np.repeat(np.arange(len(y) // 4), 4)
+    x = (np.random.default_rng(0).normal(size=(len(y), 8)) + y[:, :1]).astype("float32")
+    data = (x, y, files, np.array([]), np.array([]), labels, is_binary, False, "3.0")
+    monkeypatch.setattr(train_utils, "_load_training_data", lambda *a, **k: data)
 
 
-def test_a_class_of_one_file_is_named_as_left_out_of_the_validation(
+def test_classes_of_one_file_train_and_are_named_as_left_out_of_the_validation(
     monkeypatch, tmp_path, caplog
 ):
     from birdnet_analyzer.train.utils import train_model
 
-    _synthetic_training_files(monkeypatch, np.r_[np.arange(20), np.full(20, 20)])
+    _files_of_labels(monkeypatch, [([1, 0], 5), ([0, 1], 1), ([0, 0], 1)], ["a", "b"])
 
     train_model("unused", output=str(tmp_path / "cc"), epochs=1, model_formats=[])
 
-    assert "the validation score does not cover them: b" in caplog.text
+    assert "the validation score does not cover them: b, non-event" in caplog.text
 
 
 @pytest.mark.usefixtures("fit_refused")
-def test_a_training_where_no_class_has_a_second_file_is_refused(monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+    ("files_per_label", "is_binary"),
+    [
+        ([([1, 0], 1), ([0, 1], 1)], False),
+        ([([1, 0], 1), ([0, 1], 1), ([0, 0], 5)], False),
+        ([([1], 5), ([0], 1)], True),
+        ([([1], 1), ([0], 5)], True),
+    ],
+    ids=["one file each", "only non-events", "one non-event file", "one class file"],
+)
+def test_a_training_with_too_few_files_to_validate_on_is_refused(
+    monkeypatch, tmp_path, files_per_label, is_binary
+):
     from birdnet_analyzer.train.utils import train_model
 
-    _synthetic_training_files(monkeypatch, np.repeat([0, 1], 20))
+    labels = ["a"] if is_binary else ["a", "b"]
+    _files_of_labels(monkeypatch, files_per_label, labels, is_binary)
 
-    with pytest.raises(ValueError, match="only one file") as error:
+    with pytest.raises(ValueError, match="Too few files") as error:
         train_model("unused", output=str(tmp_path / "cc"), model_formats=[])
 
-    assert error.value.args[1] == "validation-no-class-with-two-files"
+    assert error.value.args[1] == "validation-too-few-files-to-validate"
 
 
 @pytest.mark.parametrize(

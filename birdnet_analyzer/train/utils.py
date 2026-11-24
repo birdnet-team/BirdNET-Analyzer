@@ -573,7 +573,7 @@ def _stratification_labels(
         return (y[:, 0] > 0).astype(int)
 
     if is_multi_label:
-        return np.sum(y > 0, axis=1)
+        return np.unique(y, axis=0, return_inverse=True)[1].ravel()
 
     num_classes = y.shape[1]
     no_positive = np.where(np.any(y < 0, axis=1), num_classes + 1, num_classes)
@@ -606,16 +606,18 @@ def _kfold_splits(
         files[candidates], return_index=True, return_inverse=True
     )
 
-    if len(candidate_files) < n_splits:
+    strata = _stratification_labels(y[candidates[first_row]], is_binary, is_multi_label)
+    largest = np.bincount(strata, minlength=1).max()
+
+    if largest < n_splits:
         raise ValueError(
-            f"Autotune with {n_splits} folds needs at least {n_splits} files to "
-            f"validate on, but the training data has {len(candidate_files)}."
+            f"Autotune with {n_splits} folds needs a class with at least {n_splits} "
+            f"files to validate on, but the largest has {largest}."
         )
 
     folds = RepeatedStratifiedKFold(
         n_splits=n_splits, n_repeats=n_repeats, random_state=RANDOM_SEED
     )
-    strata = _stratification_labels(y[candidates[first_row]], is_binary, is_multi_label)
 
     for _, val_files in folds.split(candidate_files, strata):
         validates = np.isin(file_of_candidate, val_files)
@@ -626,16 +628,17 @@ def _kfold_splits(
 
 
 def _check_validation_files(y: np.ndarray, files: np.ndarray, labels) -> None:
-    """Warns about classes of a single file, which always trains, and fails if no
-    file is left to validate on."""
+    """Fails unless the validation split can hold positive and negative labels."""
     negative = np.any(y < 0, axis=1)
     alone = _only_file_of_their_labels(y, files) & ~negative
+    validated = y[~negative & ~alone]
 
-    if not np.any(~negative & ~alone):
+    if not (np.any(validated == 1) and np.any(validated == 0)):
         raise ValueError(
-            "Every class of the training data has only one file, so no file is left "
-            "for validation. Add a second file to at least one class.",
-            "validation-no-class-with-two-files",
+            "Too few files to validate on. At least one class needs two or more "
+            "files, and a classifier for a single class also needs two or more "
+            "non-event files.",
+            "validation-too-few-files-to-validate",
         )
 
     if np.any(alone):

@@ -523,7 +523,6 @@
     "validation-no-audio-directory-selected": "Каталог аудио не выбран",
     "validation-no-audio-files-in-training-folders": "Следующие папки с обучающими данными не содержат поддерживаемых аудиофайлов: {0}",
     "validation-no-cache-file-selected": "Пожалуйста, выберите файл кэша.",
-    "validation-no-class-with-two-files": "В каждом классе обучающих данных только один файл, поэтому для валидации не остаётся ни одного файла. Добавьте второй файл хотя бы в один класс.",
     "validation-no-custom-classifier-selected": "Пользовательский классификатор не выбран.",
     "validation-no-directory-for-classifier-selected": "Пожалуйста, выберите каталог для классификатора.",
     "validation-no-directory-selected": "Пожалуйста, выберите каталог.",
@@ -535,5 +534,6 @@
     "validation-no-valid-classifier-name": "Пожалуйста, введите имя для классификатора.",
     "validation-no-valid-frequency": "Введите допустимую частоту в",
     "validation-non-event-samples-required-in-binary-classification": "Для бинарной классификации требуются образцы без событий",
-    "validation-only-repeat-upsampling-for-multi-label": "Для обучения с несколькими метками доступен только режим повышающей дискретизации «повтор»"
+    "validation-only-repeat-upsampling-for-multi-label": "Для обучения с несколькими метками доступен только режим повышающей дискретизации «повтор»",
+    "validation-too-few-files-to-validate": "Слишком мало файлов для валидации. Хотя бы в одном классе должно быть два или больше файлов, а классификатору для одного класса нужны ещё два или больше файлов без событий."
 }

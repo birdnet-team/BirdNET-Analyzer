@@ -291,27 +291,39 @@ def test_a_folder_of_spaced_labels_sets_each_label(tmp_path):
 
 
 @pytest.mark.usefixtures("fake_encoder")
+@pytest.mark.parametrize(
+    "files_per_folder",
+    [
+        {"a": 5, "b": 5, "c": 1, "noise": 3},
+        {"a": 4, "b": 4, "a,b": 3, "c": 1, "noise": 2},
+    ],
+    ids=["single-label", "multi-label"],
+)
 def test_no_file_trains_and_validates_from_its_audio_or_its_cache(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, files_per_folder
 ):
     import keras
 
     from birdnet_analyzer.train.utils import train_model
 
-    for k in range(10):
-        folder = tmp_path / "data" / "ab"[k % 2]
-        folder.mkdir(parents=True, exist_ok=True)
-        _sine_wav(folder / f"{k}.wav", 9.0, amplitude=0.1 + 0.05 * k)
+    amplitudes = iter(np.arange(0.1, 1.0, 0.05))
+
+    for folder, n_files in files_per_folder.items():
+        (tmp_path / "data" / folder).mkdir(parents=True)
+
+        for k in range(n_files):
+            _sine_wav(tmp_path / "data" / folder / f"{k}.wav", 9.0, next(amplitudes))
 
     fits = []
     fit = keras.Model.fit
 
     def recording_fit(self, x, y, validation_data, **kwargs):
-        fits.append((x[:, 0], validation_data[0][:, 0]))
+        fits.append((x[:, 0], y, validation_data[0][:, 0]))
         return fit(self, x, y, validation_data=validation_data, **kwargs)
 
     monkeypatch.setattr(keras.Model, "fit", recording_fit)
     cache = str(tmp_path / "cache.npz")
+    output = str(tmp_path / "cc")
     options = {
         "crop_mode": "segments",
         "overlap": 1.5,
@@ -319,16 +331,25 @@ def test_no_file_trains_and_validates_from_its_audio_or_its_cache(
         "model_formats": [],
     }
 
-    train_model(
-        str(tmp_path / "data"), str(tmp_path / "cc"), save_cache_to=cache, **options
-    )
-    train_model(cache, str(tmp_path / "cc"), **options)
+    train_model(str(tmp_path / "data"), output, save_cache_to=cache, **options)
+    train_model(cache, output, **options)
 
-    assert len(fits) == 2
+    for n_splits in (1, 2):
+        train_model(
+            cache,
+            output,
+            autotune=True,
+            autotune_trials=1,
+            autotune_n_splits=n_splits,
+            **options,
+        )
 
-    for trained, validated in fits:
+    assert len(fits) == 7
+
+    for trained, y_train, validated in fits:
         assert len(validated)
         assert not set(np.round(trained, 2)) & set(np.round(validated, 2))
+        assert np.all(np.any(y_train > 0, axis=0))
 
 
 @pytest.mark.usefixtures("fake_encoder")

@@ -158,9 +158,10 @@ def random_split(x, y, rng: Generator, val_ratio=0.2, groups=None):
         y: One-hot labels.
         rng: Random number generator.
         val_ratio: The ratio of validation data.
-        groups: The group of each sample, such as the file it was cut from. The
-            ratio applies to the groups of a class, and all samples of a group end up
-            on the same side. Defaults to a group per sample.
+        groups: The group of each sample, such as the file it was cut from; the
+            samples of a group have to share their labels. The ratio applies to the
+            groups of a class, and all samples of a group end up on the same side.
+            Defaults to a group per sample.
 
     Returns:
         A tuple of (x_train, y_train, x_val, y_val).
@@ -209,9 +210,10 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2, groups=None):
         y: One-hot labels.
         rng: Random number generator.
         val_ratio: The ratio of validation data.
-        groups: The group of each sample, such as the file it was cut from. The
-            ratio applies to the groups of a combination, and all samples of a group
-            end up on the same side. Defaults to a group per sample.
+        groups: The group of each sample, such as the file it was cut from; the
+            samples of a group have to share their labels. The ratio applies to the
+            groups of a combination, and all samples of a group end up on the same
+            side. Defaults to a group per sample.
 
     Returns:
         A tuple of (x_train, y_train, x_val, y_val).
@@ -527,8 +529,9 @@ def train_linear_classifier(
             the weights of its best epoch.
         monitor_mode: "max" if a higher value of `monitor` is better, else "min".
         groups: The group of each training sample for the validation split, such as
-            the file it was cut from. All samples of a group end up on the same side.
-            Defaults to a group per sample.
+            the file it was cut from; the samples of a group have to share their
+            labels. All samples of a group end up on the same side. Defaults to a
+            group per sample.
 
     Returns:
         (classifier, history), where `history.restored_epoch` is the epoch whose

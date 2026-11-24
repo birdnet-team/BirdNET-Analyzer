@@ -523,7 +523,6 @@
     "validation-no-audio-directory-selected": "Kein Audioverzeichnis ausgewählt",
     "validation-no-audio-files-in-training-folders": "Die folgenden Trainingsdaten-Ordner enthalten keine unterstützten Audiodateien: {0}",
     "validation-no-cache-file-selected": "Bitte wählen Sie eine Cache-Datei aus.",
-    "validation-no-class-with-two-files": "Jede Klasse der Trainingsdaten hat nur eine Datei, daher bleibt keine Datei für die Validierung übrig. Fügen Sie mindestens einer Klasse eine zweite Datei hinzu.",
     "validation-no-custom-classifier-selected": "Kein benutzerdefinierter Klassifikator ausgewählt.",
     "validation-no-directory-for-classifier-selected": "Bitte wählen Sie ein Verzeichnis für den Klassifikator.",
     "validation-no-directory-selected": "Bitte wählen Sie ein Verzeichnis.",
@@ -535,5 +534,6 @@
     "validation-no-valid-classifier-name": "Bitte geben Sie einen gültigen Namen für den Klassifikator an.",
     "validation-no-valid-frequency": "Bitte geben Sie eine gültige Frequenz an",
     "validation-non-event-samples-required-in-binary-classification": "Für die binäre Klassifikation sind Non-Event-Beispiele erforderlich",
-    "validation-only-repeat-upsampling-for-multi-label": "Für Multi-Label-Training ist nur Wiederholen-Upsampling verfügbar"
+    "validation-only-repeat-upsampling-for-multi-label": "Für Multi-Label-Training ist nur Wiederholen-Upsampling verfügbar",
+    "validation-too-few-files-to-validate": "Zu wenige Dateien für die Validierung. Mindestens eine Klasse braucht zwei oder mehr Dateien, und ein Klassifikator für eine einzige Klasse braucht außerdem zwei oder mehr Non-Event-Dateien."
 }

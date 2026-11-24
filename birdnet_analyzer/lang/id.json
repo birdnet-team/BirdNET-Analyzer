@@ -523,7 +523,6 @@
     "validation-no-audio-directory-selected": "Tidak ada audio direktori yang dipilih",
     "validation-no-audio-files-in-training-folders": "Folder data pelatihan berikut tidak berisi berkas audio yang didukung: {0}",
     "validation-no-cache-file-selected": "Silakan pilih berkas cache.",
-    "validation-no-class-with-two-files": "Setiap kelas dalam data pelatihan hanya memiliki satu berkas, sehingga tidak ada berkas yang tersisa untuk validasi. Tambahkan berkas kedua ke setidaknya satu kelas.",
     "validation-no-custom-classifier-selected": "Tidak ada klasifikator kustom yang dipilih.",
     "validation-no-directory-for-classifier-selected": "Silakan pilih direktori untuk klasifikator.",
     "validation-no-directory-selected": "Silakan pilih direktori.",
@@ -535,5 +534,6 @@
     "validation-no-valid-classifier-name": "Silakan masukkan nama yang valid untuk klasifikator.",
     "validation-no-valid-frequency": "Silakan masukkan frekuensi yang valid dalam",
     "validation-non-event-samples-required-in-binary-classification": "Sampel non-event diperlukan untuk klasifikasi biner",
-    "validation-only-repeat-upsampling-for-multi-label": "Hanya peningkatan sampel mode ulang yang tersedia untuk pelatihan multi-label"
+    "validation-only-repeat-upsampling-for-multi-label": "Hanya peningkatan sampel mode ulang yang tersedia untuk pelatihan multi-label",
+    "validation-too-few-files-to-validate": "Terlalu sedikit berkas untuk validasi. Setidaknya satu kelas memerlukan dua berkas atau lebih, dan pengklasifikasi untuk satu kelas juga memerlukan dua berkas non-event atau lebih."
 }

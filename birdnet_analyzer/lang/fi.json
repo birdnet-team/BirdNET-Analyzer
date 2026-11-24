@@ -523,7 +523,6 @@
     "validation-no-audio-directory-selected": "Äänihakemistoa ei ole valittu",
     "validation-no-audio-files-in-training-folders": "Seuraavat koulutusdatakansiot eivät sisällä tuettuja äänitiedostoja: {0}",
     "validation-no-cache-file-selected": "Valitse välimuistitiedosto.",
-    "validation-no-class-with-two-files": "Koulutusdatan jokaisessa luokassa on vain yksi tiedosto, joten validointiin ei jää yhtään tiedostoa. Lisää vähintään yhteen luokkaan toinen tiedosto.",
     "validation-no-custom-classifier-selected": "Mukautettua luokittelijaa ei ole valittu.",
     "validation-no-directory-for-classifier-selected": "Valitse hakemisto luokittelijalle.",
     "validation-no-directory-selected": "Valitse hakemisto.",
@@ -535,5 +534,6 @@
     "validation-no-valid-classifier-name": "Anna kelvollinen nimi luokittelijalle.",
     "validation-no-valid-frequency": "Anna kelvollinen taajuus",
     "validation-non-event-samples-required-in-binary-classification": "Binääriluokittelu vaatii ei-tapahtumanäytteitä",
-    "validation-only-repeat-upsampling-for-multi-label": "Monileimakoulutuksessa on käytettävissä vain toista-ylösnäytteistys"
+    "validation-only-repeat-upsampling-for-multi-label": "Monileimakoulutuksessa on käytettävissä vain toista-ylösnäytteistys",
+    "validation-too-few-files-to-validate": "Liian vähän tiedostoja validointiin. Vähintään yhdessä luokassa on oltava kaksi tai useampia tiedostoja, ja yhden luokan luokittelija tarvitsee lisäksi kaksi tai useampia ei-tapahtumatiedostoja."
 }

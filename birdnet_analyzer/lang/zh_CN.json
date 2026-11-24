@@ -523,7 +523,6 @@
     "validation-no-audio-directory-selected": "未选择音频目录",
     "validation-no-audio-files-in-training-folders": "以下训练数据文件夹不含任何支持的音频文件：{0}",
     "validation-no-cache-file-selected": "请选择缓存文件。",
-    "validation-no-class-with-two-files": "训练数据的每个类别都只有一个文件，因此没有文件可用于验证。请至少为一个类别添加第二个文件。",
     "validation-no-custom-classifier-selected": "未选择自定义分类器。",
     "validation-no-directory-for-classifier-selected": "请为分类器选择目录。",
     "validation-no-directory-selected": "请选择目录。",
@@ -535,5 +534,6 @@
     "validation-no-valid-classifier-name": "请为分类器输入有效名称。",
     "validation-no-valid-frequency": "请输入有效的频率",
     "validation-non-event-samples-required-in-binary-classification": "二元分类需要非事件样本",
-    "validation-only-repeat-upsampling-for-multi-label": "多标签训练仅支持重复上采样"
+    "validation-only-repeat-upsampling-for-multi-label": "多标签训练仅支持重复上采样",
+    "validation-too-few-files-to-validate": "可用于验证的文件太少。至少一个类别需要两个或更多文件，只针对一个类别的分类器还需要两个或更多非事件文件。"
 }
