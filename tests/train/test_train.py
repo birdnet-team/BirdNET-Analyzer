@@ -927,16 +927,26 @@ def test_processes_started_during_and_after_a_training_keep_the_gpus(
     assert seen == ["all", "all"]
 
 
+def _tensorflow_gpus_of_a_new_process():
+    return int(
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import tensorflow as tf; "
+                "print(len(tf.config.list_logical_devices('GPU')))",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()[-1]
+    )
+
+
 def _train_in_a_new_process(cache, output, tf_first, queue):
     from concurrent.futures import ThreadPoolExecutor
 
     import tensorflow as tf
-
-    installed = len(tf.config.list_physical_devices("GPU"))
-
-    if not installed:
-        queue.put({"installed": 0})
-        return
 
     before = 0
 
@@ -962,23 +972,11 @@ def _train_in_a_new_process(cache, output, tf_first, queue):
     allocated = (
         tf.config.experimental.get_memory_info("GPU:0")["peak"] - before if gpus else 0
     )
-    child = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import tensorflow as tf; "
-            "print(len(tf.config.list_logical_devices('GPU')))",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
     queue.put(
         {
-            "installed": installed,
             "gpus": len(gpus),
             "allocated_on_the_gpu": allocated,
-            "gpus_of_a_later_process": int(child.stdout.split()[-1]),
+            "gpus_of_a_later_process": _tensorflow_gpus_of_a_new_process(),
         }
     )
 
@@ -990,6 +988,11 @@ def test_a_training_takes_nothing_on_the_gpu(monkeypatch, tmp_path, tf_first):
 
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     monkeypatch.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
+    n_gpus = _tensorflow_gpus_of_a_new_process()
+
+    if not n_gpus:
+        pytest.skip("TensorFlow sees no GPU")
+
     rng = np.random.default_rng(0)
     y = np.repeat(np.eye(2, dtype="float32"), 30, axis=0)
     x = (rng.normal(size=(60, 1280)) + y[:, :1]).astype("float32")
@@ -1011,11 +1014,6 @@ def test_a_training_takes_nothing_on_the_gpu(monkeypatch, tmp_path, tf_first):
         report = queue.get(timeout=5)
     finally:
         process.kill()
-
-    n_gpus = report.pop("installed")
-
-    if not n_gpus:
-        pytest.skip("TensorFlow sees no GPU")
 
     assert report == {
         "gpus": n_gpus if tf_first else 0,
