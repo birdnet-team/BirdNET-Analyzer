@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
-import functools
 import json
 import logging
 import os
@@ -456,24 +456,18 @@ class HardLabelAUC(keras.metrics.AUC):
         return super().update_state(y_true, y_pred, sample_weight)
 
 
-def _hiding_cuda_devices(train):
-    @functools.wraps(train)
-    def wrapper(*args, **kwargs):
-        previous = os.environ.get("CUDA_VISIBLE_DEVICES")
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+@contextlib.contextmanager
+def on_the_cpu():
+    """Runs TensorFlow on the CPU and hides the GPUs from it for the rest of the
+    process. Processes it spawns and other libraries still see them."""
+    # Raised once TensorFlow has set up its devices; the scope still applies then.
+    with contextlib.suppress(RuntimeError):
+        tf.config.set_visible_devices([], "GPU")
 
-        try:
-            return train(*args, **kwargs)
-        finally:
-            if previous is None:
-                os.environ.pop("CUDA_VISIBLE_DEVICES", None)
-            else:
-                os.environ["CUDA_VISIBLE_DEVICES"] = previous
-
-    return wrapper
+    with tf.device("/CPU:0"):
+        yield
 
 
-@_hiding_cuda_devices
 def train_linear_classifier(
     classifier: keras.Model,
     x_train: np.ndarray,
@@ -610,7 +604,10 @@ def train_linear_classifier(
 
     loss_function = _focal_loss if train_with_focal_loss else custom_loss
 
+    # Keras picks XLA when a GPU is installed, hidden or not, and on the CPU XLA made
+    # autotune about three times slower.
     classifier.compile(
+        jit_compile=False,
         optimizer=keras.optimizers.AdamW(
             learning_rate=learning_rate, weight_decay=weight_decay
         ),

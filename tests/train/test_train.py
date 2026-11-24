@@ -1,5 +1,8 @@
 import csv
 import inspect
+import multiprocessing
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -888,3 +891,132 @@ def test_training_without_a_tflite_or_raven_export_fetches_no_model(
     )
 
     assert (tmp_path / f"cc{TRAIN_PARAMS_SUFFIX}").is_file()
+
+
+def _cuda_devices_of_a_new_process():
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import os; print(os.environ.get('CUDA_VISIBLE_DEVICES', 'all'))",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+
+@pytest.mark.usefixtures("synthetic_training_data")
+def test_processes_started_during_and_after_a_training_keep_the_gpus(
+    monkeypatch, tmp_path
+):
+    from birdnet_analyzer.train.utils import train_model
+
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    seen = []
+
+    train_model(
+        "unused",
+        output=str(tmp_path / "cc"),
+        epochs=1,
+        model_formats=[],
+        on_epoch_end=lambda epoch, logs: seen.append(_cuda_devices_of_a_new_process()),
+    )
+    seen.append(_cuda_devices_of_a_new_process())
+
+    assert seen == ["all", "all"]
+
+
+def _tensorflow_gpus_of_a_new_process():
+    return int(
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import tensorflow as tf; "
+                "print(len(tf.config.list_logical_devices('GPU')))",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()[-1]
+    )
+
+
+def _train_in_a_new_process(cache, output, tf_first, queue):
+    from concurrent.futures import ThreadPoolExecutor
+
+    import tensorflow as tf
+
+    before = 0
+
+    if tf_first:
+        with tf.device("/GPU:0"):
+            tf.zeros(1024)
+
+        tf.config.experimental.reset_memory_stats("GPU:0")
+        before = tf.config.experimental.get_memory_info("GPU:0")["current"]
+
+    with ThreadPoolExecutor(1) as gui_thread:
+        gui_thread.submit(
+            train,
+            cache,
+            output,
+            epochs=2,
+            model_formats=["tflite", "detached"],
+            autotune=True,
+            autotune_trials=2,
+        ).result()
+
+    gpus = tf.config.list_logical_devices("GPU")
+    allocated = (
+        tf.config.experimental.get_memory_info("GPU:0")["peak"] - before if gpus else 0
+    )
+    queue.put(
+        {
+            "gpus": len(gpus),
+            "allocated_on_the_gpu": allocated,
+            "gpus_of_a_later_process": _tensorflow_gpus_of_a_new_process(),
+        }
+    )
+
+
+@pytest.mark.skipif(not pb_model_cached("3.0"), reason="3.0 pb model not cached")
+@pytest.mark.parametrize("tf_first", [False, True], ids=["fresh", "tf on the gpu"])
+def test_a_training_takes_nothing_on_the_gpu(monkeypatch, tmp_path, tf_first):
+    from birdnet_analyzer.train import utils as train_utils
+
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    monkeypatch.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
+    n_gpus = _tensorflow_gpus_of_a_new_process()
+
+    if not n_gpus:
+        pytest.skip("TensorFlow sees no GPU")
+
+    rng = np.random.default_rng(0)
+    y = np.repeat(np.eye(2, dtype="float32"), 30, axis=0)
+    x = (rng.normal(size=(60, 1280)) + y[:, :1]).astype("float32")
+    cache = str(tmp_path / "cache.npz")
+    train_utils._save_to_cache(
+        cache, x, y, x[::3], y[::3], ["a", "b"], model_version="3.0"
+    )
+    context = multiprocessing.get_context("spawn")
+    queue = context.Queue()
+    process = context.Process(
+        target=_train_in_a_new_process,
+        args=(cache, str(tmp_path / "cc"), tf_first, queue),
+    )
+    process.start()
+
+    try:
+        process.join(100)
+        assert process.exitcode == 0
+        report = queue.get(timeout=5)
+    finally:
+        process.kill()
+
+    assert report == {
+        "gpus": n_gpus if tf_first else 0,
+        "allocated_on_the_gpu": 0,
+        "gpus_of_a_later_process": n_gpus,
+    }

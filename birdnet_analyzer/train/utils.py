@@ -595,6 +595,7 @@ def _without_negative_rows(x: np.ndarray, y: np.ndarray):
     return x[keep], y[keep]
 
 
+@model.on_the_cpu()
 def train_model(
     audio_input: str,
     output: str = "checkpoints/custom/Custom_Classifier",
