@@ -55,6 +55,9 @@ The settings tab of the GUI lists every model, whether it is on the computer and
 model is chosen, a line below the choice says so when the first use is going to download it, and the location
 settings of an analysis say so for the species range model.
 
+The macOS app contains the BirdNET 2.4 model as well, so analyses with BirdNET 2.4 need no download there. Its species
+range model and the model that exports a custom classifier are downloaded as described above.
+
 The Windows installer keeps the BirdNET 2.4 model of the installation it replaces, which every release up to 2.4.0
 contained: analyses and training with BirdNET 2.4 go on without a download. The species range model of 2.4 is not
 among the files it can keep, so the first analysis with BirdNET 2.4 and a location filter downloads it. From an
