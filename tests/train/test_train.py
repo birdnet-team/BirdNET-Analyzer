@@ -264,7 +264,7 @@ def test_binary_data_is_stratified_on_its_column():
 
     y = np.array([[1], [0], [0], [1]], dtype="float32")
 
-    assert _stratification_labels(y, True, False).tolist() == [1, 0, 0, 1]
+    assert _stratification_labels(y, True).tolist() == [1, 0, 0, 1]
 
 
 def test_single_label_strata_keep_non_events_and_negatives_apart():
@@ -272,7 +272,7 @@ def test_single_label_strata_keep_non_events_and_negatives_apart():
 
     y = np.array([[1, 0, 0], [0, 0, 1], [0, 0, 0], [-1, 0, 0], [0, 1, 0]])
 
-    strata = _stratification_labels(y, False, False)
+    strata = _stratification_labels(y, False)
 
     assert strata[[0, 4, 1]].tolist() == [0, 1, 2]
     assert len(set(strata.tolist())) == 5

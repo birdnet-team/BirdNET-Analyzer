@@ -566,14 +566,9 @@ def _snap_to_search_space(defaults: dict, space: dict[str, list | _FloatRange]) 
     return snapped
 
 
-def _stratification_labels(
-    y: np.ndarray, is_binary: bool, is_multi_label: bool
-) -> np.ndarray:
+def _stratification_labels(y: np.ndarray, is_binary: bool) -> np.ndarray:
     if is_binary:
         return (y[:, 0] > 0).astype(int)
-
-    if is_multi_label:
-        return np.unique(y, axis=0, return_inverse=True)[1].ravel()
 
     num_classes = y.shape[1]
     no_positive = np.where(np.any(y < 0, axis=1), num_classes + 1, num_classes)
@@ -581,11 +576,44 @@ def _stratification_labels(
     return np.where(np.any(y > 0, axis=1), np.argmax(y, axis=1), no_positive)
 
 
-def _only_file_of_their_labels(y: np.ndarray, files: np.ndarray) -> np.ndarray:
+_BLOCK_ROWS = 8192
+
+
+def _by_blocks(function, y: np.ndarray, rows: np.ndarray | None = None) -> np.ndarray:
+    """Applies a function of label rows block by block, so that the labels are never
+    copied as a whole."""
+    count = len(y) if rows is None else len(rows)
+    blocks = [
+        function(
+            y[start : start + _BLOCK_ROWS]
+            if rows is None
+            else y[rows[start : start + _BLOCK_ROWS]]
+        )
+        for start in range(0, count, _BLOCK_ROWS)
+    ]
+
+    return np.concatenate(blocks) if blocks else function(y[:0])
+
+
+def _label_keys(y: np.ndarray) -> np.ndarray:
+    """One value per row, equal for rows with equal labels of -1, 0 and 1."""
+
+    def keys(block):
+        signs = np.packbits(np.concatenate([block > 0, block < 0], axis=1), axis=1)
+
+        return signs.view(f"V{signs.shape[1]}").ravel()
+
+    return _by_blocks(keys, y)
+
+
+def _only_file_of_their_labels(keys: np.ndarray, files: np.ndarray) -> np.ndarray:
     """Marks the rows of files that no other file shares the labels with."""
-    _, labels_of_row = np.unique(y, axis=0, return_inverse=True)
-    labels_of_row = labels_of_row.ravel()
-    labels_of_file = np.unique(np.stack([labels_of_row, files]), axis=1)[0]
+    _, labels_of_row = np.unique(keys, return_inverse=True)
+    files_per_label = files.max(initial=0) + 1
+    labels_of_file = (
+        np.unique(labels_of_row.astype(np.int64) * files_per_label + files)
+        // files_per_label
+    )
 
     return np.bincount(labels_of_file)[labels_of_row] == 1
 
@@ -600,13 +628,21 @@ def _kfold_splits(
 ) -> Generator[tuple[np.ndarray, np.ndarray], None, None]:
     """Yields the training and validation row indices of each fold. The folds are
     made of files, and a file whose labels no other file has always trains."""
-    always_trains = np.any(y < 0, axis=1) | _only_file_of_their_labels(y, files)
+    keys = _label_keys(y)
+    negative = _by_blocks(lambda block: np.any(block < 0, axis=1), y)
+    always_trains = negative | _only_file_of_their_labels(keys, files)
     candidates = np.flatnonzero(~always_trains)
     candidate_files, first_row, file_of_candidate = np.unique(
         files[candidates], return_index=True, return_inverse=True
     )
-
-    strata = _stratification_labels(y[candidates[first_row]], is_binary, is_multi_label)
+    file_rows = candidates[first_row]
+    strata = (
+        np.unique(keys[file_rows], return_inverse=True)[1]
+        if is_multi_label
+        else _by_blocks(
+            lambda block: _stratification_labels(block, is_binary), y, file_rows
+        )
+    )
     largest = np.bincount(strata, minlength=1).max()
 
     if largest < n_splits:
@@ -629,11 +665,22 @@ def _kfold_splits(
 
 def _check_validation_files(y: np.ndarray, files: np.ndarray, labels) -> None:
     """Fails unless the validation split can hold positive and negative labels."""
-    negative = np.any(y < 0, axis=1)
-    alone = _only_file_of_their_labels(y, files) & ~negative
-    validated = y[~negative & ~alone]
+    keys = _label_keys(y)
+    negative, has_one, has_zero = _by_blocks(
+        lambda block: np.stack(
+            [
+                np.any(block < 0, axis=1),
+                np.any(block == 1, axis=1),
+                np.any(block == 0, axis=1),
+            ],
+            axis=1,
+        ),
+        y,
+    ).T
+    alone = _only_file_of_their_labels(keys, files) & ~negative
+    validated = ~negative & ~alone
 
-    if not (np.any(validated == 1) and np.any(validated == 0)):
+    if not (np.any(has_one[validated]) and np.any(has_zero[validated])):
         raise ValueError(
             "Too few files to validate on. At least one class needs two or more "
             "files, and a classifier for a single class also needs two or more "
@@ -642,9 +689,9 @@ def _check_validation_files(y: np.ndarray, files: np.ndarray, labels) -> None:
         )
 
     if np.any(alone):
+        rows = np.flatnonzero(alone)[np.unique(keys[alone], return_index=True)[1]]
         names = [
-            "+".join(np.asarray(labels)[row > 0]) or "non-event"
-            for row in np.unique(y[alone], axis=0)
+            "+".join(np.asarray(labels)[row > 0]) or "non-event" for row in y[rows]
         ]
         logger.warning(
             "These classes have only one file each, which always trains, so the "
