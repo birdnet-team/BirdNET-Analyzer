@@ -489,6 +489,21 @@ def species_code(label: str) -> str:
     )
 
 
+def check_folder_writable(folder: str) -> None:
+    """Raises the OSError of creating a file in ``folder``, leaving no file behind.
+
+    Tries once: on Windows, tempfile retries a PermissionError up to 2**31 - 1 times.
+    """
+    import uuid
+
+    probe = os.path.join(folder, f".birdnet-write-check-{uuid.uuid4().hex}")
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_TEMPORARY", 0)
+    os.close(os.open(probe, flags))
+
+    with suppress(FileNotFoundError):
+        os.remove(probe)
+
+
 def warn_about_location_minus_one(lat, lon) -> None:
     """Up to v2.4.0, latitude and longitude -1 meant that no location is set."""
     if lat == -1 and lon == -1:
