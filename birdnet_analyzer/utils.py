@@ -81,8 +81,18 @@ def runtime_error_handler(f):
 
         try:
             return f(*args, **kwargs)
+        except KeyboardInterrupt as ex:
+            print(
+                "\nStopped.",
+                *getattr(ex, "__notes__", ()),
+                sep="\n",
+                file=sys.stderr,
+                flush=True,
+            )
+
+            raise SystemExit(130) from None
         except Exception as ex:
-            write_error_log(ex, f"Error: {str(ex) or repr(ex)}")
+            write_error_log(ex, f"Error: {explain_error(ex)}")
 
             if not logging.getLogger(__name__).isEnabledFor(logging.DEBUG):
                 print(
@@ -94,6 +104,51 @@ def runtime_error_handler(f):
             raise SystemExit(1) from ex
 
     return wrapper
+
+
+_EXTRA_OF_MODULE = {
+    "perch_hoplite": "embeddings",
+    "ml_collections": "embeddings",
+    "optuna": "train",
+    "optuna_integration": "train",
+}
+
+
+def explain_error(error: BaseException) -> str:
+    """The message a command line user reads for an error that ended a command."""
+    import errno
+
+    if isinstance(error, ModuleNotFoundError) and error.name:
+        extra = _EXTRA_OF_MODULE.get(error.name.partition(".")[0])
+
+        if extra:
+            return (
+                f"This needs the optional {extra} features of BirdNET-Analyzer, "
+                "which are not installed. Install them with: "
+                f'pip install "birdnet_analyzer[{extra}]"'
+            )
+
+    if isinstance(error, OSError) and error.filename:
+        if isinstance(error, FileNotFoundError):
+            return (
+                f"{error.filename} could not be found. It may have been moved, "
+                "renamed or deleted, or the drive it is on is not connected."
+            )
+
+        if isinstance(error, PermissionError) or error.errno == errno.EROFS:
+            return (
+                f"{error.filename} could not be opened or written. If it is open in "
+                "another program, such as Excel, close it there and try again. "
+                "Otherwise choose a folder that you are allowed to write to."
+            )
+
+    if isinstance(error, OSError) and error.errno == errno.ENOSPC:
+        return (
+            "There is no space left on the disk. Free up some space or choose a "
+            "folder on another drive, then try again."
+        )
+
+    return str(error) or repr(error)
 
 
 def spectrogram_from_file(
@@ -432,6 +487,21 @@ def species_code(label: str) -> str:
     return by_scientific_name.get(scientific_name) or by_common_name.get(
         common_name.casefold(), label
     )
+
+
+def check_folder_writable(folder: str) -> None:
+    """Raises the OSError of creating a file in ``folder``, leaving no file behind.
+
+    Tries once: on Windows, tempfile retries a PermissionError up to 2**31 - 1 times.
+    """
+    import uuid
+
+    probe = os.path.join(folder, f".birdnet-write-check-{uuid.uuid4().hex}")
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_TEMPORARY", 0)
+    os.close(os.open(probe, flags))
+
+    with suppress(FileNotFoundError):
+        os.remove(probe)
 
 
 def warn_about_location_minus_one(lat, lon) -> None:

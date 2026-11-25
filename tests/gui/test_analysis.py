@@ -1,7 +1,6 @@
 import errno
 import importlib
 import os
-import tempfile
 import threading
 
 import pytest
@@ -262,7 +261,9 @@ def test_an_output_folder_that_cannot_be_written_is_named_itself(
     settings = _batch(tmp_path)
     output = tmp_path / "R&D results" if chosen else tmp_path / "recordings"
     settings["output_path"] = str(output) if chosen else None
-    monkeypatch.setattr(tempfile, "TemporaryFile", _denied(output / "tmp123"))
+    monkeypatch.setattr(
+        gu.utils, "check_folder_writable", _denied(output / ".birdnet-write-check")
+    )
 
     with pytest.raises(gr.Error) as raised:
         ga.run_analysis(**settings)
@@ -272,13 +273,26 @@ def test_an_output_folder_that_cannot_be_written_is_named_itself(
     )
 
 
+def test_an_output_folder_without_write_permission_is_reported_at_once(
+    no_analysis, unwritable_folder, bounded, tmp_path
+):
+    raised = bounded(
+        ga.run_analysis, **_batch(tmp_path, output_path=str(unwritable_folder))
+    )
+
+    assert isinstance(raised, gr.Error)
+    assert raised.message == loc.LANGUAGE_LOOKUP["error-path-no-access"].format(
+        path=str(unwritable_folder)
+    )
+
+
 def test_a_full_disk_is_not_taken_for_a_folder_without_write_access(
     no_analysis, monkeypatch, tmp_path
 ):
     def full(*args, **kwargs):
         raise OSError(errno.ENOSPC, "No space left on device")
 
-    monkeypatch.setattr(tempfile, "TemporaryFile", full)
+    monkeypatch.setattr(gu.utils, "check_folder_writable", full)
 
     with pytest.raises(OSError, match="No space left on device"):
         ga.run_analysis(**_batch(tmp_path))

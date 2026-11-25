@@ -85,6 +85,15 @@ def search(
             window = db.get_window(r.window_id)
             recording = db.get_recording(window.recording_id)
             file = os.path.join(audio_root, recording.filename)
+
+            if not os.path.isfile(file):
+                raise ValueError(
+                    f"{file} could not be found. The database names the recording "
+                    f"{recording.filename}, which is looked for in the audio root "
+                    f"{audio_root} (--audio_root): that has to be the folder that "
+                    "holds the folder or file the embeddings were extracted from."
+                )
+
             filebasename = os.path.basename(file)
             filebasename = os.path.splitext(filebasename)[0]
             offset = window.offsets[0]

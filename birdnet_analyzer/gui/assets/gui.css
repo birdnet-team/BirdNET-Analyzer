@@ -54,6 +54,16 @@ audio.standard-player {
     padding: 1px;
 }
 
+.dark #heart {
+    filter: invert(1);
+    mix-blend-mode: screen;
+}
+
+/* Beside the taller map the group would stretch and show its grey background. */
+.species-coordinates {
+    flex-grow: 0;
+}
+
 .gr-group>div.styler>div.block {
     border-style: none !important;
 }
