@@ -80,6 +80,15 @@ def test_a_mistyped_input_creates_no_folder(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_a_mistyped_input_in_a_folder_without_write_permission_is_named(
+    unwritable_folder, monkeypatch
+):
+    monkeypatch.chdir(unwritable_folder)
+
+    with pytest.raises(ValueError, match="was not found"):
+        analyze(os.path.join("typo", "recordings"))
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_cli_accepts_full_parser_surface(mock_run_inference, env):
 

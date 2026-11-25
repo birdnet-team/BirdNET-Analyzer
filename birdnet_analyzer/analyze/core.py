@@ -238,7 +238,7 @@ def analyze(
         else:
             output = audio_input
 
-    if not _return_only:
+    if not _return_only and os.path.exists(audio_input):
         _check_output_folder(output)
 
     species_from_location = lat is not None and lon is not None
