@@ -143,10 +143,12 @@ jobs:
       - name: Set the desktop default for user namespaces
         if: matrix.os != 'ubuntu-22.04'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
-      - name: Install a virtual display
+      # The runner is a server installation: it lacks the graphics libraries that
+      # every desktop has and that the bundle leaves to the system.
+      - name: Install a virtual display and the libraries a desktop has
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb $(sed 's/ .*//' build-tools/linux/deb-depends.txt)
       - name: Start the AppImage as downloaded
         run: |
           chmod +x linux-packages/*.AppImage
