@@ -46,6 +46,31 @@ def env(tmp_path):
     }
 
 
+def _no_analysis(*args, **kwargs):
+    raise AssertionError("the recording was analysed")
+
+
+@patch("birdnet_analyzer.model_utils.run_inference", _no_analysis)
+def test_a_single_file_analysis_into_a_file_fails_before_analysing(tmp_path):
+    taken = tmp_path / "results.txt"
+    taken.touch()
+
+    with pytest.raises(NotADirectoryError) as raised:
+        analyze(SOUNDSCAPE, str(taken))
+
+    assert raised.value.filename == str(taken)
+
+
+@patch("birdnet_analyzer.model_utils.run_inference", _no_analysis)
+def test_a_single_file_analysis_without_write_permission_fails_before_analysing(
+    unwritable_folder,
+):
+    with pytest.raises(PermissionError) as raised:
+        analyze(SOUNDSCAPE, str(unwritable_folder))
+
+    assert raised.value.filename == str(unwritable_folder)
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_cli_accepts_full_parser_surface(mock_run_inference, env):
 
