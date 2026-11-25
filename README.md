@@ -79,7 +79,7 @@ Additional feature sets are available as extras:
 pip install "birdnet_analyzer[all]"
 ```
 
-For the standalone installers, the Docker image or a source installation, see the [installation documentation](https://birdnet-team.github.io/BirdNET-Analyzer/installation.html).
+For the standalone installers, the Docker image or a source installation, see the [installation documentation](https://birdnet-team.github.io/BirdNET-Analyzer/stable/installation.html).
 
 ## About
 

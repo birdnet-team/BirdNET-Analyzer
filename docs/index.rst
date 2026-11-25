@@ -77,7 +77,7 @@ Projects map
 
 We have created an interactive map of projects that use BirdNET. If you are working on a project that uses BirdNET, please let us know and we can add your project to the map.
 
-You can access the map here: `Open projects map <https://birdnet-team.github.io/BirdNET-Analyzer/projects.html>`_
+You can access the map here: `Open projects map <projects.html>`_
 
 Please refer to the `projects map documentation <usage/projects-map.html>`_ for more information on how to contribute.
 
