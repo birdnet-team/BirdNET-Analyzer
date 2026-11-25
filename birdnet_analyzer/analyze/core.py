@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
 
     from birdnet_analyzer.analyze.resume import RunMetadata
     from birdnet_analyzer.config import ADDITIONAL_COLUMNS, RESULT_TYPES
+
+logger = logging.getLogger(__name__)
 
 _RESULT_FILES = {
     "table": (cfg.OUTPUT_RAVEN_FILENAME, ".BirdNET.selection.table.txt"),
@@ -205,6 +208,8 @@ def analyze(
             "Set both lat and lon to limit the species to a location, or neither."
         )
 
+    _check_audio_format(audio_input)
+
     # Settled before the params file, result columns and resume fingerprint see it.
     sensitivity = effective_sensitivity(sensitivity, model)
     validate_min_conf(min_conf)
@@ -279,11 +284,23 @@ def analyze(
         from birdnet.acoustic.inference.configs import InferenceConfig
 
         input_files = InferenceConfig.validate_input_files(audio_input)
-        journal = ResumeJournal.open(
-            output, resume_params, n_files_total=len(input_files)
-        )
+        try:
+            journal = ResumeJournal.open(
+                output, resume_params, n_files_total=len(input_files)
+            )
+        except OSError as e:
+            raise OSError(e.errno, e.strerror, output) from e
         completed = journal.completed_subset(input_files)
         inference_input = [f for f in input_files if f not in completed]
+
+        if completed:
+            logger.info(
+                "Continuing the analysis in %s: %d of %d audio files were analyzed "
+                "before and are skipped.",
+                output,
+                len(completed),
+                len(input_files),
+            )
 
     predictions = None
 
@@ -416,6 +433,14 @@ def analyze(
     if journal is not None:
         journal.finalize()
 
+    logger.info(
+        "%d detections in %d audio %s, saved in %s",
+        len(df),
+        len(inputs),
+        "file" if len(inputs) == 1 else "files",
+        output,
+    )
+
     return predictions
 
 
@@ -439,6 +464,20 @@ def _check_output_folder(output) -> None:
         check_folder_writable(folder)
     except OSError as e:
         raise type(e)(e.errno, e.strerror, folder) from e
+
+
+def _check_audio_format(audio_input: str) -> None:
+    from birdnet.utils.audio_files import SF_FORMATS
+
+    if os.path.isfile(audio_input) and Path(audio_input).suffix.upper() not in (
+        SF_FORMATS
+    ):
+        formats = ", ".join(sorted(f.lstrip(".").lower() for f in SF_FORMATS))
+
+        raise ValueError(
+            f"{audio_input} is not an audio file that BirdNET-Analyzer can read. "
+            f"These formats can be read: {formats}."
+        )
 
 
 def _resume_fingerprint_params(**params) -> dict:

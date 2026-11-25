@@ -1541,7 +1541,7 @@ def plot_map_scatter_mapbox(lat, lon, zoom=4):
 
 def species_list_coordinates(state: TabState, show_map=False):
     with gr.Row(equal_height=True):
-        with gr.Column(scale=1), gr.Group():
+        with gr.Column(scale=1), gr.Group(elem_classes="species-coordinates"):
             lat_number = state.persist(
                 "lat_number",
                 gr.Slider,

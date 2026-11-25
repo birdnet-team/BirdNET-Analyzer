@@ -712,8 +712,7 @@ def save_linear_classifier(
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
-    converter = tf.lite.TFLiteConverter.from_keras_model(combined_model)
-    tflite_model: bytes = converter.convert()
+    tflite_model = _to_tflite(combined_model)
 
     with open(model_path, "wb") as f:
         f.write(tflite_model)
@@ -722,6 +721,15 @@ def save_linear_classifier(
         labels = [*original_labels, *labels]
 
     _write_labels(model_path.replace(".tflite", "_Labels.txt"), labels)
+
+
+def _to_tflite(keras_model) -> bytes:
+    """Converts a model to tflite without the listing of its saved tensors, which
+    the converter prints and which runs to hundreds of lines."""
+    import io
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        return tf.lite.TFLiteConverter.from_keras_model(keras_model).convert()
 
 
 def _write_labels(path: str, labels: list[str]) -> None:
@@ -902,10 +910,8 @@ def save_detached_classifier(
         name="detached_classifier",
     )
 
-    detached_model.export(detached_classifier_path)
-
-    converter = tf.lite.TFLiteConverter.from_keras_model(detached_model)
-    tflite_model: bytes = converter.convert()
+    detached_model.export(detached_classifier_path, verbose=False)
+    tflite_model = _to_tflite(detached_model)
 
     with open(detached_classifier_path + ".tflite", "wb") as f:
         f.write(tflite_model)

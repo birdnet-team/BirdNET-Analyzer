@@ -1,7 +1,9 @@
 import contextlib
+import io
 import logging
 
 from birdnet_analyzer import analyze
+from birdnet_analyzer.progress import ConsoleProgress
 from birdnet_analyzer.utils import runtime_error_handler
 
 logger = logging.getLogger(__name__)
@@ -20,9 +22,12 @@ def main():
     cli.apply_params_file_defaults(parser, params.load_analysis_params)
     args = parser.parse_args()
 
-    with contextlib.suppress(Exception):
-        if os.get_terminal_size().columns >= 64:
-            print(cli.ASCII_LOGO, flush=True)
+    quiet = not logger.isEnabledFor(logging.INFO)
+
+    if not quiet:
+        with contextlib.suppress(Exception):
+            if os.get_terminal_size().columns >= 64:
+                print(cli.ASCII_LOGO, flush=True)
 
     if (
         "additional_columns" in args
@@ -42,5 +47,21 @@ def main():
     analyze_args = vars(args)
     analyze_args.pop("use_perch")  # handled via model param
     analyze_args.pop("load_params")  # already applied as defaults
+    progress = ConsoleProgress("Analyzing")
 
-    analyze(**analyze_args, save_params=True)
+    # The inference library prints its summary of the run.
+    summary = contextlib.redirect_stdout(io.StringIO()) if quiet else None
+
+    try:
+        with summary or contextlib.nullcontext():
+            analyze(**analyze_args, on_update=progress, save_params=True)
+    except KeyboardInterrupt as ex:
+        if os.path.isdir(args.audio_input):
+            ex.add_note(
+                "Run the same command again to continue the analysis: the files "
+                "that are done are kept and skipped."
+            )
+
+        raise
+    finally:
+        progress.close()
