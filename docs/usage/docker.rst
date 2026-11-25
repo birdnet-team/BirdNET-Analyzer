@@ -15,7 +15,7 @@ release after ``2.4.0``, for ``linux/amd64`` and ``linux/arm64``:
    docker pull ghcr.io/birdnet-team/birdnet-analyzer:latest
 
 Each release publishes version tags following the GitHub release (``<major>.<minor>.<patch>``
-and ``<major>.<minor>``, e.g. ``2.5.0`` and ``2.5``), while ``latest`` always points to
+and ``<major>.<minor>``, e.g. ``3.0.0`` and ``3.0``), while ``latest`` always points to
 the most recent release.
 
 Usage

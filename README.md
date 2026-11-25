@@ -9,8 +9,8 @@
 
 ![License](https://img.shields.io/github/license/birdnet-team/BirdNET-Analyzer)
 ![OS](https://badgen.net/badge/OS/Linux%2C%20Windows%2C%20macOS/blue)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-![Species](https://badgen.net/badge/Species/6512/blue)
+[![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/downloads/)
+![Species](https://badgen.net/badge/Species/11709/blue)
 ![Downloads](https://www-user.tu-chemnitz.de/~johau/birdnet_total_downloads_badge.php)
 
 [![Docker](https://github.com/birdnet-team/BirdNET-Analyzer/actions/workflows/docker-build.yml/badge.svg)](https://github.com/birdnet-team/BirdNET-Analyzer/actions/workflows/docker-build.yml)
@@ -55,7 +55,7 @@ On Windows, once the package is listed in the Windows Package Manager, you can a
 winget install BirdNETTeam.BirdNETAnalyzer
 ```
 
-Models can be found on [Zenodo](https://zenodo.org/records/15050749).
+Models can be found on Zenodo: [BirdNET 3.0](https://zenodo.org/records/24362980) and [BirdNET 2.4](https://zenodo.org/records/15050749).
 
 ## Installation
 

@@ -6,7 +6,7 @@ that belongs to a project can be recalled at any time. Both tabs can additionall
 read their settings back from the parameters file a previous run saved: the analysis
 from the ``birdnet.analyze-params.csv`` in its output directory, the training from
 the ``<classifier>.birdnet.train-params.csv`` next to the trained classifier. The
-loaders also understand the files written before the 2.x releases
+loaders also understand the files written up to v2.4.0
 (``BirdNET_analysis_params.csv`` and ``<classifier>_Params.csv``), which held the
 same parameters in one column per parameter instead of one row.
 

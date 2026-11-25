@@ -48,7 +48,7 @@ Inference runs on ONNX, not TensorFlow, on the default path
 * TensorFlow is still required — and still installed — for the 2.4 model, the Perch
   model, custom classifiers, and training.
 * The Docker image is substantially larger: it bakes the ~345 MB 3.0 ONNX model
-  (the 2.4 TFLite model was ~120 MB).
+  (the 2.4 TFLite model was ~80 MB).
 
 **What to do.** Reinstall the package so ``onnxruntime`` is pulled in (your usual
 ``pip install`` step). The 2.4, Perch, custom-classifier and training paths still run

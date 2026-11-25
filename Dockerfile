@@ -16,8 +16,8 @@ WORKDIR /app
 # wheels.
 #
 # On x86_64, replace the default TensorFlow build with the CPU-only wheel:
-# BirdNET-Analyzer runs inference on CPU (birdnet.load(..., "tf", ...) executes
-# the TFLite model through tf.lite), so the GPU kernels bundled in the default
+# BirdNET-Analyzer runs inference on CPU (the default 3.0 model on ONNX Runtime,
+# 2.4 and custom classifiers through tf.lite), so the GPU kernels bundled in the default
 # x86_64 wheel (~360 MB) are dead weight. tensorflow-cpu is only published for x86_64
 # (no linux/arm64 wheel exists), and the arm64 tensorflow wheel ships no GPU
 # kernels anyway, so on arm64 we keep the default build. TARGETARCH is provided
