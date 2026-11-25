@@ -21,9 +21,9 @@ birdnet_analyzer.analyze
 
    .. code:: bash
 
-      python3 -m birdnet_analyzer.analyze example/ --slist example/ --min_conf 0.5 --n_workers 4
+      python -m birdnet_analyzer.analyze /path/to/audio/folder --slist /path/to/species_list.txt --min_conf 0.5 --n_workers 4
 
-      python3 -m birdnet_analyzer.analyze example/ --lat 42.5 --lon -76.45 --week 4 --sensitivity 1.0
+      python -m birdnet_analyzer.analyze /path/to/audio/folder --lat 42.5 --lon -76.45 --week 4 --sensitivity 1.0
 
    Directory analyses are resumable: progress is saved continuously to a
    ``.birdnet-resume`` folder in the output directory, so an interrupted run (crash,
@@ -40,15 +40,33 @@ birdnet_analyzer.embeddings
    :prog: birdnet_analyzer.embeddings
 
    Run ``birdnet_analyzer.embeddings`` to extract feature embeddings instead of class predictions.
-   Result file will contain timestamps and lists of float values representing the embedding for a particular 3-second segment.
+   The embedding of each 3-second segment is stored in a database folder, which :ref:`birdnet_analyzer.search <cli-search>` and the Search tab of the GUI search; ``--file_output`` also writes all embeddings of the database to a CSV file.
    Embeddings can be used for clustering or similarity analysis. Here is an example:
 
    .. code:: bash
 
-      python -m birdnet_analyzer.embeddings -i example/ -db example_db/ --batch_size 16
+      python -m birdnet_analyzer.embeddings -i /path/to/audio/folder -db /path/to/database --batch_size 16
 
    A new database is filled with the embeddings of BirdNET 3.0, or of the version named with ``--birdnet``.
    An existing database keeps the version it was created with, and ``birdnet_analyzer.search`` uses that version for the query.
+
+.. _cli-search:
+
+birdnet_analyzer.search
+-----------------------
+
+.. argparse::
+   :ref: birdnet_analyzer.cli.search_parser
+   :prog: birdnet_analyzer.search
+
+   Run ``birdnet_analyzer.search``, installed as the ``birdnet-search`` command and part of the ``embeddings`` extra, to find the segments of an embeddings database that sound most like a query file.
+   ``--audio_root`` is the folder that held the input folder of ``birdnet_analyzer.embeddings``. Here is an example for the database above:
+
+   .. code:: bash
+
+      python -m birdnet_analyzer.search -db /path/to/database -q /path/to/query.wav -o /path/to/results --audio_root /path/to/audio
+
+   :doc:`../best-practices/embeddings` describes the search in the GUI, where you can listen to the results and export them.
 
 .. _cli-evaluation:
 
@@ -140,7 +158,7 @@ birdnet_analyzer.train
    .. code:: bash
 
       python -m birdnet_analyzer.train train_data/ -o checkpoints/custom/Custom_Classifier.tflite
-      python -m birdnet_analyzer.analyze example/ --classifier checkpoints/custom/Custom_Classifier.tflite
+      python -m birdnet_analyzer.analyze /path/to/audio/folder --classifier checkpoints/custom/Custom_Classifier.tflite
 
    .. note::
       Setting a custom classifier will also set the new labels file. The species names come from that file, so ``--locale`` has no effect. A location (``--lat``/``--lon``) keeps only the classifier's species that the geo model predicts there, or, with a warning, all of them if it predicts none.
