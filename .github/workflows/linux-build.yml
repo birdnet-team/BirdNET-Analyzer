@@ -142,7 +142,12 @@ jobs:
       # window's browser sandbox uses; a runner image may have that switched off.
       - name: Set the desktop default for user namespaces
         if: matrix.os != 'ubuntu-22.04'
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+          if unshare --user --map-root-user true; then
+            echo "::error::User namespaces are not restricted here, so this job does not test a 24.04 desktop."
+            exit 1
+          fi
       # The runner is a server installation: it lacks the graphics libraries that
       # every desktop has and that the bundle leaves to the system.
       - name: Install a virtual display and the libraries a desktop has
@@ -165,6 +170,11 @@ jobs:
         run: |
           sudo apt-get install -y ./linux-packages/*.deb
           xvfb-run -a build-tools/linux/smoke-test.sh birdnet-analyze birdnet-analyzer-gui birdnet_analyzer/example
+      - name: Show what AppArmor denied and what the window logged
+        if: always()
+        run: |
+          sudo dmesg | grep -F 'apparmor="DENIED"' | tail -n 20 || true
+          tail -n 40 ~/.local/share/BirdNET-Analyzer-GUI/logs.txt || true
       - name: Diagnose a failed start
         if: failure()
         run: |
