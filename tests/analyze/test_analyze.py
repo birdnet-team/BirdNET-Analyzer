@@ -71,6 +71,15 @@ def test_a_single_file_analysis_without_write_permission_fails_before_analysing(
     assert raised.value.filename == str(unwritable_folder)
 
 
+def test_a_mistyped_input_creates_no_folder(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValueError, match="was not found"):
+        analyze(os.path.join("typo", "recordings"))
+
+    assert list(tmp_path.iterdir()) == []
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_cli_accepts_full_parser_surface(mock_run_inference, env):
 

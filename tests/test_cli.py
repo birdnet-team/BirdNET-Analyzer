@@ -42,16 +42,21 @@ def test_a_number_outside_its_range_is_used_at_its_limit_with_a_warning(caplog):
 
 
 @pytest.mark.parametrize(
-    ("option", "message"),
+    ("option", "value", "message"),
     [
-        ("--min_conf", "argument --min_conf: 'abc' is not a number"),
-        ("--batch_size", "argument -b/--batch_size: 'abc' is not a whole number"),
-        ("--lat", "argument --lat: 'abc' is not a number"),
+        ("--min_conf", "abc", "argument --min_conf: 'abc' is not a number"),
+        ("--min_conf", "nan", "argument --min_conf: 'nan' is not a number"),
+        (
+            "--batch_size",
+            "abc",
+            "argument -b/--batch_size: 'abc' is not a whole number",
+        ),
+        ("--lat", "abc", "argument --lat: 'abc' is not a number"),
     ],
 )
-def test_a_value_that_is_not_a_number_is_named_as_such(capsys, option, message):
+def test_a_value_that_is_not_a_number_is_named_as_such(capsys, option, value, message):
     with pytest.raises(SystemExit):
-        cli.analyzer_parser().parse_args(["recordings", option, "abc"])
+        cli.analyzer_parser().parse_args(["recordings", option, value])
 
     assert capsys.readouterr().err.rstrip().endswith(message)
 

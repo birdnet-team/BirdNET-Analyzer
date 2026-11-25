@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 import argparse
 import logging
+import math
 import os
 from typing import cast, get_args
 
@@ -64,9 +65,14 @@ class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
 
 def _number(text: str) -> float:
     try:
-        return float(text)
+        value = float(text)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"'{text}' is not a number") from None
+        value = math.nan
+
+    if math.isnan(value):
+        raise argparse.ArgumentTypeError(f"'{text}' is not a number")
+
+    return value
 
 
 def _whole_number(text: str) -> int:
@@ -85,14 +91,14 @@ class _Bounded(argparse.Action):
         self.high = high
 
     def __call__(self, parser, namespace, values, option_string=None):
-        used = values
+        used, limit = values, None
 
         if self.low is not None and values < self.low:
             used, limit = self.low, "below the minimum"
         elif self.high is not None and values > self.high:
             used, limit = self.high, "above the maximum"
 
-        if used != values:
+        if limit:
             logging.getLogger(__name__).warning(
                 f"{option_string} {values:g} is {limit} of {used:g}, so {used:g} is used."
             )

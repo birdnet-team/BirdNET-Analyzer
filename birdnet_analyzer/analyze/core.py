@@ -168,8 +168,9 @@ def analyze(
             or none of the species in an ``slist`` file (with
             ``strict_species_list``, not all of them) are in the model.
         FileNotFoundError: If the ``slist`` file or ``classifier`` does not exist.
-        NotADirectoryError: If ``output`` is a file.
-        PermissionError: If no file may be created in ``output``.
+        NotADirectoryError: If ``output`` or a folder above it is a file.
+        PermissionError: If no file may be created in ``output``, or in the folder it
+            would be created in.
         RuntimeError: If the resume state in ``output`` is incomplete, or the
             analysis is cancelled or one of its processes dies.
     Notes:
@@ -419,18 +420,25 @@ def analyze(
 
 
 def _check_output_folder(output) -> None:
-    """Fails before the analysis if its results cannot be written to ``output``."""
+    """Fails before the analysis if its results cannot be written to ``output`` or
+    to the folder it would be created in, creating nothing."""
     from birdnet_analyzer.utils import check_folder_writable
 
-    if os.path.isfile(output):
-        raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), str(output))
+    folder = os.path.abspath(output)
 
-    os.makedirs(output, exist_ok=True)
+    while not os.path.isdir(folder):
+        if os.path.exists(folder):
+            raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), folder)
+
+        if os.path.dirname(folder) == folder:
+            return
+
+        folder = os.path.dirname(folder)
 
     try:
-        check_folder_writable(output)
-    except PermissionError as e:
-        raise PermissionError(e.errno, e.strerror, str(output)) from e
+        check_folder_writable(folder)
+    except OSError as e:
+        raise type(e)(e.errno, e.strerror, folder) from e
 
 
 def _resume_fingerprint_params(**params) -> dict:
