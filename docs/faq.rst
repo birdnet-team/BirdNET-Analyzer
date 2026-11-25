@@ -15,13 +15,14 @@ BirdNET-Analyzer can be installed using different methods, including:
 
 - | **Raven Pro**: Follow the instructions provided in the Raven Pro documentation.
 - | **Python Package**: Install via pip using `pip install birdnet_analyzer`.
-- | **Command Line**: Download the repository and run the scripts from the command line.
+- | **From source**: Clone the repository and install it with pip, as described under :ref:`installation`.
+- | **Docker**: Run the analysis and the other tools of the base package in the image described under :doc:`usage/docker`.
 - | **GUI**: Download the GUI version from the `releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_ and follow the installation instructions.
 
 What licenses are used in BirdNET-Analyzer?
 -------------------------------------------
 
-BirdNET-Analyzer source code is released under the **MIT License**. The BirdNET 3.0 acoustic model is licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and comes with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. The other BirdNET models are licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**. Please review and adhere to the specific license terms provided with each model.
+BirdNET-Analyzer source code is released under the **MIT License**. The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and come with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. BirdNET 2.4 and the older BirdNET models are licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**. Please review and adhere to the specific license terms provided with each model.
 Custom models trained with BirdNET-Analyzer are subject to the license terms of the model they were trained with.
 
 .. note:: Please note that all educational and research purposes are considered non-commercial use and it is therefore freely permitted to use BirdNET models in any way.

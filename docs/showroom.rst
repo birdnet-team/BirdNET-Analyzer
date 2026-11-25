@@ -22,14 +22,14 @@ These are some highlights, make sure to check them out!
     * - .. image:: _static/birdnet-pi.png
             :alt: BirdNET-Pi
             :align: center
-            :target: https://birdnetpi.com/
+            :target: https://www.birdweather.com/birdnetpi
 
       - | **BirdNET-Pi**
 
         Built on the TFLite version of BirdNET, this project uses pre-built TFLite binaries for Raspberry Pi to run on-device sound analyses.
         It is able to recognize bird sounds from a USB sound card in realtime and share its data with the rest of the world.
         
-        | Learn more at: `BirdNETPi.com <https://birdnetpi.com/>`_
+        | Learn more at: `birdweather.com/birdnetpi <https://www.birdweather.com/birdnetpi>`_
 
         .. note:: You can find the most up-to-date version of BirdNET-PI at `github.com/Nachtzuster/BirdNET-Pi <https://github.com/Nachtzuster/BirdNET-Pi>`_
 
@@ -60,14 +60,14 @@ These are some highlights, make sure to check them out!
     * - .. image:: _static/ecopi.png
             :alt: ecoPi:Bird
             :align: center
-            :target: https://oekofor.netlify.app/en/portfolio/ecopi-bird_en/
+            :target: https://www.ecopi.de/en/
 
       - | **ecoPi:Bird**
 
         The ecoPi:Bird is a device for automated acoustic recordings of bird songs and calls, with a self-sufficient power supply.
         It facilitates economical long-term monitoring, implemented with minimal personal requirements.
 
-        | Learn more at: `oekofor.netlify.app <https://oekofor.netlify.app/en/portfolio/ecopi-bird_en/>`_
+        | Learn more at: `ecopi.de <https://www.ecopi.de/en/>`_
     
     * - .. image:: _static/dawnchorus.png
             :alt: Dawn Chorus

@@ -113,13 +113,45 @@ After download, BirdNET is available through the new "Learning detector" feature
 
 For more information on how to use this feature, please visit the `Raven Pro Knowledge Base <https://ravensoundsoftware.com/article-categories/learning-detector/>`_.
 
-`Download the newest model version here <https://tuc.cloud/index.php/s/2TX59Qda2X92Ppr/download/BirdNET_GLOBAL_6K_V2.4_Model_Raven.zip>`_, extract the zip-file and move the extracted folder to the Raven models folder. 
+`Download the BirdNET 2.4 model for Raven Pro here <https://tuc.cloud/index.php/s/2TX59Qda2X92Ppr/download/BirdNET_GLOBAL_6K_V2.4_Model_Raven.zip>`_, extract the zip-file and move the extracted folder to the Raven models folder. 
 On Windows, the models folder is ``C:\Users\<Your user name>\Raven Pro 1.6\Models``. Start Raven Pro and select *BirdNET_GLOBAL_6K_V2.4_Model_Raven* as learning detector.
 
 Python Package
 --------------
 
-The easiest way to setup BirdNET on your machine is to install `birdnetlib <https://joeweiss.github.io/birdnetlib/>`_ or `birdnet <https://pypi.org/project/birdnet/>`_ through pip with:
+BirdNET-Analyzer is on `PyPI <https://pypi.org/project/birdnet-analyzer/>`_ and needs Python 3.11 to 3.13:
+
+.. code-block:: bash
+
+   pip install birdnet_analyzer
+
+This provides the command line tools ``birdnet-analyze``, ``birdnet-segments``, ``birdnet-species``, ``birdnet-train``
+and ``birdnet-evaluate``. Additional feature sets are available as extras:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Extra
+     - Adds
+   * - ``embeddings``
+     - embedding extraction and similarity search (``birdnet-embeddings``, ``birdnet-search``)
+   * - ``train``
+     - hyperparameter autotuning when training custom classifiers
+   * - ``gui``
+     - the graphical user interface (``birdnet-gui``), including ``embeddings`` and ``train``
+   * - ``all``
+     - everything above (currently the same set as ``gui``)
+
+.. code-block:: bash
+
+   pip install "birdnet_analyzer[all]"
+
+On Linux, the ``gui`` extra needs the system libraries listed under `Command line installation`_.
+
+Using BirdNET in your own Python code
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To run BirdNET models from your own code, install `birdnetlib <https://joeweiss.github.io/birdnetlib/>`_ or the `birdnet <https://pypi.org/project/birdnet/>`_ library, which BirdNET-Analyzer runs its analyses with:
 
 .. code-block:: bash
 
@@ -168,7 +200,7 @@ Install the packages
 .. note::
 
    If you also want to use the GUI, you need to install the additional packages with: ``pip install .[gui]``.
-   Same goes for the training tools and the embedding/search tools: ``pip install .[train]`` and ``pip install .[embeddings]``.
+   The ``train`` extra adds the hyperparameter autotuning of the training, the ``embeddings`` extra the embedding and search tools: ``pip install .[train]`` and ``pip install .[embeddings]``.
 
    Use ``pip install .[all]`` to install all packages.
 
