@@ -2,6 +2,7 @@ import contextlib
 import logging
 
 from birdnet_analyzer import analyze
+from birdnet_analyzer.progress import ConsoleProgress
 from birdnet_analyzer.utils import runtime_error_handler
 
 logger = logging.getLogger(__name__)
@@ -42,5 +43,17 @@ def main():
     analyze_args = vars(args)
     analyze_args.pop("use_perch")  # handled via model param
     analyze_args.pop("load_params")  # already applied as defaults
+    progress = ConsoleProgress("Analyzing")
 
-    analyze(**analyze_args, save_params=True)
+    try:
+        analyze(**analyze_args, on_update=progress, save_params=True)
+    except KeyboardInterrupt as ex:
+        if os.path.isdir(args.audio_input):
+            ex.add_note(
+                "Run the same command again to continue the analysis: the files "
+                "that are done are kept and skipped."
+            )
+
+        raise
+    finally:
+        progress.close()

@@ -1,5 +1,7 @@
 """Module containing audio helper functions."""
 
+import errno
+import os
 from math import isclose
 
 import numpy as np
@@ -40,6 +42,9 @@ def open_audio_file(
         Returns the audio time series and the sampling rate.
     """
     import librosa
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
 
     if speed == 1.0:
         sig, rate = librosa.load(

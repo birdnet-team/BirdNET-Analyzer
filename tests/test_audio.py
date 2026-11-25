@@ -1,11 +1,26 @@
 import subprocess
 import sys
+import warnings
 
 import numpy as np
 import pytest
 import soundfile as sf
 
 from birdnet_analyzer import audio
+
+
+def test_a_recording_that_is_not_there_is_reported_without_fallback_warnings(
+    tmp_path,
+):
+    missing = str(tmp_path / "gone.wav")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+
+        with pytest.raises(FileNotFoundError) as raised:
+            audio.open_audio_file(missing)
+
+    assert raised.value.filename == missing
 
 
 def _write_sine_wav(path, sample_rate, duration=1.0, freq=440.0):
