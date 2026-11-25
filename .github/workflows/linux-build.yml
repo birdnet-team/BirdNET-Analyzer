@@ -170,6 +170,31 @@ jobs:
         run: |
           sudo apt-get install -y ./linux-packages/*.deb
           xvfb-run -a build-tools/linux/smoke-test.sh birdnet-analyze birdnet-analyzer-gui birdnet_analyzer/example
+      # The smoke test sees that the program stays up, not that the page is painted.
+      - name: Take a picture of the window
+        run: |
+          sudo apt-get install -y x11-apps imagemagick
+          xvfb-run -a -s "-screen 0 1400x1000x24" bash -c '
+            setsid birdnet-analyzer-gui >/dev/null 2>&1 &
+            gui=$!
+            sleep 60
+            xwd -root -silent | convert xwd:- window.png
+            kill -TERM -- "-$gui" 2>/dev/null || kill -TERM "$gui" || true
+          '
+          spread=$(convert window.png -gravity Center -crop 1000x600+0+0 +repage \
+            -colorspace Gray -format "%[fx:standard_deviation]" info:)
+          echo "Grey-level spread in the middle of the window: $spread"
+          if ! awk -v s="$spread" 'BEGIN { exit !(s > 0.02) }'; then
+            echo "::error::The window is blank."
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: window-${{ matrix.os }}
+          path: window.png
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Show what AppArmor denied and what the window logged
         if: always()
         run: |
