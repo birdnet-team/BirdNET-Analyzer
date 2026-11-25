@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 import time
+from html import escape
 from pathlib import Path
 
 import gradio as gr
@@ -49,6 +50,12 @@ BROWSER_PLAYABLE = (".wav", ".flac", ".mp3")
 PREVIEW_MAX_BYTES = 2 * 1024**3
 PREVIEW_MAX_AGE_DAYS = 7
 _PREVIEW_NAME = re.compile(r"[0-9a-f]{40}\.wav")
+
+
+def _unreadable(path: str) -> str:
+    return loc.localize("validation-audio-file-unreadable").format(
+        path=escape(path, quote=False)
+    )
 
 
 def _prune_previews(preview_dir: Path, keep: Path):
@@ -233,6 +240,9 @@ def run_single_file_analysis(
         n_workers=1,
         progress=progress,
     )
+
+    if len(predictions.unprocessable_inputs):
+        raise gr.Error(_unreadable(input_path))
 
     def convert_to_time_str(seconds: float) -> str:
         time_str = str(timedelta(seconds=seconds))
@@ -425,6 +435,14 @@ def build_single_analysis_tab() -> None:
             # steps chained below that the dialog was cancelled.
             if not file_path:
                 return (*(gr.skip(),) * 10, None)
+
+            import soundfile as sf
+
+            # An unreadable file is reported when it is picked, not in the player.
+            try:
+                sf.info(file_path)
+            except sf.SoundFileError as e:
+                raise gr.Error(_unreadable(file_path)) from e
 
             # The player shows up right away: decoding an mp3/ogg into a
             # preview below can take a while for long recordings.
@@ -674,9 +692,13 @@ def build_single_analysis_tab() -> None:
                 outputs=player,
                 show_progress="hidden",
             )
+
+        def prepare_run_ui():
+            return gr.update(visible=True, value=None), gr.update(visible=False), None
+
         single_file_analyze.click(
-            lambda: gr.update(visible=True),
-            outputs=output_dataframe,
+            prepare_run_ui,
+            outputs=[output_dataframe, action_row, last_prediction_state],
             show_progress="hidden",
         ).then(
             run_single_file_analysis,

@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -159,7 +160,7 @@ def test_combined_dataframe_orders_by_input(env):
     assert df.groupby("input", sort=False)["start_time"].is_monotonic_increasing.all()
 
 
-def test_analyze_resumes_after_crash(env):
+def test_analyze_resumes_after_crash(env, caplog):
     fake, calls = make_fake_run_inference(crash_after=2)
 
     with (
@@ -174,11 +175,19 @@ def test_analyze_resumes_after_crash(env):
 
     fake, calls = make_fake_run_inference()
 
-    with patch("birdnet_analyzer.model_utils.run_inference", fake):
+    with (
+        patch("birdnet_analyzer.model_utils.run_inference", fake),
+        caplog.at_level(logging.INFO, logger="birdnet_analyzer"),
+    ):
         run_analyze(env)
 
     assert len(calls) == 1
     assert set(calls[0]) == set(env["files"][2:])
+    assert caplog.messages == [
+        f"Continuing the analysis in {env['output_dir']}: 2 of 4 audio files were "
+        "analyzed before and are skipped.",
+        f"8 detections in 4 audio files, saved in {env['output_dir']}",
+    ]
 
     df = read_combined_csv(env)
     assert set(df["File"]) == {str(f) for f in env["files"]}
@@ -240,7 +249,7 @@ def test_analyze_with_invalid_file_completes_and_cleans_up(env):
     assert not (env["output_dir"] / JOURNAL_DIRNAME).exists()
 
 
-def test_a_resume_leaves_out_a_file_found_unprocessable_before(env):
+def test_a_resume_leaves_out_and_names_a_file_found_unprocessable_before(env, caplog):
     invalid = env["files"][1]
     invalid.write_bytes(b"not audio" * 100)
     fake, _ = make_fake_run_inference(crash_after=2, invalid_files=[invalid])
@@ -252,12 +261,20 @@ def test_a_resume_leaves_out_a_file_found_unprocessable_before(env):
         analyze(str(env["input_dir"]), str(env["output_dir"]), rtype="table")
 
     fake, _ = make_fake_run_inference()
+    caplog.clear()
 
-    with patch("birdnet_analyzer.model_utils.run_inference", fake):
+    with (
+        patch("birdnet_analyzer.model_utils.run_inference", fake),
+        caplog.at_level(logging.WARNING, logger="birdnet_analyzer"),
+    ):
         analyze(str(env["input_dir"]), str(env["output_dir"]), rtype="table")
 
     table = pd.read_csv(env["output_dir"] / "BirdNET_SelectionTable.txt", sep="\t")
     assert set(table["Begin Path"]) == {str(f) for f in env["files"] if f != invalid}
+    assert [r.getMessage() for r in caplog.records] == [
+        f"1 of {len(env['files'])} audio files could not be read and were skipped:"
+        f"\n  {invalid}"
+    ]
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Only Windows ignores the case of paths.")

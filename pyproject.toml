@@ -48,7 +48,7 @@ dependencies = [
     "tqdm",
     "pandas",
     "matplotlib",
-    "birdnet>=1.5.1",
+    "birdnet>=1.6.0",
     "truststore",
 ]
 
@@ -86,7 +86,7 @@ birdnet-species = "birdnet_analyzer.species.cli:main"
 birdnet-gui = "birdnet_analyzer.gui:main"
 
 [project.urls]
-Homepage = "https://birdnet.cornell.edu/birdnet"
+Homepage = "https://birdnet.cornell.edu/"
 Documentation = "https://birdnet-team.github.io/BirdNET-Analyzer/"
 Repository = "https://github.com/birdnet-team/BirdNET-Analyzer"
 Issues = "https://github.com/birdnet-team/BirdNET-Analyzer/issues"

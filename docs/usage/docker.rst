@@ -15,7 +15,7 @@ release after ``2.4.0``, for ``linux/amd64`` and ``linux/arm64``:
    docker pull ghcr.io/birdnet-team/birdnet-analyzer:latest
 
 Each release publishes version tags following the GitHub release (``<major>.<minor>.<patch>``
-and ``<major>.<minor>``, e.g. ``2.5.0`` and ``2.5``), while ``latest`` always points to
+and ``<major>.<minor>``, e.g. ``3.0.0`` and ``3.0``), while ``latest`` always points to
 the most recent release.
 
 Usage
@@ -28,14 +28,17 @@ The image runs the command line interface. Mount your audio data into the contai
    # Analyze audio files in the current directory
    docker run --rm -v "$PWD:/audio" ghcr.io/birdnet-team/birdnet-analyzer -m birdnet_analyzer.analyze /audio -o /audio/output
 
-Any of the CLI entry points can be used, e.g. ``-m birdnet_analyzer.species`` or ``-m birdnet_analyzer.segments``.
+The other tools of the base package can be used the same way, e.g. ``-m birdnet_analyzer.species`` or ``-m birdnet_analyzer.segments``. The image does not contain the ``embeddings`` and ``train`` extras, so embedding extraction, search and the autotuning of a training do not run in it.
 
-The acoustic and geo models are baked into the image, so containers start analyzing
-immediately and run without network access:
+The default BirdNET 3.0 acoustic and geolocation models are baked into the image, so
+containers start analyzing immediately and run without network access:
 
 .. code-block:: bash
 
    docker run --rm --network none -v "$PWD:/audio" ghcr.io/birdnet-team/birdnet-analyzer -m birdnet_analyzer.analyze /audio -o /audio/output
+
+BirdNET 2.4, Perch and the models that training exports need are not in the image and are
+downloaded each time a container first uses them.
 
 Building locally
 ----------------

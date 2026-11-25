@@ -2,11 +2,13 @@
 
 import logging
 import os
+import sys
 import warnings
 from contextlib import suppress
 from functools import cache
 from pathlib import Path
 
+from birdnet_analyzer import settings
 from birdnet_analyzer.config import ALLOWED_FILETYPES, CODES_FILE
 from birdnet_analyzer.logs import setup_logging
 from birdnet_analyzer.settings import seed_bundled_models, write_error_log
@@ -19,6 +21,10 @@ _TELEMETRY_OPT_OUTS = {
     "HF_HUB_DISABLE_TELEMETRY": "1",
     "DO_NOT_TRACK": "1",
 }
+
+MAX_LISTED_FILES = 20
+# The log record attribute that holds the files a run could not read.
+UNREADABLE_FILES = "unreadable_files"
 
 # Raised by gradio's own gr.List/gr.Matrix defaults and event loop helpers.
 _UNACTIONABLE_WARNINGS = [
@@ -59,8 +65,8 @@ def runtime_error_handler(f):
     """Decorator preparing the runtime of the CLI entry points.
 
     Configures logging, so messages reach the console and the error log file,
-    prepares the process with configure_runtime, and catches runtime errors to
-    write them to the error log.
+    prepares the process with configure_runtime, and ends a failed command with
+    its error message and exit status 1, leaving the stacktrace to the error log.
 
     Args:
         f: The function to be decorated.
@@ -75,11 +81,74 @@ def runtime_error_handler(f):
 
         try:
             return f(*args, **kwargs)
+        except KeyboardInterrupt as ex:
+            print(
+                "\nStopped.",
+                *getattr(ex, "__notes__", ()),
+                sep="\n",
+                file=sys.stderr,
+                flush=True,
+            )
+
+            raise SystemExit(130) from None
         except Exception as ex:
-            write_error_log(ex)
-            raise
+            write_error_log(ex, f"Error: {explain_error(ex)}")
+
+            if not logging.getLogger(__name__).isEnabledFor(logging.DEBUG):
+                print(
+                    f"The stacktrace is in {settings.ERROR_LOG_FILE}; "
+                    "--verbose shows it here.",
+                    file=sys.stderr,
+                )
+
+            raise SystemExit(1) from ex
 
     return wrapper
+
+
+_EXTRA_OF_MODULE = {
+    "perch_hoplite": "embeddings",
+    "ml_collections": "embeddings",
+    "optuna": "train",
+    "optuna_integration": "train",
+}
+
+
+def explain_error(error: BaseException) -> str:
+    """The message a command line user reads for an error that ended a command."""
+    import errno
+
+    if isinstance(error, ModuleNotFoundError) and error.name:
+        extra = _EXTRA_OF_MODULE.get(error.name.partition(".")[0])
+
+        if extra:
+            return (
+                f"This needs the optional {extra} features of BirdNET-Analyzer, "
+                "which are not installed. Install them with: "
+                f'pip install "birdnet_analyzer[{extra}]"'
+            )
+
+    if isinstance(error, OSError) and error.filename:
+        if isinstance(error, FileNotFoundError):
+            return (
+                f"{error.filename} could not be found. It may have been moved, "
+                "renamed or deleted, or the drive it is on is not connected."
+            )
+
+        if isinstance(error, PermissionError) or error.errno == errno.EROFS:
+            return (
+                f"{error.filename} could not be opened or written. If it is open in "
+                "another program, such as Excel, close it there and try again. "
+                "Otherwise choose a folder that you are allowed to write to."
+            )
+
+    if isinstance(error, OSError) and error.errno == errno.ENOSPC:
+        return (
+            "There is no space left on the disk. Free up some space or choose a "
+            "folder on another drive, then try again."
+        )
+
+    return str(error) or repr(error)
 
 
 def spectrogram_from_file(
@@ -420,6 +489,21 @@ def species_code(label: str) -> str:
     )
 
 
+def check_folder_writable(folder: str) -> None:
+    """Raises the OSError of creating a file in ``folder``, leaving no file behind.
+
+    Tries once: on Windows, tempfile retries a PermissionError up to 2**31 - 1 times.
+    """
+    import uuid
+
+    probe = os.path.join(folder, f".birdnet-write-check-{uuid.uuid4().hex}")
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_TEMPORARY", 0)
+    os.close(os.open(probe, flags))
+
+    with suppress(FileNotFoundError):
+        os.remove(probe)
+
+
 def warn_about_location_minus_one(lat, lon) -> None:
     """Up to v2.4.0, latitude and longitude -1 meant that no location is set."""
     if lat == -1 and lon == -1:
@@ -428,6 +512,25 @@ def warn_about_location_minus_one(lat, lon) -> None:
             "version 2.4.0 they meant that no location is set: leave both out "
             "for that."
         )
+
+
+def warn_about_unreadable_files(files: list[str], n_files: int) -> None:
+    """Names the audio files a run left out because it could not read them."""
+    if not files:
+        return
+
+    listed = [f"  {file}" for file in files[:MAX_LISTED_FILES]]
+
+    if len(files) > MAX_LISTED_FILES:
+        listed.append(f"  ... and {len(files) - MAX_LISTED_FILES} more")
+
+    logging.getLogger(__name__).warning(
+        "%d of %d audio files could not be read and were skipped:\n%s",
+        len(files),
+        n_files,
+        "\n".join(listed),
+        extra={UNREADABLE_FILES: files},
+    )
 
 
 def img2base64(path):

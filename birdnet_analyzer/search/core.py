@@ -85,6 +85,15 @@ def search(
             window = db.get_window(r.window_id)
             recording = db.get_recording(window.recording_id)
             file = os.path.join(audio_root, recording.filename)
+
+            if not os.path.isfile(file):
+                raise ValueError(
+                    f"{file} could not be found. The database names the recording "
+                    f"{recording.filename}, which is looked for in the audio root "
+                    f"{audio_root} (--audio_root): that has to be the folder that "
+                    "holds the folder or file the embeddings were extracted from."
+                )
+
             filebasename = os.path.basename(file)
             filebasename = os.path.splitext(filebasename)[0]
             offset = window.offsets[0]
@@ -101,6 +110,9 @@ def search(
 def get_database(database_path) -> SQLiteUSearchDB:
     """Opens an existing embeddings database.
 
+    A database written by BirdNET-Analyzer 2.x is converted to the current format
+    first.
+
     Raises:
         FileNotFoundError: If `database_path` is not a folder holding a database.
     """
@@ -110,9 +122,14 @@ def get_database(database_path) -> SQLiteUSearchDB:
 
     from perch_hoplite.db import sqlite_usearch_impl
 
+    from birdnet_analyzer.embeddings import upgrade
+
     files = (sqlite_usearch_impl.HOPLITE_FILENAME, sqlite_usearch_impl.UINDEX_FILENAME)
     if not all(os.path.isfile(os.path.join(database_path, f)) for f in files):
         raise FileNotFoundError(f"No embeddings database found in {database_path}")
+
+    if upgrade.is_old_format(database_path):
+        upgrade.upgrade(database_path)
 
     return sqlite_usearch_impl.SQLiteUSearchDB.create(database_path)
 

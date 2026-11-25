@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
-import functools
 import json
 import logging
 import os
@@ -130,36 +130,50 @@ def mixup(x, y, rng: Generator, augmentation_ratio=0.25, alpha=0.2):
     return x, y
 
 
-def random_split(x, y, rng: Generator, val_ratio=0.2):
+def _split_groups(indices, groups, rng: Generator, val_ratio):
+    """Splits the rows by their shuffled groups, keeping at least one for training."""
+    unique_groups, group_of_row = np.unique(groups[indices], return_inverse=True)
+    num_groups = len(unique_groups)
+    num_groups_train = max(1, int(num_groups * (1 - val_ratio)))
+
+    order = np.arange(num_groups)
+    rng.shuffle(order)
+    position = np.empty(num_groups, dtype=int)
+    position[order] = np.arange(num_groups)
+
+    row_position = position[group_of_row]
+    by_position = np.argsort(row_position, kind="stable")
+    in_train = row_position[by_position] < num_groups_train
+
+    return indices[by_position][in_train], indices[by_position][~in_train]
+
+
+def random_split(x, y, rng: Generator, val_ratio=0.2, groups=None):
     """Splits the data into training and validation data.
 
-    Makes sure that each class is represented in both sets.
+    Each class is split on its own and keeps at least one group for training.
 
     Args:
         x: Samples.
         y: One-hot labels.
         rng: Random number generator.
         val_ratio: The ratio of validation data.
+        groups: The group of each sample, such as the file it was cut from; the
+            samples of a group have to share their labels. The ratio applies to the
+            groups of a class, and all samples of a group end up on the same side.
+            Defaults to a group per sample.
 
     Returns:
         A tuple of (x_train, y_train, x_val, y_val).
     """
+    groups = np.arange(len(y)) if groups is None else np.asarray(groups)
     num_classes = y.shape[1]
     train_indices, val_indices = [], []
 
     for i in range(num_classes):
-        positive_indices = np.where(y[:, i] == 1)[0]
-
-        num_samples = len(positive_indices)
-        num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
-        num_samples_val = max(0, num_samples - num_samples_train)
-
-        rng.shuffle(positive_indices)
-
-        class_train_indices = positive_indices[:num_samples_train]
-        class_val_indices = positive_indices[
-            num_samples_train : num_samples_train + num_samples_val
-        ]
+        class_train_indices, class_val_indices = _split_groups(
+            np.where(y[:, i] == 1)[0], groups, rng, val_ratio
+        )
 
         train_indices.append(class_train_indices)
         val_indices.append(class_val_indices)
@@ -169,17 +183,9 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
     negative_indices = np.unique(np.where(y == -1)[0])
     train_indices.append(negative_indices)
 
-    non_event_indices = np.where(np.sum(y[:, :], axis=1) == 0)[0]
-    num_samples = len(non_event_indices)
-    num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
-    num_samples_val = max(0, num_samples - num_samples_train)
-
-    rng.shuffle(non_event_indices)
-
-    non_event_train_indices = non_event_indices[:num_samples_train]
-    non_event_val_indices = non_event_indices[
-        num_samples_train : num_samples_train + num_samples_val
-    ]
+    non_event_train_indices, non_event_val_indices = _split_groups(
+        np.where(np.sum(y[:, :], axis=1) == 0)[0], groups, rng, val_ratio
+    )
 
     train_indices.append(non_event_train_indices)
     val_indices.append(non_event_val_indices)
@@ -193,21 +199,27 @@ def random_split(x, y, rng: Generator, val_ratio=0.2):
     return x[train_indices], y[train_indices], x[val_indices], y[val_indices]
 
 
-def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
+def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2, groups=None):
     """Splits the data into training and validation data.
 
-    Makes sure that each combination of classes is represented in both sets.
+    Each combination of classes is split on its own and keeps at least one group for
+    training.
 
     Args:
         x: Samples.
         y: One-hot labels.
         rng: Random number generator.
         val_ratio: The ratio of validation data.
+        groups: The group of each sample, such as the file it was cut from; the
+            samples of a group have to share their labels. The ratio applies to the
+            groups of a combination, and all samples of a group end up on the same
+            side. Defaults to a group per sample.
 
     Returns:
         A tuple of (x_train, y_train, x_val, y_val).
 
     """
+    groups = np.arange(len(y)) if groups is None else np.asarray(groups)
     class_combinations, combination_ids = np.unique(y, axis=0, return_inverse=True)
     train_indices, val_indices = [], []
 
@@ -217,16 +229,9 @@ def random_multilabel_split(x, y, rng: Generator, val_ratio=0.2):
         if -1 in class_combination:
             train_indices.append(indices)
         else:
-            num_samples = len(indices)
-            num_samples_train = max(1, int(num_samples * (1 - val_ratio)))
-            num_samples_val = max(0, num_samples - num_samples_train)
-
-            rng.shuffle(indices)
-
-            combination_train_indices = indices[:num_samples_train]
-            combination_val_indices = indices[
-                num_samples_train : num_samples_train + num_samples_val
-            ]
+            combination_train_indices, combination_val_indices = _split_groups(
+                indices, groups, rng, val_ratio
+            )
 
             train_indices.append(combination_train_indices)
             val_indices.append(combination_val_indices)
@@ -456,24 +461,18 @@ class HardLabelAUC(keras.metrics.AUC):
         return super().update_state(y_true, y_pred, sample_weight)
 
 
-def _hiding_cuda_devices(train):
-    @functools.wraps(train)
-    def wrapper(*args, **kwargs):
-        previous = os.environ.get("CUDA_VISIBLE_DEVICES")
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+@contextlib.contextmanager
+def on_the_cpu():
+    """Runs TensorFlow on the CPU and hides the GPUs from it for the rest of the
+    process. Processes it spawns and other libraries still see them."""
+    # Raised once TensorFlow has set up its devices; the scope still applies then.
+    with contextlib.suppress(RuntimeError):
+        tf.config.set_visible_devices([], "GPU")
 
-        try:
-            return train(*args, **kwargs)
-        finally:
-            if previous is None:
-                os.environ.pop("CUDA_VISIBLE_DEVICES", None)
-            else:
-                os.environ["CUDA_VISIBLE_DEVICES"] = previous
-
-    return wrapper
+    with tf.device("/CPU:0"):
+        yield
 
 
-@_hiding_cuda_devices
 def train_linear_classifier(
     classifier: keras.Model,
     x_train: np.ndarray,
@@ -498,6 +497,7 @@ def train_linear_classifier(
     weight_decay=0.004,
     monitor="val_loss",
     monitor_mode: Literal["min", "max"] = "min",
+    groups=None,
 ):
     """Trains a custom classifier.
 
@@ -528,6 +528,10 @@ def train_linear_classifier(
         monitor: The validation metric early stopping watches; the classifier keeps
             the weights of its best epoch.
         monitor_mode: "max" if a higher value of `monitor` is better, else "min".
+        groups: The group of each training sample for the validation split, such as
+            the file it was cut from; the samples of a group have to share their
+            labels. All samples of a group end up on the same side. Defaults to a
+            group per sample.
 
     Returns:
         (classifier, history), where `history.restored_epoch` is the epoch whose
@@ -548,11 +552,11 @@ def train_linear_classifier(
     if val_split > 0:
         if not is_multi_label:
             x_train, y_train, x_val, y_val = random_split(
-                x_train, y_train, rng, val_split
+                x_train, y_train, rng, val_split, groups
             )
         else:
             x_train, y_train, x_val, y_val = random_multilabel_split(
-                x_train, y_train, rng, val_split
+                x_train, y_train, rng, val_split, groups
             )
     else:
         idx = np.arange(x_train.shape[0])
@@ -610,7 +614,10 @@ def train_linear_classifier(
 
     loss_function = _focal_loss if train_with_focal_loss else custom_loss
 
+    # Keras picks XLA when a GPU is installed, hidden or not, and on the CPU XLA made
+    # autotune about three times slower.
     classifier.compile(
+        jit_compile=False,
         optimizer=keras.optimizers.AdamW(
             learning_rate=learning_rate, weight_decay=weight_decay
         ),
@@ -705,8 +712,7 @@ def save_linear_classifier(
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
-    converter = tf.lite.TFLiteConverter.from_keras_model(combined_model)
-    tflite_model: bytes = converter.convert()
+    tflite_model = _to_tflite(combined_model)
 
     with open(model_path, "wb") as f:
         f.write(tflite_model)
@@ -715,6 +721,15 @@ def save_linear_classifier(
         labels = [*original_labels, *labels]
 
     _write_labels(model_path.replace(".tflite", "_Labels.txt"), labels)
+
+
+def _to_tflite(keras_model) -> bytes:
+    """Converts a model to tflite without the listing of its saved tensors, which
+    the converter prints and which runs to hundreds of lines."""
+    import io
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        return tf.lite.TFLiteConverter.from_keras_model(keras_model).convert()
 
 
 def _write_labels(path: str, labels: list[str]) -> None:
@@ -895,10 +910,8 @@ def save_detached_classifier(
         name="detached_classifier",
     )
 
-    detached_model.export(detached_classifier_path)
-
-    converter = tf.lite.TFLiteConverter.from_keras_model(detached_model)
-    tflite_model: bytes = converter.convert()
+    detached_model.export(detached_classifier_path, verbose=False)
+    tflite_model = _to_tflite(detached_model)
 
     with open(detached_classifier_path + ".tflite", "wb") as f:
         f.write(tflite_model)

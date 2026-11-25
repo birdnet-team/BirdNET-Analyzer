@@ -1,4 +1,5 @@
 import base64
+import errno
 import inspect
 import io
 import logging
@@ -279,16 +280,72 @@ def test_downloads_switched_off_by_the_user_are_reported_as_such(
     )
 
 
-def test_an_error_without_a_message_is_shown_by_its_repr(monkeypatch):
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            FileNotFoundError(2, "No such file or directory", "birds.wav"),
+            "gone|birds.wav",
+        ),
+        (PermissionError(13, "Permission denied", "R&D.csv"), "locked|R&amp;D.csv"),
+        (OSError(errno.EROFS, "Read-only file system", "card.csv"), "locked|card.csv"),
+        (OSError(errno.ENOSPC, "No space left on device", "out.csv"), "full"),
+        (FileNotFoundError("No database found in db"), "No database found in db"),
+        (ValueError("Set both lat and lon."), "Set both lat and lon."),
+        (ValueError("a <b> c"), "a &lt;b&gt; c"),
+        (
+            RuntimeError("Resume state is incomplete. Delete 'x' and run again."),
+            "Resume state is incomplete. Delete 'x' and run again.",
+        ),
+        (EOFError(), "EOFError()"),
+        (
+            IndexError("tuple index out of range"),
+            "bug|IndexError: tuple index out of range",
+        ),
+        (TypeError("'<' not supported"), "bug|TypeError: '&lt;' not supported"),
+        (TypeError("word " * 100), "bug|TypeError: " + "word " * 59 + "..."),
+        (AssertionError(), "bug|AssertionError"),
+    ],
+    ids=lambda value: value if isinstance(value, str) else type(value).__name__,
+)
+def test_an_error_no_handler_explained_is_put_into_the_users_words(
+    monkeypatch, error, message
+):
     monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    texts = {
+        "error-path-not-found": "gone|{path}",
+        "error-path-no-access": "locked|{path}",
+        "error-disk-full": "full",
+        "error-unexpected": "bug|{error}",
+    }
+
+    for key, text in texts.items():
+        assert key in gu.loc.LANGUAGE_LOOKUP
+        monkeypatch.setitem(gu.loc.LANGUAGE_LOOKUP, key, text)
 
     def handler():
-        raise EOFError
+        raise error
 
     with pytest.raises(gr.Error) as raised:
         gu.gui_runtime_error_handler(handler)()
 
-    assert raised.value.message == "EOFError()"
+    assert raised.value.message == message
+
+
+def test_a_missing_folder_is_named_instead_of_the_file_that_was_to_be_written(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(gu.utils, "write_error_log", lambda e: None)
+    monkeypatch.setitem(gu.loc.LANGUAGE_LOOKUP, "error-path-not-found", "gone|{path}")
+    species_list = tmp_path / "unplugged" / "lists" / "species.txt"
+
+    def handler():
+        species_list.write_text("Parus major_Great Tit")
+
+    with pytest.raises(gr.Error) as raised:
+        gu.gui_runtime_error_handler(handler)()
+
+    assert raised.value.message == f"gone|{tmp_path / 'unplugged'}"
 
 
 def test_a_language_is_saved_and_announced_once_per_choice(
@@ -417,14 +474,19 @@ class _WindowEvent(list):
         return self
 
 
-def _open_window_with_a_fake_webview(monkeypatch):
-    """Runs open_window up to the point where the real one blocks; returns its URL."""
-    urls = []
+def _open_window_with_a_fake_webview(monkeypatch, screen=(1920, 1080)):
+    """Runs open_window up to the point where the real one blocks.
+
+    Returns the URL and the other arguments of the window.
+    """
+    windows = []
     events = SimpleNamespace(shown=_WindowEvent(), loaded=_WindowEvent())
     webview = SimpleNamespace(
         settings={},
+        screens=[SimpleNamespace(width=screen[0], height=screen[1])],
         create_window=lambda title, url, **kwargs: (
-            urls.append(url) or SimpleNamespace(events=events, uid="master")
+            windows.append((url, kwargs))
+            or SimpleNamespace(events=events, uid="master")
         ),
         start=lambda **kwargs: None,
     )
@@ -444,7 +506,28 @@ def _open_window_with_a_fake_webview(monkeypatch):
     finally:
         gr.close_all()
 
-    return urls[0]
+    return windows[0]
+
+
+@pytest.mark.parametrize("screen", [(1366, 768), (1280, 720), (1024, 600)])
+def test_the_window_opens_maximized_on_a_screen_it_does_not_fit(
+    appdir, monkeypatch, screen
+):
+    _, size = _open_window_with_a_fake_webview(monkeypatch, screen)
+
+    assert size["maximized"]
+    assert size["width"] <= screen[0]
+    assert size["height"] <= screen[1]
+    assert size["min_size"][0] < screen[0]
+    assert size["min_size"][1] < screen[1]
+
+
+def test_the_window_keeps_its_size_on_a_screen_it_fits(appdir, monkeypatch):
+    _, size = _open_window_with_a_fake_webview(monkeypatch, (1920, 1080))
+
+    assert (size["width"], size["height"]) == (1300, 900)
+    assert size["min_size"] == (1300, 900)
+    assert not size.get("maximized")
 
 
 def _proxy_from_the_environment(monkeypatch):
@@ -481,7 +564,7 @@ def test_the_window_opens_although_an_unreachable_proxy_is_configured(
     monkeypatch.delenv("no_proxy", raising=False)
     configure_proxy(monkeypatch)
 
-    url = _open_window_with_a_fake_webview(monkeypatch)
+    url, _ = _open_window_with_a_fake_webview(monkeypatch)
 
     assert url.startswith("http://127.0.0.1:")
     assert "NO_PROXY" not in os.environ
@@ -495,3 +578,27 @@ def test_a_proxy_exclusion_of_the_user_is_kept(appdir, monkeypatch):
     _open_window_with_a_fake_webview(monkeypatch)
 
     assert os.environ["NO_PROXY"] == "intranet.example"
+
+
+def test_the_settings_tab_and_the_footer_are_in_the_chosen_language(
+    appdir, monkeypatch
+):
+    import birdnet_analyzer.gui.localization as loc
+
+    german = loc._read_language_file("de")
+    monkeypatch.setattr(loc, "LANGUAGE_LOOKUP", german)
+
+    with gr.Blocks() as demo:
+        gu.build_settings()
+        gu.build_footer()
+
+    shown = " ".join(
+        str(block.value)
+        for block in demo.blocks.values()
+        if isinstance(block, gr.Markdown)
+    )
+
+    assert german["settings-tab-error-log-report-info"] in shown
+    assert german["footer-gui-version"] in shown
+    assert "If you encounter a bug" not in shown
+    assert "GUI version" not in shown

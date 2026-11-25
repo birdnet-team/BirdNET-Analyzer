@@ -17,13 +17,13 @@ birdnet_analyzer.analyze
 
       python -m birdnet_analyzer.analyze /path/to/audio/folder -o /path/to/output/folder
 
-   Here are two example commands to run this BirdNET version:
+   Here are two more example commands:
 
    .. code:: bash
 
-      python3 -m birdnet_analyzer.analyze example/ --slist example/ --min_conf 0.5 --n_workers 4
+      python -m birdnet_analyzer.analyze /path/to/audio/folder --slist /path/to/species_list.txt --min_conf 0.5 --n_workers 4
 
-      python3 -m birdnet_analyzer.analyze example/ --lat 42.5 --lon -76.45 --week 4 --sensitivity 1.0
+      python -m birdnet_analyzer.analyze /path/to/audio/folder --lat 42.5 --lon -76.45 --week 4 --sensitivity 1.0
 
    Directory analyses are resumable: progress is saved continuously to a
    ``.birdnet-resume`` folder in the output directory, so an interrupted run (crash,
@@ -40,15 +40,33 @@ birdnet_analyzer.embeddings
    :prog: birdnet_analyzer.embeddings
 
    Run ``birdnet_analyzer.embeddings`` to extract feature embeddings instead of class predictions.
-   Result file will contain timestamps and lists of float values representing the embedding for a particular 3-second segment.
+   The embedding of each 3-second segment is stored in a database folder, which :ref:`birdnet_analyzer.search <cli-search>` and the Search tab of the GUI search; ``--file_output`` also writes all embeddings of the database to a CSV file.
    Embeddings can be used for clustering or similarity analysis. Here is an example:
 
    .. code:: bash
 
-      python -m birdnet_analyzer.embeddings -i example/ -db example_db/ --batch_size 16
+      python -m birdnet_analyzer.embeddings -i /path/to/audio/folder -db /path/to/database --batch_size 16
 
    A new database is filled with the embeddings of BirdNET 3.0, or of the version named with ``--birdnet``.
    An existing database keeps the version it was created with, and ``birdnet_analyzer.search`` uses that version for the query.
+
+.. _cli-search:
+
+birdnet_analyzer.search
+-----------------------
+
+.. argparse::
+   :ref: birdnet_analyzer.cli.search_parser
+   :prog: birdnet_analyzer.search
+
+   Run ``birdnet_analyzer.search``, installed as the ``birdnet-search`` command and part of the ``embeddings`` extra, to find the segments of an embeddings database that sound most like a query file.
+   ``--audio_root`` is the folder that held the input folder of ``birdnet_analyzer.embeddings``. Here is an example for the database above:
+
+   .. code:: bash
+
+      python -m birdnet_analyzer.search -db /path/to/database -q /path/to/query.wav -o /path/to/results --audio_root /path/to/audio
+
+   :doc:`../best-practices/embeddings` describes the search in the GUI, where you can listen to the results and export them.
 
 .. _cli-evaluation:
 
@@ -95,8 +113,6 @@ birdnet_analyzer.segments
 birdnet_analyzer.species
 -------------------------
 
-The year-round list may contain some species, that are not included in any list for a specific week. See `birdnet-team#211 <https://github.com/birdnet-team/BirdNET-Analyzer/issues/211#issuecomment-1849833360>`_ for more details.
-
 .. argparse::
    :ref: birdnet_analyzer.cli.species_parser
    :prog: birdnet_analyzer.species
@@ -140,7 +156,7 @@ birdnet_analyzer.train
    .. code:: bash
 
       python -m birdnet_analyzer.train train_data/ -o checkpoints/custom/Custom_Classifier.tflite
-      python -m birdnet_analyzer.analyze example/ --classifier checkpoints/custom/Custom_Classifier.tflite
+      python -m birdnet_analyzer.analyze /path/to/audio/folder --classifier checkpoints/custom/Custom_Classifier.tflite
 
    .. note::
       Setting a custom classifier will also set the new labels file. The species names come from that file, so ``--locale`` has no effect. A location (``--lat``/``--lon``) keeps only the classifier's species that the geo model predicts there, or, with a warning, all of them if it predicts none.
@@ -158,7 +174,7 @@ birdnet_analyzer.train
    To train with multi-label data separate the class labels with commas in the folder names (e.g., ``Poecile atricapillus_Black-capped Chickadee,Cardinalis cardinalis_Northern Cardinal``).
    This can also be combined with negative samples as described above.
    A negative sample also counts as not containing any other class, so a recording that does contain another trained species belongs in a combined folder (e.g., ``Cardinalis cardinalis_Northern Cardinal,-Poecile atricapillus_Black-capped Chickadee``).
-   The validation split will be performed combination of classes, so you might want to ensure sufficient data for each combination of classes.
+   The validation split is made per combination of classes, so give each combination at least two files.
    When using multi-label data the upsampling mode will be limited to 'repeat'.
 
    .. note:: Custom classifiers trained with BirdNET-Analyzer are subject to the license terms of the model they were trained with: the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ with its `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_ for BirdNET 3.0, the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_ for BirdNET 2.4.

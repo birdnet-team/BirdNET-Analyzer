@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 import argparse
 import logging
+import math
 import os
 from typing import cast, get_args
 
@@ -60,6 +61,49 @@ class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
             return action.help
 
         return super()._get_help_string(action)
+
+
+def _number(text: str) -> float:
+    try:
+        value = float(text)
+    except ValueError:
+        value = math.nan
+
+    if math.isnan(value):
+        raise argparse.ArgumentTypeError(f"'{text}' is not a number")
+
+    return value
+
+
+def _whole_number(text: str) -> int:
+    try:
+        return int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{text}' is not a whole number") from None
+
+
+class _Bounded(argparse.Action):
+    """Stores the nearest value within [low, high] and warns when it differs."""
+
+    def __init__(self, option_strings, dest, low=None, high=None, **kwargs):
+        super().__init__(option_strings, dest, **kwargs)
+        self.low = low
+        self.high = high
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        used, limit = values, None
+
+        if self.low is not None and values < self.low:
+            used, limit = self.low, "below the minimum"
+        elif self.high is not None and values > self.high:
+            used, limit = self.high, "above the maximum"
+
+        if limit:
+            logging.getLogger(__name__).warning(
+                f"{option_string} {values:g} is {limit} of {used:g}, so {used:g} is used."
+            )
+
+        setattr(namespace, self.dest, used)
 
 
 def apply_params_file_defaults(parser, loader, argv=None):
@@ -242,13 +286,19 @@ def bandpass_args():
 
     p.add_argument(
         "--fmin",
-        type=lambda a: max(0, min(15000, int(a))),
+        type=_whole_number,
+        action=_Bounded,
+        low=0,
+        high=15000,
         default=0,
         help="Minimum frequency for bandpass filter in Hz.",
     )
     p.add_argument(
         "--fmax",
-        type=lambda a: max(0, min(15000, int(a))),
+        type=_whole_number,
+        action=_Bounded,
+        low=0,
+        high=15000,
         default=15000,
         help="Maximum frequency for bandpass filter in Hz.",
     )
@@ -268,22 +318,25 @@ def species_list_args(add_species_list_hint=False):
 
     p.add_argument(
         "--lat",
-        type=float,
+        type=_number,
         help="Recording location latitude in decimal degrees." + slist_hint,
     )
     p.add_argument(
         "--lon",
-        type=float,
+        type=_number,
         help="Recording location longitude in decimal degrees." + slist_hint,
     )
     p.add_argument(
         "--week",
-        type=int,
+        type=_whole_number,
         help="Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Only effective when --lat and --lon are provided. Leave blank for year-round species list.",
     )
     p.add_argument(
         "--sf_thresh",
-        type=lambda a: max(0.0001, min(0.99, float(a))),
+        type=_number,
+        action=_Bounded,
+        low=0.0001,
+        high=0.99,
         default=0.03,
         help="Minimum species occurrence frequency threshold for location filter. Values in [0.0001, 0.99].",
     )
@@ -309,7 +362,10 @@ def sigmoid_args():
 
     p.add_argument(
         "--sensitivity",
-        type=lambda a: min(1.5, max(0.5, float(a))),
+        type=_number,
+        action=_Bounded,
+        low=0.5,
+        high=1.5,
         default=1.0,
         help="Detection sensitivity; Higher values result in higher sensitivity. Values in [0.5, 1.5]. Values other than 1.0 will shift the sigmoid function on the x-axis. Use complementary to the cut-off threshold. Applies to every BirdNET model and custom classifier; ignored for Perch.",
     )
@@ -325,7 +381,10 @@ def overlap_args(
 
     p.add_argument(
         "--overlap",
-        type=lambda a: max(0.0, min(maximum, float(a))),
+        type=_number,
+        action=_Bounded,
+        low=0.0,
+        high=maximum,
         default=0.0,
         help=help_string,
     )
@@ -339,7 +398,9 @@ def audio_speed_args():
 
     p.add_argument(
         "--audio_speed",
-        type=lambda a: max(0.01, float(a)),
+        type=_number,
+        action=_Bounded,
+        low=0.01,
         default=1.0,
         help="Speed factor for audio playback. Values < 1.0 will slow down the audio, values > 1.0 will speed it up. At a 10x decrease (audio speed 0.1), a 384 kHz recording becomes a 38.4 kHz recording.",
     )
@@ -356,7 +417,9 @@ def threads_args():
     p.add_argument(
         "-t",
         "--threads",
-        type=lambda a: max(1, int(a)),
+        type=_whole_number,
+        action=_Bounded,
+        low=1,
         default=min(8, max(1, multiprocessing.cpu_count() // 2)),
         help="Number of CPU threads.",
     )
@@ -371,7 +434,10 @@ def min_conf_args():
     p.add_argument(
         "--min_conf",
         default=0.25,
-        type=lambda a: max(0.00001, min(0.99, float(a))),
+        type=_number,
+        action=_Bounded,
+        low=0.00001,
+        high=0.99,
         help="Minimum confidence threshold. Values in [0.00001, 0.99]. Perch "
         "confidences are softmax probabilities: simultaneous vocalizations "
         "share the probability mass, so dense soundscapes may need a lower "
@@ -419,7 +485,9 @@ def bs_args(default=1):
     p.add_argument(
         "-b",
         "--batch_size",
-        type=lambda a: max(1, int(a)),
+        type=_whole_number,
+        action=_Bounded,
+        low=1,
         default=default,
         help="Number of samples to process at the same time. A custom classifier trained on BirdNET 3.0 always processes 1.",
     )
@@ -433,7 +501,7 @@ def computing_resources_args():
 
     p.add_argument(
         "--n_workers",
-        type=int,
+        type=_whole_number,
         help=(
             "Number of worker processes for audio processing. Defaults to as many as "
             "fit the available memory, at most one per CPU core."
@@ -441,7 +509,7 @@ def computing_resources_args():
     )
     p.add_argument(
         "--n_producers",
-        type=int,
+        type=_whole_number,
         default=1,
         help="Number of producer processes for audio processing. Defaults to 1.",
     )
@@ -525,12 +593,14 @@ def analyzer_parser():
     )
     parser.add_argument(
         "--top_n",
-        type=lambda a: max(1, int(a)),
+        type=_whole_number,
+        action=_Bounded,
+        low=1,
         help="Saves at most the top N predictions for each segment. --min_conf still applies.",
     )
     parser.add_argument(
         "--merge_consecutive",
-        type=int,
+        type=_whole_number,
         default=1,
         help="Maximum number of consecutive detections above the threshold to merge for each detected species. This will result in fewer entries in the result file with segments longer than 3 seconds. Set to 0 or 1 to disable merging. A merged detection has the mean score of the detections it was made of.",
     )
@@ -612,7 +682,10 @@ def search_parser():
         "-o", "--output", required=True, help="Path to the output folder."
     )
     parser.add_argument(
-        "--n_results", default=10, type=int, help="Number of results to return."
+        "--n_results",
+        default=10,
+        type=_whole_number,
+        help="Number of results to return.",
     )
 
     parser.add_argument(
@@ -665,20 +738,27 @@ def segments_parser():
     )
     parser.add_argument(
         "--max_segments",
-        type=lambda a: max(1, int(a)),
+        type=_whole_number,
+        action=_Bounded,
+        low=1,
         default=100,
         help="Number of randomly extracted segments per species.",
     )
     parser.add_argument(
         "--seg_length",
-        type=lambda a: max(1.0, float(a)),
+        type=_number,
+        action=_Bounded,
+        low=1.0,
         default=3.0,
         help="Minimum length of extracted segments in seconds. If a segment is shorter than this value, it will be padded with audio from the source file.",
     )
     parser.add_argument(
         "--max_conf",
         default=1.0,
-        type=lambda a: max(0.00001, min(1.0, float(a))),
+        type=_number,
+        action=_Bounded,
+        low=0.00001,
+        high=1.0,
         help="Maximum confidence threshold. Values in [0.00001, 1.0].",
     )
     parser.add_argument(
@@ -689,7 +769,9 @@ def segments_parser():
     )
     parser.add_argument(
         "--n_bins",
-        type=lambda a: max(2, int(a)),
+        type=_whole_number,
+        action=_Bounded,
+        low=2,
         default=10,
         help="Number of bins to use for the balanced collection mode",
     )
@@ -764,19 +846,19 @@ def train_parser():
     )
     parser.add_argument(
         "--epochs",
-        type=int,
+        type=_whole_number,
         default=TRAIN_EPOCHS,
         help="Number of training epochs.",
     )
     parser.add_argument(
         "--val_split",
-        type=float,
+        type=_number,
         default=0.2,
-        help="A small percentage of the training data that is not used for training, but for validation scores and early stopping during training. Must be above 0.",
+        help="The share of each class's training files that is not used for training, but for validation scores and early stopping during training. All segments of a file stay on the same side. Must be above 0.",
     )
     parser.add_argument(
         "--learning_rate",
-        type=float,
+        type=_number,
         help="Learning rate. If not set, the one measured for the base model: 0.1 for BirdNET 3.0, 0.01 for BirdNET 2.4. One read with --load_params applies only to the base model it was recorded for.",
     )
     parser.add_argument(
@@ -789,24 +871,27 @@ def train_parser():
     parser.add_argument(
         "--focal-loss-gamma",
         default=2.0,
-        type=float,
+        type=_number,
         help="Focal loss gamma parameter (focusing parameter). Higher values give more weight to hard examples.",
     )
     parser.add_argument(
         "--focal-loss-alpha",
         default=0.25,
-        type=float,
+        type=_number,
         help="Focal loss alpha parameter (balancing parameter). Controls weight between positive and negative examples.",
     )
     parser.add_argument(
         "--hidden_units",
-        type=int,
+        type=_whole_number,
         default=0,
         help="Number of hidden units. If set to >0, a two-layer classifier is used.",
     )
     parser.add_argument(
         "--dropout",
-        type=lambda a: min(max(0, float(a)), 0.9),
+        type=_number,
+        action=_Bounded,
+        low=0.0,
+        high=0.9,
         default=0.0,
         help="Dropout rate. Higher values result in more regularization. Values in [0.0, 0.9].",
     )
@@ -824,7 +909,10 @@ def train_parser():
     )
     parser.add_argument(
         "--upsampling_ratio",
-        type=lambda a: min(max(0, float(a)), 1),
+        type=_number,
+        action=_Bounded,
+        low=0.0,
+        high=1.0,
         default=0.0,
         help="Balance train data and upsample minority classes. Values between 0 and 1.",
     )
@@ -859,19 +947,19 @@ def train_parser():
     )
     parser.add_argument(
         "--autotune_trials",
-        type=int,
+        type=_whole_number,
         default=50,
         help="Number of training runs for hyperparameter tuning.",
     )
     parser.add_argument(
         "--autotune_n_splits",
-        type=int,
+        type=_whole_number,
         default=1,
-        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred samples.",
+        help="Number of folds for cross-validation during hyperparameter tuning. If set to >1, the training data will be split into k folds and each training run will be executed k times with a different fold as validation data and the rest as training data. A fold takes whole files. This multiplies the tuning time and is mainly worth it for small datasets of a few hundred files.",
     )
     parser.add_argument(
         "--autotune_n_repeats",
-        type=int,
+        type=_whole_number,
         default=1,
         help="Number of repetitions for each training run during hyperparameter tuning. If set to >1, each training run will be executed multiple times and the average validation score across all repetitions will be used as the score for the training run. This can help to get more robust estimates of the validation scores for each training run, but it will also increase the runtime of the hyperparameter tuning process. Only used when --autotune_n_splits is greater than 1.",
     )

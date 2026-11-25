@@ -1,4 +1,5 @@
 import contextlib
+import pickle
 from unittest.mock import patch
 
 import numpy as np
@@ -6,6 +7,7 @@ import pytest
 import soundfile as sf
 
 from birdnet_analyzer import model_utils
+from birdnet_analyzer.train.errors import TrainingInputError
 from birdnet_analyzer.train.utils import (
     _check_cache_destination,
     _load_from_cache,
@@ -18,9 +20,9 @@ SR = 48000
 SIG_LENGTH = 3.0
 
 
-def _sine_wav(path, duration):
+def _sine_wav(path, duration, amplitude=0.3):
     t = np.linspace(0, duration, int(SR * duration), endpoint=False, dtype="float32")
-    sf.write(path, (0.3 * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
+    sf.write(path, (amplitude * np.sin(2 * np.pi * 1000 * t)).astype("float32"), SR)
 
     return str(path)
 
@@ -30,11 +32,14 @@ def _label():
 
 
 @pytest.mark.parametrize(
-    ("crop_mode", "n_segments"), [("center", 1), ("first", 1), ("segments", 2)]
+    ("crop_mode", "duration", "n_segments"),
+    [("center", 5.0, 1), ("first", 5.0, 1), ("segments", 5.0, 2), ("segments", 3.5, 1)],
 )
-def test_a_file_is_cropped_into_labelled_segments(tmp_path, crop_mode, n_segments):
+def test_a_file_is_cropped_into_labelled_segments(
+    tmp_path, crop_mode, duration, n_segments
+):
     segs, labels = _read_and_crop_file(
-        _sine_wav(tmp_path / "five.wav", 5.0),
+        _sine_wav(tmp_path / "recording.wav", duration),
         _label(),
         sample_rate=SR,
         crop_mode=crop_mode,
@@ -68,22 +73,59 @@ def test_load_training_data_lists_empty_folders_before_loading_model(tmp_path):
         _load_training_data(str(tmp_path))
 
     assert "robin" not in str(error.value)
-    assert error.value.args[1] == "validation-no-audio-files-in-training-folders"
+    assert error.value.key == "validation-no-audio-files-in-training-folders"
     mock_load.assert_not_called()
 
 
-def test_read_and_crop_first_short_file_fails_soft(tmp_path):
-    # Below the 1 s minimum split_signal yields nothing, and "first" must not index it.
+@pytest.mark.parametrize("overlap", [0.0, 2.0])
+@pytest.mark.parametrize("crop_mode", ["first", "segments"])
+def test_a_file_shorter_than_one_second_is_one_zero_padded_segment(
+    tmp_path, crop_mode, overlap
+):
+    duration = 0.4
     segs, labels = _read_and_crop_file(
-        _sine_wav(tmp_path / "short.wav", 0.4),
+        _sine_wav(tmp_path / "call.wav", duration),
         _label(),
         sample_rate=SR,
-        crop_mode="first",
+        crop_mode=crop_mode,
         sig_length=SIG_LENGTH,
+        overlap=overlap,
+    )
+
+    (segment,) = segs
+    call_end = int(duration * SR)
+    assert segment.shape == (int(SIG_LENGTH * SR),)
+    assert np.abs(segment[:call_end]).max() > 0.2
+    assert not segment[call_end:].any()
+    np.testing.assert_array_equal(labels, [_label()])
+
+
+@pytest.mark.parametrize("crop_mode", ["first", "segments"])
+def test_an_empty_file_gives_no_segment(tmp_path, crop_mode):
+    path = tmp_path / "empty.wav"
+    sf.write(path, np.zeros(0, dtype="float32"), SR)
+
+    segs, labels = _read_and_crop_file(
+        str(path), _label(), sample_rate=SR, crop_mode=crop_mode, sig_length=SIG_LENGTH
     )
 
     assert segs == []
     assert labels == []
+
+
+@pytest.mark.parametrize("audio_speed", [0.5, 2.0])
+def test_the_first_segment_is_audio_to_its_end_at_any_speed(tmp_path, audio_speed):
+    (segment,), _ = _read_and_crop_file(
+        _sine_wav(tmp_path / "recording.wav", 8.0),
+        _label(),
+        sample_rate=SR,
+        crop_mode="first",
+        sig_length=SIG_LENGTH,
+        audio_speed=audio_speed,
+    )
+
+    assert segment.shape == (int(SIG_LENGTH * SR),)
+    assert np.abs(segment[-SR // 10 :]).max() > 0.2
 
 
 class _FakeResult:
@@ -204,11 +246,12 @@ def test_invalid_training_folders_raise_a_localizable_value_error(
     for folder in folders:
         (tmp_path / folder).mkdir()
 
-    with pytest.raises(ValueError, match=key) as error:
+    with pytest.raises(TrainingInputError) as error:
         _load_training_data(str(tmp_path), **options)
 
-    assert len(error.value.args) == 2
-    assert error.value.args[1] == key
+    assert (error.value.key, error.value.values) == (key, ())
+    assert isinstance(error.value, ValueError)
+    assert error.value.args == (str(error.value),)
 
 
 class _FakeAcousticModel:
@@ -229,7 +272,7 @@ def fake_encoder(monkeypatch):
         model_utils,
         "encode_arrays_batched",
         lambda _, signals: (
-            np.zeros((len(signals), 4), dtype="float32"),
+            np.array([[np.abs(s).max()] * 4 for s, _ in signals], dtype="float32"),
             np.ones(len(signals), dtype=bool),
         ),
     )
@@ -244,10 +287,72 @@ def _write_wav(path):
 def test_a_folder_of_spaced_labels_sets_each_label(tmp_path):
     _write_wav(tmp_path / "a, b" / "x.wav")
 
-    _, y_train, _, _, labels, *_ = _load_training_data(str(tmp_path))
+    _, y_train, _, _, _, labels, *_ = _load_training_data(str(tmp_path))
 
     assert labels == ["a", "b"]
     np.testing.assert_array_equal(y_train, [[1, 1]])
+
+
+@pytest.mark.usefixtures("fake_encoder")
+@pytest.mark.parametrize(
+    "files_per_folder",
+    [
+        {"a": 5, "b": 5, "c": 1, "noise": 3},
+        {"a": 4, "b": 4, "a,b": 3, "c": 1, "noise": 2},
+    ],
+    ids=["single-label", "multi-label"],
+)
+def test_no_file_trains_and_validates_from_its_audio_or_its_cache(
+    tmp_path, monkeypatch, files_per_folder
+):
+    import keras
+
+    from birdnet_analyzer.train.utils import train_model
+
+    amplitudes = iter(np.arange(0.1, 1.0, 0.05))
+
+    for folder, n_files in files_per_folder.items():
+        (tmp_path / "data" / folder).mkdir(parents=True)
+
+        for k in range(n_files):
+            _sine_wav(tmp_path / "data" / folder / f"{k}.wav", 9.0, next(amplitudes))
+
+    fits = []
+    fit = keras.Model.fit
+
+    def recording_fit(self, x, y, validation_data, **kwargs):
+        fits.append((x[:, 0], y, validation_data[0][:, 0]))
+        return fit(self, x, y, validation_data=validation_data, **kwargs)
+
+    monkeypatch.setattr(keras.Model, "fit", recording_fit)
+    cache = str(tmp_path / "cache.npz")
+    output = str(tmp_path / "cc")
+    options = {
+        "crop_mode": "segments",
+        "overlap": 1.5,
+        "epochs": 1,
+        "model_formats": [],
+    }
+
+    train_model(str(tmp_path / "data"), output, save_cache_to=cache, **options)
+    train_model(cache, output, **options)
+
+    for n_splits in (1, 2):
+        train_model(
+            cache,
+            output,
+            autotune=True,
+            autotune_trials=1,
+            autotune_n_splits=n_splits,
+            **options,
+        )
+
+    assert len(fits) == 7
+
+    for trained, y_train, validated in fits:
+        assert len(validated)
+        assert not set(np.round(trained, 2)) & set(np.round(validated, 2))
+        assert np.all(np.any(y_train > 0, axis=0))
 
 
 @pytest.mark.usefixtures("fake_encoder")
@@ -296,8 +401,66 @@ def test_checking_the_cache_destination_leaves_no_trace(tmp_path):
     assert existing.read_bytes() == b"old cache"
 
 
+def test_a_cache_folder_without_write_permission_is_reported_at_once(
+    unwritable_folder, bounded
+):
+    raised = bounded(_check_cache_destination, str(unwritable_folder / "cache.npz"))
+
+    assert isinstance(raised, PermissionError)
+
+
 def test_a_directory_where_the_cache_would_go_is_reported_as_one(tmp_path):
     (tmp_path / "cache.npz").mkdir()
 
     with pytest.raises(IsADirectoryError, match=r"cache\.npz"):
         _check_cache_destination(str(tmp_path / "cache"))
+
+
+@pytest.mark.parametrize("folders", [[], ["Noise"], ["-a"]])
+def test_training_data_without_a_class_folder_is_rejected_before_loading(
+    tmp_path, folders
+):
+    (tmp_path / "recording.wav").touch()
+
+    for folder in folders:
+        (tmp_path / folder).mkdir()
+
+    with (
+        patch.object(model_utils, "_load_acoustic_for_embeddings") as mock_load,
+        pytest.raises(ValueError, match="do not count as classes") as error,
+    ):
+        _load_training_data(str(tmp_path))
+
+    assert (error.value.key, error.value.values) == (
+        "validation-no-class-folders-in-training-data",
+        (str(tmp_path),),
+    )
+    mock_load.assert_not_called()
+
+
+@pytest.mark.usefixtures("fake_encoder")
+def test_training_data_of_which_no_recording_can_be_read_is_rejected(tmp_path):
+    for folder in ("a", "b"):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / "damaged.wav").write_bytes(bytes(2000))
+
+    with pytest.raises(TrainingInputError, match="could be read") as error:
+        _load_training_data(str(tmp_path))
+
+    assert (error.value.key, error.value.values) == (
+        "validation-no-readable-training-audio",
+        (str(tmp_path),),
+    )
+
+
+def test_a_training_error_arrives_whole_from_another_process():
+    error = TrainingInputError("a-key", "No class folders.", "recordings")
+
+    arrived = pickle.loads(pickle.dumps(error))
+
+    assert (type(arrived), str(arrived), arrived.key, arrived.values) == (
+        TrainingInputError,
+        "No class folders.",
+        "a-key",
+        ("recordings",),
+    )

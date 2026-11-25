@@ -9,8 +9,8 @@
 
 ![License](https://img.shields.io/github/license/birdnet-team/BirdNET-Analyzer)
 ![OS](https://badgen.net/badge/OS/Linux%2C%20Windows%2C%20macOS/blue)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-![Species](https://badgen.net/badge/Species/6512/blue)
+[![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/downloads/)
+![Species](https://badgen.net/badge/Species/11709/blue)
 ![Downloads](https://www-user.tu-chemnitz.de/~johau/birdnet_total_downloads_badge.php)
 
 [![Docker](https://github.com/birdnet-team/BirdNET-Analyzer/actions/workflows/docker-build.yml/badge.svg)](https://github.com/birdnet-team/BirdNET-Analyzer/actions/workflows/docker-build.yml)
@@ -55,7 +55,7 @@ On Windows, once the package is listed in the Windows Package Manager, you can a
 winget install BirdNETTeam.BirdNETAnalyzer
 ```
 
-Models can be found on [Zenodo](https://zenodo.org/records/15050749).
+Models can be found on Zenodo: [BirdNET 3.0](https://zenodo.org/records/24362980) and [BirdNET 2.4](https://zenodo.org/records/15050749).
 
 ## Installation
 
@@ -79,7 +79,7 @@ Additional feature sets are available as extras:
 pip install "birdnet_analyzer[all]"
 ```
 
-For the standalone installers, the Docker image or a source installation, see the [installation documentation](https://birdnet-team.github.io/BirdNET-Analyzer/installation.html).
+For the standalone installers or a source installation, see the [installation documentation](https://birdnet-team.github.io/BirdNET-Analyzer/stable/installation.html), for the Docker image the [Docker documentation](https://birdnet-team.github.io/BirdNET-Analyzer/stable/usage/docker.html).
 
 ## About
 
@@ -94,7 +94,7 @@ Want to use BirdNET to analyze a large dataset? Don't hesitate to contact us: cc
 ## License
 
 - **Source Code**: The source code for this project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-- **Models**: The BirdNET 3.0 acoustic model is licensed under the [Apache License 2.0](https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md) and comes with an [acceptable use policy](https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md). The other BirdNET models are licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+- **Models**: The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the [Apache License 2.0](https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md) and come with an [acceptable use policy](https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md). BirdNET 2.4 and the older BirdNET models are licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 Please ensure you review and adhere to the specific license terms provided with each model.
 

@@ -1,3 +1,4 @@
+import logging
 from typing import get_args
 
 import pytest
@@ -7,20 +8,57 @@ from birdnet_analyzer import config as cfg
 
 
 @pytest.mark.parametrize(
-    ("parser", "cap"),
+    ("parser", "required", "cap"),
     [
-        (cli.analyzer_parser, 4.9),
-        (cli.embeddings_parser, 2.9),
-        (cli.search_parser, 2.9),
-        (cli.train_parser, 2.9),
+        (cli.analyzer_parser, ["recordings"], 4.9),
+        (cli.embeddings_parser, ["-db", "db", "-i", "recordings"], 2.9),
+        (
+            cli.search_parser,
+            ["-db", "db", "-q", "query.wav", "-o", "out", "--audio_root", "."],
+            2.9,
+        ),
+        (cli.train_parser, ["data"], 2.9),
     ],
 )
-def test_the_overlap_help_states_the_cap_the_parser_applies(parser, cap):
+def test_the_overlap_help_states_the_cap_the_parser_applies(parser, required, cap):
     overlap = next(action for action in parser()._actions if action.dest == "overlap")
 
-    assert overlap.type("100") == cap
-    assert overlap.type("-1") == 0.0
+    assert parser().parse_args([*required, "--overlap", "100"]).overlap == cap
+    assert parser().parse_args([*required, "--overlap", "-1"]).overlap == 0.0
     assert f"[0.0, {cap}]" in overlap.help
+
+
+def test_a_number_outside_its_range_is_used_at_its_limit_with_a_warning(caplog):
+    with caplog.at_level(logging.WARNING, logger="birdnet_analyzer"):
+        args = cli.analyzer_parser().parse_args(
+            ["recordings", "--min_conf", "50", "--sensitivity", "3", "--overlap", "1"]
+        )
+
+    assert (args.min_conf, args.sensitivity, args.overlap) == (0.99, 1.5, 1.0)
+    assert [r.getMessage() for r in caplog.records if r.levelname == "WARNING"] == [
+        "--min_conf 50 is above the maximum of 0.99, so 0.99 is used.",
+        "--sensitivity 3 is above the maximum of 1.5, so 1.5 is used.",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("option", "value", "message"),
+    [
+        ("--min_conf", "abc", "argument --min_conf: 'abc' is not a number"),
+        ("--min_conf", "nan", "argument --min_conf: 'nan' is not a number"),
+        (
+            "--batch_size",
+            "abc",
+            "argument -b/--batch_size: 'abc' is not a whole number",
+        ),
+        ("--lat", "abc", "argument --lat: 'abc' is not a number"),
+    ],
+)
+def test_a_value_that_is_not_a_number_is_named_as_such(capsys, option, value, message):
+    with pytest.raises(SystemExit):
+        cli.analyzer_parser().parse_args(["recordings", option, value])
+
+    assert capsys.readouterr().err.rstrip().endswith(message)
 
 
 @pytest.mark.parametrize(

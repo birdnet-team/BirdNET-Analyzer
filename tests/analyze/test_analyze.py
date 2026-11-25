@@ -46,6 +46,49 @@ def env(tmp_path):
     }
 
 
+def _no_analysis(*args, **kwargs):
+    raise AssertionError("the recording was analysed")
+
+
+@patch("birdnet_analyzer.model_utils.run_inference", _no_analysis)
+def test_a_single_file_analysis_into_a_file_fails_before_analysing(tmp_path):
+    taken = tmp_path / "results.txt"
+    taken.touch()
+
+    with pytest.raises(NotADirectoryError) as raised:
+        analyze(SOUNDSCAPE, str(taken))
+
+    assert raised.value.filename == str(taken)
+
+
+@patch("birdnet_analyzer.model_utils.run_inference", _no_analysis)
+def test_a_single_file_analysis_without_write_permission_fails_before_analysing(
+    unwritable_folder,
+):
+    with pytest.raises(PermissionError) as raised:
+        analyze(SOUNDSCAPE, str(unwritable_folder))
+
+    assert raised.value.filename == str(unwritable_folder)
+
+
+def test_a_mistyped_input_creates_no_folder(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValueError, match="was not found"):
+        analyze(os.path.join("typo", "recordings"))
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_mistyped_input_in_a_folder_without_write_permission_is_named(
+    unwritable_folder, monkeypatch
+):
+    monkeypatch.chdir(unwritable_folder)
+
+    with pytest.raises(ValueError, match="was not found"):
+        analyze(os.path.join("typo", "recordings"))
+
+
 @patch("birdnet_analyzer.model_utils.run_inference")
 def test_analyze_cli_accepts_full_parser_surface(mock_run_inference, env):
 
@@ -858,7 +901,7 @@ def test_the_params_file_reads_back_as_the_arguments_of_the_analysis(
     ],
 )
 def test_the_cli_warns_when_additional_columns_cannot_be_written(
-    tmp_path, monkeypatch, caplog, rtype, expected_warnings
+    tmp_path, monkeypatch, capsys, rtype, expected_warnings
 ):
     monkeypatch.setattr(settings, "ERROR_LOG_FILE", str(tmp_path / "error_log.txt"))
     monkeypatch.setattr(
@@ -881,7 +924,9 @@ def test_the_cli_warns_when_additional_columns_cannot_be_written(
 
     mock_analyze.assert_called_once()
     assert [
-        r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
+        line
+        for line in capsys.readouterr().out.splitlines()
+        if "--additional_columns" in line
     ] == expected_warnings
 
 
@@ -1168,6 +1213,24 @@ def test_split_tables_write_no_file_for_an_unprocessable_input(
     assert _split_files(tmp_path / "out") == [
         "a.BirdNET.results.csv",
         "sub/c.BirdNET.results.csv",
+    ]
+
+
+@patch("birdnet_analyzer.model_utils.run_inference")
+def test_an_analysis_names_the_files_it_could_not_read(
+    mock_run_inference, tmp_path, caplog
+):
+    detections = _detections_in_three_files(tmp_path / "in")
+    b = str(tmp_path / "in" / "b.wav")
+    _mock_result(
+        mock_run_inference, detections[detections["input"] != b], unprocessable=[b]
+    )
+
+    with caplog.at_level(logging.WARNING, logger="birdnet_analyzer"):
+        analyze(str(tmp_path / "in"), str(tmp_path / "out"), rtype="csv")
+
+    assert [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING] == [
+        f"1 of 3 audio files could not be read and were skipped:\n  {b}"
     ]
 
 

@@ -28,7 +28,9 @@ def segments(
     """
     Processes audio files to extract segments based on detection results.
     Args:
-        audio_input (str): Path to the input folder containing audio files.
+        audio_input (str): Path to the input folder containing audio files. Audio
+            files that are no longer where a combined result table names them are
+            looked up here.
         output (str | None, optional): Path to the output folder where segments will be
             saved. If not provided, the input folder will be used as the output folder.
             Defaults to None.
@@ -71,18 +73,22 @@ def segments(
         extract_segments,
         parse_files,
         parse_folders,
+        relocate_audio,
     )
 
     output = output or audio_input
     results = results or audio_input
     result_collection = parse_folders(audio_input, results)
-    file_list = parse_files(
-        result_collection,
-        max_segments=max_segments,
-        collection_mode=collection_mode,
-        n_bins=n_bins,
-        min_conf=min_conf,
-        max_conf=max_conf,
+    file_list = relocate_audio(
+        parse_files(
+            result_collection,
+            max_segments=max_segments,
+            collection_mode=collection_mode,
+            n_bins=n_bins,
+            min_conf=min_conf,
+            max_conf=max_conf,
+        ),
+        audio_input,
     )
     result_list: list[tuple[str, bool]] = []
 

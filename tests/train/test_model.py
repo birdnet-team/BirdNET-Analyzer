@@ -259,31 +259,6 @@ def _train(classifier, x, y, **kwargs):
     )
 
 
-@pytest.mark.parametrize("before", ["0", None])
-def test_a_failed_training_restores_the_visible_cuda_devices(monkeypatch, before):
-    import os
-
-    if before is None:
-        monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
-    else:
-        monkeypatch.setenv("CUDA_VISIBLE_DEVICES", before)
-
-    classifier = build_linear_classifier(2, 8)
-    during = []
-
-    def fail(*args, **kwargs):
-        during.append(os.environ.get("CUDA_VISIBLE_DEVICES"))
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(classifier, "fit", fail)
-
-    with pytest.raises(RuntimeError, match="boom"):
-        _train(classifier, *_two_class_data(), train_with_label_smoothing=False)
-
-    assert during == [""]
-    assert os.environ.get("CUDA_VISIBLE_DEVICES") == before
-
-
 def test_the_training_metrics_score_smoothed_labels_as_their_hard_labels():
     import keras
 

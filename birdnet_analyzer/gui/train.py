@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+from html import escape
 from pathlib import Path
 
 import gradio as gr
@@ -87,6 +88,7 @@ def start_training(
     import matplotlib
     import matplotlib.pyplot as plt
 
+    from birdnet_analyzer.train.errors import TrainingInputError
     from birdnet_analyzer.train.utils import train_model
 
     if cache_mode != "load":
@@ -172,20 +174,15 @@ def start_training(
                 on_data_load_end=data_load_progression,
                 audio_speed=gu.slider_to_value(audio_speed),
             )
-    except Exception as e:
-        key = e.args[1] if len(e.args) > 1 else None
+    except TrainingInputError as e:
+        text = loc.LANGUAGE_LOOKUP.get(e.key)
 
-        if isinstance(key, str) and key in loc.LANGUAGE_LOOKUP:
-            message = loc.localize(key)
+        if text is None:
+            raise
 
-            # Args beyond the localization key are payload for the message's
-            # placeholders (e.g. the list of offending folders).
-            if len(e.args) > 2:
-                message = message.format(*e.args[2:])
+        values = (escape(value, quote=False) for value in e.values)
 
-            raise gr.Error(message) from None
-
-        raise
+        raise gr.Error(text.format(*values)) from None
 
     if len(history.epoch) < epochs:
         gr.Info(loc.localize("training-tab-early-stoppage-msg"))

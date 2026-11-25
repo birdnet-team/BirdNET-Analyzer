@@ -2,16 +2,19 @@ import logging
 import os
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 import soundfile as sf
 
 from birdnet_analyzer.cli import segments_parser
+from birdnet_analyzer.segments import utils as segments_utils
 from birdnet_analyzer.segments.core import segments
 from birdnet_analyzer.segments.utils import (
     _find_segments,
     _species_folder,
     parse_files,
     parse_folders,
+    relocate_audio,
 )
 
 RAVEN_HEADER = (
@@ -491,3 +494,174 @@ def test_parse_files_drops_detections_above_max_conf(tmp_path, combined):
     result = parse_files(flist, min_conf=0.25, max_conf=0.7)
 
     assert sorted(s["confidence"] for _, segs in result for s in segs) == [0.3, 0.6]
+
+
+RAMP_PER_SECOND = 0.025
+
+
+def _ramp(seconds, rate=48000):
+    """A signal that rises steadily, so a sample's value tells its time."""
+    return np.arange(seconds * rate, dtype=np.float32) * (RAMP_PER_SECOND / rate)
+
+
+def _combined_table(results_dir, rows):
+    results_dir.mkdir(exist_ok=True)
+    (results_dir / "BirdNET_SelectionTable.txt").write_text(
+        "\n".join(
+            [
+                RAVEN_HEADER,
+                *(
+                    _raven_row(i, start, end, "American Robin", "T. m.", "x", 0.9, path)
+                    for i, (path, start, end) in enumerate(rows, start=1)
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize(
+    ("rate", "detection", "seg_length", "speed", "cut"),
+    [
+        (48000, (4, 7), 3.0, 1.0, (4, 7)),
+        (44100, (4, 7), 3.0, 1.0, (4, 7)),
+        (48000, (4, 7), 5.0, 1.0, (3, 8)),
+        (48000, (0, 3), 5.0, 1.0, (0, 4)),
+        (48000, (18, 20), 4.0, 1.0, (17, 20)),
+        (48000, (4, 10), 3.0, 2.0, (4, 10)),
+        (48000, (4, 8), 3.0, 2.0, (3, 9)),
+    ],
+    ids=[
+        "as-is",
+        "resampled",
+        "padded",
+        "at-the-start",
+        "at-the-end",
+        "sped-up",
+        "sped-up-and-padded",
+    ],
+)
+def test_a_clip_holds_the_part_of_the_recording_around_its_detection(
+    tmp_path, rate, detection, seg_length, speed, cut
+):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio_dir.mkdir()
+    audio = audio_dir / "rec.flac"
+    sf.write(audio, _ramp(20, rate), rate)
+    _combined_table(results_dir, [(audio, *detection)])
+
+    segments(
+        str(audio_dir),
+        str(out),
+        str(results_dir),
+        seg_length=seg_length,
+        audio_speed=speed,
+    )
+
+    (clip,) = out.rglob("*.wav")
+    sig, clip_rate = sf.read(clip)
+    expected = RAMP_PER_SECOND * (cut[0] + np.arange(len(sig)) * speed / clip_rate)
+    assert len(sig) / clip_rate == pytest.approx((cut[1] - cut[0]) / speed, abs=1e-3)
+    # 0.001 of the ramp is 40 ms; the ends carry the resampler's ringing.
+    assert np.abs(sig - expected)[100:-100].max() < 1e-3
+
+
+def test_a_recording_is_not_decoded_as_a_whole_for_its_clips(tmp_path, monkeypatch):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio_dir.mkdir()
+    audio = audio_dir / "rec.wav"
+    sf.write(audio, _ramp(20), 48000)
+    _combined_table(results_dir, [(audio, 4, 7)])
+
+    def decode_whole(*args, **kwargs):
+        raise AssertionError("the whole recording was decoded")
+
+    monkeypatch.setattr(segments_utils.audio, "open_audio_file", decode_whole)
+
+    assert segments(str(audio_dir), str(out), str(results_dir)) == [(str(audio), True)]
+
+
+def test_a_recording_soundfile_cannot_read_is_decoded_another_way(
+    tmp_path, monkeypatch
+):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio_dir.mkdir()
+    audio = audio_dir / "rec.m4a"
+    audio.write_bytes(b"not a format of libsndfile")
+    _combined_table(results_dir, [(audio, 4, 7)])
+    monkeypatch.setattr(
+        segments_utils.audio,
+        "open_audio_file",
+        lambda path, sample_rate, speed: (_ramp(20), sample_rate),
+    )
+
+    segments(str(audio_dir), str(out), str(results_dir))
+
+    (clip,) = out.rglob("*.wav")
+    sig, _ = sf.read(clip)
+    ends = [4 * RAMP_PER_SECOND, 7 * RAMP_PER_SECOND]
+    assert sig[[0, -1]] == pytest.approx(ends, abs=1e-3)
+
+
+def test_recordings_moved_since_the_analysis_are_cut_from_the_audio_folder(tmp_path):
+    audio_dir, results_dir, out = (
+        tmp_path / name for name in ("audio", "results", "segments")
+    )
+    audio = audio_dir / "site_a" / "rec.wav"
+    audio.parent.mkdir(parents=True)
+    sf.write(audio, _ramp(10), 48000)
+    analyzed = tmp_path / "drive_of_the_analysis" / "site_a" / "rec.wav"
+    _combined_table(results_dir, [(analyzed, 4, 7)])
+
+    done = segments(str(audio_dir), str(out), str(results_dir))
+
+    assert done == [(str(audio), True)]
+    assert len(list(out.rglob("*.wav"))) == 1
+
+
+def _files(folder, *names):
+    for name in names:
+        (folder / name).parent.mkdir(parents=True, exist_ok=True)
+        (folder / name).touch()
+
+    return [str(folder / name) for name in names]
+
+
+def test_a_moved_recording_is_told_from_its_namesakes_by_its_folders(tmp_path):
+    audio_dir = tmp_path / "audio"
+    _, site_b = _files(audio_dir, "site_a/rec.wav", "site_b/rec.wav")
+    analyzed = str(tmp_path / "gone" / "site_b" / "rec.wav")
+
+    assert relocate_audio([(analyzed, [])], str(audio_dir)) == [(site_b, [])]
+
+
+@pytest.mark.parametrize(
+    ("in_audio_dir", "analyzed"),
+    [
+        (["site_a/rec.wav", "site_b/rec.wav"], ["gone/rec.wav"]),
+        (["rec.wav"], ["gone/site_a/rec.wav", "gone/site_b/rec.wav"]),
+        (["other.wav"], ["gone/rec.wav"]),
+    ],
+    ids=["two-candidates", "two-claims", "no-candidate"],
+)
+def test_a_moved_recording_is_not_guessed(tmp_path, in_audio_dir, analyzed):
+    audio_dir = tmp_path / "audio"
+    _files(audio_dir, *in_audio_dir)
+    file_list = [(str(tmp_path / path), []) for path in analyzed]
+
+    assert relocate_audio(file_list, str(audio_dir)) == file_list
+
+
+def test_a_recording_in_its_place_is_not_taken_for_a_moved_one(tmp_path):
+    audio_dir = tmp_path / "audio"
+    (in_place,) = _files(audio_dir, "rec.wav")
+    file_list = [(in_place, []), (str(tmp_path / "gone" / "rec.wav"), [])]
+
+    assert relocate_audio(file_list, str(audio_dir)) == file_list

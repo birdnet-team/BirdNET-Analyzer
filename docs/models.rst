@@ -2,6 +2,35 @@ Models
 ======
 
 
+V3.0
+----
+
+* default model of BirdNET-Analyzer 3.0
+* 11,725 classes: 11,709 species (birds, insects, amphibians, mammals and a few others) and 16 sound classes
+* 32 kHz sampling rate, 3-second segments
+* embedding size of 1280
+* species names in 29 languages
+* runs on ONNX Runtime
+* model files on `Zenodo <https://zenodo.org/records/24362980>`_
+* location filters and species lists come from the BirdNET 3.0 geolocation model (BirdNET+ Geomodel V3.0.4,
+  14,082 classes, from the `geomodel releases <https://github.com/birdnet-team/geomodel/releases/tag/v3.0.4>`_),
+  which also predicts species the acoustic model does not have
+
+BirdNET 2.4 (``--birdnet 2.4``) and Perch v2 (``--use_perch``) can be selected instead, in the GUI under
+**Model selection**.
+
+
+Perch v2
+--------
+
+* downloaded the first time it is used (about 380 MB)
+* 14,795 classes: 14,597 species, named by their scientific name only, and 198 sound classes such as Aircraft and Dog
+* 32 kHz sampling rate, 5-second segments
+* embedding size of 1536
+* confidences are softmax probabilities, and the sensitivity setting does not apply
+* runs on TensorFlow
+
+
 V2.4, June 2023
 ---------------
 
@@ -38,17 +67,18 @@ Species range model V2.4 - V2, Jan 2024
 Using older models
 ------------------
 
-Older models can also be used as custom classifiers in the GUI or using the `--classifier` argument in the `birdnet_analyzer.analyze` command line interface.
+The models V1.1 to V2.1, V2.3 and V2.4 listed below can also be used as custom classifiers in the GUI or using the ``--classifier`` argument in the ``birdnet_analyzer.analyze`` command line interface.
+V2.2 cannot be loaded, and the App model has no TFLite file.
 
 Just download your desired model version and unzip.
 
-* GUI: Select the \*_Model_FP32.tflite file under **Model selection / Custom classifier**. The summary shown below the model choice tells you which BirdNET version the classifier's layout matches, how many classes it has and whether it replaces or extends the official classes, so you can check that the right file was picked.
+* GUI: Copy the ``*_Labels.txt`` file of the model to the name of the ``*_Model_FP32.tflite`` file with ``_Labels.txt`` in place of ``.tflite``, for example ``BirdNET_GLOBAL_3K_V2.3_Model_FP32_Labels.txt``, then select the ``*_Model_FP32.tflite`` file under **Model selection / Custom classifier**. The summary shown below the model choice tells you which BirdNET version the classifier's layout matches, how many classes it has and whether it replaces or extends the official classes, so you can check that the right file was picked.
 * CLI: ``python -m birdnet_analyzer.analyze ... --classifier 'path_to_Model_FP32.tflite' --cc_species_list 'path_to_Labels.txt'``
 
 Model Version History
 ---------------------
 
-.. note:: All models listed here are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
+.. note:: The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and come with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. BirdNET 2.4 and the older BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
 
 V2.4
 ^^^^

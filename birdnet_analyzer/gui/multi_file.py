@@ -67,45 +67,46 @@ def run_batch_analysis(
     input_dir,
     progress=gr.Progress(),
 ):
-    from birdnet_analyzer.gui.analysis import run_analysis
+    from birdnet_analyzer.gui.analysis import run_analysis, unreadable_files_collected
 
     gu.validate(input_dir, loc.localize("validation-no-directory-selected"))
 
     _PAUSE_REQUESTED.clear()
 
     try:
-        results = run_analysis(
-            input_path=None,
-            output_path=output_path,
-            use_top_n=use_top_n,
-            top_n=top_n,
-            confidence=confidence,
-            sensitivity=sensitivity,
-            overlap=overlap,
-            merge_consecutive=merge_consecutive,
-            audio_speed=audio_speed,
-            fmin=fmin,
-            fmax=fmax,
-            species_list_choice=species_list_choice,
-            species_list_file=species_list_file,
-            lat=lat,
-            lon=lon,
-            week=week,
-            use_yearlong=use_yearlong,
-            sf_thresh=sf_thresh,
-            selected_model=selected_model,
-            custom_classifier_file=custom_classifier_file,
-            output_types=output_type,
-            additional_columns=additional_columns,
-            locale=locale or MODEL_LANGUAGE_EN_US,
-            batch_size=batch_size if batch_size and batch_size > 0 else 1,
-            input_dir=input_dir,
-            save_params=True,
-            progress=progress,
-            n_producers=producers_number,
-            n_workers=None if workers_auto else workers_number,
-            split_tables=split_tables_checkbox,
-        )
+        with unreadable_files_collected() as skipped_files:
+            run_analysis(
+                input_path=None,
+                output_path=output_path,
+                use_top_n=use_top_n,
+                top_n=top_n,
+                confidence=confidence,
+                sensitivity=sensitivity,
+                overlap=overlap,
+                merge_consecutive=merge_consecutive,
+                audio_speed=audio_speed,
+                fmin=fmin,
+                fmax=fmax,
+                species_list_choice=species_list_choice,
+                species_list_file=species_list_file,
+                lat=lat,
+                lon=lon,
+                week=week,
+                use_yearlong=use_yearlong,
+                sf_thresh=sf_thresh,
+                selected_model=selected_model,
+                custom_classifier_file=custom_classifier_file,
+                output_types=output_type,
+                additional_columns=additional_columns,
+                locale=locale or MODEL_LANGUAGE_EN_US,
+                batch_size=batch_size if batch_size and batch_size > 0 else 1,
+                input_dir=input_dir,
+                save_params=True,
+                progress=progress,
+                n_producers=producers_number,
+                n_workers=None if workers_auto else workers_number,
+                split_tables=split_tables_checkbox,
+            )
     except RuntimeError:
         # The birdnet session raises when cancelled. A deliberate pause is not an
         # error: the resume journal keeps progress so the next run continues it.
@@ -115,12 +116,6 @@ def run_batch_analysis(
 
         raise
 
-    # results is None when a resumed analysis had no files left to process.
-    skipped_files = (
-        [results.inputs[ui] for ui in results.unprocessable_inputs]
-        if results is not None
-        else []
-    )
     header = (
         [loc.localize("multi-tab-result-dataframe-column-invalid-file-header")]
         if skipped_files
@@ -421,20 +416,23 @@ def build_multi_analysis_tab() -> None:
         def restore_run_ui():
             return gr.update(interactive=True), gr.update(visible=False)
 
-        start_batch_analysis_btn.click(
+        run_event = start_batch_analysis_btn.click(
             prepare_run_ui,
             outputs=[start_batch_analysis_btn, pause_batch_analysis_btn, result_grid],
             show_progress="hidden",
-        ).then(run_batch_analysis, inputs=inputs, outputs=result_grid).then(
-            restore_run_ui,
-            outputs=[start_batch_analysis_btn, pause_batch_analysis_btn],
-            show_progress="hidden",
-        ).then(
-            refresh_resume_status,
-            inputs=resume_status_inputs,
-            outputs=resume_status_outputs,
-            show_progress="hidden",
-        ).then(**model_settings["refresh_download_note"])
+        ).then(run_batch_analysis, inputs=inputs, outputs=result_grid)
+
+        for after_run in gu.after_either_outcome(run_event):
+            after_run(
+                restore_run_ui,
+                outputs=[start_batch_analysis_btn, pause_batch_analysis_btn],
+                show_progress="hidden",
+            ).then(
+                refresh_resume_status,
+                inputs=resume_status_inputs,
+                outputs=resume_status_outputs,
+                show_progress="hidden",
+            ).then(**model_settings["refresh_download_note"])
         pause_batch_analysis_btn.click(
             pause_batch_analysis,
             outputs=pause_batch_analysis_btn,

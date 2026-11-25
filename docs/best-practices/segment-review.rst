@@ -24,6 +24,10 @@ To obtain batch analysis result tables, run the analysis via the GUI or the :ref
 
     Audacity labels name no audio file, so the segments tool reads them only as the per-file results of an analysis with ``--split_tables``, not the combined ``BirdNET_AudacityLabels.txt``. Use "table", "kaleidoscope", or "csv" formats for combined results.
 
+    The segments tool does not read "parquet" results, neither ``BirdNET_CombinedTable.parquet`` nor the per-file ones. Also write "table", "kaleidoscope" or "csv" results when you want to extract segments.
+
+A combined result table names each recording where it was during the analysis. If the recordings have moved since, for example because the drive got another letter or the folder was copied to another computer, select the folder that holds them now as the audio folder: the segments tool looks there for a recording it does not find, by its file name and the folders it is in. A recording that two files there match equally well is skipped.
+
 Using the "Segments" Tool in the GUI or Command Line
 -----------------------------------------------------
 
@@ -37,9 +41,9 @@ The GUI and command line tool allow you to set various parameters to customize t
 
 * **Minimum Confidence** (``min_conf``): Set a minimum confidence value for predictions to be considered.
 * **Maximum Confidence** (``max_conf``): Set a maximum confidence value for predictions to be considered.
-* **Maximum Number of Segments** (``num_seq``): Specify how many segments per species should be extracted.
+* **Maximum Number of Segments** (``max_segments``): Specify how many segments per species should be extracted.
 * **Audio Speed** (``audio_speed``): Adjust the playback speed. Extracted segments will be saved with the adjusted speed (e.g., to listen to ultrasonic calls).
-* **Segment Length** (``seq_length``): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.
+* **Segment Length** (``seg_length``): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.
 * **Segment Collection Mode** (``collection_mode``): Choose how segments are selected. Following options are available:
     
     * **random**: Select segments randomly.

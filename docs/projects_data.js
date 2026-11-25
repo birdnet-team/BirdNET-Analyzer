@@ -525,9 +525,9 @@ var projects_data = [
     "Latitude": 46,
     "Longitude": 7,
     "Contact": "jean-nicolas.pradervand@vogelwarte.ch",
-    "Website": "https://www.vogelwarte.ch/modx/en/projects/priority-species/recovery-programme-for-the-scops-owl",
+    "Website": "https://www.vogelwarte.ch/en/projects/conservation-of-the-eurasian-scops-owl/",
     "Paper": null,
-    "Species Image": "https://www.vogelwarte.ch/modx/assets/assets/images/projekte/artenfoerderung/104_Raphael-Arelettaz_Zwergohreule_3_2.jpg",
+    "Species Image": "https://www.vogelwarte.ch/wp-content/uploads/2023/11/Arlettaz-Raphael-Station-ornithologique-Sous-station-Valais_104_Zwergohreule_Arlettaz-Raphael_3_2.jpg",
     "Species Image Credit": "R. Arlettaz",
     "Species Icon": "feather"
   },
@@ -540,10 +540,10 @@ var projects_data = [
       "Latitude": 12.3658204658984,
       "Longitude": -1.51282844580757,
       "Contact": "gabriel.marcacci@vogelwarte.ch",
-      "Website": "https://newtree.org/projekte/burkina-faso/",
+      "Website": "https://newtree.org/",
       "Paper": null,
-      "Species Image": "https://newtree.org/wp-content/uploads/2015/12/Innenaussen2_web.jpg",
-      "Species Image Credit": "newTree.org",
+      "Species Image": null,
+      "Species Image Credit": null,
       "Species Icon": "feather"
   },
   {
@@ -782,8 +782,8 @@ var projects_data = [
     "Contact": null,
     "Website": "https://thesoundofnorway.com",
     "Paper": "https://hdl.handle.net/11250/2832294",
-    "Species Image": "https://www.nina.no/Portals/NINA/WebSitesCreative_MyContentManager/19376/51e905ef-e514-4b8a-8ff7-921cf7b12191_resized.jpg",
-    "Species Image Credit": "nina.no",
+    "Species Image": null,
+    "Species Image Credit": null,
     "Species Icon": "feather"
   },
   {

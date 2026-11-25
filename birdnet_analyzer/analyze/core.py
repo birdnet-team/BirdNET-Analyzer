@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import errno
+import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,6 +19,8 @@ if TYPE_CHECKING:
 
     from birdnet_analyzer.analyze.resume import RunMetadata
     from birdnet_analyzer.config import ADDITIONAL_COLUMNS, RESULT_TYPES
+
+logger = logging.getLogger(__name__)
 
 _RESULT_FILES = {
     "table": (cfg.OUTPUT_RAVEN_FILENAME, ".BirdNET.selection.table.txt"),
@@ -167,6 +171,9 @@ def analyze(
             or none of the species in an ``slist`` file (with
             ``strict_species_list``, not all of them) are in the model.
         FileNotFoundError: If the ``slist`` file or ``classifier`` does not exist.
+        NotADirectoryError: If ``output`` or a folder above it is a file.
+        PermissionError: If no file may be created in ``output``, or in the folder it
+            would be created in.
         RuntimeError: If the resume state in ``output`` is incomplete, or the
             analysis is cancelled or one of its processes dies.
     Notes:
@@ -201,6 +208,8 @@ def analyze(
             "Set both lat and lon to limit the species to a location, or neither."
         )
 
+    _check_audio_format(audio_input)
+
     # Settled before the params file, result columns and resume fingerprint see it.
     sensitivity = effective_sensitivity(sensitivity, model)
     validate_min_conf(min_conf)
@@ -233,6 +242,9 @@ def analyze(
             output = os.path.dirname(audio_input)
         else:
             output = audio_input
+
+    if not _return_only and os.path.exists(audio_input):
+        _check_output_folder(output)
 
     species_from_location = lat is not None and lon is not None
 
@@ -272,11 +284,23 @@ def analyze(
         from birdnet.acoustic.inference.configs import InferenceConfig
 
         input_files = InferenceConfig.validate_input_files(audio_input)
-        journal = ResumeJournal.open(
-            output, resume_params, n_files_total=len(input_files)
-        )
+        try:
+            journal = ResumeJournal.open(
+                output, resume_params, n_files_total=len(input_files)
+            )
+        except OSError as e:
+            raise OSError(e.errno, e.strerror, output) from e
         completed = journal.completed_subset(input_files)
         inference_input = [f for f in input_files if f not in completed]
+
+        if completed:
+            logger.info(
+                "Continuing the analysis in %s: %d of %d audio files were analyzed "
+                "before and are skipped.",
+                output,
+                len(completed),
+                len(input_files),
+            )
 
     predictions = None
 
@@ -348,7 +372,10 @@ def analyze(
         ),
     }
 
-    inputs = _analysed_inputs(predictions, journal, input_files)
+    from birdnet_analyzer.utils import warn_about_unreadable_files
+
+    inputs, unreadable = _analysed_inputs(predictions, journal, input_files)
+    warn_about_unreadable_files(unreadable, len(inputs) + len(unreadable))
 
     if split_tables:
         _split_tables(
@@ -406,7 +433,51 @@ def analyze(
     if journal is not None:
         journal.finalize()
 
+    logger.info(
+        "%d detections in %d audio %s, saved in %s",
+        len(df),
+        len(inputs),
+        "file" if len(inputs) == 1 else "files",
+        output,
+    )
+
     return predictions
+
+
+def _check_output_folder(output) -> None:
+    """Fails before the analysis if its results cannot be written to ``output`` or
+    to the folder it would be created in, creating nothing."""
+    from birdnet_analyzer.utils import check_folder_writable
+
+    folder = os.path.abspath(output)
+
+    while not os.path.isdir(folder):
+        if os.path.exists(folder):
+            raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), folder)
+
+        if os.path.dirname(folder) == folder:
+            return
+
+        folder = os.path.dirname(folder)
+
+    try:
+        check_folder_writable(folder)
+    except OSError as e:
+        raise type(e)(e.errno, e.strerror, folder) from e
+
+
+def _check_audio_format(audio_input: str) -> None:
+    from birdnet.utils.audio_files import SF_FORMATS
+
+    if os.path.isfile(audio_input) and Path(audio_input).suffix.upper() not in (
+        SF_FORMATS
+    ):
+        formats = ", ".join(sorted(f.lstrip(".").lower() for f in SF_FORMATS))
+
+        raise ValueError(
+            f"{audio_input} is not an audio file that BirdNET-Analyzer can read. "
+            f"These formats can be read: {formats}."
+        )
 
 
 def _resume_fingerprint_params(**params) -> dict:
@@ -429,15 +500,20 @@ def _resume_fingerprint_params(**params) -> dict:
     return params
 
 
-def _analysed_inputs(predictions, journal, input_files: list[Path]) -> list[str]:
-    """The inputs an analysis read, whether or not they hold detections."""
+def _analysed_inputs(
+    predictions, journal, input_files: list[Path]
+) -> tuple[list[str], list[str]]:
+    """The inputs an analysis read, detections or not, and those it could not read."""
     files = input_files or [Path(f) for f in predictions.inputs]
     unprocessable = journal.invalid_subset(input_files) if journal else set()
 
     if predictions is not None:
         unprocessable |= predictions.get_unprocessed_files()
 
-    return [str(f) for f in files if f not in unprocessable]
+    return (
+        [str(f) for f in files if f not in unprocessable],
+        [str(f) for f in files if f in unprocessable],
+    )
 
 
 def _path_key(path) -> str:

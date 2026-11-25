@@ -1,4 +1,6 @@
+import errno
 import importlib
+import os
 import threading
 
 import pytest
@@ -45,6 +47,7 @@ SETTINGS = {
 
 def analyze_with(monkeypatch, **settings):
     seen = {}
+    monkeypatch.setattr(gu, "validate_audio_input", lambda path: None)
     monkeypatch.setattr(
         importlib.import_module("birdnet_analyzer.analyze"),
         "analyze",
@@ -132,6 +135,7 @@ def _in_another_analysis():
     ],
     ids=["location", "sensitivity", "another analysis"],
 )
+@pytest.mark.usefixtures("made_up_inputs")
 def test_only_a_location_without_species_of_the_model_is_shown(
     monkeypatch, logs_a_warning, shown
 ):
@@ -146,3 +150,164 @@ def test_only_a_location_without_species_of_the_model_is_shown(
     ga.run_analysis(**SETTINGS)
 
     assert warned == [loc.localize(key) for key in shown]
+
+
+@pytest.fixture
+def no_analysis(monkeypatch):
+    def fail(**kwargs):
+        raise AssertionError("the analysis started")
+
+    monkeypatch.setattr(
+        importlib.import_module("birdnet_analyzer.analyze"), "analyze", fail
+    )
+
+
+def test_a_recording_that_is_gone_is_reported_instead_of_analyzed(
+    no_analysis, tmp_path
+):
+    gone = str(tmp_path / "May & June" / "recording.wav")
+
+    with pytest.raises(gr.Error) as raised:
+        ga.run_analysis(**{**SETTINGS, "input_path": gone})
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP["error-path-not-found"].format(
+        path=gone.replace("&", "&amp;")
+    )
+
+
+def test_a_folder_without_audio_is_reported_instead_of_analyzed(no_analysis, tmp_path):
+    folder = tmp_path / "May & June"
+    folder.mkdir()
+    (folder / "recording.m4a").touch()
+    (folder / "notes.txt").touch()
+
+    with pytest.raises(gr.Error) as raised:
+        ga.run_analysis(**{**SETTINGS, "input_path": None, "input_dir": str(folder)})
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP[
+        "validation-no-audio-files-found"
+    ].format(path=str(folder).replace("&", "&amp;"))
+
+
+@pytest.mark.parametrize("selected", ["input_path", "input_dir"])
+def test_a_recording_or_a_folder_with_recordings_is_analyzed(
+    monkeypatch, tmp_path, selected
+):
+    (tmp_path / "day 1").mkdir()
+    recording = tmp_path / "day 1" / "recording.flac"
+    recording.touch()
+    path = str(recording if selected == "input_path" else tmp_path)
+    seen = {}
+    monkeypatch.setattr(
+        importlib.import_module("birdnet_analyzer.analyze"),
+        "analyze",
+        lambda **kwargs: seen.update(kwargs),
+    )
+
+    ga.run_analysis(
+        **{**SETTINGS, "input_path": None, "input_dir": None, selected: path}
+    )
+
+    assert seen["audio_input"] == path
+
+
+def _denied(path):
+    def fail(*args, **kwargs):
+        raise PermissionError(13, "Permission denied", str(path))
+
+    return fail
+
+
+def _batch(tmp_path, **settings):
+    recordings = tmp_path / "recordings"
+    recordings.mkdir()
+    (recordings / "recording.wav").touch()
+
+    return {**SETTINGS, "input_path": None, "input_dir": str(recordings), **settings}
+
+
+def test_a_folder_that_may_not_be_opened_is_reported_as_such(
+    no_analysis, monkeypatch, tmp_path
+):
+    settings = _batch(tmp_path)
+    monkeypatch.setattr(os, "scandir", _denied(settings["input_dir"]))
+
+    with pytest.raises(gr.Error) as raised:
+        ga.run_analysis(**settings)
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP[
+        "error-path-not-readable"
+    ].format(path=settings["input_dir"])
+
+
+def test_an_output_folder_on_a_drive_that_is_gone_is_reported_as_not_found(
+    no_analysis, monkeypatch, tmp_path
+):
+    output = tmp_path / "SD card & more" / "results"
+    monkeypatch.setattr(os, "makedirs", _denied(output.parent))
+
+    with pytest.raises(gr.Error) as raised:
+        ga.run_analysis(**_batch(tmp_path, output_path=str(output)))
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP["error-path-not-found"].format(
+        path=str(output.parent).replace("&", "&amp;")
+    )
+
+
+@pytest.mark.parametrize("chosen", [True, False], ids=["chosen", "the input folder"])
+def test_an_output_folder_that_cannot_be_written_is_named_itself(
+    no_analysis, monkeypatch, tmp_path, chosen
+):
+    settings = _batch(tmp_path)
+    output = tmp_path / "R&D results" if chosen else tmp_path / "recordings"
+    settings["output_path"] = str(output) if chosen else None
+    monkeypatch.setattr(
+        gu.utils, "check_folder_writable", _denied(output / ".birdnet-write-check")
+    )
+
+    with pytest.raises(gr.Error) as raised:
+        ga.run_analysis(**settings)
+
+    assert raised.value.message == loc.LANGUAGE_LOOKUP["error-path-no-access"].format(
+        path=str(output).replace("&", "&amp;")
+    )
+
+
+def test_an_output_folder_without_write_permission_is_reported_at_once(
+    no_analysis, unwritable_folder, bounded, tmp_path
+):
+    raised = bounded(
+        ga.run_analysis, **_batch(tmp_path, output_path=str(unwritable_folder))
+    )
+
+    assert isinstance(raised, gr.Error)
+    assert raised.message == loc.LANGUAGE_LOOKUP["error-path-no-access"].format(
+        path=str(unwritable_folder)
+    )
+
+
+def test_a_full_disk_is_not_taken_for_a_folder_without_write_access(
+    no_analysis, monkeypatch, tmp_path
+):
+    def full(*args, **kwargs):
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr(gu.utils, "check_folder_writable", full)
+
+    with pytest.raises(OSError, match="No space left on device"):
+        ga.run_analysis(**_batch(tmp_path))
+
+
+def test_an_output_folder_that_was_deleted_is_created_again(monkeypatch, tmp_path):
+    output = tmp_path / "deleted" / "results"
+    started = []
+    monkeypatch.setattr(
+        importlib.import_module("birdnet_analyzer.analyze"),
+        "analyze",
+        lambda **kwargs: started.append(os.path.isdir(kwargs["output"])),
+    )
+
+    ga.run_analysis(**_batch(tmp_path, output_path=str(output)))
+
+    assert started == [True]
+    assert os.listdir(output) == []

@@ -908,7 +908,7 @@ def theme():
     return current_theme if current_theme in options else "light"
 
 
-def write_error_log(ex: Exception):
+def write_error_log(ex: Exception, message: str = "Unhandled exception:"):
     """Logs an exception with its stacktrace.
 
     The single funnel for unexpected exceptions: the shipped applications install a
@@ -917,5 +917,6 @@ def write_error_log(ex: Exception):
 
     Args:
         ex: An exception that occurred.
+        message: The line printed to the console and above the stacktrace.
     """
-    logging.getLogger(__name__).error("Unhandled exception:", exc_info=ex)
+    logging.getLogger(__name__).error(message, exc_info=ex)

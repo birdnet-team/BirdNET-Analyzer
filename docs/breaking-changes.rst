@@ -24,6 +24,13 @@ previous default for both.
 model with different confidence scores, a larger species set (11,725 labels) and an
 updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.
 
+BirdNET 3.0 is also a larger model and takes longer per recording than 2.4. The program
+itself got faster: with ``--birdnet 2.4`` an analysis needs less time than in v2.4.0. So
+with the default model a folder of many files can take longer than before, while a single
+long recording gains from the parallel processing within a file. One hour of audio in
+six files on a MacBook Air M1: 31 s in v2.4.0, 22 s with ``--birdnet 2.4``, 62 s with the
+default model.
+
 **What to do.** To keep the previous acoustic model, select the 2.4 model explicitly:
 
 .. code-block:: bash
@@ -44,11 +51,11 @@ Inference runs on ONNX, not TensorFlow, on the default path
 
 **Consequence.**
 
-* Default analyses are faster on CPU and no longer load TensorFlow.
+* Default analyses no longer load TensorFlow.
 * TensorFlow is still required — and still installed — for the 2.4 model, the Perch
   model, custom classifiers, and training.
 * The Docker image is substantially larger: it bakes the ~345 MB 3.0 ONNX model
-  (the 2.4 TFLite model was ~120 MB).
+  (the 2.4 TFLite model was ~80 MB).
 
 **What to do.** Reinstall the package so ``onnxruntime`` is pulled in (your usual
 ``pip install`` step). The 2.4, Perch, custom-classifier and training paths still run
@@ -85,7 +92,8 @@ The installers contain BirdNET 3.0, not 2.4
 
 **What changed.** The installers contain the default BirdNET 3.0 model and its
 geolocation model. The BirdNET 2.4 model, which the installer of v2.4.0 contained, is
-downloaded the first time it is used (about 80 MB), like every other model.
+downloaded the first time it is used (about 80 MB), like every other model. The macOS
+app is the exception: it contains BirdNET 2.4 as well.
 
 **Consequence.** An analysis with the default model needs no internet connection.
 The first analysis with BirdNET 2.4 does, unless the model is there already: the
@@ -96,9 +104,10 @@ with BirdNET 2.4 uses the geolocation model of 2.4, a download of its own (about
 
 **What to do.** Nothing, with an internet connection. When the Windows installer
 replaces an installation of v2.4.0, it keeps that installation's BirdNET 2.4 model,
-so analyses with BirdNET 2.4 need no download. The geolocation model of 2.4 is not
-among the files it can keep: the first analysis with BirdNET 2.4 and a location
-still downloads it. For computers without internet access see :ref:`installation`.
+so analyses with BirdNET 2.4 need no download, and neither do they in the macOS app.
+The geolocation model of 2.4 comes with neither: the first analysis with BirdNET 2.4
+and a location filter still downloads it. For computers without internet access see
+:ref:`installation`.
 
 
 Custom species lists and the 3.0 taxonomy
@@ -205,8 +214,33 @@ the validation split; v2.4.0 trained on all of it and validated on the test data
 same command trains a different classifier than v2.4.0, and its validation scores are
 not comparable.
 
-**What to do.** Choose ``--val_split`` for the share of the training data to hold out;
+**What to do.** Choose ``--val_split`` for the share of the training files to hold out;
 ``--val_split 0`` is rejected. Compare scores only between runs of this version.
+
+
+The validation split keeps the segments of a file together
+----------------------------------------------------------
+
+**What changed.** With ``--crop_mode segments`` or ``smart``, one file gives several
+training samples. The validation split now holds out whole files, ``--val_split`` of
+each class's files, so a file is either trained on or validated on. v2.4.0 split the
+segments one by one and validated on segments of files it also trained on. The folds
+of ``--autotune_n_splits`` take whole files too. A class with only one file is always
+trained on and not validated. In every crop mode, a training stops with an error if no
+class has a second file, or if a classifier for a single class has only one file of
+the class or of non-event samples. The "center" and "first" crop modes give one sample
+per file and split as before.
+
+**Consequence.** In the "segments" and "smart" modes the same command trains on other
+samples than v2.4.0 and usually reports a lower validation score, as it no longer
+scores segments of files the classifier trained on. With overlapping segments, the
+split by segment overstated the validation AUPRC by about 0.02 to 0.04 on the datasets
+we measured. A training data cache of v2.4.0 does not record the file each sample came
+from. It still trains, splitting its samples one by one, and warns if it was made in
+the "segments" or "smart" mode. v2.4.0 ignores that record in a cache of this version.
+
+**What to do.** Create a "segments" or "smart" cache again to split it by file. Give
+each class at least two files, or it is not validated.
 
 
 Training chooses its learning rate for the base model
@@ -363,8 +397,8 @@ its labels file named explicitly.
 for older BirdNET models.
 
 
-Search needs the audio root and a new database
-----------------------------------------------
+Search needs the audio root; databases keep their model
+-------------------------------------------------------
 
 **What changed.** ``birdnet_analyzer.search`` requires ``--audio_root``, the folder the
 audio paths in the database are relative to, and ``search()`` takes it as its third
@@ -374,13 +408,19 @@ of BirdNET 3.0, which have 1280 values per segment; v2.4.0 extracted them with B
 2.4, with 1024 values.
 
 **Consequence.** v2.4.0 search command lines and positional calls of ``search()`` fail.
-Databases written by v2.4.0 are in the older format. Embeddings and search scores are
-not comparable with those of v2.4.0.
+A database written by v2.4.0 is converted the first time it is opened, by the GUI or
+on the command line: its ``hoplite.sqlite`` is rewritten in the new format and the
+previous file is kept beside it as ``hoplite.sqlite.v2-backup``. The embeddings
+themselves are not touched. Such a database stays on BirdNET 2.4 for searching it and
+for adding recordings to it; that model is downloaded when it is first needed. Search
+scores of a BirdNET 2.4 database are not comparable with those of a BirdNET 3.0 one.
 
-**What to do.** Pass ``--audio_root`` (the parent of the input that was embedded), and
-extract the embeddings again into a new database. ``birdnet_analyzer.embeddings
---birdnet 2.4`` fills a new database with BirdNET 2.4 embeddings; the GUI always uses
-BirdNET 3.0 for a new database.
+**What to do.** Pass ``--audio_root`` (the parent of the input that was embedded).
+Existing databases need nothing; the Search and Embeddings tabs show the model of the
+selected database. To use a converted database with v2.4.0 again, put the kept file
+back under the name ``hoplite.sqlite``. ``birdnet_analyzer.embeddings --birdnet 2.4``
+fills a new database with BirdNET 2.4 embeddings; the GUI always uses BirdNET 3.0 for
+a new database.
 
 
 Evaluation needs a confidence column and scores every annotated recording
@@ -483,6 +523,16 @@ Other changes
 * **Search** with a query longer than one segment (``--crop_mode segments``) ranks the
   results by their mean score over all query segments. v2.4.0 counted a result only for
   the query segments whose own top results contained it, so its rankings differ.
+* **Training files and search queries shorter than 1 second** are used in the
+  ``segments`` and ``first`` crop modes too: such a file is one segment, padded with
+  zeros to 3 seconds as in the other crop modes. At the default overlap, v2.4.0 left them
+  out with ``segments``, so a class of short calls had fewer samples than files, or
+  none. With ``first``, the training stopped with an error, and so did a search with
+  such a query.
+* **Training with ``--crop_mode first`` and an ``--audio_speed`` above 1** uses the
+  first 3 seconds of the sped-up audio. v2.4.0 sped up only the first 3 seconds of the
+  recording, so the rest of the segment was silence, and above a speed of 3 the
+  training stopped with an error.
 * **Merged detections** (``--merge_consecutive``) of more than three segments have the
   mean confidence of all of them; v2.4.0 took the mean of the three highest.
 * **The GUI of a pip or source installation** keeps its language, theme and last used
@@ -506,6 +556,14 @@ Other changes
   space dropped. v2.4.0 used the name as it was, which nested the folders of a name with
   ``/`` (``Eurasian/Green-winged Teal``) and failed on Windows for a name with ``?``.
   Segments extracted again into an existing output folder land in the new folder.
+* **A command that fails** prints ``Error:`` with the reason and ends with exit status
+  1; the stacktrace is in the error log file and, with ``--verbose``, on the console.
+  v2.4.0 printed the stacktrace. Error messages are printed to the standard error
+  stream, all other messages to the standard output; v2.4.0 printed both to the
+  standard output.
+* **Training data that cannot be used** raises a ``TrainingInputError``, a
+  ``ValueError`` whose text is the message and whose ``key`` names the GUI text. v2.4.0
+  raised a ``ValueError`` with the message and the key as its two arguments.
 
 
 .. _coming-from-1x:

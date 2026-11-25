@@ -1212,8 +1212,32 @@ def test_calculate_is_unlocked_only_behind_the_builds_queued_before(demo):
         if getattr(event.fn, "__name__", "") == "_unlock_calculation"
     ]
 
-    assert len(unlocks) == len(evaluation._DEFAULT_COLUMNS) + 2
+    after_success = [e for e in unlocks if not e.trigger_only_on_failure]
+    assert len(after_success) == len(evaluation._DEFAULT_COLUMNS) + 2
     assert {event.concurrency_id for event in unlocks} == {queue}
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "select_directory",
+        "refresh_after_pick",
+        "refresh_processor",
+        "calculate_metrics",
+    ],
+)
+def test_calculate_is_unlocked_when_a_step_that_locked_it_fails(demo, step):
+    events = demo.fns
+    steps = [e for e in events.values() if getattr(e.fn, "__name__", "") == step]
+
+    assert steps
+    for event in steps:
+        on_failure = [
+            getattr(e.fn, "__name__", "")
+            for e in events.values()
+            if e.trigger_after == event._id and e.trigger_only_on_failure
+        ]
+        assert on_failure == ["_unlock_calculation"]
 
 
 def test_a_new_mapping_file_or_column_refreshes_the_lists(demo):

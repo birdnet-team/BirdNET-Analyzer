@@ -56,6 +56,29 @@ def _dropped_species_filter_shown():
         model_utils.logger.removeHandler(notice)
 
 
+@contextmanager
+def unreadable_files_collected():
+    """Yields a list that fills with the files the analysis of this thread skipped."""
+    from birdnet_analyzer import utils
+
+    thread = threading.get_ident()
+    files: list[str] = []
+
+    class Collector(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            if record.thread == thread:
+                files.extend(getattr(record, utils.UNREADABLE_FILES, ()))
+
+    collector = Collector()
+    source = logging.getLogger(utils.__name__)
+    source.addHandler(collector)
+
+    try:
+        yield files
+    finally:
+        source.removeHandler(collector)
+
+
 def run_analysis(
     input_path: str | None,
     output_path: str | None,
@@ -133,7 +156,8 @@ def run_analysis(
         The predictions returned by the analysis.
 
     Raises:
-        gr.Error: If the custom species list or custom classifier choice has no file.
+        gr.Error: If the custom species list or custom classifier choice has no file,
+            or there is no audio to analyze.
     """
     from birdnet_analyzer.analyze import analyze
 
@@ -159,6 +183,11 @@ def run_analysis(
 
     if selected_model == gu.CUSTOM_CLASSIFIER and custom_classifier_file is None:
         raise gr.Error(loc.localize("validation-no-custom-classifier-selected"))
+
+    gu.validate_audio_input(input_dir or input_path)  # type: ignore
+
+    if input_dir:
+        gu.validate_output_folder(output_path or input_dir)
 
     if progress is not None:
         progress(0, desc=f"{loc.localize('progress-starting')} ...")

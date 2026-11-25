@@ -1,12 +1,17 @@
 import os
 from functools import partial
+from html import escape
 
 import gradio as gr
 
 import birdnet_analyzer.gui.localization as loc
 import birdnet_analyzer.gui.utils as gu
+from birdnet_analyzer.config import DEFAULT_ACOUSTIC_MODEL_VERSION
+from birdnet_analyzer.embeddings import upgrade
+from birdnet_analyzer.embeddings.core import database_model_version
 from birdnet_analyzer.gui.state import TabState
 from birdnet_analyzer.search.core import read_database_settings
+from birdnet_analyzer.utils import MAX_LISTED_FILES
 
 
 def run_embeddings_with_tqdm_tracking(
@@ -76,7 +81,8 @@ def run_embeddings(
         fmin = settings["BANDPASS_FMIN"]
         fmax = settings["BANDPASS_FMAX"]
 
-    embeddings(
+    gu.validate_audio_input(input_path)
+    skipped = embeddings(
         input_path,
         db_directory,
         overlap=overlap,
@@ -88,6 +94,18 @@ def run_embeddings(
         fmax=fmax,
         file_output=file_output,
     )
+
+    if skipped:
+        names = [
+            escape(os.path.relpath(file, input_path), quote=False)
+            for file in skipped[:MAX_LISTED_FILES]
+        ]
+
+        if len(skipped) > MAX_LISTED_FILES:
+            names.append("...")
+
+        header = loc.localize("multi-tab-result-dataframe-column-invalid-file-header")
+        gr.Warning(f"{header} ({len(skipped)}): {', '.join(names)}", duration=None)
 
     gr.Info(f"{loc.localize('embeddings-tab-finish-info')} {db_directory}")
 
@@ -161,6 +179,12 @@ def build_embeddings_tab() -> None:
                 scale=3,
                 max_lines=1,
                 elem_classes="path-textbox",
+            )
+            db_model_tb = gr.Textbox(
+                value=gu.birdnet_label(DEFAULT_ACOUSTIC_MODEL_VERSION),
+                label=loc.localize("embeddings-db-model-label"),
+                interactive=False,
+                max_lines=1,
             )
 
         with gr.Group(visible=False) as file_output_row, gr.Row(equal_height=True):
@@ -245,14 +269,19 @@ def build_embeddings_tab() -> None:
             )
 
             if dir_name:
+                converted = upgrade.is_old_format(dir_name)
                 settings = _existing_database_settings(dir_name)
 
                 if settings is not None:
+                    if converted:
+                        gr.Info(loc.localize("embeddings-db-converted-info"))
+
                     gr.Info(loc.localize("embeddings-db-already-exists-info"))
 
                     return (
                         dir_name,
                         gr.update(value=dir_name),
+                        gu.birdnet_label(database_model_version(settings)),
                         gr.update(value=settings["AUDIO_SPEED"], interactive=False),
                         gr.update(value=settings["BANDPASS_FMIN"], interactive=False),
                         gr.update(value=settings["BANDPASS_FMAX"], interactive=False),
@@ -262,6 +291,7 @@ def build_embeddings_tab() -> None:
                 return (
                     dir_name,
                     gr.update(value=dir_name),
+                    gu.birdnet_label(DEFAULT_ACOUSTIC_MODEL_VERSION),
                     gr.update(interactive=True),
                     gr.update(interactive=True),
                     gr.update(interactive=True),
@@ -269,6 +299,7 @@ def build_embeddings_tab() -> None:
                 )
 
             return (
+                gr.update(),
                 gr.update(),
                 gr.update(),
                 gr.update(),
@@ -283,6 +314,7 @@ def build_embeddings_tab() -> None:
             outputs=[
                 db_directory_state,
                 db_path_tb,
+                db_model_tb,
                 audio_speed_slider,
                 fmin_number,
                 fmax_number,
