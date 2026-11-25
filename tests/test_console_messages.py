@@ -1,5 +1,6 @@
 """What a user reads on the command line while a command runs and when it ends."""
 
+import errno
 import io
 import os
 import re
@@ -11,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from birdnet_analyzer import logs
+from birdnet_analyzer import logs, utils
 from birdnet_analyzer.analyze import cli as analyze_cli
 from birdnet_analyzer.config import OUTPUT_RAVEN_FILENAME
 from birdnet_analyzer.embeddings import cli as embeddings_cli
@@ -64,8 +65,7 @@ def test_an_analysis_shows_its_progress_and_where_its_detections_are(
     rows = (output / OUTPUT_RAVEN_FILENAME).read_text().splitlines()[1:]
 
     if quiet:
-        assert progress == []
-        assert "detections" not in out
+        assert out == ""
     else:
         assert progress[-1] == "Analyzing: 100% done"
         assert len(progress) <= 11
@@ -109,6 +109,30 @@ def test_on_a_terminal_the_progress_rewrites_one_line_in_plain_ascii(console):
         "Analyzing:  60% done, about 0:00:02 left",
         "Analyzing: 100% done" + " " * 20 + "\n",
     ]
+
+
+def test_redirected_the_progress_is_a_plain_line_per_tenth(console):
+    log = io.StringIO()
+    progress = ConsoleProgress("Analyzing", log)
+
+    for pct in range(1, 100):
+        progress(_update(pct, 100 - pct))
+
+    progress(_update(100, 0, True))
+    lines = log.getvalue().splitlines()
+
+    assert [line.split("%")[0] for line in lines] == [
+        f"Analyzing: {pct:3d}" for pct in (1, *range(10, 101, 10))
+    ]
+
+
+def test_on_a_narrow_terminal_the_progress_line_does_not_wrap(console, monkeypatch):
+    monkeypatch.setenv("COLUMNS", "24")
+    terminal = _Terminal()
+
+    ConsoleProgress("Analyzing", terminal)(_update(50, 30))
+
+    assert terminal.getvalue() == "\rAnalyzing:  50% done, a"
 
 
 def test_a_console_that_cannot_be_written_does_not_stop_the_analysis(console):
@@ -191,6 +215,33 @@ def test_an_output_folder_that_cannot_be_written_is_named_as_typed(
     )
 
 
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            OSError(errno.ENOSPC, "No space left on device", "out.csv"),
+            "There is no space left on the disk. Free up some space or choose a "
+            "folder on another drive, then try again.",
+        ),
+        (
+            OSError(errno.EROFS, "Read-only file system", "/media/card"),
+            "/media/card could not be opened or written. If it is open in another "
+            "program, such as Excel, close it there and try again. Otherwise choose "
+            "a folder that you are allowed to write to.",
+        ),
+    ],
+)
+def test_a_full_disk_or_a_read_only_drive_is_explained(run_cli, error, message):
+    @utils.runtime_error_handler
+    def main():
+        raise error
+
+    code, _, err = run_cli(main)
+
+    assert code == 1
+    assert err.splitlines()[0] == f"Error: {message}"
+
+
 def test_a_command_of_an_extra_that_is_not_installed_names_the_install_command(
     tmp_path, run_cli, monkeypatch
 ):
@@ -212,10 +263,14 @@ def test_a_command_of_an_extra_that_is_not_installed_names_the_install_command(
     )
 
 
-def test_segments_of_a_folder_that_is_not_there_fail_in_plain_words(tmp_path, run_cli):
-    missing = tmp_path / "recordings"
+@pytest.mark.parametrize("missing_folder", ["recordings", "results"])
+def test_segments_of_a_folder_that_is_not_there_fail_in_plain_words(
+    recordings, tmp_path, run_cli, missing_folder
+):
+    missing = tmp_path / "gone"
+    argv = [missing] if missing_folder == "recordings" else [recordings, "-r", missing]
 
-    code, out, err = run_cli(segments_cli.main, missing)
+    code, out, err = run_cli(segments_cli.main, *argv)
 
     assert code == 1
     assert "Found 0" not in out

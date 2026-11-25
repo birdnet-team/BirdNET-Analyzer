@@ -1,6 +1,5 @@
 """Module containing audio helper functions."""
 
-import errno
 import os
 from math import isclose
 
@@ -43,8 +42,7 @@ def open_audio_file(
     """
     import librosa
 
-    if not os.path.exists(path):
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(path))
+    os.stat(path)
 
     if speed == 1.0:
         sig, rate = librosa.load(

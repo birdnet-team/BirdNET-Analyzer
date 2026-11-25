@@ -1239,7 +1239,8 @@ def train_model(
                         ]
                     )
 
-    logger.info("The classifier is saved in %s", ", ".join(saved))
+    if saved:
+        logger.info("The classifier is saved in %s", ", ".join(saved))
 
     return history, metrics
 

@@ -1,4 +1,3 @@
-import errno
 import logging
 import os
 
@@ -15,8 +14,8 @@ def main():
     args = parser.parse_args()
 
     for path in (args.audio_input, args.results):
-        if path and not os.path.exists(path):
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
+        if path:
+            os.stat(path)
 
     if not segments(**vars(args)):
         raise ValueError(

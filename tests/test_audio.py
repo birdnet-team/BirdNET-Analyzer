@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import warnings
@@ -21,6 +22,25 @@ def test_a_recording_that_is_not_there_is_reported_without_fallback_warnings(
             audio.open_audio_file(missing)
 
     assert raised.value.filename == missing
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or os.geteuid() == 0,
+    reason="needs a folder its user cannot enter",
+)
+def test_a_recording_in_a_folder_that_cannot_be_entered_is_not_called_missing(
+    tmp_path,
+):
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    _write_sine_wav(str(locked / "a.wav"), 48000)
+    locked.chmod(0o600)
+
+    try:
+        with pytest.raises(PermissionError):
+            audio.open_audio_file(str(locked / "a.wav"))
+    finally:
+        locked.chmod(0o755)
 
 
 def _write_sine_wav(path, sample_rate, duration=1.0, freq=440.0):

@@ -1,4 +1,5 @@
 import contextlib
+import io
 import logging
 
 from birdnet_analyzer import analyze
@@ -21,9 +22,12 @@ def main():
     cli.apply_params_file_defaults(parser, params.load_analysis_params)
     args = parser.parse_args()
 
-    with contextlib.suppress(Exception):
-        if os.get_terminal_size().columns >= 64:
-            print(cli.ASCII_LOGO, flush=True)
+    quiet = not logger.isEnabledFor(logging.INFO)
+
+    if not quiet:
+        with contextlib.suppress(Exception):
+            if os.get_terminal_size().columns >= 64:
+                print(cli.ASCII_LOGO, flush=True)
 
     if (
         "additional_columns" in args
@@ -45,8 +49,12 @@ def main():
     analyze_args.pop("load_params")  # already applied as defaults
     progress = ConsoleProgress("Analyzing")
 
+    # The inference library prints its summary of the run.
+    summary = contextlib.redirect_stdout(io.StringIO()) if quiet else None
+
     try:
-        analyze(**analyze_args, on_update=progress, save_params=True)
+        with summary or contextlib.nullcontext():
+            analyze(**analyze_args, on_update=progress, save_params=True)
     except KeyboardInterrupt as ex:
         if os.path.isdir(args.audio_input):
             ex.add_note(
