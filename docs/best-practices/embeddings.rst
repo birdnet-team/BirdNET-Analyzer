@@ -45,7 +45,7 @@ Each row holds the path of the audio file relative to the folder that holds the 
 -------------------------------------------------
 
 The database can be searched in the **Search** tab of the GUI.
-To start the search first select the database you want to search in, and as the audio root the folder that holds the audio directory the database was extracted from. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.
+To start the search first select the database you want to search in. The audio root, the folder that holds the audio directory the database was extracted from, is filled in from the database; select another one if the recordings have moved. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.
 
 After that select a file as a query example to find similar sounds in the database.
 You can select the :doc:`crop mode <../implementation-details/crop-modes>` to specify how the example file will be cropped if it is longer than 3 seconds. For the segments crop mode the simliarity measure will be averaged over all segments of the query example.

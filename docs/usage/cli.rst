@@ -17,7 +17,7 @@ birdnet_analyzer.analyze
 
       python -m birdnet_analyzer.analyze /path/to/audio/folder -o /path/to/output/folder
 
-   Here are two example commands to run this BirdNET version:
+   Here are two more example commands:
 
    .. code:: bash
 
@@ -112,8 +112,6 @@ birdnet_analyzer.segments
 
 birdnet_analyzer.species
 -------------------------
-
-The year-round list may contain some species, that are not included in any list for a specific week. See `birdnet-team#211 <https://github.com/birdnet-team/BirdNET-Analyzer/issues/211#issuecomment-1849833360>`_ for more details.
 
 .. argparse::
    :ref: birdnet_analyzer.cli.species_parser

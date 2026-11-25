@@ -200,7 +200,7 @@ Install the packages
 .. note::
 
    If you also want to use the GUI, you need to install the additional packages with: ``pip install .[gui]``.
-   Same goes for the training tools and the embedding/search tools: ``pip install .[train]`` and ``pip install .[embeddings]``.
+   The ``train`` extra adds the hyperparameter autotuning of the training, the ``embeddings`` extra the embedding and search tools: ``pip install .[train]`` and ``pip install .[embeddings]``.
 
    Use ``pip install .[all]`` to install all packages.
 

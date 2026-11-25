@@ -14,8 +14,9 @@ Copy the entries from the labels of the model, which consist of `scientific name
    birdnet-species all_labels.txt
 
 The analysis matches each entry to the labels of the model it uses: by the exact label, then by the scientific name, then by the common name in the language of the analysis or in English.
-The same list therefore also works with BirdNET 2.4, which names some species differently, and with Perch, whose labels are scientific names only.
-An entry that matches no label of the model is skipped with a warning, and with ``--strict`` the analysis stops instead.
+The same list therefore also works with BirdNET 2.4, which names some species differently.
+Perch labels are scientific names only, so with Perch an entry matches by its scientific name alone, and a species that Perch names differently is not found.
+An entry that matches no label of the model is skipped with a warning, and with ``--strict`` the analysis stops instead; if no entry matches, the analysis stops in any case.
 :doc:`../breaking-changes` explains which names changed with BirdNET 3.0 and what happens to an entry for a species that was split.
 
 You can generate a species list for a given location and week using :ref:`birdnet_analyzer.species <cli-species>` or the **Species** tab of the GUI.
@@ -26,7 +27,7 @@ Practical Information and Considerations
 
 **Understanding the GeoModel**
 
-This section describes the species range model of BirdNET 2.4, which an analysis with BirdNET 2.4 uses for a location filter.
+This part and the limitations below describe the species range model of BirdNET 2.4, which a location filter uses with BirdNET 2.4 and with custom classifiers trained on it.
 Lists for a location and location filters with BirdNET 3.0 come from the BirdNET 3.0 geolocation model, which :doc:`../models` describes.
 
 The BirdNET Species Range Model V2.4 - V2 uses eBird checklist frequency data to estimate the range of bird species and the probability of their occurrence given latitude, longitude, and week of the year. eBird relies on citizen scientists to collect bird species observations around the world. Due to biases in these data, some regions such as North and South America, Europe, India, and Australia are well represented in the data, while large parts of Africa or Asia are underrepresented.

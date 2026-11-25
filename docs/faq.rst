@@ -16,7 +16,7 @@ BirdNET-Analyzer can be installed using different methods, including:
 - | **Raven Pro**: Follow the instructions provided in the Raven Pro documentation.
 - | **Python Package**: Install via pip using `pip install birdnet_analyzer`.
 - | **From source**: Clone the repository and install it with pip, as described under :ref:`installation`.
-- | **Docker**: Run the command line tools in the image described under :doc:`usage/docker`.
+- | **Docker**: Run the analysis and the other tools of the base package in the image described under :doc:`usage/docker`.
 - | **GUI**: Download the GUI version from the `releases page <https://github.com/birdnet-team/BirdNET-Analyzer/releases/latest>`_ and follow the installation instructions.
 
 What licenses are used in BirdNET-Analyzer?
