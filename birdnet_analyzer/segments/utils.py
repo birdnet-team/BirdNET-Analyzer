@@ -297,7 +297,10 @@ def parse_folders(
 
     flist = [f for f in data.values() if f["result"]]
 
-    logger.info(f"Found {len(flist)} audio files with valid result file.")
+    if "combined" in data:
+        logger.info(f"Reading the combined result file {data['combined']['result']}.")
+    else:
+        logger.info(f"Found {len(flist)} audio files with a result file.")
 
     return flist
 
