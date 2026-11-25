@@ -120,6 +120,18 @@ def test_consecutive_detections_are_merged_for_table_and_downloads(monkeypatch):
     assert list(state["table"]["end_time"]) == [9.0, 18.0]
 
 
+def test_the_player_marks_the_rows_of_the_table_and_downloads_keep_all(monkeypatch):
+    n_rows = 4 * sfa.MAX_TABLE_ROWS
+    table, _, state = run(monkeypatch, make_result(n_rows))
+
+    labels = sfa.player_detections(state["shown"])
+
+    assert len(state["table"]) == n_rows
+    assert [label["start"] for label in labels] == [
+        sfa.time_to_seconds(t) for t in table[sfa.HEADER_START_LBL]
+    ]
+
+
 def test_a_file_that_could_not_be_read_is_reported_instead_of_an_empty_table(
     monkeypatch,
 ):

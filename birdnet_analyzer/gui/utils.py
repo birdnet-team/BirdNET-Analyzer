@@ -214,6 +214,35 @@ def spectrogram_settings() -> dict:
     }
 
 
+# Overlaps the SignaVis player offers, by its overlap level.
+_PLAYER_OVERLAPS = (0, 25, 50, 75, 87.5, 93.75)
+
+
+def player_spectrogram_settings() -> dict:
+    """The settings-tab spectrogram settings in the form the SignaVis player takes.
+
+    Returns:
+        The ``spectrogram`` argument of `signavis.gradio.player_value`.
+    """
+    settings = spectrogram_settings()
+    n_fft = settings["n_fft"]
+    overlap = 100 * (1 - settings["hop_length"] / n_fft)
+
+    return {
+        "colorScheme": (
+            "grayscale" if settings["colormap"] == "Greys" else settings["colormap"]
+        ),
+        "windowSize": n_fft,
+        "overlapLevel": min(
+            range(len(_PLAYER_OVERLAPS)),
+            key=lambda level: abs(_PLAYER_OVERLAPS[level] - overlap),
+        ),
+        "oversamplingLevel": 0,
+        "scale": "cqt" if settings["freq_scale"] == "log" else "linear",
+        "contrastRangeDb": settings["top_db"],
+    }
+
+
 def gui_runtime_error_handler(f):
     """Wrap ``f`` so any exception is logged and re-raised as a ``gr.Error``.
 

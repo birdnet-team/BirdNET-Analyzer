@@ -98,7 +98,37 @@ function init() {
         });
     }
 
+    function markDetectionsAtPlayhead() {
+        const seconds = (text) => {
+            const [h, m, sec] = text.trim().split(":");
+            return +h * 3600 + +m * 60 + parseFloat(sec);
+        };
+
+        let time = null;
+        const mark = () => {
+            if (time === null) return;
+
+            for (const row of document.querySelectorAll("#single-file-output .virtual-row")) {
+                const cells = row.querySelectorAll("[role=gridcell]");
+                const start = cells.length > 2 ? seconds(cells[1].textContent) : NaN;
+                const end = cells.length > 2 ? seconds(cells[2].textContent) : NaN;
+                row.classList.toggle("at-playhead", start <= time && time < end);
+            }
+        };
+
+        document.addEventListener("signavis-timeupdate", (event) => {
+            if (!event.target.closest("#single-file-player")) return;
+            time = event.detail.currentTime;
+            mark();
+        });
+        // The grid reuses its rows while scrolling.
+        document.addEventListener("scroll", (event) => {
+            if (event.target.closest?.("#single-file-output")) requestAnimationFrame(mark);
+        }, true);
+    }
+
     checkForNewerVersion();
+    markDetectionsAtPlayhead();
     overwriteStyles();
     bindReviewKeyShortcuts();
 }
