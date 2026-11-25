@@ -111,6 +111,72 @@ jobs:
           retention-days: 7
           compression-level: 0
 
+  # The build job tests in the build container; this one starts the packages on
+  # the distributions' own images.
+  installed:
+    name: Start on ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+      - uses: actions/checkout@v7
+        with:
+          repository: birdnet-team/BirdNET-Analyzer-build
+          ref: ${{ inputs.build_tools_ref || 'master' }}
+          token: ${{ secrets.BUILD_TOOLS_TOKEN || github.token }}
+          path: build-tools
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: linux-packages
+      # Ubuntu 24.04 desktops restrict the unprivileged user namespaces that the
+      # window's browser sandbox uses; a runner image may have that switched off.
+      - name: Set the desktop default for user namespaces
+        if: matrix.os != 'ubuntu-22.04'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+      - name: Install a virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+      - name: Start the AppImage as downloaded
+        run: |
+          chmod +x linux-packages/*.AppImage
+          set -- linux-packages/*.AppImage
+          "$1" analyze --help >/dev/null
+      - name: Smoke test the unpacked AppImage
+        run: |
+          set -- "$PWD"/linux-packages/*.AppImage
+          (cd "$RUNNER_TEMP" && "$1" --appimage-extract >/dev/null)
+          xvfb-run -a build-tools/linux/smoke-test.sh "$RUNNER_TEMP/squashfs-root/usr/bin/birdnet-analyze" \
+            "$RUNNER_TEMP/squashfs-root/AppRun" birdnet_analyzer/example
+          rm -rf "$RUNNER_TEMP/squashfs-root" ~/.local/share/BirdNET-Analyzer-GUI
+      - name: Install and smoke test the .deb
+        run: |
+          sudo apt-get install -y ./linux-packages/*.deb
+          xvfb-run -a build-tools/linux/smoke-test.sh birdnet-analyze birdnet-analyzer-gui birdnet_analyzer/example
+      - name: Diagnose a failed start
+        if: failure()
+        run: |
+          sysctl kernel.apparmor_restrict_unprivileged_userns || true
+          sudo dmesg | grep -i -E "apparmor|userns" | tail -n 20 || true
+          tail -n 80 ~/.local/share/BirdNET-Analyzer-GUI/logs.txt || true
+          gui=$(command -v birdnet-analyzer-gui || echo "$RUNNER_TEMP/squashfs-root/AppRun")
+          cli=$(command -v birdnet-analyze || echo "$RUNNER_TEMP/squashfs-root/usr/bin/birdnet-analyze")
+          if QTWEBENGINE_DISABLE_SANDBOX=1 xvfb-run -a build-tools/linux/smoke-test.sh "$cli" "$gui" birdnet_analyzer/example; then
+            echo "::notice::The same start passes with the browser sandbox switched off."
+          else
+            echo "::notice::The start fails with the browser sandbox switched off as well."
+          fi
+
   release:
     name: Attach to the release
     needs: build
