@@ -69,7 +69,7 @@ and the previous one is kept with ``.1`` added to its name.
 GUI Language
 ------------
 
-The default language of the GUI is English, but you can change it to German, Finnish, French, Indonesian, Brazilian Portuguese, Russian, Swedish, Klingon, Simplified Chinese or Traditional Chinese in the Settings tab of the GUI.
+The default language of the GUI is English, but you can change it to German, Finnish, French, Indonesian, Brazilian Portuguese, Russian, Swedish, Simplified Chinese or Traditional Chinese in the Settings tab of the GUI.
 If you want to contribute a translation to another language you, use the files inside the lang folder as a template.
 You can then send us the translated files or create a pull request.
 To check your translation, place your file inside the ``lang`` folder and start the GUI, your language should now be available in the **Settings** tab.
