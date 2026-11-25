@@ -94,7 +94,7 @@ Want to use BirdNET to analyze a large dataset? Don't hesitate to contact us: cc
 ## License
 
 - **Source Code**: The source code for this project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-- **Models**: The BirdNET 3.0 acoustic model is licensed under the [Apache License 2.0](https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md) and comes with an [acceptable use policy](https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md). The other BirdNET models are licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+- **Models**: The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the [Apache License 2.0](https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md) and come with an [acceptable use policy](https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md). BirdNET 2.4 and the older BirdNET models are licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 Please ensure you review and adhere to the specific license terms provided with each model.
 

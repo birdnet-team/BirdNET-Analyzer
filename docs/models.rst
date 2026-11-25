@@ -59,7 +59,7 @@ Just download your desired model version and unzip.
 Model Version History
 ---------------------
 
-.. note:: The BirdNET 3.0 acoustic model is licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and comes with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. The other BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
+.. note:: The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and come with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. BirdNET 2.4 and the older BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_.
 
 V2.4
 ^^^^
