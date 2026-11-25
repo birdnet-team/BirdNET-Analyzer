@@ -53,6 +53,7 @@
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Models</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#v3-0">V3.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#perch-v2">Perch v2</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#v2-4-june-2023">V2.4, June 2023</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#species-range-model-v2-4-v2-jan-2024">Species range model V2.4 - V2, Jan 2024</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#using-older-models">Using older models</a></li>
@@ -65,7 +66,7 @@
 <li class="toctree-l1"><a class="reference internal" href="showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contribute.html">How To Contibute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -104,6 +105,23 @@
 <li><p>embedding size of 1280</p></li>
 <li><p>species names in 29 languages</p></li>
 <li><p>runs on ONNX Runtime</p></li>
+<li><p>model files on <a class="reference external" href="https://zenodo.org/records/24362980">Zenodo</a></p></li>
+<li><p>location filters and species lists come from the BirdNET 3.0 geolocation model (BirdNET+ Geomodel V3.0.4,
+14,082 classes, from the <a class="reference external" href="https://github.com/birdnet-team/geomodel/releases/tag/v3.0.4">geomodel releases</a>),
+which also predicts species the acoustic model does not have</p></li>
+</ul>
+<p>BirdNET 2.4 (<code class="docutils literal notranslate"><span class="pre">--birdnet</span> <span class="pre">2.4</span></code>) and Perch v2 (<code class="docutils literal notranslate"><span class="pre">--use_perch</span></code>) can be selected instead, in the GUI under
+<strong>Model selection</strong>.</p>
+</section>
+<section id="perch-v2">
+<h2>Perch v2<a class="headerlink" href="#perch-v2" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>downloaded the first time it is used (about 380 MB)</p></li>
+<li><p>14,795 classes: 14,597 species, named by their scientific name only, and 198 sound classes such as Aircraft and Dog</p></li>
+<li><p>32 kHz sampling rate, 5-second segments</p></li>
+<li><p>embedding size of 1536</p></li>
+<li><p>confidences are softmax probabilities, and the sensitivity setting does not apply</p></li>
+<li><p>runs on TensorFlow</p></li>
 </ul>
 </section>
 <section id="v2-4-june-2023">
@@ -146,10 +164,11 @@
 </section>
 <section id="using-older-models">
 <h2>Using older models<a class="headerlink" href="#using-older-models" title="Link to this heading"></a></h2>
-<p>Older models can also be used as custom classifiers in the GUI or using the <cite>–classifier</cite> argument in the <cite>birdnet_analyzer.analyze</cite> command line interface.</p>
+<p>The models V1.1 to V2.1, V2.3 and V2.4 listed below can also be used as custom classifiers in the GUI or using the <code class="docutils literal notranslate"><span class="pre">--classifier</span></code> argument in the <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.analyze</span></code> command line interface.
+V2.2 cannot be loaded, and the App model has no TFLite file.</p>
 <p>Just download your desired model version and unzip.</p>
 <ul class="simple">
-<li><p>GUI: Select the *_Model_FP32.tflite file under <strong>Model selection / Custom classifier</strong>. The summary shown below the model choice tells you which BirdNET version the classifier’s layout matches, how many classes it has and whether it replaces or extends the official classes, so you can check that the right file was picked.</p></li>
+<li><p>GUI: Copy the <code class="docutils literal notranslate"><span class="pre">*_Labels.txt</span></code> file of the model to the name of the <code class="docutils literal notranslate"><span class="pre">*_Model_FP32.tflite</span></code> file with <code class="docutils literal notranslate"><span class="pre">_Labels.txt</span></code> in place of <code class="docutils literal notranslate"><span class="pre">.tflite</span></code>, for example <code class="docutils literal notranslate"><span class="pre">BirdNET_GLOBAL_3K_V2.3_Model_FP32_Labels.txt</span></code>, then select the <code class="docutils literal notranslate"><span class="pre">*_Model_FP32.tflite</span></code> file under <strong>Model selection / Custom classifier</strong>. The summary shown below the model choice tells you which BirdNET version the classifier’s layout matches, how many classes it has and whether it replaces or extends the official classes, so you can check that the right file was picked.</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">birdnet_analyzer.analyze</span> <span class="pre">...</span> <span class="pre">--classifier</span> <span class="pre">'path_to_Model_FP32.tflite'</span> <span class="pre">--cc_species_list</span> <span class="pre">'path_to_Labels.txt'</span></code></p></li>
 </ul>
 </section>
@@ -157,7 +176,7 @@
 <h2>Model Version History<a class="headerlink" href="#model-version-history" title="Link to this heading"></a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The BirdNET 3.0 acoustic model is licensed under the <a class="reference external" href="https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md">Apache License 2.0</a> and comes with an <a class="reference external" href="https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md">acceptable use policy</a>. The other BirdNET models are licensed under the <a class="reference external" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)</a>.</p>
+<p>The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the <a class="reference external" href="https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md">Apache License 2.0</a> and come with an <a class="reference external" href="https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md">acceptable use policy</a>. BirdNET 2.4 and the older BirdNET models are licensed under the <a class="reference external" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)</a>.</p>
 </div>
 <section id="v2-4">
 <h3>V2.4<a class="headerlink" href="#v2-4" title="Link to this heading"></a></h3>

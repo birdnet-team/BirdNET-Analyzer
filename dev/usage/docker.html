@@ -64,7 +64,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -116,12 +116,14 @@ the most recent release.</p>
 docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">:/audio"</span><span class="w"> </span>ghcr.io/birdnet-team/birdnet-analyzer<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/audio<span class="w"> </span>-o<span class="w"> </span>/audio/output
 </pre></div>
 </div>
-<p>Any of the CLI entry points can be used, e.g. <code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">birdnet_analyzer.species</span></code> or <code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">birdnet_analyzer.segments</span></code>.</p>
-<p>The acoustic and geo models are baked into the image, so containers start analyzing
-immediately and run without network access:</p>
+<p>The other tools of the base package can be used the same way, e.g. <code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">birdnet_analyzer.species</span></code> or <code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">birdnet_analyzer.segments</span></code>. The image does not contain the <code class="docutils literal notranslate"><span class="pre">embeddings</span></code> and <code class="docutils literal notranslate"><span class="pre">train</span></code> extras, so embedding extraction, search and the autotuning of a training do not run in it.</p>
+<p>The default BirdNET 3.0 acoustic and geolocation models are baked into the image, so
+containers start analyzing immediately and run without network access:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--network<span class="w"> </span>none<span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">:/audio"</span><span class="w"> </span>ghcr.io/birdnet-team/birdnet-analyzer<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/audio<span class="w"> </span>-o<span class="w"> </span>/audio/output
 </pre></div>
 </div>
+<p>BirdNET 2.4, Perch and the models that training exports need are not in the image and are
+downloaded each time a container first uses them.</p>
 </section>
 <section id="building-locally">
 <h2>Building locally<a class="headerlink" href="#building-locally" title="Link to this heading"></a></h2>

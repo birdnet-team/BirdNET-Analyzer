@@ -67,7 +67,7 @@
 <li class="toctree-l1"><a class="reference internal" href="showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contribute.html">How To Contibute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -189,12 +189,45 @@ directory and, on Windows, <code class="docutils literal notranslate"><span clas
 <p>If you want to analyze audio files without any additional coding or package install, you can now use <a class="reference external" href="https://ravensoundsoftware.com/software/raven-pro/">Raven Pro software</a> to run BirdNET models.
 After download, BirdNET is available through the new “Learning detector” feature in Raven Pro.</p>
 <p>For more information on how to use this feature, please visit the <a class="reference external" href="https://ravensoundsoftware.com/article-categories/learning-detector/">Raven Pro Knowledge Base</a>.</p>
-<p><a class="reference external" href="https://tuc.cloud/index.php/s/2TX59Qda2X92Ppr/download/BirdNET_GLOBAL_6K_V2.4_Model_Raven.zip">Download the newest model version here</a>, extract the zip-file and move the extracted folder to the Raven models folder.
+<p><a class="reference external" href="https://tuc.cloud/index.php/s/2TX59Qda2X92Ppr/download/BirdNET_GLOBAL_6K_V2.4_Model_Raven.zip">Download the BirdNET 2.4 model for Raven Pro here</a>, extract the zip-file and move the extracted folder to the Raven models folder.
 On Windows, the models folder is <code class="docutils literal notranslate"><span class="pre">C:\Users\&lt;Your</span> <span class="pre">user</span> <span class="pre">name&gt;\Raven</span> <span class="pre">Pro</span> <span class="pre">1.6\Models</span></code>. Start Raven Pro and select <em>BirdNET_GLOBAL_6K_V2.4_Model_Raven</em> as learning detector.</p>
 </section>
 <section id="python-package">
 <h2>Python Package<a class="headerlink" href="#python-package" title="Link to this heading"></a></h2>
-<p>The easiest way to setup BirdNET on your machine is to install <a class="reference external" href="https://joeweiss.github.io/birdnetlib/">birdnetlib</a> or <a class="reference external" href="https://pypi.org/project/birdnet/">birdnet</a> through pip with:</p>
+<p>BirdNET-Analyzer is on <a class="reference external" href="https://pypi.org/project/birdnet-analyzer/">PyPI</a> and needs Python 3.11 to 3.13:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>birdnet_analyzer
+</pre></div>
+</div>
+<p>This provides the command line tools <code class="docutils literal notranslate"><span class="pre">birdnet-analyze</span></code>, <code class="docutils literal notranslate"><span class="pre">birdnet-segments</span></code>, <code class="docutils literal notranslate"><span class="pre">birdnet-species</span></code>, <code class="docutils literal notranslate"><span class="pre">birdnet-train</span></code>
+and <code class="docutils literal notranslate"><span class="pre">birdnet-evaluate</span></code>. Additional feature sets are available as extras:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Extra</p></th>
+<th class="head"><p>Adds</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">embeddings</span></code></p></td>
+<td><p>embedding extraction and similarity search (<code class="docutils literal notranslate"><span class="pre">birdnet-embeddings</span></code>, <code class="docutils literal notranslate"><span class="pre">birdnet-search</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">train</span></code></p></td>
+<td><p>hyperparameter autotuning when training custom classifiers</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui</span></code></p></td>
+<td><p>the graphical user interface (<code class="docutils literal notranslate"><span class="pre">birdnet-gui</span></code>), including <code class="docutils literal notranslate"><span class="pre">embeddings</span></code> and <code class="docutils literal notranslate"><span class="pre">train</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">all</span></code></p></td>
+<td><p>everything above (currently the same set as <code class="docutils literal notranslate"><span class="pre">gui</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"birdnet_analyzer[all]"</span>
+</pre></div>
+</div>
+<p>On Linux, the <code class="docutils literal notranslate"><span class="pre">gui</span></code> extra needs the system libraries listed under <a class="reference internal" href="#command-line-installation">Command line installation</a>.</p>
+<section id="using-birdnet-in-your-own-python-code">
+<h3>Using BirdNET in your own Python code<a class="headerlink" href="#using-birdnet-in-your-own-python-code" title="Link to this heading"></a></h3>
+<p>To run BirdNET models from your own code, install <a class="reference external" href="https://joeweiss.github.io/birdnetlib/">birdnetlib</a> or the <a class="reference external" href="https://pypi.org/project/birdnet/">birdnet</a> library, which BirdNET-Analyzer runs its analyses with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>birdnetlib
 </pre></div>
 </div>
@@ -214,6 +247,7 @@ On Windows, the models folder is <code class="docutils literal notranslate"><spa
 <p>For more examples and documentation, make sure to visit <a class="reference external" href="https://pypi.org/project/birdnet/">pypi.org/project/birdnet/</a>.</p>
 <p>For any feature request or questions regarding <cite>birdnet</cite>, please add an issue or PR at <a class="reference external" href="https://github.com/birdnet-team/birdnet">github.com/birdnet-team/birdnet</a>.</p>
 </section>
+</section>
 <section id="command-line-installation">
 <h2>Command line installation<a class="headerlink" href="#command-line-installation" title="Link to this heading"></a></h2>
 <p>Requires Python 3.11 to 3.13.</p>
@@ -229,7 +263,7 @@ On Windows, the models folder is <code class="docutils literal notranslate"><spa
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If you also want to use the GUI, you need to install the additional packages with: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[gui]</span></code>.
-Same goes for the training tools and the embedding/search tools: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[train]</span></code> and <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[embeddings]</span></code>.</p>
+The <code class="docutils literal notranslate"><span class="pre">train</span></code> extra adds the hyperparameter autotuning of the training, the <code class="docutils literal notranslate"><span class="pre">embeddings</span></code> extra the embedding and search tools: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[train]</span></code> and <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[embeddings]</span></code>.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.[all]</span></code> to install all packages.</p>
 <p>On Linux, the <code class="docutils literal notranslate"><span class="pre">gui</span></code> extra installs PySide6 for the application window. Qt needs the system’s xcb
 libraries; on Debian and Ubuntu, <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libxcb-cursor0</span> <span class="pre">libxcb-icccm4</span> <span class="pre">libxcb-keysyms1</span>

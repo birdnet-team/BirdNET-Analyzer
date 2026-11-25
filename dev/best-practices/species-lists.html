@@ -65,7 +65,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -96,29 +96,28 @@
              
   <section id="creating-your-own-species-list">
 <h1>Creating Your Own Species List<a class="headerlink" href="#creating-your-own-species-list" title="Link to this heading"></a></h1>
-<p>When editing your own <cite>species_list.txt</cite> file, make sure to copy species names from the labels file of each model.</p>
-<p>You can find label files in the checkpoints folder, e.g., <cite>checkpoints/V2.4/BirdNET_GLOBAL_6K_V2.4_Labels.txt</cite>.</p>
-<p>Species names need to consist of <cite>scientific name_common name</cite> to be valid, for example:</p>
+<p>A species list is a text file with one species per line, passed with <code class="docutils literal notranslate"><span class="pre">--slist</span></code> or selected in the GUI under <strong>Species selection</strong>.
+Copy the entries from the labels of the model, which consist of <cite>scientific name_common name</cite>, for example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Turdus</span> <span class="n">merula_Common</span> <span class="n">Blackbird</span>
 <span class="n">Parus</span> <span class="n">major_Great</span> <span class="n">Tit</span>
 </pre></div>
 </div>
-<p>If you want to use the Perch model, you have to use only the scientific name with no underscore or common name, for example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Turdus</span> <span class="n">merula</span>
-<span class="n">Parus</span> <span class="n">major</span>
+<p><a class="reference internal" href="../usage/cli.html#cli-species"><span class="std std-ref">birdnet_analyzer.species</span></a> without a location writes every label of the default BirdNET 3.0 model, 11,725 of them, to a file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>birdnet-species<span class="w"> </span>all_labels.txt
 </pre></div>
 </div>
-<p>Note that <cite>birdnet_analyzer.species</cite> only generates BirdNET-format names and cannot be used to build a Perch species list.</p>
-<p>You can generate a species list for a given location using <a class="reference internal" href="../usage/cli.html#cli-species"><span class="std std-ref">birdnet_analyzer.species</span></a>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The checkpoints folder can be found in the installation directory of BirdNET-Analyzer.
-If you’re using BirdNET-Analyzer from GitHub, you can access the checkpoints folder once the analyzer has run at least once, because the model is downloaded in the background.</p>
-<p>Alternatively, you can manually download the model checkpoint <a class="reference external" href="https://tuc.cloud/index.php/s/886x39f5N3sdsAM/download/V2.4.zip">here</a>.</p>
-</div>
+<p>The analysis matches each entry to the labels of the model it uses: by the exact label, then by the scientific name, then by the common name in the language of the analysis or in English.
+The same list therefore also works with BirdNET 2.4, which names some species differently.
+Perch labels are scientific names only, so with Perch an entry matches by its scientific name alone, and a species that Perch names differently is not found.
+An entry that matches no label of the model is skipped with a warning, and with <code class="docutils literal notranslate"><span class="pre">--strict</span></code> the analysis stops instead; if no entry matches, the analysis stops in any case.
+<a class="reference internal" href="../breaking-changes.html"><span class="doc">Breaking changes</span></a> explains which names changed with BirdNET 3.0 and what happens to an entry for a species that was split.</p>
+<p>You can generate a species list for a given location and week using <a class="reference internal" href="../usage/cli.html#cli-species"><span class="std std-ref">birdnet_analyzer.species</span></a> or the <strong>Species</strong> tab of the GUI.
+Such a list comes from the BirdNET 3.0 geolocation model, which also predicts species the acoustic models do not have; the analysis skips those with a warning.</p>
 <section id="practical-information-and-considerations">
 <h2>Practical Information and Considerations<a class="headerlink" href="#practical-information-and-considerations" title="Link to this heading"></a></h2>
 <p><strong>Understanding the GeoModel</strong></p>
+<p>This part and the limitations below describe the species range model of BirdNET 2.4, which a location filter uses with BirdNET 2.4 and with custom classifiers trained on it.
+Lists for a location and location filters with BirdNET 3.0 come from the BirdNET 3.0 geolocation model, which <a class="reference internal" href="../models.html"><span class="doc">Models</span></a> describes.</p>
 <p>The BirdNET Species Range Model V2.4 - V2 uses eBird checklist frequency data to estimate the range of bird species and the probability of their occurrence given latitude, longitude, and week of the year. eBird relies on citizen scientists to collect bird species observations around the world. Due to biases in these data, some regions such as North and South America, Europe, India, and Australia are well represented in the data, while large parts of Africa or Asia are underrepresented.</p>
 <p>In cases where eBird does not have enough observations (i.e., checklists), the data “only” contain binary filter data of likely species that could occur in a given location. Therefore, the training data for our biodiversity model is a mixture of actual observations and filter data curated by experts. We included all locations for which at least 10 checklists are available for each week of the year, and randomly added other locations with a 3% probability.</p>
 <p><strong>Limitations of the GeoModel</strong></p>
@@ -130,8 +129,8 @@ If you’re using BirdNET-Analyzer from GitHub, you can access the checkpoints f
 <p><strong>Creating Custom Species Lists</strong></p>
 <p>If you know which species to expect in your area, it is recommended to compile your own species list. This can help improve the accuracy of BirdNET-Analyzer for your specific use case.</p>
 <ol class="arabic simple">
-<li><p><strong>Collect Species Names</strong>: Use the labels file from the model checkpoints to get the correct species names. Ensure the names are in the format <cite>scientific name_common name</cite>.</p></li>
-<li><p><strong>Generate Species List</strong>: Use the <cite>birdnet_analyzer.species</cite> script to generate a species list for a given location and time. This script uses the GeoModel to predict species occurrence based on latitude, longitude, and week of the year.</p></li>
+<li><p><strong>Collect Species Names</strong>: Copy the names from the labels <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.species</span></code> writes without a location. Ensure the names are in the format <cite>scientific name_common name</cite>.</p></li>
+<li><p><strong>Generate Species List</strong>: Use the <cite>birdnet_analyzer.species</cite> script to generate a species list for a given location and time. This script uses the BirdNET 3.0 geolocation model to predict species occurrence based on latitude, longitude, and week of the year.</p></li>
 </ol>
 <p><strong>Example of Training Data</strong></p>
 <p>Here is an example of what the training data for a given location (Chemnitz) looks like:</p>

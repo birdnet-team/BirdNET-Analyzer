@@ -65,7 +65,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -112,6 +112,7 @@ To obtain batch analysis result tables, run the analysis via the GUI or the <a c
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Audacity labels name no audio file, so the segments tool reads them only as the per-file results of an analysis with <code class="docutils literal notranslate"><span class="pre">--split_tables</span></code>, not the combined <code class="docutils literal notranslate"><span class="pre">BirdNET_AudacityLabels.txt</span></code>. Use “table”, “kaleidoscope”, or “csv” formats for combined results.</p>
+<p>The segments tool does not read “parquet” results, neither <code class="docutils literal notranslate"><span class="pre">BirdNET_CombinedTable.parquet</span></code> nor the per-file ones. Also write “table”, “kaleidoscope” or “csv” results when you want to extract segments.</p>
 </div>
 <p>A combined result table names each recording where it was during the analysis. If the recordings have moved since, for example because the drive got another letter or the folder was copied to another computer, select the folder that holds them now as the audio folder: the segments tool looks there for a recording it does not find, by its file name and the folders it is in. A recording that two files there match equally well is skipped.</p>
 </section>
@@ -126,9 +127,9 @@ This tool is available in the graphical user interface (GUI) under the “segmen
 <ul>
 <li><p><strong>Minimum Confidence</strong> (<code class="docutils literal notranslate"><span class="pre">min_conf</span></code>): Set a minimum confidence value for predictions to be considered.</p></li>
 <li><p><strong>Maximum Confidence</strong> (<code class="docutils literal notranslate"><span class="pre">max_conf</span></code>): Set a maximum confidence value for predictions to be considered.</p></li>
-<li><p><strong>Maximum Number of Segments</strong> (<code class="docutils literal notranslate"><span class="pre">num_seq</span></code>): Specify how many segments per species should be extracted.</p></li>
+<li><p><strong>Maximum Number of Segments</strong> (<code class="docutils literal notranslate"><span class="pre">max_segments</span></code>): Specify how many segments per species should be extracted.</p></li>
 <li><p><strong>Audio Speed</strong> (<code class="docutils literal notranslate"><span class="pre">audio_speed</span></code>): Adjust the playback speed. Extracted segments will be saved with the adjusted speed (e.g., to listen to ultrasonic calls).</p></li>
-<li><p><strong>Segment Length</strong> (<code class="docutils literal notranslate"><span class="pre">seq_length</span></code>): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.</p></li>
+<li><p><strong>Segment Length</strong> (<code class="docutils literal notranslate"><span class="pre">seg_length</span></code>): Define how long the extracted audio segments should be. If you set to more than 3 seconds, each segment will be padded with audio from the source recording. For example, for 5-second segment length, 1 second of audio before and after each extracted segment will be included. For 7 seconds, 2 seconds will be included, and so on. The first and last segment of each audio file might be shorter than the specified length.</p></li>
 <li><p><strong>Segment Collection Mode</strong> (<code class="docutils literal notranslate"><span class="pre">collection_mode</span></code>): Choose how segments are selected. Following options are available:</p>
 <blockquote>
 <div><ul class="simple">

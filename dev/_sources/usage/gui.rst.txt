@@ -10,12 +10,12 @@ We provide a stand-alone GUI which lets you launch the analysis through a web in
 
 To use the GUI, install the package with the ``gui`` extra: ``pip install "birdnet_analyzer[gui]"``
 
-Launch the GUI with ``python -m birdnet_analyzer.gui``.
+Launch the GUI with ``birdnet-gui`` or ``python -m birdnet_analyzer.gui``. On Linux, :ref:`installation` lists the system libraries the window may need.
 
 Set all folders and parameters, after that, click 'Analyze'. GUI items represent the command line arguments.
 For more information about the command line arguments, please refer to the :ref:`Command line interface documentation <cli-docs>`.
 
-`Alternatively download the installer to run the GUI on your system`.
+Alternatively, :ref:`download the installer <installation>` to run the GUI on your system.
 
 Pausing and resuming a batch analysis
 -------------------------------------

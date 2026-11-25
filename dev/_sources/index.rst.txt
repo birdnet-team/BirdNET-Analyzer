@@ -77,7 +77,7 @@ Projects map
 
 We have created an interactive map of projects that use BirdNET. If you are working on a project that uses BirdNET, please let us know and we can add your project to the map.
 
-You can access the map here: `Open projects map <https://birdnet-team.github.io/BirdNET-Analyzer/projects.html>`_
+You can access the map here: `Open projects map <projects.html>`_
 
 Please refer to the `projects map documentation <usage/projects-map.html>`_ for more information on how to contribute.
 
@@ -86,7 +86,7 @@ License
 
 **Source Code**: The source code for this project is licensed under the `MIT License <https://opensource.org/licenses/MIT>`_
 
-**Models**: The BirdNET 3.0 acoustic model is licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and comes with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. The other BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
+**Models**: The BirdNET 3.0 models, the acoustic model and its geolocation model, are licensed under the `Apache License 2.0 <https://github.com/birdnet-team/model-converter/blob/main/MODEL_LICENSE.md>`_ and come with an `acceptable use policy <https://github.com/birdnet-team/model-converter/blob/main/ACCEPTABLE_USE.md>`_. BirdNET 2.4 and the older BirdNET models are licensed under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
 
 Please ensure you review and adhere to the specific license terms provided with each model.
 
@@ -95,9 +95,6 @@ Please ensure you review and adhere to the specific license terms provided with 
 Funding
 -------
 
-This project is supported by Jake Holshuh (Cornell class of ´69) and The Arthur Vining Davis Foundations.
 Our work in the K. Lisa Yang Center for Conservation Bioacoustics is made possible by the generosity of K. Lisa Yang to advance innovative conservation technologies to inspire and inform the conservation of wildlife and habitats.
 
-The development of BirdNET is supported by the German Federal Ministry of Education and Research through the project “BirdNET+” (FKZ 01|S22072).
-The German Federal Ministry for the Environment, Nature Conservation and Nuclear Safety contributes through the “DeepBirdDetect” project (FKZ 67KI31040E).
-In addition, the Deutsche Bundesstiftung Umwelt supports BirdNET through the project “RangerSound” (project 39263/01).
+The development of BirdNET is supported by the German Federal Ministry of Research, Technology and Space (FKZ 01|S22072), the German Federal Ministry for the Environment, Climate Action, Nature Conservation and Nuclear Safety (FKZ 67KI31040E), the German Federal Ministry of Economic Affairs and Energy (FKZ 16KN095550), the Deutsche Bundesstiftung Umwelt (project 39263/01) and the European Social Fund.

@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How To Contibute &mdash; BirdNET-Analyzer dev documentation</title>
+  <title>How To Contribute &mdash; BirdNET-Analyzer dev documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=c9d0a6ec" />
@@ -57,7 +57,7 @@
 <li class="toctree-l1"><a class="reference internal" href="showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">How To Contibute</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -74,7 +74,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">How To Contibute</li>
+      <li class="breadcrumb-item active">How To Contribute</li>
       <li class="wy-breadcrumbs-aside">
               <!-- User defined GitHub URL -->
               <a href="https://github.com/birdnet-team/BirdNET-Analyzer" class="fa fa-github"> Edit on GitHub</a>
@@ -85,15 +85,18 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="how-to-contibute">
-<h1>How To Contibute<a class="headerlink" href="#how-to-contibute" title="Link to this heading"></a></h1>
+  <section id="how-to-contribute">
+<h1>How To Contribute<a class="headerlink" href="#how-to-contribute" title="Link to this heading"></a></h1>
 <p>Feel free to clone the <a class="reference external" href="https://github.com/birdnet-team/BirdNET-Analyzer">repository</a> and contribute to the project. We are always looking for new ideas and improvements. If you have any questions, please don’t hesitate to ask.</p>
 <p>Let us know if you have any ideas for new features or improvements or submit a pull request.</p>
 <p><strong>Help us to improve the documentation!</strong></p>
-<p>Install <cite>sphinx</cite> and all required themes + plugins with <cite>pip install sphinx sphinx_rtd_theme sphinx-argparse</cite>.</p>
-<p>Run <cite>sphinx-build docs docs/_build</cite>.</p>
-<p>Navigate to <cite>BirdNET-Analyzer/docs/_build</cite> and open <cite>index.html</cite> with a browser of your choice.</p>
-<p>Make your changes to the <cite>.rst</cite> files in the <cite>docs</cite> directory and submit a pull request.</p>
+<p>The documentation build imports BirdNET-Analyzer, so install your checkout with the <code class="docutils literal notranslate"><span class="pre">docs</span></code> extra, which adds Sphinx and its plugins, and build from the top folder of the repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[docs]"</span>
+sphinx-build<span class="w"> </span>docs<span class="w"> </span>docs/_build
+</pre></div>
+</div>
+<p>Open <code class="docutils literal notranslate"><span class="pre">docs/_build/index.html</span></code> with a browser of your choice.</p>
+<p>Make your changes to the <code class="docutils literal notranslate"><span class="pre">.rst</span></code> files in the <code class="docutils literal notranslate"><span class="pre">docs</span></code> directory and submit a pull request.</p>
 </section>
 
 

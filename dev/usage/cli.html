@@ -64,7 +64,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../showroom.html">Showroom</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnetr.html">BirdNET in R</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../birdnet-tiny.html">BirdNET-Tiny</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contibute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contribute.html">How To Contribute</a></li>
 </ul>
 
         </div>
@@ -102,10 +102,10 @@ You need to set paths for the audio file and selection table output. Here is an 
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/path/to/audio/folder<span class="w"> </span>-o<span class="w"> </span>/path/to/output/folder
 </pre></div>
 </div>
-<p>Here are two example commands to run this BirdNET version:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--slist<span class="w"> </span>example/<span class="w"> </span>--min_conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--n_workers<span class="w"> </span><span class="m">4</span>
+<p>Here are two more example commands:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/path/to/audio/folder<span class="w"> </span>--slist<span class="w"> </span>/path/to/species_list.txt<span class="w"> </span>--min_conf<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--n_workers<span class="w"> </span><span class="m">4</span>
 
-python3<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--lat<span class="w"> </span><span class="m">42</span>.5<span class="w"> </span>--lon<span class="w"> </span>-76.45<span class="w"> </span>--week<span class="w"> </span><span class="m">4</span><span class="w"> </span>--sensitivity<span class="w"> </span><span class="m">1</span>.0
+python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/path/to/audio/folder<span class="w"> </span>--lat<span class="w"> </span><span class="m">42</span>.5<span class="w"> </span>--lon<span class="w"> </span>-76.45<span class="w"> </span>--week<span class="w"> </span><span class="m">4</span><span class="w"> </span>--sensitivity<span class="w"> </span><span class="m">1</span>.0
 </pre></div>
 </div>
 <p>Directory analyses are resumable: progress is saved continuously to a
@@ -262,9 +262,9 @@ match the interrupted run, otherwise the analysis starts over; see
 <section id="birdnet-analyzer-embeddings">
 <h2>birdnet_analyzer.embeddings<a class="headerlink" href="#birdnet-analyzer-embeddings" title="Link to this heading"></a></h2>
 <p>Run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings</span></code> to extract feature embeddings instead of class predictions.
-Result file will contain timestamps and lists of float values representing the embedding for a particular 3-second segment.
+The embedding of each 3-second segment is stored in a database folder, which <a class="reference internal" href="#cli-search"><span class="std std-ref">birdnet_analyzer.search</span></a> and the Search tab of the GUI search; <code class="docutils literal notranslate"><span class="pre">--file_output</span></code> also writes all embeddings of the database to a CSV file.
 Embeddings can be used for clustering or similarity analysis. Here is an example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.embeddings<span class="w"> </span>-i<span class="w"> </span>example/<span class="w"> </span>-db<span class="w"> </span>example_db/<span class="w"> </span>--batch_size<span class="w"> </span><span class="m">16</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.embeddings<span class="w"> </span>-i<span class="w"> </span>/path/to/audio/folder<span class="w"> </span>-db<span class="w"> </span>/path/to/database<span class="w"> </span>--batch_size<span class="w"> </span><span class="m">16</span>
 </pre></div>
 </div>
 <p>A new database is filled with the embeddings of BirdNET 3.0, or of the version named with <code class="docutils literal notranslate"><span class="pre">--birdnet</span></code>.
@@ -326,6 +326,64 @@ An existing database keeps the version it was created with, and <code class="doc
 </dd>
 <dt><kbd>--file_output</kbd></dt>
 <dd><p>Saves all embeddings contained in the database in a csv file.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="birdnet-analyzer-search">
+<span id="cli-search"></span><h2>birdnet_analyzer.search<a class="headerlink" href="#birdnet-analyzer-search" title="Link to this heading"></a></h2>
+<p>Run <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.search</span></code>, installed as the <code class="docutils literal notranslate"><span class="pre">birdnet-search</span></code> command and part of the <code class="docutils literal notranslate"><span class="pre">embeddings</span></code> extra, to find the segments of an embeddings database that sound most like a query file.
+<code class="docutils literal notranslate"><span class="pre">--audio_root</span></code> is the folder that held the input folder of <code class="docutils literal notranslate"><span class="pre">birdnet_analyzer.embeddings</span></code>. Here is an example for the database above:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.search<span class="w"> </span>-db<span class="w"> </span>/path/to/database<span class="w"> </span>-q<span class="w"> </span>/path/to/query.wav<span class="w"> </span>-o<span class="w"> </span>/path/to/results<span class="w"> </span>--audio_root<span class="w"> </span>/path/to/audio
+</pre></div>
+</div>
+<p><a class="reference internal" href="../best-practices/embeddings.html"><span class="doc">Embedding Extraction and Search</span></a> describes the search in the GUI, where you can listen to the results and export them.</p>
+<div class="highlight-default notranslate" id="birdnet_analyzer.search"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">search</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">overlap</span> <span class="n">OVERLAP</span><span class="p">]</span> <span class="o">-</span><span class="n">db</span> <span class="n">DATABASE</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span> <span class="o">|</span>
+                               <span class="o">--</span><span class="n">quiet</span><span class="p">]</span> <span class="o">-</span><span class="n">q</span> <span class="n">QUERYFILE</span> <span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">n_results</span> <span class="n">N_RESULTS</span><span class="p">]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">score_function</span> <span class="p">{</span><span class="n">cosine</span><span class="p">,</span><span class="n">euclidean</span><span class="p">,</span><span class="n">dot</span><span class="p">}]</span>
+                               <span class="p">[</span><span class="o">--</span><span class="n">crop_mode</span> <span class="p">{</span><span class="n">center</span><span class="p">,</span><span class="n">first</span><span class="p">,</span><span class="n">segments</span><span class="p">}]</span>
+                               <span class="o">--</span><span class="n">audio_root</span> <span class="n">AUDIO_ROOT</span>
+</pre></div>
+</div>
+<section id="birdnet_analyzer.search-named-arguments">
+<span id="birdnet_analyzer.cli-search_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#birdnet_analyzer.search-named-arguments" title="Link to this heading"></a></h3>
+<dl class="option-list">
+<dt><kbd>--overlap</kbd></dt>
+<dd><p>Overlap of prediction segments. Values in [0.0, 2.9].</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>-db, --database</kbd></dt>
+<dd><p>Path to the database folder.</p>
+</dd>
+<dt><kbd>-v, --verbose</kbd></dt>
+<dd><p>Also show debug messages and stacktraces on the console.</p>
+</dd>
+<dt><kbd>--quiet</kbd></dt>
+<dd><p>Only show warnings and errors on the console.</p>
+</dd>
+<dt><kbd>-q, --queryfile</kbd></dt>
+<dd><p>Path to the query file.</p>
+</dd>
+<dt><kbd>-o, --output</kbd></dt>
+<dd><p>Path to the output folder.</p>
+</dd>
+<dt><kbd>--n_results</kbd></dt>
+<dd><p>Number of results to return.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">10</span></code></p>
+</dd>
+<dt><kbd>--score_function</kbd></dt>
+<dd><p>Possible choices: cosine, euclidean, dot</p>
+<p>Scoring function to use.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'cosine'</span></code></p>
+</dd>
+<dt><kbd>--crop_mode</kbd></dt>
+<dd><p>Possible choices: center, first, segments</p>
+<p>Crop mode for the query sample.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'center'</span></code></p>
+</dd>
+<dt><kbd>--audio_root</kbd></dt>
+<dd><p>Folder that the audio paths in the database are relative to: the parent of the input path the embeddings were extracted from.</p>
 </dd>
 </dl>
 </section>
@@ -524,7 +582,6 @@ This way, it might be easier to review results instead of loading hundreds of re
 </section>
 <section id="birdnet-analyzer-species">
 <span id="cli-species"></span><h2>birdnet_analyzer.species<a class="headerlink" href="#birdnet-analyzer-species" title="Link to this heading"></a></h2>
-<p>The year-round list may contain some species, that are not included in any list for a specific week. See <a class="reference external" href="https://github.com/birdnet-team/BirdNET-Analyzer/issues/211#issuecomment-1849833360">birdnet-team#211</a> for more details.</p>
 <div class="highlight-default notranslate" id="birdnet_analyzer.species"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">birdnet_analyzer</span><span class="o">.</span><span class="n">species</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lat</span> <span class="n">LAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lon</span> <span class="n">LON</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">week</span> <span class="n">WEEK</span><span class="p">]</span>
                                 <span class="p">[</span><span class="o">--</span><span class="n">sf_thresh</span> <span class="n">SF_THRESH</span><span class="p">]</span>
                                 <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="p">{</span><span class="n">bg</span><span class="p">,</span><span class="n">ca</span><span class="p">,</span><span class="n">cs</span><span class="p">,</span><span class="n">cy</span><span class="p">,</span><span class="n">da</span><span class="p">,</span><span class="n">de</span><span class="p">,</span><span class="n">en_us</span><span class="p">,</span><span class="n">es</span><span class="p">,</span><span class="n">es_ec</span><span class="p">,</span><span class="n">es_es</span><span class="p">,</span><span class="n">es_mx</span><span class="p">,</span><span class="n">fa</span><span class="p">,</span><span class="n">fi</span><span class="p">,</span><span class="n">fr</span><span class="p">,</span><span class="n">hr</span><span class="p">,</span><span class="n">ja</span><span class="p">,</span><span class="n">lt</span><span class="p">,</span><span class="n">nl</span><span class="p">,</span><span class="n">no</span><span class="p">,</span><span class="n">pl</span><span class="p">,</span><span class="n">pt</span><span class="p">,</span><span class="n">pt_pt</span><span class="p">,</span><span class="n">ru</span><span class="p">,</span><span class="n">sk</span><span class="p">,</span><span class="n">sr</span><span class="p">,</span><span class="n">sv</span><span class="p">,</span><span class="n">tr</span><span class="p">,</span><span class="n">uk</span><span class="p">,</span><span class="n">zh</span><span class="p">}]</span>
@@ -596,7 +653,7 @@ To experiment anyway, see <a class="reference internal" href="../implementation-
 </div>
 <p><strong>Example usage</strong> (when downloading and unzipping the sample training data set):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.train<span class="w"> </span>train_data/<span class="w"> </span>-o<span class="w"> </span>checkpoints/custom/Custom_Classifier.tflite
-python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>example/<span class="w"> </span>--classifier<span class="w"> </span>checkpoints/custom/Custom_Classifier.tflite
+python<span class="w"> </span>-m<span class="w"> </span>birdnet_analyzer.analyze<span class="w"> </span>/path/to/audio/folder<span class="w"> </span>--classifier<span class="w"> </span>checkpoints/custom/Custom_Classifier.tflite
 </pre></div>
 </div>
 <div class="admonition note">
