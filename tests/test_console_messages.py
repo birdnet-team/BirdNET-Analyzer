@@ -255,3 +255,20 @@ def test_segments_of_a_combined_table_count_the_recordings_it_names(
     )
     assert re.fullmatch(r"Found \d+ segments in 2 audio files\.", out.splitlines()[1])
     assert out.splitlines()[-1] == f"The segments are saved in {tmp_path / 'segments'}"
+
+
+def test_a_file_in_a_format_that_cannot_be_read_lists_the_formats_that_can(
+    tmp_path, run_cli
+):
+    notes = tmp_path / "notes.txt"
+    notes.write_text("not audio")
+
+    code, _, err = run_cli(analyze_cli.main, notes)
+
+    assert code == 1
+    assert re.fullmatch(
+        rf"Error: {re.escape(str(notes))} is not an audio file that BirdNET-Analyzer "
+        r"can read\. These formats can be read: [a-z0-9]+(, [a-z0-9]+)+\.",
+        err.splitlines()[0],
+    )
+    assert "wav" in err.splitlines()[0].split(", ")
