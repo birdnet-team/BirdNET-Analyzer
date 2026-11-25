@@ -814,7 +814,7 @@ def build_footer():
             f"""
 <div style='display: flex; justify-content: space-around; align-items: center; padding: 10px; text-align: center'>
     <div>
-        <div style="display: flex;flex-direction: row;">GUI version:&nbsp<span
+        <div style="display: flex;flex-direction: row;">{loc.localize("footer-gui-version")}:&nbsp<span
                 id="current-version">{os.environ["GUI_VERSION"] if settings.FROZEN else "main"}</span><span
                 style="display: none" id="update-available"><a>+</a></span></div>
     </div>
@@ -1065,10 +1065,11 @@ def build_settings():
                 )
 
         gr.Markdown(
-            """
-            If you encounter a bug or error, please provide the error log.\n
-            You can submit an issue on our [GitHub](https://github.com/birdnet-team/BirdNET-Analyzer/issues).
-            """,
+            loc.localize("settings-tab-error-log-report-info")
+            + "\n\n"
+            + loc.localize("settings-tab-error-log-issue-info").format(
+                github="[GitHub](https://github.com/birdnet-team/BirdNET-Analyzer/issues)"
+            ),
             label=loc.localize("settings-tab-error-log-textbox-label"),
             elem_classes="mh-200",
         )

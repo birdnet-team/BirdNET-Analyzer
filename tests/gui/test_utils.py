@@ -578,3 +578,27 @@ def test_a_proxy_exclusion_of_the_user_is_kept(appdir, monkeypatch):
     _open_window_with_a_fake_webview(monkeypatch)
 
     assert os.environ["NO_PROXY"] == "intranet.example"
+
+
+def test_the_settings_tab_and_the_footer_are_in_the_chosen_language(
+    appdir, monkeypatch
+):
+    import birdnet_analyzer.gui.localization as loc
+
+    german = loc._read_language_file("de")
+    monkeypatch.setattr(loc, "LANGUAGE_LOOKUP", german)
+
+    with gr.Blocks() as demo:
+        gu.build_settings()
+        gu.build_footer()
+
+    shown = " ".join(
+        str(block.value)
+        for block in demo.blocks.values()
+        if isinstance(block, gr.Markdown)
+    )
+
+    assert german["settings-tab-error-log-report-info"] in shown
+    assert german["footer-gui-version"] in shown
+    assert "If you encounter a bug" not in shown
+    assert "GUI version" not in shown
