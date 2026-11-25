@@ -58,6 +58,27 @@ def test_the_batch_analysis_lets_birdnet_pick_the_worker_count_by_default(
     assert start(workers_auto=False, workers_number=4) == 4
 
 
+def test_analyze_is_usable_again_after_a_failed_run(appdir):
+    with gr.Blocks() as demo:
+        mfa.build_multi_analysis_tab()
+
+    events = demo.fns
+    run = next(
+        e
+        for e in events.values()
+        if getattr(e.fn, "__name__", None) == "run_batch_analysis"
+    )
+    analyze_button = events[run.trigger_after].outputs[0]
+    on_failure = next(
+        e
+        for e in events.values()
+        if e.trigger_after == run._id and e.trigger_only_on_failure
+    )
+    updates = dict(zip(on_failure.outputs, on_failure.fn(), strict=True))
+
+    assert updates[analyze_button]["interactive"] is True
+
+
 def test_a_run_starts_without_the_result_of_the_run_before(appdir, handler):
     *_, result_list = handler(mfa.build_multi_analysis_tab, "prepare_run_ui")()
 

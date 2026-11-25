@@ -1,5 +1,6 @@
 import csv
 import inspect
+import logging
 import multiprocessing
 import subprocess
 import sys
@@ -105,13 +106,21 @@ def test_train_cli_accepts_full_parser_surface(mock_train_model, tmp_path):
 
 @pytest.mark.timeout(300)
 @pytest.mark.skipif(not pb_model_cached("3.0"), reason="3.0 pb model not cached")
-def test_a_classifier_trained_on_the_example_folder_analyses_the_soundscape(tmp_path):
+def test_a_classifier_trained_on_the_example_folder_analyses_the_soundscape(
+    tmp_path, capsys, caplog
+):
     from birdnet_analyzer import analyze, params
     from birdnet_analyzer.config import OUTPUT_CSV_FILENAME, TRAIN_PARAMS_SUFFIX
 
     classifier = str(tmp_path / "cc")
 
-    train("tests/data/training", output=classifier, epochs=1, model_formats=["tflite"])
+    with caplog.at_level(logging.INFO, logger="birdnet_analyzer"):
+        train(
+            "tests/data/training", output=classifier, epochs=1, model_formats=["tflite"]
+        )
+
+    assert "TensorSpec" not in capsys.readouterr().out
+    assert caplog.messages[-1] == f"The classifier is saved in {classifier}.tflite"
     analyze(
         "birdnet_analyzer/example/soundscape.wav",
         str(tmp_path / "out"),

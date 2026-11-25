@@ -9,7 +9,6 @@ import csv
 import errno
 import logging
 import os
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, NamedTuple, get_args
 
@@ -203,8 +202,7 @@ def _check_cache_destination(path: str):
 
         directory = os.path.dirname(directory)
 
-    with tempfile.TemporaryFile(dir=directory):
-        pass
+    utils.check_folder_writable(directory)
 
 
 def _load_training_data(
@@ -1139,18 +1137,23 @@ def train_model(
         ),
     )
 
+    saved = []
+
     if "tflite" in formats:
         model.save_linear_classifier(
             classifier, output, labels, mode=model_save_mode, version=version
         )
+        saved.append(classifier_path + ".tflite")
     if "raven" in formats:
         model.save_raven_model(
             classifier, output, labels, mode=model_save_mode, version=version
         )
+        saved.append(classifier_path)
     if "detached" in formats:
         model.save_detached_classifier(
             classifier, output, labels=labels, version=version
         )
+        saved.append(classifier_path + "_detached.tflite")
 
     save_sample_counts(labels, y_train_full, output)
 
@@ -1233,6 +1236,9 @@ def train_model(
                             f"{distribution['percentage']:.2f}",
                         ]
                     )
+
+    if saved:
+        logger.info("The classifier is saved in %s", ", ".join(saved))
 
     return history, metrics
 

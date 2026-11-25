@@ -87,6 +87,16 @@ def test_a_clip_of_an_embedded_recording_is_its_own_best_match(
     assert stored == DEFAULT_ACOUSTIC_MODEL_VERSION
 
 
+def test_a_search_in_the_wrong_audio_root_points_to_the_audio_root(
+    recordings, query, tmp_path
+):
+    database = str(tmp_path / "db")
+    embeddings(str(recordings), database, n_workers=1)
+
+    with pytest.raises(ValueError, match=r"\(--audio_root\)"):
+        search(str(tmp_path / "out"), database, str(tmp_path / "elsewhere"), str(query))
+
+
 def test_a_query_shorter_than_one_second_has_the_same_match_in_every_crop_mode(
     recordings, tmp_path
 ):

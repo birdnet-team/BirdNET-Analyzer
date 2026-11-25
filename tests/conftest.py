@@ -141,6 +141,62 @@ class _ConnectionSpy:
 
 
 @pytest.fixture
+def unwritable_folder(tmp_path):
+    """A folder in which this process may not create files."""
+    import subprocess
+    import sys
+
+    folder = tmp_path / "read only"
+    folder.mkdir()
+
+    if sys.platform == "win32":
+        user = subprocess.run(
+            ["whoami"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        subprocess.run(
+            ["icacls", str(folder), "/deny", f"{user}:(OI)(CI)(WD,AD)"],
+            capture_output=True,
+            check=True,
+        )
+        yield folder
+        subprocess.run(
+            ["icacls", str(folder), "/remove:d", user], capture_output=True, check=True
+        )
+    else:
+        if os.geteuid() == 0:
+            pytest.skip("root may write to any folder")
+
+        folder.chmod(0o555)
+        yield folder
+        folder.chmod(0o755)
+
+
+@pytest.fixture
+def bounded():
+    """Calls a function in a thread and returns what it raised, failing the test if
+    it is still running after ``seconds``."""
+    import threading
+
+    def call(function, *args, seconds=10, **kwargs):
+        raised = []
+
+        def run():
+            try:
+                function(*args, **kwargs)
+            except BaseException as e:
+                raised.append(e)
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        thread.join(seconds)
+        assert not thread.is_alive(), f"{function.__name__} runs after {seconds} s"
+
+        return raised[0] if raised else None
+
+    return call
+
+
+@pytest.fixture
 def hoplite_connections(monkeypatch):
     """Records the connection of every hoplite database successfully opened."""
     from perch_hoplite.db import sqlite_usearch_impl

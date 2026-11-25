@@ -160,7 +160,7 @@ def test_combined_dataframe_orders_by_input(env):
     assert df.groupby("input", sort=False)["start_time"].is_monotonic_increasing.all()
 
 
-def test_analyze_resumes_after_crash(env):
+def test_analyze_resumes_after_crash(env, caplog):
     fake, calls = make_fake_run_inference(crash_after=2)
 
     with (
@@ -175,11 +175,19 @@ def test_analyze_resumes_after_crash(env):
 
     fake, calls = make_fake_run_inference()
 
-    with patch("birdnet_analyzer.model_utils.run_inference", fake):
+    with (
+        patch("birdnet_analyzer.model_utils.run_inference", fake),
+        caplog.at_level(logging.INFO, logger="birdnet_analyzer"),
+    ):
         run_analyze(env)
 
     assert len(calls) == 1
     assert set(calls[0]) == set(env["files"][2:])
+    assert caplog.messages == [
+        f"Continuing the analysis in {env['output_dir']}: 2 of 4 audio files were "
+        "analyzed before and are skipped.",
+        f"8 detections in 4 audio files, saved in {env['output_dir']}",
+    ]
 
     df = read_combined_csv(env)
     assert set(df["File"]) == {str(f) for f in env["files"]}

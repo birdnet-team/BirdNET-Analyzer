@@ -1914,11 +1914,11 @@ def build_evaluation_tab() -> None:
             button.click(download_plot_guarded, inputs=[plot, gr.State(name), pa_state])
 
         # Calculate is locked while the lists change and unlocked in the processor
-        # queue, behind every build queued before, so it never sends a selection made
-        # from old lists.
+        # queue, behind every build queued before. A step that fails unlocks it too,
+        # leaving the lists as they were before that step.
         for kind, (button, textbox) in pickers.items():
             group, _, dropdowns = column_boxes[kind]
-            button.click(
+            picked = button.click(
                 _lock_calculation,
                 outputs=[calculate_button],
                 queue=False,
@@ -1942,15 +1942,20 @@ def build_evaluation_tab() -> None:
                     status,
                 ],
                 show_progress="hidden",
-            ).then(
+            )
+            picked.failure(**unlock)
+            refreshed = picked.then(
                 refresh_after_pick,
                 inputs=[picked_state, *refresh_inputs],
                 outputs=refresh_outputs,
                 concurrency_id=processor_queue,
-            ).then(**unlock)
+            )
+
+            for after_refresh in gu.after_either_outcome(refreshed):
+                after_refresh(**unlock)
 
         # Setting the column defaults on a pick fires ``.change`` but not ``.input``.
-        gr.on(
+        refreshed = gr.on(
             [
                 mapping_file.change,
                 parameters.score_unannotated.change,
@@ -1965,7 +1970,10 @@ def build_evaluation_tab() -> None:
             inputs=refresh_inputs,
             outputs=refresh_outputs,
             concurrency_id=processor_queue,
-        ).then(**unlock)
+        )
+
+        for after_refresh in gu.after_either_outcome(refreshed):
+            after_refresh(**unlock)
 
         apply_suggestions_button.click(
             apply_name_suggestions,
@@ -1997,7 +2005,7 @@ def build_evaluation_tab() -> None:
             concurrency_id=processor_queue,
         )
 
-        calculate_button.click(
+        calculated = calculate_button.click(
             _busy_calculating,
             outputs=[calculate_button],
             queue=False,
@@ -2029,7 +2037,10 @@ def build_evaluation_tab() -> None:
             ],
             concurrency_id=processor_queue,
             scroll_to_output=True,
-        ).then(**unlock)
+        )
+
+        for after_calculation in gu.after_either_outcome(calculated):
+            after_calculation(**unlock)
 
         averaging_radio.change(
             recompute_overall,

@@ -18,6 +18,8 @@ def test_search_cli_accepts_full_parser_surface(
     tmp_path,
 ):
     (tmp_path / "output").mkdir()
+    (tmp_path / "input").mkdir()
+    (tmp_path / "input" / "query_source.wav").touch()
     args = search_parser().parse_args(
         [
             "-q",
