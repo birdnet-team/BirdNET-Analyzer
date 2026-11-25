@@ -24,6 +24,13 @@ previous default for both.
 model with different confidence scores, a larger species set (11,725 labels) and an
 updated taxonomy. Do not mix or compare 3.0 result files with v2.4 ones.
 
+BirdNET 3.0 is also a larger model and takes longer per recording than 2.4. The program
+itself got faster: with ``--birdnet 2.4`` an analysis needs less time than in v2.4.0. So
+with the default model a folder of many files can take longer than before, while a single
+long recording gains from the parallel processing within a file. One hour of audio in
+six files on a MacBook Air M1: 31 s in v2.4.0, 22 s with ``--birdnet 2.4``, 62 s with the
+default model.
+
 **What to do.** To keep the previous acoustic model, select the 2.4 model explicitly:
 
 .. code-block:: bash
@@ -44,7 +51,7 @@ Inference runs on ONNX, not TensorFlow, on the default path
 
 **Consequence.**
 
-* Default analyses are faster on CPU and no longer load TensorFlow.
+* Default analyses no longer load TensorFlow.
 * TensorFlow is still required — and still installed — for the 2.4 model, the Perch
   model, custom classifiers, and training.
 * The Docker image is substantially larger: it bakes the ~345 MB 3.0 ONNX model
