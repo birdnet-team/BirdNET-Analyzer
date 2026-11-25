@@ -289,3 +289,28 @@ def test_a_folder_named_from_the_working_directory_is_embedded_like_its_full_pat
     embeddings(str(recordings), database, n_workers=1)
 
     assert _count_embeddings(database) == n_embeddings
+
+
+def test_speed_scaled_embeddings_keep_the_original_timeline(tmp_path):
+    import soundfile as sf
+
+    recordings = tmp_path / "recordings"
+    recordings.mkdir()
+    rate = 48000
+    sf.write(
+        str(recordings / "test.wav"), np.zeros(12 * rate, dtype=np.float32), rate
+    )
+    database = str(tmp_path / "db")
+
+    embeddings(str(recordings), database, audio_speed=2.0, n_workers=1)
+
+    with open_database(database) as db:
+        offsets = sorted(
+            tuple(db.get_window(window_id).offsets)
+            for window_id in db.match_window_ids()
+        )
+
+    # 3 s segments at twice the speed: 6 s of the recording per segment.
+    np.testing.assert_allclose(
+        offsets, [(0.0, 6.0), (6.0, 12.0)], atol=1e-3
+    )

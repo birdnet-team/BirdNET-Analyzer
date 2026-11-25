@@ -124,7 +124,11 @@ def embeddings(
 
         seg_dur = result.segment_duration_s
         seg_overlap = result.overlap_duration_s
-        step = seg_dur - seg_overlap
+        # The library segments the sped-up audio, so a segment covers seg_dur *
+        # audio_speed seconds of the recording: the offsets scale like the
+        # timestamps of an analysis.
+        step = (seg_dur - seg_overlap) * audio_speed
+        seg_dur_scaled = seg_dur * audio_speed
 
         n_inputs = result.n_inputs
         n_segments = result.max_n_segments
@@ -146,7 +150,7 @@ def embeddings(
                     continue
 
                 s_start = j * step
-                s_end = s_start + seg_dur
+                s_end = s_start + seg_dur_scaled
 
                 if s_start >= file_dur:
                     continue
