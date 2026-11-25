@@ -7,6 +7,7 @@ import json
 import ntpath
 import os
 import re
+import unicodedata
 from collections.abc import Collection, Iterable, Mapping
 from typing import NamedTuple
 
@@ -140,7 +141,8 @@ def recording_key(name):
     if ext.casefold() in _AUDIO_EXTENSIONS:
         key = root
 
-    return key
+    # macOS may store a name decomposed; tables from elsewhere have it composed.
+    return unicodedata.normalize("NFC", key)
 
 
 def _is_candidate(name: str) -> bool:
