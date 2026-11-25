@@ -1,34 +1,33 @@
 Creating Your Own Species List
 ==============================
 
-When editing your own `species_list.txt` file, make sure to copy species names from the labels file of each model.
-
-You can find label files in the checkpoints folder, e.g., `checkpoints/V2.4/BirdNET_GLOBAL_6K_V2.4_Labels.txt`.
-
-Species names need to consist of `scientific name_common name` to be valid, for example::
+A species list is a text file with one species per line, passed with ``--slist`` or selected in the GUI under **Species selection**.
+Copy the entries from the labels of the model, which consist of `scientific name_common name`, for example::
 
    Turdus merula_Common Blackbird
    Parus major_Great Tit
 
-If you want to use the Perch model, you have to use only the scientific name with no underscore or common name, for example::
+:ref:`birdnet_analyzer.species <cli-species>` without a location writes every label of the default BirdNET 3.0 model, 11,725 of them, to a file:
 
-   Turdus merula
-   Parus major
+.. code-block:: bash
 
-Note that `birdnet_analyzer.species` only generates BirdNET-format names and cannot be used to build a Perch species list.
+   birdnet-species all_labels.txt
 
-You can generate a species list for a given location using :ref:`birdnet_analyzer.species <cli-species>`.
+The analysis matches each entry to the labels of the model it uses: by the exact label, then by the scientific name, then by the common name in the language of the analysis or in English.
+The same list therefore also works with BirdNET 2.4, which names some species differently, and with Perch, whose labels are scientific names only.
+An entry that matches no label of the model is skipped with a warning, and with ``--strict`` the analysis stops instead.
+:doc:`../breaking-changes` explains which names changed with BirdNET 3.0 and what happens to an entry for a species that was split.
 
-.. note::
-    The checkpoints folder can be found in the installation directory of BirdNET-Analyzer.
-    If you're using BirdNET-Analyzer from GitHub, you can access the checkpoints folder once the analyzer has run at least once, because the model is downloaded in the background.
-
-    Alternatively, you can manually download the model checkpoint `here <https://tuc.cloud/index.php/s/886x39f5N3sdsAM/download/V2.4.zip>`_.
+You can generate a species list for a given location and week using :ref:`birdnet_analyzer.species <cli-species>` or the **Species** tab of the GUI.
+Such a list comes from the BirdNET 3.0 geolocation model, which also predicts species the acoustic models do not have; the analysis skips those with a warning.
 
 Practical Information and Considerations
 ----------------------------------------
 
 **Understanding the GeoModel**
+
+This section describes the species range model of BirdNET 2.4, which an analysis with BirdNET 2.4 uses for a location filter.
+Lists for a location and location filters with BirdNET 3.0 come from the BirdNET 3.0 geolocation model, which :doc:`../models` describes.
 
 The BirdNET Species Range Model V2.4 - V2 uses eBird checklist frequency data to estimate the range of bird species and the probability of their occurrence given latitude, longitude, and week of the year. eBird relies on citizen scientists to collect bird species observations around the world. Due to biases in these data, some regions such as North and South America, Europe, India, and Australia are well represented in the data, while large parts of Africa or Asia are underrepresented.
 
@@ -44,8 +43,8 @@ In cases where eBird does not have enough observations (i.e., checklists), the d
 
 If you know which species to expect in your area, it is recommended to compile your own species list. This can help improve the accuracy of BirdNET-Analyzer for your specific use case.
 
-1. **Collect Species Names**: Use the labels file from the model checkpoints to get the correct species names. Ensure the names are in the format `scientific name_common name`.
-2. **Generate Species List**: Use the `birdnet_analyzer.species` script to generate a species list for a given location and time. This script uses the GeoModel to predict species occurrence based on latitude, longitude, and week of the year.
+1. **Collect Species Names**: Copy the names from the labels ``birdnet_analyzer.species`` writes without a location. Ensure the names are in the format `scientific name_common name`.
+2. **Generate Species List**: Use the `birdnet_analyzer.species` script to generate a species list for a given location and time. This script uses the BirdNET 3.0 geolocation model to predict species occurrence based on latitude, longitude, and week of the year.
 
 **Example of Training Data**
 

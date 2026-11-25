@@ -12,9 +12,9 @@ This can be used to explore your data and help you to collect training data for 
 -------------------------------------------------
 
 The first step is to create a database of embeddings from your audio files.
-In the GUI go to the Embeddings-Tab and then to the Extract-Section. There you can select the directory containing your audio files.
+In the GUI go to the **Embeddings** tab. There you can select the directory containing your audio files.
 As with the analysis feature this will go to your directory recursively and include all audio files from the selected folder and any subdirectories.
-After that choose the directory where your embeddings database should be created and specify a name for your database.
+After that select the directory that holds the database; for a new database, choose an empty one.
 
 You can further specify the following parameters for the extraction:
 
@@ -31,26 +31,21 @@ You can further specify the following parameters for the extraction:
     for adding recordings and for searching; if that is BirdNET 2.4, the model is downloaded when it is first needed.
     A database written by BirdNET-Analyzer 2.x is converted the first time it is opened, and its previous ``hoplite.sqlite`` is kept as ``hoplite.sqlite.v2-backup``.
 
-.. note::
-    Due to limitations of the underlying hoplite database, multithreading is not supported for the extraction process.
-
-The database will be created as a folder with the specified name containing two files:
+The database will be created in the selected folder, which then contains two files:
     - 'hoplite.sqlite'
     - 'usearch.index'
 
 2.1. File output
 ^^^^^^^^^^^^^^^^^^^
 
-If you want to process the embeddings as files, you can also specify a folder for the file output. If no folder is specified the file output will be omitted.
-The file output will create an individual file for each 3 second audio snippet that is processed, containing the extracted embedding.
-
-The files will be named according to the following pattern: "{original_file_name}_{start}_{end}.birdnet.embeddings.txt".
+If you want to process the embeddings as a file, check **Enable file output**. After the extraction, all embeddings of the database are then also written to a CSV file, ``embeddings.csv`` in the database folder unless you select another file.
+Each row holds the path of the audio file relative to the folder that holds the input directory, the start and end of the segment in seconds and the embedding.
 
 3. Searching your database
 -------------------------------------------------
 
-The database can be searched in the GUI in the Search-Section of the Embeddings-Tab.
-To start the search first select the database you want to search in. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.
+The database can be searched in the **Search** tab of the GUI.
+To start the search first select the database you want to search in, and as the audio root the folder that holds the audio directory the database was extracted from. As soon as the database is loaded the extraction settings and the number of embeddings in the database will be displayed.
 
 After that select a file as a query example to find similar sounds in the database.
 You can select the :doc:`crop mode <../implementation-details/crop-modes>` to specify how the example file will be cropped if it is longer than 3 seconds. For the segments crop mode the simliarity measure will be averaged over all segments of the query example.
@@ -86,5 +81,5 @@ For example with an audio speed modifier of 2, e.g. double speed, the exported a
 ^^^^^^^^^^^^^^^^^^^
 
 Searching the database can also be done via the command line interface, although due to the missing interface a manual inspection and selection of the results is not possible.
-Visit the command line interface documentation for more information on how to use the CLI.
+See :ref:`birdnet_analyzer.search <cli-search>` for how to use it.
 
