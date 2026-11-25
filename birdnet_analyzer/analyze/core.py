@@ -281,8 +281,8 @@ def analyze(
             journal = ResumeJournal.open(
                 output, resume_params, n_files_total=len(input_files)
             )
-        except PermissionError as e:
-            raise PermissionError(e.errno, e.strerror, output) from e
+        except OSError as e:
+            raise OSError(e.errno, e.strerror, output) from e
         completed = journal.completed_subset(input_files)
         inference_input = [f for f in input_files if f not in completed]
 

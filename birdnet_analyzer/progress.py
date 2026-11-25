@@ -70,7 +70,7 @@ class ConsoleProgress:
         try:
             self._stream.write(text)
             self._stream.flush()
-        except (OSError, ValueError):
+        except (AttributeError, OSError, ValueError):
             self._enabled = False
 
 

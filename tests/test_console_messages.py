@@ -123,6 +123,14 @@ def test_a_console_that_cannot_be_written_does_not_stop_the_analysis(console):
     progress.close()
 
 
+def test_an_analysis_without_a_console_does_not_stop(console, monkeypatch):
+    monkeypatch.setattr(sys, "stdout", None)
+    progress = ConsoleProgress("Analyzing")
+
+    progress(_update(10, 5))
+    progress.close()
+
+
 @pytest.mark.parametrize(
     ("folder", "closing"),
     [
