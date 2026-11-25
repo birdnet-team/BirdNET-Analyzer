@@ -252,6 +252,13 @@ def gui_runtime_error_handler(f):
     return wrapper
 
 
+def after_either_outcome(event) -> tuple:
+    """The listener methods of ``event`` for its success and for its failure, for
+    what has to follow it either way: gradio starts no ``.then`` listener after the
+    handler raised."""
+    return event.then, event.failure
+
+
 # The error types that mean a mistake in the program rather than in its input.
 _PROGRAMMING_ERRORS = (
     ArithmeticError,
@@ -716,8 +723,6 @@ def validate_output_folder(path: str):
     Raises:
         gr.Error: If the folder cannot be created or cannot be written to.
     """
-    import tempfile
-
     try:
         os.makedirs(path, exist_ok=True)
     except OSError as e:
@@ -728,8 +733,7 @@ def validate_output_folder(path: str):
         ) from e
 
     try:
-        with tempfile.TemporaryFile(dir=path):
-            pass
+        utils.check_folder_writable(path)
     except OSError as e:
         if e.errno == errno.ENOSPC:
             raise

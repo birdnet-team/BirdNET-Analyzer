@@ -401,6 +401,14 @@ def test_checking_the_cache_destination_leaves_no_trace(tmp_path):
     assert existing.read_bytes() == b"old cache"
 
 
+def test_a_cache_folder_without_write_permission_is_reported_at_once(
+    unwritable_folder, bounded
+):
+    raised = bounded(_check_cache_destination, str(unwritable_folder / "cache.npz"))
+
+    assert isinstance(raised, PermissionError)
+
+
 def test_a_directory_where_the_cache_would_go_is_reported_as_one(tmp_path):
     (tmp_path / "cache.npz").mkdir()
 
