@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import logging
 import os
 from pathlib import Path
@@ -170,6 +171,9 @@ def analyze(
             or none of the species in an ``slist`` file (with
             ``strict_species_list``, not all of them) are in the model.
         FileNotFoundError: If the ``slist`` file or ``classifier`` does not exist.
+        NotADirectoryError: If ``output`` or a folder above it is a file.
+        PermissionError: If no file may be created in ``output``, or in the folder it
+            would be created in.
         RuntimeError: If the resume state in ``output`` is incomplete, or the
             analysis is cancelled or one of its processes dies.
     Notes:
@@ -238,6 +242,9 @@ def analyze(
             output = os.path.dirname(audio_input)
         else:
             output = audio_input
+
+    if not _return_only and os.path.exists(audio_input):
+        _check_output_folder(output)
 
     species_from_location = lat is not None and lon is not None
 
@@ -435,6 +442,28 @@ def analyze(
     )
 
     return predictions
+
+
+def _check_output_folder(output) -> None:
+    """Fails before the analysis if its results cannot be written to ``output`` or
+    to the folder it would be created in, creating nothing."""
+    from birdnet_analyzer.utils import check_folder_writable
+
+    folder = os.path.abspath(output)
+
+    while not os.path.isdir(folder):
+        if os.path.exists(folder):
+            raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), folder)
+
+        if os.path.dirname(folder) == folder:
+            return
+
+        folder = os.path.dirname(folder)
+
+    try:
+        check_folder_writable(folder)
+    except OSError as e:
+        raise type(e)(e.errno, e.strerror, folder) from e
 
 
 def _check_audio_format(audio_input: str) -> None:
