@@ -745,6 +745,14 @@ def segments_parser():
         help="Number of randomly extracted segments per species.",
     )
     parser.add_argument(
+        "--max_percent",
+        type=_number,
+        action=_Bounded,
+        low=1.0,
+        high=100.0,
+        help="Percentage of each species' detections to extract, rounded up, instead of --max_segments. The balanced mode applies it to each confidence bin. Values in [1, 100].",
+    )
+    parser.add_argument(
         "--seg_length",
         type=_number,
         action=_Bounded,

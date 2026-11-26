@@ -41,7 +41,7 @@ TABS = {
     ),
     "segments": (
         segments.build_segments_tab,
-        {"<lambda>", "on_collection_mode_change"},
+        {"<lambda>", "on_collection_mode_change", "on_limit_change"},
     ),
     "species": (species.build_species_tab, {"<lambda>", "on_change"}),
     "settings": (gu.build_settings, {"_effective_model_directory"}),

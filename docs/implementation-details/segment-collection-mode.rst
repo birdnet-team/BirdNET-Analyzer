@@ -26,3 +26,4 @@ In more detail, we divide the confidence range into a specified number of bins (
 Then total number of segments is divided by the number of bins to get the maximum number of segments per bin.
 Finally for each bin we randomly select the up to the maximum number of segments from each bin.
 Due to rounding and the distribution of confidence values, the total number of segments might be less than the specified maximum even if there are more segments available.
+With a percentage instead of a maximum number, the percentage applies to each bin, so every bin with detections keeps at least one.
