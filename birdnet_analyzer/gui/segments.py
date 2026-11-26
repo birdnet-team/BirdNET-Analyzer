@@ -31,6 +31,8 @@ def _extract_segments(
     threads,
     collection_mode,
     num_bins,
+    limit_mode="number",
+    max_percent=25,
     progress=gr.Progress(),
 ):
     gu.validate(audio_dir, loc.localize("validation-no-audio-directory-selected"))
@@ -60,6 +62,7 @@ def _extract_segments(
         min_conf=min_conf,
         max_conf=max_conf,
         max_segments=num_seq,
+        max_percent=max_percent if limit_mode == "percent" else None,
         audio_speed=gu.slider_to_value(audio_speed),
         seg_length=seq_length,
         threads=threads,
@@ -247,14 +250,44 @@ def build_segments_tab() -> None:
                     interactive=True,
                 )
 
-            num_seq_number = state.persist(
-                "max_seq_number",
-                gr.Number,
-                value=100,
-                label=loc.localize("segments-tab-max-seq-number-label"),
-                info=loc.localize("segments-tab-max-seq-number-info"),
-                minimum=1,
-            )
+            with gr.Row():
+                limit_radio = state.persist(
+                    "limit_radio",
+                    gr.Radio,
+                    choices=[
+                        (
+                            loc.localize("segments-tab-limit-radio-option-number"),
+                            "number",
+                        ),
+                        (
+                            loc.localize("segments-tab-limit-radio-option-percent"),
+                            "percent",
+                        ),
+                    ],
+                    value="number",
+                    label=loc.localize("segments-tab-limit-label"),
+                    info=loc.localize("segments-tab-limit-info"),
+                    interactive=True,
+                )
+                num_seq_number = state.persist(
+                    "max_seq_number",
+                    gr.Number,
+                    value=100,
+                    label=loc.localize("segments-tab-max-seq-number-label"),
+                    info=loc.localize("segments-tab-max-seq-number-info"),
+                    minimum=1,
+                    visible=limit_radio.value == "number",
+                )
+                max_percent_number = state.persist(
+                    "max_percent_number",
+                    gr.Number,
+                    value=25,
+                    label=loc.localize("segments-tab-max-percent-number-label"),
+                    info=loc.localize("segments-tab-max-percent-number-info"),
+                    minimum=1,
+                    maximum=100,
+                    visible=limit_radio.value == "percent",
+                )
             audio_speed_slider = state.persist(
                 "audio_speed_slider",
                 gr.Slider,
@@ -305,8 +338,23 @@ def build_segments_tab() -> None:
                 threads_number,
                 collection_mode_radio,
                 num_bins,
+                limit_radio,
+                max_percent_number,
             ],
             outputs=result_grid,
+        )
+
+        def on_limit_change(limit_mode):
+            return (
+                gr.Number(visible=limit_mode == "number"),
+                gr.Number(visible=limit_mode == "percent"),
+            )
+
+        limit_radio.change(
+            on_limit_change,
+            inputs=limit_radio,
+            outputs=[num_seq_number, max_percent_number],
+            show_progress="hidden",
         )
 
         def on_collection_mode_change(collection_mode):

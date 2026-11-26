@@ -40,6 +40,50 @@ def test_the_speed_slider_reaches_the_extraction_as_a_factor(
     assert seen["audio_speed"] == speed
 
 
+@pytest.mark.parametrize(("limit_mode", "percent"), [("number", None), ("percent", 25)])
+def test_the_percentage_reaches_the_extraction_only_when_chosen(
+    monkeypatch, tmp_path, limit_mode, percent
+):
+    seen = {}
+
+    def fake_segments(*args, **kwargs):
+        seen.update(kwargs)
+        return [(str(tmp_path / "a.wav"), True)]
+
+    monkeypatch.setattr(gui_segments, "segments", fake_segments)
+
+    gui_segments._extract_segments(
+        str(tmp_path),
+        str(tmp_path),
+        str(tmp_path),
+        0.25,
+        1.0,
+        100,
+        0,
+        3.0,
+        1,
+        "random",
+        10,
+        limit_mode,
+        25,
+        progress=None,
+    )
+
+    assert seen["max_segments"] == 100
+    assert seen["max_percent"] == percent
+
+
+@pytest.mark.parametrize(
+    ("limit_mode", "shown"), [("number", (True, False)), ("percent", (False, True))]
+)
+def test_only_the_chosen_limit_is_shown(appdir, handler, limit_mode, shown):
+    on_limit_change = handler(gui_segments.build_segments_tab, "on_limit_change")
+
+    number, percent = on_limit_change(limit_mode)
+
+    assert (number.visible, percent.visible) == shown
+
+
 def test_a_failing_folder_pick_is_logged_and_shown(appdir, handler, monkeypatch):
     logged = []
     monkeypatch.setattr(gu.utils, "write_error_log", logged.append)

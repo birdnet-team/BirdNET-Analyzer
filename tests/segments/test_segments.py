@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import Counter
 from unittest.mock import patch
 
 import numpy as np
@@ -49,6 +50,8 @@ def test_segments_cli_accepts_full_parser_surface(
             output,
             "--max_segments",
             "5",
+            "--max_percent",
+            "12.5",
             "--seg_length",
             "4.5",
             "--max_conf",
@@ -78,6 +81,7 @@ def test_segments_cli_accepts_full_parser_surface(
     mock_parse_files.assert_called_once()
     parse_files_kwargs = mock_parse_files.call_args.kwargs
     assert parse_files_kwargs["max_segments"] == 5
+    assert parse_files_kwargs["max_percent"] == 12.5
     assert parse_files_kwargs["collection_mode"] == "confidence"
     assert parse_files_kwargs["n_bins"] == 12
     assert parse_files_kwargs["min_conf"] == 0.15
@@ -494,6 +498,72 @@ def test_parse_files_drops_detections_above_max_conf(tmp_path, combined):
     result = parse_files(flist, min_conf=0.25, max_conf=0.7)
 
     assert sorted(s["confidence"] for _, segs in result for s in segs) == [0.3, 0.6]
+
+
+def _species_table(tmp_path, detections):
+    audio = str(tmp_path / "rec.wav")
+    rfile = tmp_path / "rec.BirdNET.selection.table.txt"
+    rows = [
+        _raven_row(i, 3 * i, 3 * i + 3, species, species, "x", confidence, audio)
+        for i, (species, confidence) in enumerate(detections, start=1)
+    ]
+    rfile.write_text("\n".join([RAVEN_HEADER, *rows]) + "\n", encoding="utf-8")
+
+    return [{"audio": audio, "result": str(rfile)}]
+
+
+def _per_species(result):
+    return Counter(s["species"] for _, segs in result for s in segs)
+
+
+@pytest.mark.parametrize("mode", ["random", "confidence"])
+def test_a_percentage_keeps_that_share_of_each_species_rounded_up(tmp_path, mode):
+    flist = _species_table(
+        tmp_path, [("Robin", 0.5)] * 10 + [("Jay", 0.5)] * 3 + [("Wren", 0.5)]
+    )
+
+    result = parse_files(flist, max_segments=2, max_percent=25, collection_mode=mode)
+
+    assert _per_species(result) == {"Robin": 3, "Jay": 1, "Wren": 1}
+
+
+def test_a_percentage_that_gives_a_whole_number_is_not_rounded_up(tmp_path):
+    flist = _species_table(tmp_path, [("Robin", 0.5)] * 375)
+
+    result = parse_files(flist, max_percent=8.8)
+
+    assert _per_species(result) == {"Robin": 33}
+
+
+def test_a_percentage_counts_only_detections_in_the_confidence_range(tmp_path):
+    flist = _species_table(tmp_path, [("Robin", 0.1)] * 6 + [("Robin", 0.5)] * 4)
+
+    result = parse_files(flist, min_conf=0.25, max_percent=50)
+
+    assert _per_species(result) == {"Robin": 2}
+
+
+def test_a_balanced_percentage_takes_its_share_of_every_bin(tmp_path):
+    flist = _species_table(tmp_path, [("Robin", 0.3)] * 8 + [("Robin", 0.95)] * 2)
+
+    result = parse_files(flist, max_percent=25, collection_mode="balanced")
+
+    assert sorted(s["confidence"] for _, segs in result for s in segs) == [
+        0.3,
+        0.3,
+        0.95,
+    ]
+
+
+def test_a_random_percentage_is_not_only_the_top_scores(tmp_path):
+    confidences = [round(0.26 + 0.007 * i, 3) for i in range(100)]
+    flist = _species_table(tmp_path, [("Robin", c) for c in confidences])
+
+    result = parse_files(flist, max_percent=10)
+
+    picked = sorted(s["confidence"] for _, segs in result for s in segs)
+    assert len(picked) == 10
+    assert picked != confidences[-10:]
 
 
 RAMP_PER_SECOND = 0.025

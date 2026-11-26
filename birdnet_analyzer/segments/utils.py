@@ -5,6 +5,7 @@ Can be used to save the segments of the audio files for each detection.
 
 import csv
 import logging
+import math
 import os
 import re
 from collections import Counter, defaultdict
@@ -305,6 +306,11 @@ def parse_folders(
     return flist
 
 
+def _share(n: int, percent: float) -> int:
+    # 375 * 8.8 / 100 is a hair above 33 in floats.
+    return math.ceil(round(n * percent / 100, 9))
+
+
 def parse_files(
     flist: list[dict],
     max_segments=100,
@@ -312,6 +318,7 @@ def parse_files(
     n_bins=10,
     min_conf=0.25,
     max_conf=1.0,
+    max_percent=None,
 ) -> list[tuple[str, list]]:
     """
     Parses a list of files to extract and organize bird call segments by species.
@@ -331,6 +338,9 @@ def parse_files(
             considered. Defaults to 0.25.
         max_conf (float, optional): Maximum confidence threshold for segments to be
             considered. Defaults to 1.0.
+        max_percent (float | None, optional): Percentage of each species' detections
+            to retain, rounded up, instead of max_segments. In the balanced mode it
+            applies to each bin. Defaults to None.
 
     Raises:
         KeyError: If the dictionaries in flist do not contain the required keys
@@ -362,12 +372,18 @@ def parse_files(
             species_segments[s["species"]].append(s)
 
     for s in species_segments:
+        limit = (
+            max_segments
+            if max_percent is None
+            else _share(len(species_segments[s]), max_percent)
+        )
+
         if collection_mode == "random":
             RNG.shuffle(species_segments[s])
-            species_segments[s] = species_segments[s][:max_segments]
+            species_segments[s] = species_segments[s][:limit]
         elif collection_mode == "confidence":
             species_segments[s].sort(key=lambda x: x["confidence"], reverse=True)
-            species_segments[s] = species_segments[s][:max_segments]
+            species_segments[s] = species_segments[s][:limit]
         elif collection_mode == "balanced":
             bin_edges = np.linspace(min_conf, max_conf, num=n_bins + 1)
             max_segments_per_bin = max_segments // n_bins
@@ -384,9 +400,15 @@ def parse_files(
             species_segments[s] = []
 
             for bin_segments in segments_by_bin:
-                if len(bin_segments) > max_segments_per_bin:
+                per_bin = (
+                    max_segments_per_bin
+                    if max_percent is None
+                    else _share(len(bin_segments), max_percent)
+                )
+
+                if len(bin_segments) > per_bin:
                     RNG.shuffle(bin_segments)
-                    species_segments[s].extend(bin_segments[:max_segments_per_bin])
+                    species_segments[s].extend(bin_segments[:per_bin])
                 else:
                     species_segments[s].extend(bin_segments)
 

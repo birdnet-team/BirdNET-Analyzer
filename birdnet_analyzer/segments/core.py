@@ -18,6 +18,7 @@ def segments(
     min_conf: float = 0.25,
     max_conf: float = 1.0,
     max_segments: int = 100,
+    max_percent: float | None = None,
     audio_speed: float = 1.0,
     seg_length: float = 3.0,
     threads: int = 1,
@@ -42,6 +43,8 @@ def segments(
             considered. Defaults to 1.0.
         max_segments (int, optional): Maximum number of segments to extract per
             species. Defaults to 100.
+        max_percent (float | None, optional): Percentage of each species' detections
+            to extract, rounded up, instead of max_segments. Defaults to None.
         audio_speed (float, optional): Speed factor for audio processing.
             Defaults to 1.0.
         seg_length (float, optional): Length of each audio segment in seconds.
@@ -87,6 +90,7 @@ def segments(
             n_bins=n_bins,
             min_conf=min_conf,
             max_conf=max_conf,
+            max_percent=max_percent,
         ),
         audio_input,
     )
