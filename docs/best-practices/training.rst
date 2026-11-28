@@ -122,7 +122,7 @@ Results for the default threshold will be shown in the GUI.
 The complete results, including results for the optimal threshold, will be saved to a CSV file in the output directory.
 
 .. hint::
-  The optimal threshhold is selected based on the F1-Score. This might cause precision or recall to be lower than on the default threshhold.
+  The optimal threshold is selected based on the F1-Score. This might cause precision or recall to be lower than on the default threshold.
 
 3.6 Model Save Mode
 ##########################
